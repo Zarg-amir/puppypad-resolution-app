@@ -7,7 +7,7 @@
 // CONFIGURATION
 // ============================================
 const CONFIG = {
-  API_URL: '', // Will be set after worker deployment
+  API_URL: 'https://puppypad-resolution-worker.gulfam.workers.dev',
   GUARANTEE_DAYS: 90,
   FULFILLMENT_CUTOFF_HOURS: 10,
   IN_TRANSIT_VOICE_DAYS: 6,
