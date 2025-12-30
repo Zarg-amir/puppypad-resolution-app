@@ -1,0 +1,22 @@
+{
+  "name": "puppypad-resolution-worker",
+  "main": "src/index.js",
+  "compatibility_date": "2025-01-01",
+  "d1_databases": [
+    {
+      "binding": "ANALYTICS_DB",
+      "database_name": "puppypad-resolution-analytics",
+      "database_id": "bb72f7c4-052d-413f-b4ea-31f54b907020"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PRODUCT_DOCS",
+      "bucket_name": "puppypad-product-docs"
+    },
+    {
+      "binding": "EVIDENCE_UPLOADS",
+      "bucket_name": "puppypad-resolution-uploads"
+    }
+  ]
+}
