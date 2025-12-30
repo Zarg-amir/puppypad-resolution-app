@@ -1,3 +1,5 @@
+// PuppyPad Resolution Worker v1.0
+
 /**
  * PuppyPad Resolution Worker
  * Backend API for the Resolution App
