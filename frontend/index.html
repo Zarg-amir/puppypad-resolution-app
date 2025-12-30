@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PuppyPad Support</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container" id="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face" alt="Amy" class="avatar" id="currentAvatar">
+        <div class="header-info">
+          <h1 id="currentName">Amy</h1>
+          <div class="status">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Online</span>
+          </div>
+        </div>
+      </div>
+      <button class="restart-btn" onclick="restartChat()">
+        Start Again
+      </button>
+    </header>
+
+    <!-- Chat Area -->
+    <main class="chat-area" id="chatArea">
+      <!-- Messages will be inserted here -->
+    </main>
+
+    <!-- Input Area (hidden by default, shown when text input needed) -->
+    <div class="input-area" id="inputArea">
+      <div class="input-wrapper">
+        <input type="text" class="text-input" id="textInput" placeholder="Type your message...">
+        <button class="send-btn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
