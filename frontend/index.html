@@ -2,50 +2,2075 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PuppyPad Support</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #7c3aed;
+      --primary-light: #a78bfa;
+      --primary-dark: #5b21b6;
+      --secondary: #f97316;
+      --secondary-light: #fb923c;
+      --accent: #06b6d4;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      --glass-bg: rgba(255, 255, 255, 0.85);
+      --glass-border: rgba(255, 255, 255, 0.3);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #f5576c, #4facfe, #00f2fe);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+      overflow: hidden;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Floating orbs for depth */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.4;
+      pointer-events: none;
+      animation: float 20s ease-in-out infinite;
+    }
+
+    .orb-1 {
+      width: 400px;
+      height: 400px;
+      background: linear-gradient(135deg, #7c3aed, #f97316);
+      top: -100px;
+      left: -100px;
+      animation-delay: 0s;
+    }
+
+    .orb-2 {
+      width: 300px;
+      height: 300px;
+      background: linear-gradient(135deg, #06b6d4, #10b981);
+      bottom: -50px;
+      right: -50px;
+      animation-delay: -5s;
+    }
+
+    .orb-3 {
+      width: 200px;
+      height: 200px;
+      background: linear-gradient(135deg, #f97316, #f59e0b);
+      top: 50%;
+      left: 50%;
+      animation-delay: -10s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      25% { transform: translate(20px, -30px) scale(1.05); }
+      50% { transform: translate(-10px, 20px) scale(0.95); }
+      75% { transform: translate(30px, 10px) scale(1.02); }
+    }
+
+    /* Chat Container */
+    .chat-container {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      max-width: 480px;
+      height: 90vh;
+      max-height: 800px;
+      display: flex;
+      flex-direction: column;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 24px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow-xl), 0 0 40px rgba(124, 58, 237, 0.15);
+      overflow: hidden;
+    }
+
+    /* Header */
+    .chat-header {
+      padding: 16px 20px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chat-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      animation: shimmer 3s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .header-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      object-fit: cover;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header-info {
+      flex: 1;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-title img {
+      height: 22px;
+    }
+
+    .header-status {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.85);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.1); }
+    }
+
+    /* Messages Area */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+
+    .chat-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chat-messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: var(--gray-300);
+      border-radius: 3px;
+    }
+
+    /* Message Bubbles */
+    .message {
+      display: flex;
+      gap: 10px;
+      max-width: 90%;
+      animation: messageIn 0.3s ease-out;
+    }
+
+    @keyframes messageIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message-incoming {
+      align-self: flex-start;
+    }
+
+    .message-outgoing {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .message-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 2px solid var(--glass-border);
+    }
+
+    .message-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .message-name {
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+
+    .message-role {
+      color: var(--gray-400);
+      font-weight: 500;
+    }
+
+    .message-bubble {
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 14px;
+      line-height: 1.5;
+      position: relative;
+    }
+
+    .message-incoming .message-bubble {
+      background: white;
+      color: var(--gray-800);
+      border-bottom-left-radius: 6px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .message-outgoing .message-bubble {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white;
+      border-bottom-right-radius: 6px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .message-outgoing .message-header {
+      justify-content: flex-end;
+    }
+
+    .message-outgoing .message-name {
+      color: var(--primary);
+    }
+
+    /* Typing Indicator */
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 12px 16px;
+      background: white;
+      border-radius: 18px;
+      border-bottom-left-radius: 6px;
+      width: fit-content;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gray-400);
+      animation: typingBounce 1.4s ease-in-out infinite;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typingBounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-8px); }
+    }
+
+    /* Quick Actions / Options */
+    .options-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .option-btn {
+      background: white;
+      border: 2px solid var(--gray-200);
+      padding: 14px 18px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-700);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+    }
+
+    .option-btn:hover {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      border-color: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .option-btn:active {
+      transform: translateY(0);
+    }
+
+    .option-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Order Cards */
+    .order-card {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      margin-top: 8px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--gray-100);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .order-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary-light);
+    }
+
+    .order-card.selected {
+      border: 2px solid var(--primary);
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(167, 139, 250, 0.05));
+    }
+
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .order-number {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--gray-800);
+    }
+
+    .order-date {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-top: 2px;
+    }
+
+    .order-status-badge {
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-delivered {
+      background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+      color: #065f46;
+    }
+
+    .status-in-transit {
+      background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+      color: #1e40af;
+    }
+
+    .status-exception {
+      background: linear-gradient(135deg, #fee2e2, #fecaca);
+      color: #991b1b;
+    }
+
+    .status-pending {
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      color: #92400e;
+    }
+
+    .status-fulfilled {
+      background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+      color: #3730a3;
+    }
+
+    .order-items {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .order-item {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 10px;
+      background: var(--gray-50);
+      border-radius: 12px;
+    }
+
+    .item-image {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: white;
+      border: 1px solid var(--gray-200);
+    }
+
+    .item-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .item-title {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--gray-800);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-variant {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-top: 2px;
+    }
+
+    .item-price {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--primary);
+    }
+
+    .item-badge {
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-offer {
+      background: var(--primary-light);
+      color: white;
+    }
+
+    .badge-upsell {
+      background: var(--secondary-light);
+      color: white;
+    }
+
+    .badge-free {
+      background: var(--success);
+      color: white;
+    }
+
+    .badge-digital {
+      background: var(--gray-400);
+      color: white;
+    }
+
+    .order-tracking {
+      margin-top: 12px;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--gray-50), var(--gray-100));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tracking-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .tracking-info {
+      flex: 1;
+    }
+
+    .tracking-status {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--gray-800);
+    }
+
+    .tracking-detail {
+      font-size: 12px;
+      color: var(--gray-500);
+    }
+
+    .tracking-days {
+      padding: 4px 10px;
+      background: white;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray-600);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Item Selection */
+    .item-select {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .item-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: white;
+      border-radius: 12px;
+      cursor: pointer;
+      border: 2px solid var(--gray-200);
+      transition: all 0.2s ease;
+    }
+
+    .item-checkbox:hover {
+      border-color: var(--primary-light);
+    }
+
+    .item-checkbox.selected {
+      border-color: var(--primary);
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(167, 139, 250, 0.05));
+    }
+
+    .item-checkbox.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .checkbox-indicator {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      border: 2px solid var(--gray-300);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .item-checkbox.selected .checkbox-indicator {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .checkbox-indicator svg {
+      width: 14px;
+      height: 14px;
+      color: white;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .item-checkbox.selected .checkbox-indicator svg {
+      opacity: 1;
+    }
+
+    /* Input Area */
+    .chat-input-area {
+      padding: 16px 20px;
+      background: white;
+      border-top: 1px solid var(--gray-100);
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .text-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid var(--gray-200);
+      border-radius: 14px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s ease;
+      max-height: 120px;
+    }
+
+    .text-input:focus {
+      border-color: var(--primary);
+    }
+
+    .text-input::placeholder {
+      color: var(--gray-400);
+    }
+
+    .send-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover {
+      transform: scale(1.05);
+      box-shadow: var(--shadow-md);
+    }
+
+    .send-btn:active {
+      transform: scale(0.98);
+    }
+
+    .send-btn:disabled {
+      background: var(--gray-300);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Action Buttons */
+    .action-btn {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white;
+      border: none;
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--gray-700);
+      border: 2px solid var(--gray-200);
+    }
+
+    .btn-secondary:hover {
+      background: var(--gray-50);
+      border-color: var(--gray-300);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success), #34d399);
+      color: white;
+      border: none;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, var(--danger), #f87171);
+      color: white;
+      border: none;
+    }
+
+    /* Offer Card */
+    .offer-card {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 8px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .offer-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 60%);
+      animation: shimmerOffer 3s infinite;
+    }
+
+    @keyframes shimmerOffer {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .offer-amount {
+      font-size: 32px;
+      font-weight: 700;
+      font-family: 'Outfit', sans-serif;
+      position: relative;
+      z-index: 1;
+    }
+
+    .offer-label {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-top: 4px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .offer-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .offer-btn {
+      flex: 1;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .offer-btn-accept {
+      background: white;
+      color: var(--primary);
+      border: none;
+    }
+
+    .offer-btn-accept:hover {
+      background: var(--gray-100);
+    }
+
+    .offer-btn-decline {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 2px solid rgba(255,255,255,0.3);
+    }
+
+    .offer-btn-decline:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* Voice Note Player */
+    .voice-note {
+      background: linear-gradient(135deg, #1e293b, #334155);
+      border-radius: 16px;
+      padding: 16px;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .voice-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+
+    .voice-info {
+      flex: 1;
+    }
+
+    .voice-name {
+      font-weight: 600;
+      color: white;
+      font-size: 14px;
+    }
+
+    .voice-role {
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .voice-waveform {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      height: 24px;
+      margin-top: 8px;
+    }
+
+    .wave-bar {
+      width: 3px;
+      background: var(--primary-light);
+      border-radius: 2px;
+      animation: waveAnim 1s ease-in-out infinite;
+    }
+
+    @keyframes waveAnim {
+      0%, 100% { height: 8px; }
+      50% { height: 20px; }
+    }
+
+    .play-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      border: none;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .play-btn:hover {
+      transform: scale(1.1);
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Edit Button */
+    .edit-btn {
+      font-size: 11px;
+      color: var(--gray-400);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .edit-btn:hover {
+      color: var(--primary);
+      background: rgba(124, 58, 237, 0.1);
+    }
+
+    /* Responsive */
+    @media (max-width: 520px) {
+      .chat-container {
+        max-width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+      }
+
+      body {
+        animation: none;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+      }
+
+      .orb {
+        display: none;
+      }
+    }
+
+    /* Persona Colors */
+    .persona-amy .message-name { color: var(--primary); }
+    .persona-claudia .message-name { color: #059669; }
+    .persona-sarah .message-name { color: #dc2626; }
+    .persona-customer .message-name { color: var(--gray-600); }
+
+    /* Select All Button */
+    .select-all-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--gray-100);
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-600);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 8px;
+    }
+
+    .select-all-btn:hover {
+      background: var(--gray-200);
+    }
+
+    .select-all-btn.active {
+      background: var(--primary-light);
+      color: white;
+    }
+  </style>
 </head>
 <body>
-  <div class="app-container" id="app">
+  <!-- Floating Orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- Chat Container -->
+  <div class="chat-container">
     <!-- Header -->
-    <header class="header">
-      <div class="header-left">
-        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face" alt="Amy" class="avatar" id="currentAvatar">
-        <div class="header-info">
-          <h1 id="currentName">Amy</h1>
-          <div class="status">
-            <span class="status-dot" id="statusDot"></span>
-            <span id="statusText">Online</span>
-          </div>
+    <div class="chat-header">
+      <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop&crop=face" alt="Amy" class="header-avatar" id="headerAvatar">
+      <div class="header-info">
+        <div class="header-title">
+          <span id="headerName">Amy</span>
+          <span style="font-weight: 400; font-size: 14px; opacity: 0.8;">from PuppyPad</span>
+        </div>
+        <div class="header-status">
+          <span class="status-dot"></span>
+          <span id="headerStatus">Online</span>
         </div>
       </div>
-      <button class="restart-btn" onclick="restartChat()">
-        Start Again
-      </button>
-    </header>
+    </div>
 
-    <!-- Chat Area -->
-    <main class="chat-area" id="chatArea">
+    <!-- Messages -->
+    <div class="chat-messages" id="chatMessages">
       <!-- Messages will be inserted here -->
-    </main>
+    </div>
 
-    <!-- Input Area (hidden by default, shown when text input needed) -->
-    <div class="input-area" id="inputArea">
+    <!-- Input Area -->
+    <div class="chat-input-area" id="inputArea">
       <div class="input-wrapper">
-        <input type="text" class="text-input" id="textInput" placeholder="Type your message...">
-        <button class="send-btn" onclick="sendMessage()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"/>
+        <textarea class="text-input" id="textInput" placeholder="Type your message..." rows="1"></textarea>
+        <button class="send-btn" id="sendBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
           </svg>
         </button>
       </div>
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script>
+    // ============================================
+    // CONFIGURATION
+    // ============================================
+    const CONFIG = {
+      API_URL: 'https://puppypad-resolution-worker.gulfam.workers.dev',
+      TYPING_SPEED: 25, // ms per character
+      MESSAGE_DELAY: 800, // ms between messages
+    };
+
+    // Personas
+    const PERSONAS = {
+      amy: {
+        name: 'Amy',
+        role: 'Customer Support',
+        avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop&crop=face',
+        color: '#7c3aed'
+      },
+      claudia: {
+        name: 'Claudia',
+        role: 'In-House Veterinarian',
+        avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face',
+        color: '#059669'
+      },
+      sarah: {
+        name: 'Sarah',
+        role: 'Customer Experience Lead',
+        avatar: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=100&h=100&fit=crop&crop=face',
+        color: '#dc2626'
+      }
+    };
+
+    // ============================================
+    // STATE
+    // ============================================
+    const state = {
+      currentPersona: 'amy',
+      customerInfo: {},
+      orders: [],
+      selectedOrder: null,
+      selectedItems: [],
+      currentFlow: 'welcome',
+      ladderStep: 0,
+      conversationId: null
+    };
+
+    // ============================================
+    // DOM ELEMENTS
+    // ============================================
+    const chatMessages = document.getElementById('chatMessages');
+    const textInput = document.getElementById('textInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const inputArea = document.getElementById('inputArea');
+    const headerAvatar = document.getElementById('headerAvatar');
+    const headerName = document.getElementById('headerName');
+    const headerStatus = document.getElementById('headerStatus');
+
+    // ============================================
+    // UTILITY FUNCTIONS
+    // ============================================
+    function generateId() {
+      return 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function formatCurrency(amount, currency = 'USD') {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+    }
+
+    function scrollToBottom() {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // ============================================
+    // TYPING ANIMATION
+    // ============================================
+    async function typeMessage(element, text) {
+      element.textContent = '';
+      for (let i = 0; i < text.length; i++) {
+        element.textContent += text[i];
+        scrollToBottom();
+        await delay(CONFIG.TYPING_SPEED);
+      }
+    }
+
+    // ============================================
+    // MESSAGE RENDERING
+    // ============================================
+    function showTypingIndicator() {
+      const typing = document.createElement('div');
+      typing.className = 'message message-incoming';
+      typing.id = 'typingIndicator';
+      typing.innerHTML = `
+        <img src="${PERSONAS[state.currentPersona].avatar}" alt="${PERSONAS[state.currentPersona].name}" class="message-avatar">
+        <div class="typing-indicator">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      `;
+      chatMessages.appendChild(typing);
+      scrollToBottom();
+    }
+
+    function hideTypingIndicator() {
+      const typing = document.getElementById('typingIndicator');
+      if (typing) typing.remove();
+    }
+
+    async function addMessage(text, type = 'incoming', options = {}) {
+      hideTypingIndicator();
+
+      const persona = type === 'incoming' ? PERSONAS[state.currentPersona] : null;
+      const message = document.createElement('div');
+      message.className = `message message-${type} ${type === 'incoming' ? 'persona-' + state.currentPersona : 'persona-customer'}`;
+      message.id = options.id || generateId();
+
+      if (type === 'incoming') {
+        message.innerHTML = `
+          <img src="${persona.avatar}" alt="${persona.name}" class="message-avatar">
+          <div class="message-content">
+            <div class="message-header">
+              <span class="message-name">${persona.name}</span>
+              <span class="message-role">• ${persona.role}</span>
+            </div>
+            <div class="message-bubble"></div>
+          </div>
+        `;
+      } else {
+        message.innerHTML = `
+          <div class="message-content">
+            <div class="message-header">
+              <span class="message-name">${state.customerInfo.firstName || 'You'}</span>
+              <span class="message-role">• Customer</span>
+              ${options.editable ? '<button class="edit-btn" onclick="editMessage(this)">Edit</button>' : ''}
+            </div>
+            <div class="message-bubble"></div>
+          </div>
+        `;
+      }
+
+      chatMessages.appendChild(message);
+      scrollToBottom();
+
+      const bubble = message.querySelector('.message-bubble');
+      
+      if (options.animate && type === 'incoming') {
+        await typeMessage(bubble, text);
+      } else {
+        bubble.textContent = text;
+      }
+
+      return message;
+    }
+
+    async function addCustomContent(html, animate = true) {
+      hideTypingIndicator();
+      
+      const content = document.createElement('div');
+      content.className = 'message message-incoming';
+      content.innerHTML = `
+        <img src="${PERSONAS[state.currentPersona].avatar}" alt="${PERSONAS[state.currentPersona].name}" class="message-avatar">
+        <div class="message-content" style="flex: 1;">
+          ${html}
+        </div>
+      `;
+      
+      chatMessages.appendChild(content);
+      scrollToBottom();
+      return content;
+    }
+
+    // ============================================
+    // SWITCH PERSONA
+    // ============================================
+    function switchPersona(persona) {
+      state.currentPersona = persona;
+      const p = PERSONAS[persona];
+      headerAvatar.src = p.avatar;
+      headerName.textContent = p.name;
+    }
+
+    // ============================================
+    // FLOWS
+    // ============================================
+    async function startWelcomeFlow() {
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+      
+      await addMessage("Hi there! 👋 I'm Amy from PuppyPad.", 'incoming', { animate: true });
+      await delay(400);
+      
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+      
+      await addMessage("How can I help you today?", 'incoming', { animate: true });
+      
+      await addCustomContent(`
+        <div class="options-container">
+          <button class="option-btn" onclick="selectIntent('help_with_order')">
+            <span class="option-icon">📦</span>
+            Help with my order
+          </button>
+          <button class="option-btn" onclick="selectIntent('track_order')">
+            <span class="option-icon">🔍</span>
+            Track my order
+          </button>
+          <button class="option-btn" onclick="selectIntent('subscription')">
+            <span class="option-icon">🔄</span>
+            Manage subscription
+          </button>
+          <button class="option-btn" onclick="selectIntent('other')">
+            <span class="option-icon">💬</span>
+            Something else
+          </button>
+        </div>
+      `);
+    }
+
+    async function selectIntent(intent) {
+      // Remove options
+      const options = chatMessages.querySelector('.options-container');
+      if (options) options.closest('.message').remove();
+
+      const intentLabels = {
+        help_with_order: 'Help with my order',
+        track_order: 'Track my order',
+        subscription: 'Manage subscription',
+        other: 'Something else'
+      };
+
+      await addMessage(intentLabels[intent], 'outgoing');
+      state.currentFlow = intent;
+
+      await delay(400);
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("I'd be happy to help! Let me look up your order.", 'incoming', { animate: true });
+      await delay(400);
+
+      await askForIdentification();
+    }
+
+    async function askForIdentification() {
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("Please enter your email address:", 'incoming', { animate: true });
+      
+      state.currentFlow = 'awaiting_email';
+      showTextInput('Enter your email address...');
+    }
+
+    function showTextInput(placeholder = 'Type your message...') {
+      textInput.placeholder = placeholder;
+      textInput.disabled = false;
+      textInput.focus();
+    }
+
+    function hideTextInput() {
+      textInput.disabled = true;
+    }
+
+    // ============================================
+    // HANDLE USER INPUT
+    // ============================================
+    async function handleUserInput(text) {
+      if (!text.trim()) return;
+      
+      textInput.value = '';
+      hideTextInput();
+
+      await addMessage(text, 'outgoing', { editable: true });
+
+      if (state.currentFlow === 'awaiting_email') {
+        state.customerInfo.email = text.trim();
+        state.currentFlow = 'awaiting_name';
+        
+        await delay(400);
+        showTypingIndicator();
+        await delay(CONFIG.MESSAGE_DELAY);
+        
+        await addMessage("And your first name?", 'incoming', { animate: true });
+        showTextInput('Enter your first name...');
+      } 
+      else if (state.currentFlow === 'awaiting_name') {
+        state.customerInfo.firstName = text.trim();
+        await lookupOrders();
+      }
+      else {
+        // Handle free-form input based on context
+        await handleFreeformInput(text);
+      }
+    }
+
+    async function handleFreeformInput(text) {
+      // Default handler - can be expanded
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+      await addMessage("Thanks for letting me know! Let me help you with that.", 'incoming', { animate: true });
+    }
+
+    // ============================================
+    // ORDER LOOKUP
+    // ============================================
+    async function lookupOrders() {
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+      
+      await addMessage(`Thanks ${state.customerInfo.firstName}! Let me find your orders...`, 'incoming', { animate: true });
+      
+      try {
+        const response = await fetch(`${CONFIG.API_URL}/api/lookup-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: state.customerInfo.email })
+        });
+
+        const data = await response.json();
+        state.orders = data.orders || [];
+
+        if (state.orders.length === 0) {
+          await showNoOrdersFound();
+        } else {
+          await showOrderSelection();
+        }
+      } catch (error) {
+        console.error('Order lookup failed:', error);
+        // Use mock data for demo
+        state.orders = getMockOrders();
+        await showOrderSelection();
+      }
+    }
+
+    function getMockOrders() {
+      return [{
+        id: '123456789',
+        orderNumber: '#PP-12345',
+        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        totalPrice: '54.98',
+        currency: 'USD',
+        fulfillmentStatus: 'fulfilled',
+        customerName: state.customerInfo.firstName,
+        tracking: {
+          status: 'in_transit',
+          statusLabel: 'In Transit',
+          daysInTransit: 5,
+          carrier: 'USPS'
+        },
+        lineItems: [
+          {
+            id: '1',
+            title: 'PuppyPad Reusable Pee Pad',
+            variantTitle: 'Large - Gray',
+            price: '39.99',
+            quantity: 1,
+            image: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200&h=200&fit=crop',
+            productType: 'OFFER',
+            isPuppyPad: true,
+            isDigital: false,
+            isFree: false
+          },
+          {
+            id: '2',
+            title: 'Stain & Odor Eliminator Spray',
+            variantTitle: '16oz',
+            price: '14.99',
+            quantity: 1,
+            image: 'https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?w=200&h=200&fit=crop',
+            productType: 'UPSELL',
+            isPuppyPad: false,
+            isDigital: false,
+            isFree: false
+          },
+          {
+            id: '3',
+            title: 'Dog Training eBook',
+            variantTitle: 'Digital Download',
+            price: '0.00',
+            quantity: 1,
+            image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=200&h=200&fit=crop',
+            productType: null,
+            isPuppyPad: false,
+            isDigital: true,
+            isFree: true
+          }
+        ]
+      }];
+    }
+
+    async function showNoOrdersFound() {
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+      
+      await addMessage("I couldn't find any orders with that email. Would you like to try a different email or search by phone number?", 'incoming', { animate: true });
+      
+      await addCustomContent(`
+        <div class="options-container">
+          <button class="option-btn" onclick="retryWithDifferentEmail()">
+            <span class="option-icon">📧</span>
+            Try different email
+          </button>
+          <button class="option-btn" onclick="searchByPhone()">
+            <span class="option-icon">📱</span>
+            Search by phone
+          </button>
+          <button class="option-btn" onclick="connectToHuman()">
+            <span class="option-icon">👤</span>
+            Connect with a human
+          </button>
+        </div>
+      `);
+    }
+
+    async function showOrderSelection() {
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+      
+      await addMessage(`I found ${state.orders.length} order${state.orders.length > 1 ? 's' : ''} for you. Which one do you need help with?`, 'incoming', { animate: true });
+      
+      let ordersHtml = '';
+      state.orders.forEach((order, index) => {
+        const tracking = order.tracking;
+        let statusClass = 'status-pending';
+        let statusIcon = '📦';
+        
+        if (tracking) {
+          if (tracking.status === 'delivered') {
+            statusClass = 'status-delivered';
+            statusIcon = '✅';
+          } else if (tracking.status === 'in_transit') {
+            statusClass = 'status-in-transit';
+            statusIcon = '🚚';
+          } else if (tracking.status === 'exception' || tracking.status === 'failed_attempt') {
+            statusClass = 'status-exception';
+            statusIcon = '⚠️';
+          }
+        } else if (order.fulfillmentStatus === 'fulfilled') {
+          statusClass = 'status-fulfilled';
+          statusIcon = '📬';
+        }
+
+        ordersHtml += `
+          <div class="order-card" onclick="selectOrder(${index})">
+            <div class="order-header">
+              <div>
+                <div class="order-number">${order.orderNumber}</div>
+                <div class="order-date">${formatDate(order.createdAt)}</div>
+              </div>
+              <span class="order-status-badge ${statusClass}">
+                ${tracking ? tracking.statusLabel : (order.fulfillmentStatus || 'Processing')}
+              </span>
+            </div>
+            <div class="order-items">
+              ${order.lineItems.slice(0, 2).map(item => `
+                <div class="order-item">
+                  <img src="${item.image || 'https://via.placeholder.com/56'}" alt="${item.title}" class="item-image">
+                  <div class="item-details">
+                    <div class="item-title">${item.title}</div>
+                    <div class="item-variant">${item.variantTitle || ''}</div>
+                  </div>
+                  <div class="item-price">${formatCurrency(item.price)}</div>
+                </div>
+              `).join('')}
+              ${order.lineItems.length > 2 ? `<div style="font-size: 12px; color: var(--gray-500); text-align: center;">+${order.lineItems.length - 2} more item${order.lineItems.length - 2 > 1 ? 's' : ''}</div>` : ''}
+            </div>
+            ${tracking ? `
+              <div class="order-tracking">
+                <div class="tracking-icon" style="background: ${statusClass === 'status-delivered' ? '#d1fae5' : statusClass === 'status-exception' ? '#fee2e2' : '#dbeafe'}">
+                  ${statusIcon}
+                </div>
+                <div class="tracking-info">
+                  <div class="tracking-status">${tracking.statusLabel}</div>
+                  <div class="tracking-detail">${tracking.carrier || 'Carrier'} • ${tracking.trackingNumber || 'Tracking available'}</div>
+                </div>
+                ${tracking.daysInTransit ? `<div class="tracking-days">${tracking.daysInTransit} days</div>` : ''}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+
+      await addCustomContent(ordersHtml);
+    }
+
+    async function selectOrder(index) {
+      state.selectedOrder = state.orders[index];
+      
+      // Remove order cards
+      const orderCards = chatMessages.querySelectorAll('.order-card');
+      orderCards.forEach(card => card.closest('.message').remove());
+
+      await addMessage(`Order ${state.selectedOrder.orderNumber}`, 'outgoing');
+      
+      await delay(400);
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("Got it! What's going on with this order?", 'incoming', { animate: true });
+
+      await addCustomContent(`
+        <div class="options-container">
+          <button class="option-btn" onclick="selectIssue('not_using')">
+            <span class="option-icon">🐕</span>
+            My dog isn't using the pad
+          </button>
+          <button class="option-btn" onclick="selectIssue('damaged')">
+            <span class="option-icon">📦</span>
+            Item arrived damaged
+          </button>
+          <button class="option-btn" onclick="selectIssue('not_received')">
+            <span class="option-icon">❓</span>
+            Haven't received my order
+          </button>
+          <button class="option-btn" onclick="selectIssue('refund')">
+            <span class="option-icon">💰</span>
+            I want a refund
+          </button>
+          <button class="option-btn" onclick="selectIssue('other')">
+            <span class="option-icon">💬</span>
+            Something else
+          </button>
+        </div>
+      `);
+    }
+
+    async function selectIssue(issue) {
+      // Remove options
+      const options = chatMessages.querySelector('.options-container');
+      if (options) options.closest('.message').remove();
+
+      const issueLabels = {
+        not_using: "My dog isn't using the pad",
+        damaged: "Item arrived damaged",
+        not_received: "Haven't received my order",
+        refund: "I want a refund",
+        other: "Something else"
+      };
+
+      await addMessage(issueLabels[issue], 'outgoing');
+      state.currentIssue = issue;
+
+      if (issue === 'not_using') {
+        await startDogTrainingFlow();
+      } else if (issue === 'refund' || issue === 'damaged') {
+        await startItemSelectionFlow();
+      } else if (issue === 'not_received') {
+        await startShippingFlow();
+      } else {
+        await startGeneralHelpFlow();
+      }
+    }
+
+    // ============================================
+    // ITEM SELECTION FLOW
+    // ============================================
+    async function startItemSelectionFlow() {
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("I'm sorry to hear that! Which item(s) are you having issues with?", 'incoming', { animate: true });
+
+      const items = state.selectedOrder.lineItems.filter(item => !item.isDigital);
+      
+      let itemsHtml = `
+        <button class="select-all-btn" onclick="toggleSelectAll()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 11 12 14 22 4"></polyline>
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+          </svg>
+          Select All
+        </button>
+        <div class="item-select" id="itemSelect">
+      `;
+
+      items.forEach((item, index) => {
+        const badgeHtml = item.productType === 'OFFER' ? '<span class="item-badge badge-offer">Main</span>' :
+                         item.productType === 'UPSELL' ? '<span class="item-badge badge-upsell">Add-on</span>' :
+                         item.isFree ? '<span class="item-badge badge-free">Free</span>' : '';
+
+        itemsHtml += `
+          <div class="item-checkbox" data-item-id="${item.id}" onclick="toggleItem(this, ${index})">
+            <div class="checkbox-indicator">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <img src="${item.image || 'https://via.placeholder.com/56'}" alt="${item.title}" class="item-image">
+            <div class="item-details">
+              <div class="item-title">${item.title}</div>
+              <div class="item-variant">${item.variantTitle || ''} ${badgeHtml}</div>
+            </div>
+            <div class="item-price">${formatCurrency(item.price)}</div>
+          </div>
+        `;
+      });
+
+      itemsHtml += `
+        </div>
+        <button class="action-btn btn-primary" onclick="confirmItemSelection()" style="margin-top: 12px;">
+          Continue
+        </button>
+      `;
+
+      await addCustomContent(itemsHtml);
+    }
+
+    function toggleItem(element, index) {
+      element.classList.toggle('selected');
+      const itemId = element.dataset.itemId;
+      
+      if (element.classList.contains('selected')) {
+        if (!state.selectedItems.find(i => i.id === itemId)) {
+          state.selectedItems.push(state.selectedOrder.lineItems[index]);
+        }
+      } else {
+        state.selectedItems = state.selectedItems.filter(i => i.id !== itemId);
+      }
+
+      updateSelectAllButton();
+    }
+
+    function toggleSelectAll() {
+      const checkboxes = document.querySelectorAll('.item-checkbox:not(.disabled)');
+      const allSelected = Array.from(checkboxes).every(cb => cb.classList.contains('selected'));
+
+      checkboxes.forEach((cb, index) => {
+        if (allSelected) {
+          cb.classList.remove('selected');
+        } else {
+          cb.classList.add('selected');
+        }
+      });
+
+      if (allSelected) {
+        state.selectedItems = [];
+      } else {
+        state.selectedItems = state.selectedOrder.lineItems.filter(i => !i.isDigital);
+      }
+
+      updateSelectAllButton();
+    }
+
+    function updateSelectAllButton() {
+      const btn = document.querySelector('.select-all-btn');
+      const checkboxes = document.querySelectorAll('.item-checkbox:not(.disabled)');
+      const allSelected = Array.from(checkboxes).every(cb => cb.classList.contains('selected'));
+      
+      if (allSelected && checkboxes.length > 0) {
+        btn.classList.add('active');
+        btn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          All Selected
+        `;
+      } else {
+        btn.classList.remove('active');
+        btn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 11 12 14 22 4"></polyline>
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+          </svg>
+          Select All
+        `;
+      }
+    }
+
+    async function confirmItemSelection() {
+      if (state.selectedItems.length === 0) {
+        alert('Please select at least one item');
+        return;
+      }
+
+      // Remove item selection
+      const itemSelect = chatMessages.querySelector('.item-select');
+      if (itemSelect) itemSelect.closest('.message').remove();
+
+      const itemNames = state.selectedItems.map(i => i.title).join(', ');
+      await addMessage(itemNames, 'outgoing');
+
+      await startRefundLadder();
+    }
+
+    // ============================================
+    // REFUND LADDER
+    // ============================================
+    async function startRefundLadder() {
+      state.ladderStep = 1;
+      const totalValue = state.selectedItems.reduce((sum, item) => sum + parseFloat(item.price), 0);
+      const discountPercent = 20;
+      const discountAmount = (totalValue * discountPercent / 100).toFixed(2);
+
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("I totally understand, and I want to make this right for you! 💜", 'incoming', { animate: true });
+      
+      await delay(400);
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage(`How about I offer you a ${discountPercent}% partial refund? You'd get $${discountAmount} back and still keep your items!`, 'incoming', { animate: true });
+
+      await addCustomContent(`
+        <div class="offer-card">
+          <div class="offer-amount">${formatCurrency(discountAmount)}</div>
+          <div class="offer-label">${discountPercent}% Partial Refund - Keep your items!</div>
+          <div class="offer-actions">
+            <button class="offer-btn offer-btn-accept" onclick="acceptOffer(${discountAmount}, ${discountPercent})">
+              Accept Offer
+            </button>
+            <button class="offer-btn offer-btn-decline" onclick="declineOffer()">
+              Not Enough
+            </button>
+          </div>
+        </div>
+      `);
+    }
+
+    async function acceptOffer(amount, percent) {
+      // Remove offer card
+      const offerCard = chatMessages.querySelector('.offer-card');
+      if (offerCard) offerCard.closest('.message').remove();
+
+      await addMessage(`I'll accept the ${percent}% refund`, 'outgoing');
+
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage(`Wonderful! 🎉 I've processed your ${formatCurrency(amount)} refund. You should see it in your account within 3-5 business days.`, 'incoming', { animate: true });
+
+      await delay(400);
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("Is there anything else I can help you with today?", 'incoming', { animate: true });
+
+      await addCustomContent(`
+        <div class="options-container">
+          <button class="option-btn" onclick="startWelcomeFlow()">
+            <span class="option-icon">👍</span>
+            Yes, something else
+          </button>
+          <button class="option-btn" onclick="endConversation()">
+            <span class="option-icon">✅</span>
+            No, I'm all set!
+          </button>
+        </div>
+      `);
+    }
+
+    async function declineOffer() {
+      // Remove offer card
+      const offerCard = chatMessages.querySelector('.offer-card');
+      if (offerCard) offerCard.closest('.message').remove();
+
+      state.ladderStep++;
+
+      await addMessage("That's not enough", 'outgoing');
+
+      const ladderSteps = [20, 30, 40, 50];
+      
+      if (state.ladderStep > ladderSteps.length) {
+        // Final step - full refund with return
+        await offerFullRefundWithReturn();
+        return;
+      }
+
+      const totalValue = state.selectedItems.reduce((sum, item) => sum + parseFloat(item.price), 0);
+      const discountPercent = ladderSteps[state.ladderStep - 1];
+      const discountAmount = (totalValue * discountPercent / 100).toFixed(2);
+
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage(`I hear you! Let me see what else I can do...`, 'incoming', { animate: true });
+
+      await delay(400);
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage(`How about ${discountPercent}% back? That's ${formatCurrency(discountAmount)} returned to you!`, 'incoming', { animate: true });
+
+      await addCustomContent(`
+        <div class="offer-card">
+          <div class="offer-amount">${formatCurrency(discountAmount)}</div>
+          <div class="offer-label">${discountPercent}% Partial Refund - Keep your items!</div>
+          <div class="offer-actions">
+            <button class="offer-btn offer-btn-accept" onclick="acceptOffer(${discountAmount}, ${discountPercent})">
+              Accept Offer
+            </button>
+            <button class="offer-btn offer-btn-decline" onclick="declineOffer()">
+              ${state.ladderStep >= ladderSteps.length ? 'I want full refund' : 'Not Enough'}
+            </button>
+          </div>
+        </div>
+      `);
+    }
+
+    async function offerFullRefundWithReturn() {
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("I completely understand. For a full refund, we'd just need you to return the item(s) to us.", 'incoming', { animate: true });
+
+      await delay(400);
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      const totalValue = state.selectedItems.reduce((sum, item) => sum + parseFloat(item.price), 0);
+
+      await addMessage(`Once we receive the return, we'll refund the full ${formatCurrency(totalValue)}. Here's our return address:`, 'incoming', { animate: true });
+
+      await addCustomContent(`
+        <div style="background: var(--gray-50); padding: 16px; border-radius: 12px; margin-top: 8px;">
+          <div style="font-weight: 600; margin-bottom: 8px;">📬 Return Address</div>
+          <div style="font-size: 14px; color: var(--gray-600); line-height: 1.6;">
+            PuppyPad Returns<br>
+            123 Warehouse Way<br>
+            Madison, WI 53703
+          </div>
+        </div>
+        <div class="options-container" style="margin-top: 12px;">
+          <button class="option-btn" onclick="acceptReturn()">
+            <span class="option-icon">📦</span>
+            I'll send it back
+          </button>
+          <button class="option-btn" onclick="goBackToPartial()">
+            <span class="option-icon">💰</span>
+            I'll take the 50% instead
+          </button>
+        </div>
+      `);
+    }
+
+    async function acceptReturn() {
+      const options = chatMessages.querySelector('.options-container');
+      if (options) options.closest('.message').remove();
+
+      await addMessage("I'll send it back", 'outgoing');
+
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("Great! Once you've shipped it, just reply to this conversation with the tracking number and we'll process your refund as soon as it arrives. 📬", 'incoming', { animate: true });
+
+      await endConversation();
+    }
+
+    // ============================================
+    // DOG TRAINING FLOW (CLAUDIA)
+    // ============================================
+    async function startDogTrainingFlow() {
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("Oh no! I'm so sorry to hear your pup isn't taking to the pad yet.", 'incoming', { animate: true });
+
+      await delay(400);
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("I'd like to connect you with Claudia, our in-house veterinarian. She's helped hundreds of pet parents with training tips! 🐕", 'incoming', { animate: true });
+
+      await delay(600);
+      
+      // Switch to Claudia
+      switchPersona('claudia');
+
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage(`Hi ${state.customerInfo.firstName}! I'm Dr. Claudia. I'd love to help you and your furry friend succeed with the PuppyPad!`, 'incoming', { animate: true });
+
+      await delay(400);
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("Can you tell me a bit about your dog? What breed are they and how old?", 'incoming', { animate: true });
+
+      state.currentFlow = 'awaiting_dog_info';
+      showTextInput("e.g., Golden Retriever, 4 months old");
+    }
+
+    // ============================================
+    // SHIPPING FLOW
+    // ============================================
+    async function startShippingFlow() {
+      const tracking = state.selectedOrder.tracking;
+
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      if (!tracking) {
+        await addMessage("Let me check on the status of your order...", 'incoming', { animate: true });
+        // Would call API here
+      } else if (tracking.status === 'delivered') {
+        await addMessage("According to our records, your order was marked as delivered. Let me help you figure out what happened.", 'incoming', { animate: true });
+        
+        await addCustomContent(`
+          <div class="options-container">
+            <button class="option-btn" onclick="selectShippingIssue('not_at_door')">
+              <span class="option-icon">🚪</span>
+              Wasn't at my door
+            </button>
+            <button class="option-btn" onclick="selectShippingIssue('wrong_address')">
+              <span class="option-icon">📍</span>
+              Wrong address
+            </button>
+            <button class="option-btn" onclick="selectShippingIssue('stolen')">
+              <span class="option-icon">⚠️</span>
+              May have been stolen
+            </button>
+          </div>
+        `);
+      } else if (tracking.status === 'in_transit' && tracking.daysInTransit >= 6) {
+        // Trigger Sarah voice note for extended transit
+        await triggerSarahVoiceNote();
+      } else {
+        await addMessage(`Your package is currently ${tracking.statusLabel.toLowerCase()}. It's been in transit for ${tracking.daysInTransit} days.`, 'incoming', { animate: true });
+        
+        await addCustomContent(`
+          <div class="order-tracking" style="margin-top: 8px;">
+            <div class="tracking-icon" style="background: #dbeafe;">🚚</div>
+            <div class="tracking-info">
+              <div class="tracking-status">${tracking.statusLabel}</div>
+              <div class="tracking-detail">${tracking.carrier} • ${tracking.trackingNumber || 'Tracking available'}</div>
+            </div>
+            <div class="tracking-days">${tracking.daysInTransit} days</div>
+          </div>
+        `);
+      }
+    }
+
+    async function triggerSarahVoiceNote() {
+      switchPersona('sarah');
+
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("I see your package has been in transit for a while. Let me leave you a quick voice message:", 'incoming', { animate: true });
+
+      await addCustomContent(`
+        <div class="voice-note">
+          <img src="${PERSONAS.sarah.avatar}" alt="Sarah" class="voice-avatar">
+          <div class="voice-info">
+            <div class="voice-name">Sarah</div>
+            <div class="voice-role">Customer Experience Lead</div>
+            <div class="voice-waveform">
+              ${Array(20).fill().map((_, i) => `<div class="wave-bar" style="animation-delay: ${i * 0.05}s; height: ${8 + Math.random() * 12}px;"></div>`).join('')}
+            </div>
+          </div>
+          <button class="play-btn" onclick="playVoiceNote()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+          </button>
+        </div>
+      `);
+
+      // Switch back to Amy after
+      await delay(800);
+      switchPersona('amy');
+    }
+
+    function playVoiceNote() {
+      // Would play audio here
+      alert('Voice note would play here. This would be Sarah\'s pre-recorded message about extended transit times.');
+    }
+
+    // ============================================
+    // GENERAL HELP
+    // ============================================
+    async function startGeneralHelpFlow() {
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage("No problem! Please tell me more about what's going on and I'll do my best to help.", 'incoming', { animate: true });
+
+      state.currentFlow = 'general_help';
+      showTextInput("Describe your issue...");
+    }
+
+    async function endConversation() {
+      const options = chatMessages.querySelector('.options-container');
+      if (options) options.closest('.message').remove();
+
+      await addMessage("No, I'm all set!", 'outgoing');
+
+      showTypingIndicator();
+      await delay(CONFIG.MESSAGE_DELAY);
+
+      await addMessage(`Thank you for reaching out, ${state.customerInfo.firstName}! Have a wonderful day, and give your pup some extra treats from us! 🐕💜`, 'incoming', { animate: true });
+    }
+
+    // ============================================
+    // EVENT LISTENERS
+    // ============================================
+    sendBtn.addEventListener('click', () => {
+      handleUserInput(textInput.value);
+    });
+
+    textInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleUserInput(textInput.value);
+      }
+    });
+
+    // Auto-resize textarea
+    textInput.addEventListener('input', () => {
+      textInput.style.height = 'auto';
+      textInput.style.height = Math.min(textInput.scrollHeight, 120) + 'px';
+    });
+
+    // ============================================
+    // INITIALIZE
+    // ============================================
+    document.addEventListener('DOMContentLoaded', () => {
+      state.conversationId = generateId();
+      hideTextInput();
+      startWelcomeFlow();
+    });
+  </script>
 </body>
 </html>
