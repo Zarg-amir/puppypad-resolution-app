@@ -218,21 +218,9 @@ function formatCurrency(amount, currency = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(parseFloat(amount));
 }
 
-function scrollToBottom(forceImmediate = false) {
+function scrollToBottom() {
   if (!elements.chatArea) return;
-
-  const doScroll = () => {
-    elements.chatArea.scrollTop = elements.chatArea.scrollHeight + 1000;
-  };
-
-  // Immediate scroll
-  doScroll();
-
-  // Multiple delayed scrolls to ensure content is fully rendered
-  requestAnimationFrame(doScroll);
-  setTimeout(doScroll, 50);
-  setTimeout(doScroll, 150);
-  setTimeout(doScroll, 300);
+  elements.chatArea.scrollTop = elements.chatArea.scrollHeight;
 }
 
 function delay(ms) {
@@ -530,14 +518,7 @@ function addCustomContent(html) {
   contentDiv.className = 'custom-content';
   contentDiv.innerHTML = html;
   elements.chatArea.appendChild(contentDiv);
-
-  // Aggressive scrolling to ensure all content is visible
   scrollToBottom();
-
-  // Extra delayed scrolls for content with images or complex layouts
-  setTimeout(scrollToBottom, 500);
-  setTimeout(scrollToBottom, 1000);
-
   return contentDiv;
 }
 
