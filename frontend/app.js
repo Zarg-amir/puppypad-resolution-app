@@ -1,10 +1,15 @@
 /**
  * PuppyPad Resolution App
  * Main Application Logic with Edit Functionality
+ *
+ * CONFIGURATION GUIDE:
+ * - All easy-to-modify settings are at the TOP of this file
+ * - Search for "EASY CONFIG" to find customizable sections
+ * - See CODING_GUIDELINES.md for modification rules
  */
 
 // ============================================
-// CONFIGURATION
+// EASY CONFIG: APP SETTINGS
 // ============================================
 const CONFIG = {
   API_URL: 'https://puppypad-resolution-worker.gulfam.workers.dev',
@@ -12,11 +17,78 @@ const CONFIG = {
   FULFILLMENT_CUTOFF_HOURS: 10,
   IN_TRANSIT_VOICE_DAYS: 6,
   IN_TRANSIT_ESCALATE_DAYS: 15,
-  AVATARS: {
-    amy: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face',
-    sarah: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
-    claudia: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face'
-  }
+};
+
+// ============================================
+// EASY CONFIG: PERSONA SETTINGS
+// Modify names, titles, avatars, colors here
+// ============================================
+const PERSONAS = {
+  amy: {
+    name: 'Amy',
+    title: 'Customer Support',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face',
+    color: '#FF6B6B',
+  },
+  sarah: {
+    name: 'Sarah',
+    title: 'CX Lead',
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
+    color: '#FFE66D',
+  },
+  claudia: {
+    name: 'Claudia',
+    title: 'Veterinarian',
+    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face',
+    color: '#A78BFA',
+  },
+};
+
+// ============================================
+// EASY CONFIG: BOT MESSAGES
+// Modify greetings, responses, error messages here
+// ============================================
+const MESSAGES = {
+  // Welcome messages per flow type
+  welcome: {
+    track: "Hi! I'm Amy. Let me help you track your order — just enter your details below and I'll pull it right up. 📦",
+    subscription: "Hi! I'm Amy. I'll help you manage your subscription — just enter your details below to get started. 🔄",
+    help: "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below. 🙂",
+  },
+  // Survey messages
+  survey: {
+    prompt: "Before you go — how was your experience today?",
+    thankYouHigh: "Thank you so much! We're thrilled we could help. 💜",
+    thankYouMedium: "Thanks for your feedback! We're always working to improve. 🙏",
+    thankYouLow: "We're sorry we didn't meet your expectations. Your feedback helps us do better. 💙",
+  },
+  // Common messages
+  common: {
+    lookingUp: "Looking up your order... 🔍",
+    homeMenu: "What can I help you with today?",
+    selectItems: "Which item(s) do you need help with? Tap to select:",
+    whatHappened: "Got it! What's going on with your order?",
+  },
+  // Error/validation messages
+  errors: {
+    orderNotFound: "I couldn't find an order with those details. Let's try a deeper search with more information.",
+    stillNotFound: "I still couldn't find your order, but don't worry — I'll make sure our team helps you personally. Please fill in these details:",
+    fillBothFields: "Please fill in both fields to continue.",
+    selectItem: "Please select at least one item to continue.",
+    separateRequests: "Free items and paid items need separate requests. Please select only one type.",
+  },
+  // Policy block messages
+  policy: {
+    guaranteeExpiredIntro: "I really wish I could help with a refund, but I need to be upfront with you. 💔",
+    existingCase: "I see we already have an open case for this order! 📋",
+  },
+};
+
+// Legacy CONFIG.AVATARS for backward compatibility
+CONFIG.AVATARS = {
+  amy: PERSONAS.amy.avatar,
+  sarah: PERSONAS.sarah.avatar,
+  claudia: PERSONAS.claudia.avatar,
 };
 
 // ============================================
@@ -794,7 +866,7 @@ async function showSuccess(title, message) {
 }
 
 async function showEndOfSessionSurvey() {
-  await addBotMessage("Before you go — how was your experience today?");
+  await addBotMessage(MESSAGES.survey.prompt);
 
   const surveyHtml = `
     <div class="survey-container">
@@ -842,13 +914,13 @@ async function submitSurveyRating(rating, buttonElement) {
   Analytics.logSurvey(rating);
   Analytics.logEvent('survey', 'rating_submitted', { rating, caseId: state.caseId });
 
-  // Thank the user
+  // Thank the user - uses MESSAGES.survey from config
   if (rating >= 4) {
-    await addBotMessage("Thank you so much! We're thrilled we could help. 💜");
+    await addBotMessage(MESSAGES.survey.thankYouHigh);
   } else if (rating >= 3) {
-    await addBotMessage("Thanks for your feedback! We're always working to improve. 🙏");
+    await addBotMessage(MESSAGES.survey.thankYouMedium);
   } else {
-    await addBotMessage("We're sorry we didn't meet your expectations. Your feedback helps us do better. 💙");
+    await addBotMessage(MESSAGES.survey.thankYouLow);
   }
 
   await delay(800);
@@ -890,13 +962,8 @@ async function showWelcomeMessage(flowType) {
   setPersona('amy');
   state.currentStep = 'welcome';
 
-  const messages = {
-    track: "Hi! I'm Amy. Let me help you track your order — just enter your details below and I'll pull it right up. 📦",
-    subscription: "Hi! I'm Amy. I'll help you manage your subscription — just enter your details below to get started. 🔄",
-    help: "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below. 🙂"
-  };
-
-  await addBotMessage(messages[flowType] || messages.help, 'amy');
+  // Uses MESSAGES.welcome from config at top of file
+  await addBotMessage(MESSAGES.welcome[flowType] || MESSAGES.welcome.help, 'amy');
 }
 
 // Legacy function - kept for backward compatibility
