@@ -2,47 +2,201 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PuppyPad Support</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0A1628">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>PuppyPad Resolution Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Network Status Banner -->
+  <div class="network-banner" id="networkBanner"></div>
+
+  <!-- Screen Reader Announcer -->
+  <div id="srAnnouncer" class="sr-only" aria-live="polite"></div>
+
   <div class="app-container" id="app">
-    <!-- Header -->
-    <header class="header">
-      <div class="header-left">
-        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face" alt="Amy" class="avatar" id="currentAvatar">
-        <div class="header-info">
-          <h1 id="currentName">Amy</h1>
-          <div class="status">
-            <span class="status-dot" id="statusDot"></span>
-            <span id="statusText">Online</span>
+    <!-- HOME SCREEN -->
+    <div class="home-screen active" id="homeScreen">
+      <!-- Hero Section -->
+      <div class="home-hero">
+        <div class="hero-background">
+          <div class="hero-gradient"></div>
+          <div class="hero-pattern"></div>
+        </div>
+
+        <div class="hero-content">
+          <!-- Brand Logo -->
+          <div class="brand-container">
+            <img
+              src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041"
+              alt="PuppyPad"
+              class="home-logo"
+            >
+          </div>
+
+          <!-- Welcome Message -->
+          <div class="welcome-text">
+            <h1 class="welcome-title">Welcome to Resolution Center</h1>
+            <p class="welcome-subtitle">
+              Get instant help with your order, subscription, or tracking.
+              Our team is here to make things right.
+            </p>
+          </div>
+
+          <!-- Support Team Preview -->
+          <div class="team-preview">
+            <div class="team-avatars">
+              <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face" alt="Amy" class="team-avatar" title="Amy - Customer Support">
+              <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face" alt="Claudia" class="team-avatar" title="Claudia - In-House Veterinarian">
+              <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face" alt="Sarah" class="team-avatar" title="Sarah - Customer Experience Lead">
+            </div>
+            <span class="team-text">Our support team is ready to help</span>
           </div>
         </div>
       </div>
-      <button class="restart-btn" onclick="restartChat()">
-        Start Again
-      </button>
-    </header>
 
-    <!-- Chat Area -->
-    <main class="chat-area" id="chatArea">
-      <!-- Messages will be inserted here -->
-    </main>
+      <!-- Main Action Cards -->
+      <div class="home-actions">
+        <h2 class="actions-title">How can we help you today?</h2>
 
-    <!-- Input Area (hidden by default, shown when text input needed) -->
-    <div class="input-area" id="inputArea">
-      <div class="input-wrapper">
-        <input type="text" class="text-input" id="textInput" placeholder="Type your message...">
-        <button class="send-btn" onclick="sendMessage()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"/>
-          </svg>
-        </button>
+        <div class="action-cards">
+          <!-- Track Order -->
+          <button class="action-card" data-action="track" onclick="HomeScreen.handleAction('track')">
+            <div class="action-icon-wrapper">
+              <div class="action-icon">📦</div>
+            </div>
+            <div class="action-content">
+              <h3 class="action-title">Track My Order</h3>
+              <p class="action-description">See where your package is and estimated delivery</p>
+            </div>
+            <div class="action-arrow">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </button>
+
+          <!-- Manage Subscription -->
+          <button class="action-card" data-action="subscription" onclick="HomeScreen.handleAction('subscription')">
+            <div class="action-icon-wrapper">
+              <div class="action-icon">🔄</div>
+            </div>
+            <div class="action-content">
+              <h3 class="action-title">Manage Subscription</h3>
+              <p class="action-description">Pause, cancel, or update your subscription</p>
+            </div>
+            <div class="action-arrow">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </button>
+
+          <!-- Help With Order -->
+          <button class="action-card" data-action="help" onclick="HomeScreen.handleAction('help')">
+            <div class="action-icon-wrapper">
+              <div class="action-icon">💬</div>
+            </div>
+            <div class="action-content">
+              <h3 class="action-title">Help With An Order</h3>
+              <p class="action-description">Refunds, returns, missing items, or other issues</p>
+            </div>
+            <div class="action-arrow">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </button>
+        </div>
       </div>
+
+      <!-- Trust Indicators -->
+      <div class="trust-section">
+        <div class="trust-item">
+          <span class="trust-icon">⚡</span>
+          <span class="trust-text">Instant Resolution</span>
+        </div>
+        <div class="trust-divider"></div>
+        <div class="trust-item">
+          <span class="trust-icon">🛡️</span>
+          <span class="trust-text">90-Day Guarantee</span>
+        </div>
+        <div class="trust-divider"></div>
+        <div class="trust-item">
+          <span class="trust-icon">💚</span>
+          <span class="trust-text">24/7 Support</span>
+        </div>
+      </div>
+
+      <!-- Home Footer -->
+      <footer class="home-footer">
+        <p class="footer-text">Powered by</p>
+        <img
+          src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041"
+          alt="PuppyPad"
+          class="footer-logo"
+        >
+      </footer>
+    </div>
+
+    <!-- CHAT CONTAINER -->
+    <div class="chat-container" id="chatContainer">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <div class="avatar-ring" id="avatarRing" data-persona="amy">
+            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face" alt="Amy" class="avatar" id="currentAvatar">
+          </div>
+          <div class="header-info">
+            <h1 id="currentName">Amy</h1>
+            <div class="status">
+              <span class="status-dot" id="statusDot"></span>
+              <span id="statusText">Online</span>
+            </div>
+          </div>
+        </div>
+        <button class="restart-btn" onclick="restartChat()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+          </svg>
+          Start Over
+        </button>
+      </header>
+
+      <!-- Chat Area -->
+      <main class="chat-area" id="chatArea">
+        <!-- Messages will be inserted here -->
+      </main>
+
+      <!-- Input Area (hidden by default, shown when text input needed) -->
+      <div class="input-area" id="inputArea">
+        <div class="input-wrapper">
+          <input type="text" class="text-input" id="textInput" placeholder="Type your message..." aria-label="Type your message">
+          <button class="send-btn" onclick="sendMessage()" aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Chat Footer -->
+      <footer class="app-footer">
+        <div class="footer-content">
+          <span class="powered-text">Powered by</span>
+          <img
+            src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041"
+            alt="PuppyPad"
+            class="brand-logo"
+          >
+        </div>
+      </footer>
     </div>
   </div>
 

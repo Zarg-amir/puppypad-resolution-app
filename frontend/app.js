@@ -57,25 +57,125 @@ const state = {
 // ============================================
 const elements = {
   app: document.getElementById('app'),
+  homeScreen: document.getElementById('homeScreen'),
+  chatContainer: document.getElementById('chatContainer'),
   chatArea: document.getElementById('chatArea'),
   inputArea: document.getElementById('inputArea'),
   textInput: document.getElementById('textInput'),
   currentAvatar: document.getElementById('currentAvatar'),
   currentName: document.getElementById('currentName'),
+  avatarRing: document.getElementById('avatarRing'),
   statusDot: document.getElementById('statusDot'),
-  statusText: document.getElementById('statusText')
+  statusText: document.getElementById('statusText'),
+  networkBanner: document.getElementById('networkBanner'),
+  srAnnouncer: document.getElementById('srAnnouncer')
 };
+
+// ============================================
+// HOME SCREEN CONTROLLER
+// ============================================
+const HomeScreen = {
+  handleAction(action) {
+    // Hide home screen and show chat
+    elements.homeScreen.classList.remove('active');
+    elements.chatContainer.classList.add('active');
+
+    // Announce to screen readers
+    announceToScreenReader(`Starting ${action} flow`);
+
+    // Route to appropriate flow
+    switch (action) {
+      case 'track':
+        startTrackOrder();
+        break;
+      case 'subscription':
+        startManageSubscription();
+        break;
+      case 'help':
+        startHelpWithOrder();
+        break;
+      default:
+        showWelcomeMessage();
+    }
+  },
+
+  show() {
+    elements.chatContainer.classList.remove('active');
+    elements.homeScreen.classList.add('active');
+    announceToScreenReader('Returned to home screen');
+  }
+};
+
+// Make HomeScreen available globally for onclick handlers
+window.HomeScreen = HomeScreen;
+
+// ============================================
+// NETWORK STATUS HANDLER
+// ============================================
+const NetworkStatus = {
+  isOnline: navigator.onLine,
+
+  init() {
+    window.addEventListener('online', () => this.handleStatusChange(true));
+    window.addEventListener('offline', () => this.handleStatusChange(false));
+    this.updateUI(this.isOnline);
+  },
+
+  handleStatusChange(online) {
+    this.isOnline = online;
+    this.updateUI(online);
+    announceToScreenReader(online ? 'Connection restored' : 'You are offline');
+  },
+
+  updateUI(online) {
+    if (elements.networkBanner) {
+      if (online) {
+        elements.networkBanner.classList.remove('visible');
+        elements.networkBanner.textContent = '';
+      } else {
+        elements.networkBanner.classList.add('visible');
+        elements.networkBanner.innerHTML = `
+          <span class="network-icon">📡</span>
+          <span>You're offline. Some features may be unavailable.</span>
+        `;
+      }
+    }
+  }
+};
+
+// ============================================
+// ACCESSIBILITY HELPERS
+// ============================================
+function announceToScreenReader(message) {
+  if (elements.srAnnouncer) {
+    elements.srAnnouncer.textContent = message;
+    // Clear after announcement
+    setTimeout(() => {
+      elements.srAnnouncer.textContent = '';
+    }, 1000);
+  }
+}
 
 // ============================================
 // INITIALIZATION
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
-  initializeChat();
+  initializeApp();
   setupEventListeners();
 });
 
-function initializeChat() {
-  showWelcomeScreen();
+function initializeApp() {
+  // Initialize network status handler
+  NetworkStatus.init();
+
+  // Check for saved session
+  const savedSession = SessionManager.restore();
+  if (savedSession) {
+    // Resume from saved session
+    Object.assign(state, savedSession);
+    HomeScreen.handleAction(state.flowType || 'help');
+  }
+  // Home screen is shown by default via HTML (has .active class)
 }
 
 function setupEventListeners() {
@@ -88,6 +188,11 @@ function setupEventListeners() {
       elements.chatArea.scrollTop = elements.chatArea.scrollHeight;
     });
   }
+
+  // Save session before page unload
+  window.addEventListener('beforeunload', () => {
+    SessionManager.save();
+  });
 }
 
 // ============================================
@@ -124,13 +229,92 @@ function delay(ms) {
 }
 
 // ============================================
+// SESSION MANAGER
+// ============================================
+const SessionManager = {
+  STORAGE_KEY: 'puppypad_session',
+  SESSION_EXPIRY: 30 * 60 * 1000, // 30 minutes
+
+  save() {
+    try {
+      const sessionData = {
+        timestamp: Date.now(),
+        sessionId: state.sessionId,
+        currentPersona: state.currentPersona,
+        currentStep: state.currentStep,
+        flowType: state.flowType,
+        customerData: state.customerData,
+        selectedOrder: state.selectedOrder,
+        intent: state.intent
+      };
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(sessionData));
+    } catch (e) {
+      console.warn('Failed to save session:', e);
+    }
+  },
+
+  restore() {
+    try {
+      const saved = localStorage.getItem(this.STORAGE_KEY);
+      if (!saved) return null;
+
+      const sessionData = JSON.parse(saved);
+      const age = Date.now() - sessionData.timestamp;
+
+      // Check if session is still valid
+      if (age > this.SESSION_EXPIRY) {
+        this.clear();
+        return null;
+      }
+
+      return sessionData;
+    } catch (e) {
+      console.warn('Failed to restore session:', e);
+      return null;
+    }
+  },
+
+  clear() {
+    try {
+      localStorage.removeItem(this.STORAGE_KEY);
+    } catch (e) {
+      console.warn('Failed to clear session:', e);
+    }
+  }
+};
+
+// ============================================
 // PERSONA MANAGEMENT
 // ============================================
+const PERSONA_INFO = {
+  amy: {
+    name: 'Amy',
+    role: 'Customer Support',
+    avatar: CONFIG.AVATARS.amy
+  },
+  sarah: {
+    name: 'Sarah',
+    role: 'Customer Experience Lead',
+    avatar: CONFIG.AVATARS.sarah
+  },
+  claudia: {
+    name: 'Claudia',
+    role: 'In-House Veterinarian',
+    avatar: CONFIG.AVATARS.claudia
+  }
+};
+
 function setPersona(persona) {
   state.currentPersona = persona;
-  elements.currentAvatar.src = CONFIG.AVATARS[persona];
-  const names = { amy: 'Amy', sarah: 'Sarah', claudia: 'Claudia' };
-  elements.currentName.textContent = names[persona] || persona;
+  const info = PERSONA_INFO[persona] || PERSONA_INFO.amy;
+
+  elements.currentAvatar.src = info.avatar;
+  elements.currentName.textContent = info.name;
+
+  // Update avatar ring data attribute for gradient styling
+  if (elements.avatarRing) {
+    elements.avatarRing.dataset.persona = persona;
+  }
 }
 
 function setTyping(isTyping) {
@@ -141,34 +325,95 @@ function setTyping(isTyping) {
 // ============================================
 // MESSAGE RENDERING
 // ============================================
-async function addBotMessage(text, persona = state.currentPersona) {
+
+// Character-by-character typing animation
+async function typeText(element, text, speed = 20) {
+  // Parse HTML to handle tags properly
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = text;
+
+  // For simple text or if HTML is complex, just set it directly with animation
+  element.innerHTML = '';
+  element.classList.add('typing-cursor');
+
+  // Split by HTML tags vs plain text
+  const parts = text.split(/(<[^>]+>)/);
+  let displayText = '';
+
+  for (const part of parts) {
+    if (part.startsWith('<')) {
+      // It's an HTML tag, add it immediately
+      displayText += part;
+      element.innerHTML = displayText;
+    } else {
+      // It's plain text, type character by character
+      for (const char of part) {
+        displayText += char;
+        element.innerHTML = displayText;
+        scrollToBottom();
+        await delay(speed);
+      }
+    }
+  }
+
+  element.classList.remove('typing-cursor');
+}
+
+async function addBotMessage(text, persona = state.currentPersona, options = {}) {
+  const { useTypingAnimation = false } = options;
+  const info = PERSONA_INFO[persona] || PERSONA_INFO.amy;
+
   setTyping(true);
-  
+
+  // Show typing indicator
   const typingDiv = document.createElement('div');
-  typingDiv.className = 'message bot';
+  typingDiv.className = `message bot ${persona}`;
   typingDiv.innerHTML = `
-    <img src="${CONFIG.AVATARS[persona]}" alt="${persona}" class="message-avatar">
-    <div class="typing-indicator"><span></span><span></span><span></span></div>
+    <img src="${info.avatar}" alt="${info.name}" class="message-avatar">
+    <div class="message-content">
+      <div class="message-sender">
+        <span class="sender-name">${info.name}</span>
+        <span class="sender-role">${info.role}</span>
+      </div>
+      <div class="typing-indicator"><span></span><span></span><span></span></div>
+    </div>
   `;
   elements.chatArea.appendChild(typingDiv);
   scrollToBottom();
-  
-  const typingDelay = Math.min(400 + text.length * 10, 1500);
+
+  // Wait for typing delay
+  const typingDelay = Math.min(400 + text.length * 8, 1200);
   await delay(typingDelay);
-  
+
+  // Replace typing indicator with actual message
   typingDiv.remove();
   setTyping(false);
-  
+
   const messageDiv = document.createElement('div');
   messageDiv.className = `message bot ${persona}`;
+
+  const bubbleContent = useTypingAnimation ? '' : text;
+
   messageDiv.innerHTML = `
-    <img src="${CONFIG.AVATARS[persona]}" alt="${persona}" class="message-avatar">
+    <img src="${info.avatar}" alt="${info.name}" class="message-avatar">
     <div class="message-content">
-      <div class="message-bubble">${text}</div>
+      <div class="message-sender">
+        <span class="sender-name">${info.name}</span>
+        <span class="sender-role">${info.role}</span>
+      </div>
+      <div class="message-bubble">${bubbleContent}</div>
     </div>
   `;
   elements.chatArea.appendChild(messageDiv);
   scrollToBottom();
+
+  // If using typing animation, type out the text
+  if (useTypingAnimation) {
+    const bubble = messageDiv.querySelector('.message-bubble');
+    await typeText(bubble, text);
+  }
+
+  return messageDiv;
 }
 
 function addUserMessage(text) {
@@ -176,6 +421,9 @@ function addUserMessage(text) {
   messageDiv.className = 'message user';
   messageDiv.innerHTML = `
     <div class="message-content">
+      <div class="message-sender">
+        <span class="sender-name">You</span>
+      </div>
       <div class="message-bubble">${text}</div>
     </div>
   `;
@@ -359,21 +607,31 @@ async function showError(title, message) {
 // ============================================
 // WELCOME & HOME
 // ============================================
-async function showWelcomeScreen() {
+
+// Welcome message shown when entering chat from home screen
+async function showWelcomeMessage(flowType) {
   setPersona('amy');
   state.currentStep = 'welcome';
-  
-  await addBotMessage("Hey — I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email 🙂<br><br>Tap Start and I'll pull everything up.");
-  
-  addOptions([
-    { text: 'Start', primary: true, action: showHomeMenu }
-  ]);
+
+  const messages = {
+    track: "Hi! I'm Amy. Let me help you track your order. 📦",
+    subscription: "Hi! I'm Amy. I'll help you manage your subscription. 🔄",
+    help: "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. 🙂"
+  };
+
+  await addBotMessage(messages[flowType] || messages.help, 'amy', { useTypingAnimation: true });
+}
+
+// Legacy function - kept for backward compatibility
+async function showWelcomeScreen() {
+  // Just show home screen via the HomeScreen controller
+  HomeScreen.show();
 }
 
 async function showHomeMenu() {
   state.currentStep = 'home';
   await addBotMessage("What can I help you with today?");
-  
+
   addOptions([
     { icon: '📦', text: 'Manage My Subscription', action: startManageSubscription },
     { icon: '🛍️', text: 'Help With An Order', action: startHelpWithOrder },
@@ -401,10 +659,16 @@ function restartChat() {
     flowType: null,
     editHistory: []
   });
-  
+
+  // Clear session
+  SessionManager.clear();
+
+  // Clear chat area
   elements.chatArea.innerHTML = '';
   hideTextInput();
-  showWelcomeScreen();
+
+  // Show home screen
+  HomeScreen.show();
 }
 
 // ============================================
@@ -1932,7 +2196,8 @@ async function createShippingCase(type) {
 // ============================================
 async function startTrackOrder() {
   state.flowType = 'track';
-  await addBotMessage("I'll help you track your order! Let me get your details:");
+  await showWelcomeMessage('track');
+  await addBotMessage("Let me get your details to find your order:");
   await showIdentifyForm('track');
 }
 
@@ -2022,7 +2287,8 @@ async function showTrackingCard() {
 // ============================================
 async function startManageSubscription() {
   state.flowType = 'subscription';
-  await addBotMessage("I'll help you manage your subscription. Let me find your account:");
+  await showWelcomeMessage('subscription');
+  await addBotMessage("Let me find your account:");
   await showIdentifyForm('subscription');
 }
 
@@ -2446,7 +2712,8 @@ async function submitNewAddress() {
 // ============================================
 async function startHelpWithOrder() {
   state.flowType = 'help';
-  await addBotMessage("I'll help you with your order. Let me find it first:");
+  await showWelcomeMessage('help');
+  await addBotMessage("Let me find your order first:");
   await showIdentifyForm('help');
 }
 
