@@ -1605,6 +1605,113 @@ Give these a try for 5-7 days and you should see improvement! 🙂`, 'claudia');
 }
 
 // ============================================
+// CLICKUP DEDUPLICATION
+// ============================================
+async function checkExistingCase() {
+  if (!state.selectedOrder && !state.customerData?.email) {
+    return { existingCase: false };
+  }
+
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/check-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderNumber: state.selectedOrder?.orderNumber,
+        email: state.customerData?.email || state.selectedOrder?.email
+      })
+    });
+
+    if (!response.ok) {
+      console.warn('Case check API failed, continuing flow');
+      return { existingCase: false };
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Case check error:', error);
+    return { existingCase: false };
+  }
+}
+
+async function showExistingCaseMessage(caseInfo) {
+  await addBotMessage(
+    `I see we already have an open case for this order! 📋<br><br>` +
+    `Your case ID is <strong>${caseInfo.caseId || 'N/A'}</strong> and it's currently being worked on.<br><br>` +
+    `Our team is on it and will reach out to you soon. Would you like to do something else?`
+  );
+
+  // Log for analytics
+  console.log('Dedupe: Existing case found', {
+    sessionId: state.sessionId,
+    existingCaseId: caseInfo.caseId,
+    orderNumber: state.selectedOrder?.orderNumber
+  });
+
+  addOptions([
+    { text: "I have a different issue", action: showItemSelection },
+    { text: "Back to Home", primary: true, action: () => restartChat() }
+  ]);
+}
+
+// ============================================
+// 90-DAY GUARANTEE VALIDATION
+// ============================================
+async function validateGuarantee() {
+  if (!state.selectedOrder) {
+    return { eligible: true, usedFallback: true };
+  }
+
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/validate-guarantee`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderNumber: state.selectedOrder.orderNumber,
+        orderCreatedAt: state.selectedOrder.createdAt
+      })
+    });
+
+    if (!response.ok) {
+      // If API fails, allow the flow to continue (fail open)
+      console.warn('Guarantee validation API failed, allowing flow');
+      return { eligible: true, usedFallback: true };
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Guarantee validation error:', error);
+    // Fail open - allow flow to continue
+    return { eligible: true, usedFallback: true };
+  }
+}
+
+async function showGuaranteeExpired(guarantee) {
+  const daysSince = guarantee.daysSince || 0;
+
+  await addBotMessage(
+    `I really wish I could help with a refund, but I need to be upfront with you. 💔<br><br>` +
+    `Our 90-day money-back guarantee has expired — it's been <strong>${daysSince} days</strong> since your order ` +
+    `${guarantee.usedFallback ? 'was placed' : 'was delivered'}.<br><br>` +
+    `I know that's not what you wanted to hear, and I'm genuinely sorry. Is there anything else I can help you with?`
+  );
+
+  // Log for analytics
+  console.log('Policy block: 90-day guarantee expired', {
+    sessionId: state.sessionId,
+    orderNumber: state.selectedOrder?.orderNumber,
+    daysSince: guarantee.daysSince,
+    usedFallback: guarantee.usedFallback
+  });
+
+  addOptions([
+    { text: "Help with something else", action: showHomeMenu },
+    { text: "Contact support", action: () => showManualHelpForm() }
+  ]);
+}
+
+// ============================================
 // SATISFACTION & LADDER FLOWS
 // ============================================
 function showSatisfactionButtons() {
@@ -1645,22 +1752,31 @@ async function handleSatisfied(satisfied) {
 }
 
 async function startRefundLadder() {
+  // Check 90-day guarantee on first step only
+  if (state.ladderStep === 0) {
+    const guarantee = await validateGuarantee();
+    if (!guarantee.eligible) {
+      await showGuaranteeExpired(guarantee);
+      return;
+    }
+  }
+
   const ladderSteps = [
     { percent: 20, message: "I understand. As a valued customer, I'd like to offer you a <strong>20% partial refund</strong> while you keep the product and continue trying." },
     { percent: 30, message: "I really want to make this right. Let me offer you a <strong>30% refund</strong> — that's a significant amount back while you keep everything." },
     { percent: 40, message: "You're clearly not satisfied, and I get it. How about <strong>40% back</strong>? That way you've got nearly half your money back and can keep trying." },
     { percent: 50, message: "Let me do something special. I can offer you a <strong>50% refund</strong> — half your money back, no return needed." }
   ];
-  
+
   if (state.ladderStep >= ladderSteps.length) {
     await handleFullRefund();
     return;
   }
-  
+
   const step = ladderSteps[state.ladderStep];
   const totalPrice = parseFloat(state.selectedOrder?.totalPrice || 0);
   const refundAmount = (totalPrice * step.percent / 100).toFixed(2);
-  
+
   await addBotMessage(step.message);
   
   showOfferCard(step.percent, refundAmount);
@@ -2932,23 +3048,28 @@ async function startHelpWithOrderDirect() {
 }
 
 async function handleHelpFlow() {
-  // Check for existing case (dedupe)
-  // For demo, skip dedupe check
-  
   if (state.orders.length === 1) {
     state.selectedOrder = state.orders[0];
-    
-    // Check if within fulfillment window
-    const orderDate = new Date(state.selectedOrder.createdAt);
-    const hoursSinceOrder = (Date.now() - orderDate.getTime()) / (1000 * 60 * 60);
-    
-    if (hoursSinceOrder < CONFIG.FULFILLMENT_CUTOFF_HOURS && state.selectedOrder.fulfillmentStatus !== 'fulfilled') {
-      await handleUnfulfilledOrder();
-    } else {
-      await showItemSelection();
-    }
   } else {
     await showOrderSelection('help');
+    return;
+  }
+
+  // Check for existing open case (dedupe)
+  const existingCase = await checkExistingCase();
+  if (existingCase.existingCase) {
+    await showExistingCaseMessage(existingCase);
+    return;
+  }
+
+  // Check if within fulfillment window (can still modify/cancel)
+  const orderDate = new Date(state.selectedOrder.createdAt);
+  const hoursSinceOrder = (Date.now() - orderDate.getTime()) / (1000 * 60 * 60);
+
+  if (hoursSinceOrder < CONFIG.FULFILLMENT_CUTOFF_HOURS && state.selectedOrder.fulfillmentStatus !== 'fulfilled') {
+    await handleUnfulfilledOrder();
+  } else {
+    await showItemSelection();
   }
 }
 
