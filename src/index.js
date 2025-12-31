@@ -92,6 +92,11 @@ export default {
         return await handleTracking(request, env, corsHeaders);
       }
 
+      // Validate 90-day guarantee
+      if (pathname === '/api/validate-guarantee' && request.method === 'POST') {
+        return await handleValidateGuarantee(request, env, corsHeaders);
+      }
+
       // Get subscription
       if (pathname === '/api/subscription' && request.method === 'POST') {
         return await handleSubscription(request, env, corsHeaders);
@@ -338,6 +343,107 @@ function formatTrackingStatus(status) {
     'pickup': 'Ready for Pickup'
   };
   return statusMap[status] || status;
+}
+
+// ============================================
+// 90-DAY GUARANTEE VALIDATION
+// ============================================
+const GUARANTEE_DAYS = 90;
+
+async function handleValidateGuarantee(request, env, corsHeaders) {
+  const { orderNumber, orderCreatedAt } = await request.json();
+
+  if (!orderNumber && !orderCreatedAt) {
+    return Response.json({
+      error: 'orderNumber or orderCreatedAt required'
+    }, { status: 400, headers: corsHeaders });
+  }
+
+  let referenceDate = null;
+  let usedFallback = false;
+  let deliverySource = null;
+
+  // Step 1: Try to get delivery date from ParcelPanel
+  if (orderNumber) {
+    try {
+      const cleanOrder = orderNumber.replace('#', '');
+      const url = `https://api.parcelpanel.com/api/v3/parcels?order_number=${encodeURIComponent(cleanOrder)}`;
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${env.PARCELPANEL_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const parcels = data.data || [];
+
+        // Look for delivered parcel with delivery_date
+        for (const parcel of parcels) {
+          if (parcel.delivery_date && parcel.delivery_status === 'delivered') {
+            referenceDate = new Date(parcel.delivery_date);
+            deliverySource = 'parcelpanel_delivery';
+            break;
+          }
+        }
+
+        // If no delivery date but we have checkpoints, use the delivered checkpoint
+        if (!referenceDate) {
+          for (const parcel of parcels) {
+            if (parcel.delivery_status === 'delivered' && parcel.checkpoints?.length > 0) {
+              // Find the delivered checkpoint
+              const deliveredCheckpoint = parcel.checkpoints.find(cp =>
+                cp.tag === 'Delivered' || cp.substatus === 'delivered'
+              );
+              if (deliveredCheckpoint?.checkpoint_time) {
+                referenceDate = new Date(deliveredCheckpoint.checkpoint_time);
+                deliverySource = 'parcelpanel_checkpoint';
+                break;
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('ParcelPanel lookup error:', error);
+    }
+  }
+
+  // Step 2: Fallback to order created date
+  if (!referenceDate && orderCreatedAt) {
+    referenceDate = new Date(orderCreatedAt);
+    usedFallback = true;
+    deliverySource = 'order_created_fallback';
+  }
+
+  // If we still don't have a date, return error
+  if (!referenceDate) {
+    return Response.json({
+      eligible: false,
+      error: 'Could not determine order date',
+      daysRemaining: 0,
+      usedFallback: true,
+      deliverySource: null
+    }, { headers: corsHeaders });
+  }
+
+  // Calculate days since delivery/order
+  const now = new Date();
+  const daysSince = Math.floor((now - referenceDate) / (1000 * 60 * 60 * 24));
+  const daysRemaining = Math.max(0, GUARANTEE_DAYS - daysSince);
+  const eligible = daysSince <= GUARANTEE_DAYS;
+
+  return Response.json({
+    eligible,
+    daysSince,
+    daysRemaining,
+    usedFallback,
+    deliverySource,
+    referenceDate: referenceDate.toISOString(),
+    guaranteeDays: GUARANTEE_DAYS
+  }, { headers: corsHeaders });
 }
 
 // ============================================
