@@ -4045,6 +4045,52 @@ function getDateRange(range) {
 2. Cross-browser testing
 3. Performance optimization
 
+### Sprint 6: Code Organization & Maintainability (Optional)
+**Goal:** Make code easier to modify without touching core logic
+
+1. **Extract Persona Configuration**
+   - Create `src/config/personas.js` with Amy/Sarah/Claudia:
+     - Names, avatars, colors
+     - Default messages
+     - Personality traits
+   - Create `src/config/prompts.js` with OpenAI prompts
+
+2. **Extract App Configuration**
+   - API endpoints
+   - Timing constants (delays, timeouts)
+   - Feature flags
+
+3. **Extract Messages/Copy**
+   - All user-facing text in one place
+   - Easy to update without touching logic
+   - Support for future i18n
+
+4. **Frontend Module Separation**
+   - `frontend/modules/analytics.js`
+   - `frontend/modules/flows.js`
+   - `frontend/config/messages.js`
+
+**Benefits:**
+- Change Amy's tone without touching business logic
+- Update prompts without risk of breaking code
+- Non-developers can update copy
+- Easier debugging and testing
+
+---
+
+## Code Quality Guidelines
+
+**IMPORTANT:** Always reference `CODING_GUIDELINES.md` before and after making changes.
+
+Key rules:
+- [ ] No duplicate code - search before writing
+- [ ] No unused code - delete what's not used
+- [ ] No conflicting code - check for name clashes
+- [ ] Run syntax checks before committing
+- [ ] Test all flows after changes
+
+See `CODING_GUIDELINES.md` for complete checklist.
+
 ---
 
 ## Summary
