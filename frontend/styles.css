@@ -584,10 +584,10 @@ h1, h2, h3, h4, h5, h6 {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  padding-bottom: 40px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  scroll-behavior: smooth;
 }
 
 .chat-area::-webkit-scrollbar {
@@ -761,12 +761,15 @@ h1, h2, h3, h4, h5, h6 {
   word-wrap: break-word;
   background: white;
   border: 1px solid var(--gray-100);
+  min-width: 200px;
+  min-height: 24px;
 }
 
 .message.bot .message-bubble {
   background: white;
   border: 1px solid var(--gray-100);
   border-bottom-left-radius: 6px;
+  min-width: 200px;
 }
 
 .message.user .message-bubble {
@@ -774,6 +777,7 @@ h1, h2, h3, h4, h5, h6 {
   color: white;
   border: none;
   border-bottom-right-radius: 6px;
+  min-width: auto;
 }
 
 /* ============================================
