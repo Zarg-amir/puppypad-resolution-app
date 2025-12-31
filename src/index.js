@@ -68,7 +68,7 @@ export default {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
     // Handle preflight
@@ -125,6 +125,59 @@ export default {
       // Serve audio files
       if (pathname.startsWith('/audio/')) {
         return await handleAudio(pathname, env, corsHeaders);
+      }
+
+      // ============================================
+      // ANALYTICS ENDPOINTS
+      // ============================================
+
+      // Log event
+      if (pathname === '/api/analytics/event' && request.method === 'POST') {
+        return await handleLogEvent(request, env, corsHeaders);
+      }
+
+      // Log session
+      if (pathname === '/api/analytics/session' && request.method === 'POST') {
+        return await handleLogSession(request, env, corsHeaders);
+      }
+
+      // Log survey response
+      if (pathname === '/api/analytics/survey' && request.method === 'POST') {
+        return await handleLogSurvey(request, env, corsHeaders);
+      }
+
+      // Log policy block
+      if (pathname === '/api/analytics/policy-block' && request.method === 'POST') {
+        return await handleLogPolicyBlock(request, env, corsHeaders);
+      }
+
+      // ============================================
+      // ADMIN DASHBOARD ENDPOINTS
+      // ============================================
+
+      // Admin login
+      if (pathname === '/admin/api/login' && request.method === 'POST') {
+        return await handleAdminLogin(request, env, corsHeaders);
+      }
+
+      // Dashboard data (protected)
+      if (pathname === '/admin/api/dashboard' && request.method === 'GET') {
+        return await handleDashboardData(request, env, corsHeaders);
+      }
+
+      // Recent cases list (protected)
+      if (pathname === '/admin/api/cases' && request.method === 'GET') {
+        return await handleCasesList(request, env, corsHeaders);
+      }
+
+      // Events log (protected)
+      if (pathname === '/admin/api/events' && request.method === 'GET') {
+        return await handleEventsList(request, env, corsHeaders);
+      }
+
+      // Serve dashboard HTML
+      if (pathname === '/admin' || pathname === '/admin/') {
+        return await serveDashboard(env, corsHeaders);
       }
 
       // 404 for unknown routes
@@ -527,17 +580,23 @@ async function handleCreateCase(request, env, corsHeaders) {
   // Create Richpanel email and private note
   await createRichpanelEntry(env, caseData, caseId);
 
-  // Log to analytics
-  await logAnalytics(env, {
+  // Log to D1 analytics database
+  await logCaseToAnalytics(env, {
     caseId,
+    sessionId: caseData.sessionId,
     caseType: caseData.caseType,
     resolution: caseData.resolution,
-    resolvedInApp: caseData.resolvedInApp || false,
-    timestamp: now.toISOString(),
+    orderNumber: caseData.orderNumber,
+    email: caseData.email,
+    customerName: caseData.customerName,
+    refundAmount: caseData.refundAmount,
+    selectedItems: caseData.selectedItems,
+    clickupTaskId: clickupTask?.id,
+    clickupTaskUrl: clickupTask?.url
   });
 
-  return Response.json({ 
-    success: true, 
+  return Response.json({
+    success: true,
     caseId,
     clickupTaskId: clickupTask?.id,
     clickupTaskUrl: clickupTask?.url,
@@ -937,21 +996,1098 @@ async function handleAudio(pathname, env, corsHeaders) {
 }
 
 // ============================================
-// ANALYTICS LOGGING
+// ANALYTICS API HANDLERS
 // ============================================
-async function logAnalytics(env, data) {
+
+// Log event
+async function handleLogEvent(request, env, corsHeaders) {
+  try {
+    const { sessionId, eventType, eventName, eventData } = await request.json();
+
+    await env.ANALYTICS_DB.prepare(`
+      INSERT INTO events (session_id, event_type, event_name, event_data)
+      VALUES (?, ?, ?, ?)
+    `).bind(
+      sessionId,
+      eventType,
+      eventName,
+      JSON.stringify(eventData || {})
+    ).run();
+
+    return Response.json({ success: true }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Event logging failed:', e);
+    return Response.json({ success: false, error: e.message }, { headers: corsHeaders });
+  }
+}
+
+// Log or update session
+async function handleLogSession(request, env, corsHeaders) {
+  try {
+    const { sessionId, flowType, customerEmail, orderNumber, persona, deviceType, completed, ended } = await request.json();
+
+    if (ended) {
+      // Update existing session
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE sessions SET ended_at = CURRENT_TIMESTAMP, completed = ?, flow_type = COALESCE(?, flow_type)
+        WHERE session_id = ?
+      `).bind(completed ? 1 : 0, flowType, sessionId).run();
+    } else {
+      // Insert new session
+      await env.ANALYTICS_DB.prepare(`
+        INSERT OR REPLACE INTO sessions (session_id, flow_type, customer_email, order_number, persona, device_type)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(sessionId, flowType, customerEmail, orderNumber, persona, deviceType).run();
+    }
+
+    return Response.json({ success: true }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Session logging failed:', e);
+    return Response.json({ success: false, error: e.message }, { headers: corsHeaders });
+  }
+}
+
+// Log survey response
+async function handleLogSurvey(request, env, corsHeaders) {
+  try {
+    const { sessionId, caseId, rating } = await request.json();
+
+    await env.ANALYTICS_DB.prepare(`
+      INSERT INTO survey_responses (session_id, case_id, rating)
+      VALUES (?, ?, ?)
+    `).bind(sessionId, caseId, rating).run();
+
+    return Response.json({ success: true }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Survey logging failed:', e);
+    return Response.json({ success: false, error: e.message }, { headers: corsHeaders });
+  }
+}
+
+// Log policy block
+async function handleLogPolicyBlock(request, env, corsHeaders) {
+  try {
+    const { sessionId, blockType, orderNumber, daysSince } = await request.json();
+
+    await env.ANALYTICS_DB.prepare(`
+      INSERT INTO policy_blocks (session_id, block_type, order_number, days_since)
+      VALUES (?, ?, ?, ?)
+    `).bind(sessionId, blockType, orderNumber, daysSince).run();
+
+    return Response.json({ success: true }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Policy block logging failed:', e);
+    return Response.json({ success: false, error: e.message }, { headers: corsHeaders });
+  }
+}
+
+// Log case creation (called from handleCreateCase)
+async function logCaseToAnalytics(env, caseData) {
   try {
     await env.ANALYTICS_DB.prepare(`
-      INSERT INTO cases (case_id, case_type, resolution, resolved_in_app, created_at)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO cases (case_id, session_id, case_type, resolution, order_number, customer_email, customer_name, refund_amount, selected_items, clickup_task_id, clickup_task_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
-      data.caseId,
-      data.caseType,
-      data.resolution,
-      data.resolvedInApp ? 1 : 0,
-      data.timestamp
+      caseData.caseId,
+      caseData.sessionId,
+      caseData.caseType,
+      caseData.resolution,
+      caseData.orderNumber,
+      caseData.email,
+      caseData.customerName,
+      caseData.refundAmount || null,
+      JSON.stringify(caseData.selectedItems || []),
+      caseData.clickupTaskId,
+      caseData.clickupTaskUrl
     ).run();
   } catch (e) {
-    console.error('Analytics logging failed:', e);
+    console.error('Case analytics logging failed:', e);
   }
+}
+
+// ============================================
+// ADMIN AUTHENTICATION
+// ============================================
+const ADMIN_TOKEN_SECRET = 'puppypad-admin-secret-2025'; // In production, use env variable
+
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + ADMIN_TOKEN_SECRET);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function generateToken(username) {
+  const payload = {
+    username,
+    exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+  };
+  const encoder = new TextEncoder();
+  const data = encoder.encode(JSON.stringify(payload) + ADMIN_TOKEN_SECRET);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return btoa(JSON.stringify(payload)) + '.' + signature;
+}
+
+async function verifyToken(token) {
+  try {
+    const [payloadB64, signature] = token.split('.');
+    const payload = JSON.parse(atob(payloadB64));
+
+    if (payload.exp < Date.now()) {
+      return null; // Token expired
+    }
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(JSON.stringify(payload) + ADMIN_TOKEN_SECRET);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const expectedSignature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    if (signature === expectedSignature) {
+      return payload;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function handleAdminLogin(request, env, corsHeaders) {
+  try {
+    const { username, password } = await request.json();
+
+    const passwordHash = await hashPassword(password);
+
+    const user = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM admin_users WHERE username = ? AND password_hash = ?
+    `).bind(username, passwordHash).first();
+
+    if (!user) {
+      return Response.json({ success: false, error: 'Invalid credentials' }, { status: 401, headers: corsHeaders });
+    }
+
+    // Update last login
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = ?
+    `).bind(user.id).run();
+
+    const token = await generateToken(username);
+
+    return Response.json({
+      success: true,
+      token,
+      user: { username: user.username, name: user.name, role: user.role }
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Login error:', e);
+    return Response.json({ success: false, error: 'Login failed' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// ADMIN DASHBOARD DATA
+// ============================================
+async function handleDashboardData(request, env, corsHeaders) {
+  // Verify authentication
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+  }
+
+  const token = authHeader.substring(7);
+  const payload = await verifyToken(token);
+  if (!payload) {
+    return Response.json({ error: 'Invalid or expired token' }, { status: 401, headers: corsHeaders });
+  }
+
+  const url = new URL(request.url);
+  const range = url.searchParams.get('range') || '7d';
+
+  // Calculate date range
+  let daysAgo = 7;
+  if (range === '30d') daysAgo = 30;
+  else if (range === '90d') daysAgo = 90;
+  else if (range === 'year') daysAgo = 365;
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - daysAgo);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  try {
+    // Total sessions
+    const sessionsResult = await env.ANALYTICS_DB.prepare(`
+      SELECT COUNT(*) as total FROM sessions WHERE started_at >= ?
+    `).bind(startDateStr).first();
+
+    // Completed sessions (resolved in-app)
+    const completedResult = await env.ANALYTICS_DB.prepare(`
+      SELECT COUNT(*) as total FROM sessions WHERE started_at >= ? AND completed = 1
+    `).bind(startDateStr).first();
+
+    // Total cases created
+    const casesResult = await env.ANALYTICS_DB.prepare(`
+      SELECT COUNT(*) as total FROM cases WHERE created_at >= ?
+    `).bind(startDateStr).first();
+
+    // Cases by type
+    const casesByType = await env.ANALYTICS_DB.prepare(`
+      SELECT case_type, COUNT(*) as count FROM cases WHERE created_at >= ? GROUP BY case_type
+    `).bind(startDateStr).all();
+
+    // Total refund amount
+    const refundsResult = await env.ANALYTICS_DB.prepare(`
+      SELECT SUM(refund_amount) as total FROM cases WHERE created_at >= ? AND refund_amount IS NOT NULL
+    `).bind(startDateStr).first();
+
+    // Average survey rating
+    const surveyResult = await env.ANALYTICS_DB.prepare(`
+      SELECT AVG(rating) as avg_rating, COUNT(*) as total FROM survey_responses WHERE created_at >= ?
+    `).bind(startDateStr).first();
+
+    // Policy blocks
+    const blocksResult = await env.ANALYTICS_DB.prepare(`
+      SELECT block_type, COUNT(*) as count FROM policy_blocks WHERE created_at >= ? GROUP BY block_type
+    `).bind(startDateStr).all();
+
+    // Recent cases
+    const recentCases = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM cases ORDER BY created_at DESC LIMIT 10
+    `).all();
+
+    // Daily sessions for chart
+    const dailySessions = await env.ANALYTICS_DB.prepare(`
+      SELECT DATE(started_at) as date, COUNT(*) as count
+      FROM sessions WHERE started_at >= ?
+      GROUP BY DATE(started_at) ORDER BY date
+    `).bind(startDateStr).all();
+
+    const totalSessions = sessionsResult?.total || 0;
+    const completedSessions = completedResult?.total || 0;
+    const resolutionRate = totalSessions > 0 ? ((completedSessions / totalSessions) * 100).toFixed(1) : 0;
+
+    return Response.json({
+      summary: {
+        totalSessions,
+        completedSessions,
+        resolutionRate,
+        totalCases: casesResult?.total || 0,
+        totalRefunds: refundsResult?.total || 0,
+        avgRating: surveyResult?.avg_rating ? surveyResult.avg_rating.toFixed(1) : 'N/A',
+        surveyResponses: surveyResult?.total || 0
+      },
+      casesByType: casesByType?.results || [],
+      policyBlocks: blocksResult?.results || [],
+      recentCases: recentCases?.results || [],
+      dailySessions: dailySessions?.results || [],
+      dateRange: { start: startDateStr, end: new Date().toISOString().split('T')[0], days: daysAgo }
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Dashboard data error:', e);
+    return Response.json({ error: 'Failed to load dashboard data' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Get cases list with pagination
+async function handleCasesList(request, env, corsHeaders) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+  }
+
+  const token = authHeader.substring(7);
+  const payload = await verifyToken(token);
+  if (!payload) {
+    return Response.json({ error: 'Invalid or expired token' }, { status: 401, headers: corsHeaders });
+  }
+
+  const url = new URL(request.url);
+  const page = parseInt(url.searchParams.get('page') || '1');
+  const limit = parseInt(url.searchParams.get('limit') || '20');
+  const offset = (page - 1) * limit;
+
+  try {
+    const cases = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM cases ORDER BY created_at DESC LIMIT ? OFFSET ?
+    `).bind(limit, offset).all();
+
+    const countResult = await env.ANALYTICS_DB.prepare(`
+      SELECT COUNT(*) as total FROM cases
+    `).first();
+
+    return Response.json({
+      cases: cases?.results || [],
+      pagination: {
+        page,
+        limit,
+        total: countResult?.total || 0,
+        totalPages: Math.ceil((countResult?.total || 0) / limit)
+      }
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Cases list error:', e);
+    return Response.json({ error: 'Failed to load cases' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Get events log
+async function handleEventsList(request, env, corsHeaders) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+  }
+
+  const token = authHeader.substring(7);
+  const payload = await verifyToken(token);
+  if (!payload) {
+    return Response.json({ error: 'Invalid or expired token' }, { status: 401, headers: corsHeaders });
+  }
+
+  const url = new URL(request.url);
+  const page = parseInt(url.searchParams.get('page') || '1');
+  const limit = parseInt(url.searchParams.get('limit') || '50');
+  const offset = (page - 1) * limit;
+
+  try {
+    const events = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM events ORDER BY created_at DESC LIMIT ? OFFSET ?
+    `).bind(limit, offset).all();
+
+    const countResult = await env.ANALYTICS_DB.prepare(`
+      SELECT COUNT(*) as total FROM events
+    `).first();
+
+    return Response.json({
+      events: events?.results || [],
+      pagination: {
+        page,
+        limit,
+        total: countResult?.total || 0,
+        totalPages: Math.ceil((countResult?.total || 0) / limit)
+      }
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Events list error:', e);
+    return Response.json({ error: 'Failed to load events' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// SERVE DASHBOARD HTML
+// ============================================
+async function serveDashboard(env, corsHeaders) {
+  const html = getDashboardHTML();
+  return new Response(html, {
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'text/html; charset=utf-8'
+    }
+  });
+}
+
+function getDashboardHTML() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PuppyPad Resolution - Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brand-navy: #0A1628;
+      --brand-navy-light: #1E3A5F;
+      --accent-coral: #FF6B6B;
+      --accent-teal: #4ECDC4;
+      --gray-50: #F9FAFB;
+      --gray-100: #F3F4F6;
+      --gray-200: #E5E7EB;
+      --gray-300: #D1D5DB;
+      --gray-500: #6B7280;
+      --gray-600: #4B5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--gray-100);
+      min-height: 100vh;
+    }
+
+    /* Login Screen */
+    .login-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+    }
+
+    .login-card {
+      background: white;
+      border-radius: 24px;
+      padding: 48px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .login-logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-logo img {
+      height: 40px;
+    }
+
+    .login-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gray-900);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .login-subtitle {
+      color: var(--gray-500);
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      color: var(--gray-700);
+      margin-bottom: 8px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      font-size: 15px;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--brand-navy);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 16px;
+      background: var(--brand-navy);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .login-btn:hover {
+      background: var(--brand-navy-light);
+      transform: translateY(-1px);
+    }
+
+    .login-error {
+      color: var(--accent-coral);
+      text-align: center;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* Dashboard Layout */
+    .dashboard-container {
+      display: none;
+      min-height: 100vh;
+    }
+
+    .dashboard-container.active {
+      display: block;
+    }
+
+    .dashboard-header {
+      background: white;
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--gray-200);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 24px;
+      color: var(--gray-900);
+    }
+
+    .header-left p {
+      color: var(--gray-500);
+      font-size: 14px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .date-select {
+      padding: 10px 16px;
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .logout-btn {
+      padding: 10px 20px;
+      background: var(--gray-100);
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-700);
+      cursor: pointer;
+    }
+
+    .dashboard-content {
+      padding: 32px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .metric-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .metric-card.highlight {
+      background: linear-gradient(135deg, var(--accent-teal) 0%, #38B2AC 100%);
+      color: white;
+    }
+
+    .metric-label {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-bottom: 8px;
+    }
+
+    .metric-card.highlight .metric-label {
+      color: rgba(255,255,255,0.8);
+    }
+
+    .metric-value {
+      font-family: 'Poppins', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+
+    .metric-card.highlight .metric-value {
+      color: white;
+    }
+
+    .metric-sub {
+      font-size: 13px;
+      color: var(--gray-500);
+      margin-top: 4px;
+    }
+
+    .metric-card.highlight .metric-sub {
+      color: rgba(255,255,255,0.7);
+    }
+
+    /* Tables */
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 14px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    th {
+      background: var(--gray-50);
+      font-weight: 600;
+      color: var(--gray-600);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      font-size: 14px;
+      color: var(--gray-700);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .badge-refund { background: #FEE2E2; color: #DC2626; }
+    .badge-shipping { background: #DBEAFE; color: #2563EB; }
+    .badge-subscription { background: #D1FAE5; color: #059669; }
+    .badge-return { background: #FEF3C7; color: #D97706; }
+    .badge-manual { background: #E5E7EB; color: #374151; }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--gray-500);
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      padding: 20px;
+    }
+
+    .pagination button {
+      padding: 8px 16px;
+      border: 1px solid var(--gray-200);
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .pagination button:hover {
+      background: var(--gray-50);
+    }
+
+    .pagination button.active {
+      background: var(--brand-navy);
+      color: white;
+      border-color: var(--brand-navy);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      padding: 12px 24px;
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-600);
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: var(--brand-navy);
+      color: white;
+      border-color: var(--brand-navy);
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+      }
+
+      .dashboard-content {
+        padding: 16px;
+      }
+
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Screen -->
+  <div class="login-container" id="loginScreen">
+    <div class="login-card">
+      <div class="login-logo">
+        <img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad">
+      </div>
+      <h2 class="login-title">Admin Dashboard</h2>
+      <p class="login-subtitle">Sign in to view analytics</p>
+      <div class="login-error" id="loginError">Invalid username or password</div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="username" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="password" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="login-btn">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="dashboard-container" id="dashboardScreen">
+    <header class="dashboard-header">
+      <div class="header-left">
+        <h1>Analytics Dashboard</h1>
+        <p>PuppyPad Resolution App Performance</p>
+      </div>
+      <div class="header-right">
+        <select class="date-select" id="dateRange">
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="90d">Last 90 days</option>
+          <option value="year">This Year</option>
+        </select>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <div class="dashboard-content">
+      <!-- Metrics -->
+      <div class="metrics-grid" id="metricsGrid">
+        <div class="loading">Loading metrics...</div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" data-tab="cases">Recent Cases</button>
+        <button class="tab" data-tab="events">Event Log</button>
+      </div>
+
+      <!-- Cases Table -->
+      <div class="card" id="casesCard">
+        <div class="card-header">
+          <h3 class="card-title">Customer Submissions</h3>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Case ID</th>
+                <th>Type</th>
+                <th>Customer</th>
+                <th>Order</th>
+                <th>Resolution</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="casesTableBody">
+              <tr><td colspan="6" class="loading">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="casesPagination"></div>
+      </div>
+
+      <!-- Events Table -->
+      <div class="card" id="eventsCard" style="display: none;">
+        <div class="card-header">
+          <h3 class="card-title">Event Log</h3>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Session</th>
+                <th>Event Type</th>
+                <th>Event Name</th>
+                <th>Data</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody id="eventsTableBody">
+              <tr><td colspan="5" class="loading">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="eventsPagination"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '';
+    let authToken = localStorage.getItem('adminToken');
+    let currentCasesPage = 1;
+    let currentEventsPage = 1;
+
+    // Check if already logged in
+    if (authToken) {
+      showDashboard();
+    }
+
+    // Login form
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const response = await fetch(API_BASE + '/admin/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          authToken = data.token;
+          localStorage.setItem('adminToken', authToken);
+          showDashboard();
+        } else {
+          document.getElementById('loginError').style.display = 'block';
+        }
+      } catch (err) {
+        document.getElementById('loginError').style.display = 'block';
+      }
+    });
+
+    // Tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        const tabName = tab.dataset.tab;
+        document.getElementById('casesCard').style.display = tabName === 'cases' ? 'block' : 'none';
+        document.getElementById('eventsCard').style.display = tabName === 'events' ? 'block' : 'none';
+      });
+    });
+
+    // Date range change
+    document.getElementById('dateRange').addEventListener('change', loadDashboardData);
+
+    function showDashboard() {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('dashboardScreen').classList.add('active');
+      loadDashboardData();
+      loadCases();
+      loadEvents();
+    }
+
+    function logout() {
+      localStorage.removeItem('adminToken');
+      authToken = null;
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('dashboardScreen').classList.remove('active');
+    }
+
+    async function loadDashboardData() {
+      const range = document.getElementById('dateRange').value;
+
+      try {
+        const response = await fetch(API_BASE + '/admin/api/dashboard?range=' + range, {
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+
+        if (response.status === 401) {
+          logout();
+          return;
+        }
+
+        const data = await response.json();
+        renderMetrics(data);
+      } catch (err) {
+        console.error('Failed to load dashboard:', err);
+      }
+    }
+
+    function renderMetrics(data) {
+      const s = data.summary;
+      document.getElementById('metricsGrid').innerHTML = \`
+        <div class="metric-card">
+          <div class="metric-label">Total Sessions</div>
+          <div class="metric-value">\${s.totalSessions.toLocaleString()}</div>
+          <div class="metric-sub">In selected period</div>
+        </div>
+        <div class="metric-card highlight">
+          <div class="metric-label">Resolution Rate</div>
+          <div class="metric-value">\${s.resolutionRate}%</div>
+          <div class="metric-sub">\${s.completedSessions} resolved in-app</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Cases Created</div>
+          <div class="metric-value">\${s.totalCases.toLocaleString()}</div>
+          <div class="metric-sub">Across all types</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Total Refunds</div>
+          <div class="metric-value">$\${(s.totalRefunds || 0).toLocaleString()}</div>
+          <div class="metric-sub">Processed amount</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Avg Rating</div>
+          <div class="metric-value">\${s.avgRating}/5</div>
+          <div class="metric-sub">\${s.surveyResponses} responses</div>
+        </div>
+      \`;
+    }
+
+    async function loadCases(page = 1) {
+      currentCasesPage = page;
+
+      try {
+        const response = await fetch(API_BASE + '/admin/api/cases?page=' + page, {
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+
+        if (response.status === 401) {
+          logout();
+          return;
+        }
+
+        const data = await response.json();
+        renderCases(data);
+      } catch (err) {
+        console.error('Failed to load cases:', err);
+      }
+    }
+
+    function renderCases(data) {
+      const tbody = document.getElementById('casesTableBody');
+
+      if (!data.cases || data.cases.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">No cases found</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.cases.map(c => \`
+        <tr>
+          <td><strong>\${c.case_id}</strong></td>
+          <td><span class="badge badge-\${c.case_type}">\${c.case_type}</span></td>
+          <td>\${c.customer_email || c.customer_name || 'N/A'}</td>
+          <td>\${c.order_number || 'N/A'}</td>
+          <td>\${c.resolution || 'N/A'}</td>
+          <td>\${new Date(c.created_at).toLocaleString()}</td>
+        </tr>
+      \`).join('');
+
+      renderPagination('casesPagination', data.pagination, loadCases);
+    }
+
+    async function loadEvents(page = 1) {
+      currentEventsPage = page;
+
+      try {
+        const response = await fetch(API_BASE + '/admin/api/events?page=' + page, {
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+
+        if (response.status === 401) {
+          logout();
+          return;
+        }
+
+        const data = await response.json();
+        renderEvents(data);
+      } catch (err) {
+        console.error('Failed to load events:', err);
+      }
+    }
+
+    function renderEvents(data) {
+      const tbody = document.getElementById('eventsTableBody');
+
+      if (!data.events || data.events.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="loading">No events found</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.events.map(e => \`
+        <tr>
+          <td><code>\${e.session_id?.substring(0, 8)}...</code></td>
+          <td>\${e.event_type}</td>
+          <td>\${e.event_name}</td>
+          <td><code>\${e.event_data?.substring(0, 50) || '{}'}</code></td>
+          <td>\${new Date(e.created_at).toLocaleString()}</td>
+        </tr>
+      \`).join('');
+
+      renderPagination('eventsPagination', data.pagination, loadEvents);
+    }
+
+    function renderPagination(containerId, pagination, loadFn) {
+      const container = document.getElementById(containerId);
+      if (pagination.totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+      for (let i = 1; i <= Math.min(pagination.totalPages, 10); i++) {
+        html += \`<button class="\${i === pagination.page ? 'active' : ''}" onclick="\${loadFn.name}(\${i})">\${i}</button>\`;
+      }
+      container.innerHTML = html;
+    }
+  </script>
+</body>
+</html>`;
+}
 }
