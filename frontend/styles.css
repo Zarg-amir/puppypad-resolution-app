@@ -91,7 +91,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -100,12 +101,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
-   APP CONTAINER
+   APP CONTAINER - Three-tier height constraint
    ============================================ */
 .app-container {
   width: 100%;
   max-width: 480px;
-  height: 100%;
+  height: 100vh;
+  max-height: none;
+  min-height: 500px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -114,18 +117,17 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 481px) {
   body {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 24px;
-    align-items: center;
-    justify-content: center;
+    min-height: 100vh;
   }
 
   .app-container {
-    height: auto;
-    min-height: 700px;
-    max-height: 900px;
+    height: 92vh;
+    max-height: 850px;
+    min-height: 500px;
     border-radius: var(--radius-xl);
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
@@ -606,17 +608,17 @@ h1, h2, h3, h4, h5, h6 {
    ============================================ */
 .interactive-content {
   width: 100%;
-  animation: slideUpReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUpReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes slideUpReveal {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(24px) scale(0.98);
   }
-  to {
+  100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
