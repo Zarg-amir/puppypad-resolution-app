@@ -77,19 +77,21 @@
   box-sizing: border-box;
 }
 
-html {
+html, body {
   height: 100%;
   width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background: linear-gradient(180deg, #FAFBFC 0%, #F3F4F6 100%);
-  min-height: 100vh;
-  min-height: -webkit-fill-available;
   color: var(--gray-900);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  display: flex;
+  flex-direction: column;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -103,8 +105,7 @@ h1, h2, h3, h4, h5, h6 {
 .app-container {
   width: 100%;
   max-width: 480px;
-  min-height: 100%;
-  max-height: 100vh;
+  height: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -117,13 +118,12 @@ h1, h2, h3, h4, h5, h6 {
   body {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 24px;
-    display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 100vh;
   }
 
   .app-container {
+    height: auto;
     min-height: 700px;
     max-height: 900px;
     border-radius: var(--radius-xl);
@@ -602,6 +602,25 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
+   INTERACTIVE CONTENT (forms, selections, etc.)
+   ============================================ */
+.interactive-content {
+  width: 100%;
+  animation: slideUpReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpReveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
    MESSAGE CONTAINER
    ============================================ */
 .message {
@@ -737,15 +756,21 @@ h1, h2, h3, h4, h5, h6 {
   30% { transform: translateY(-4px); opacity: 1; }
 }
 
-/* Character-by-character typing cursor */
+/* Character-by-character typing */
+.typing-text {
+  display: inline;
+}
+
 .typing-cursor {
   display: inline;
-  animation: cursor-blink 0.8s step-end infinite;
-  color: var(--brand-navy);
-  font-weight: 400;
+  animation: cursor-blink 0.6s step-end infinite;
+  color: var(--gray-400);
+  font-weight: 300;
+  margin-left: 1px;
 }
 
 @keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
 
