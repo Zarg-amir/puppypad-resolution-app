@@ -224,6 +224,113 @@ function delay(ms) {
 }
 
 // ============================================
+// COPY TO CLIPBOARD
+// ============================================
+async function copyToClipboard(text, buttonElement) {
+  try {
+    await navigator.clipboard.writeText(text);
+
+    // Visual feedback
+    const originalText = buttonElement.innerHTML;
+    buttonElement.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      Copied!
+    `;
+    buttonElement.classList.add('copied');
+
+    setTimeout(() => {
+      buttonElement.innerHTML = originalText;
+      buttonElement.classList.remove('copied');
+    }, 2000);
+
+    announceToScreenReader('Case ID copied to clipboard');
+  } catch (err) {
+    console.error('Failed to copy:', err);
+    announceToScreenReader('Failed to copy case ID');
+  }
+}
+
+// Generate copyable case ID HTML
+function getCaseIdHtml(caseId) {
+  return `
+    <div class="case-id-container">
+      <span class="case-id-label">Case ID:</span>
+      <span class="case-id-value">${caseId}</span>
+      <button class="case-id-copy-btn" onclick="copyToClipboard('${caseId}', this)" title="Copy to clipboard">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        Copy
+      </button>
+    </div>
+  `;
+}
+
+// Make copyToClipboard available globally
+window.copyToClipboard = copyToClipboard;
+
+// ============================================
+// CONFIRMATION DIALOG
+// ============================================
+function showConfirmDialog(title, message, confirmText = 'Confirm', cancelText = 'Cancel') {
+  return new Promise((resolve) => {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-dialog-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-dialog">
+        <div class="confirm-dialog-icon">⚠️</div>
+        <h3 class="confirm-dialog-title">${title}</h3>
+        <p class="confirm-dialog-message">${message}</p>
+        <div class="confirm-dialog-buttons">
+          <button class="confirm-dialog-btn cancel">${cancelText}</button>
+          <button class="confirm-dialog-btn confirm">${confirmText}</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      overlay.classList.add('visible');
+    });
+
+    // Handle button clicks
+    const cancelBtn = overlay.querySelector('.cancel');
+    const confirmBtn = overlay.querySelector('.confirm');
+
+    const closeDialog = (result) => {
+      overlay.classList.remove('visible');
+      setTimeout(() => {
+        overlay.remove();
+        resolve(result);
+      }, 200);
+    };
+
+    cancelBtn.onclick = () => closeDialog(false);
+    confirmBtn.onclick = () => closeDialog(true);
+
+    // Close on overlay click
+    overlay.onclick = (e) => {
+      if (e.target === overlay) closeDialog(false);
+    };
+
+    // Close on Escape key
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        document.removeEventListener('keydown', handleEscape);
+        closeDialog(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+  });
+}
+
+// ============================================
 // SESSION MANAGER
 // ============================================
 const SessionManager = {
@@ -588,13 +695,88 @@ async function showSuccess(title, message) {
     </div>
   `;
   await addInteractiveContent(successHtml, 300);
-  
+
   await delay(1000);
-  
+
+  // Show end-of-session survey
+  await showEndOfSessionSurvey();
+}
+
+async function showEndOfSessionSurvey() {
+  await addBotMessage("Before you go — how was your experience today?");
+
+  const surveyHtml = `
+    <div class="survey-container">
+      <div class="survey-ratings">
+        <button class="survey-rating" data-rating="1" onclick="submitSurveyRating(1, this)">
+          <span class="survey-emoji">😞</span>
+          <span class="survey-label">Poor</span>
+        </button>
+        <button class="survey-rating" data-rating="2" onclick="submitSurveyRating(2, this)">
+          <span class="survey-emoji">😐</span>
+          <span class="survey-label">Okay</span>
+        </button>
+        <button class="survey-rating" data-rating="3" onclick="submitSurveyRating(3, this)">
+          <span class="survey-emoji">🙂</span>
+          <span class="survey-label">Good</span>
+        </button>
+        <button class="survey-rating" data-rating="4" onclick="submitSurveyRating(4, this)">
+          <span class="survey-emoji">😊</span>
+          <span class="survey-label">Great</span>
+        </button>
+        <button class="survey-rating" data-rating="5" onclick="submitSurveyRating(5, this)">
+          <span class="survey-emoji">🤩</span>
+          <span class="survey-label">Amazing</span>
+        </button>
+      </div>
+      <button class="survey-skip" onclick="skipSurvey()">Skip</button>
+    </div>
+  `;
+
+  await addInteractiveContent(surveyHtml, 400);
+}
+
+async function submitSurveyRating(rating, buttonElement) {
+  // Highlight selected rating
+  document.querySelectorAll('.survey-rating').forEach(btn => {
+    btn.classList.remove('selected');
+  });
+  buttonElement.classList.add('selected');
+
+  // Remove survey container after short delay
+  await delay(300);
+  document.querySelector('.survey-container')?.closest('.interactive-content').remove();
+
+  // Log the rating (would send to analytics in production)
+  console.log('Survey rating:', rating, 'Session:', state.sessionId, 'Case:', state.caseId);
+
+  // Thank the user
+  if (rating >= 4) {
+    await addBotMessage("Thank you so much! We're thrilled we could help. 💜");
+  } else if (rating >= 3) {
+    await addBotMessage("Thanks for your feedback! We're always working to improve. 🙏");
+  } else {
+    await addBotMessage("We're sorry we didn't meet your expectations. Your feedback helps us do better. 💙");
+  }
+
+  await delay(800);
+
   addOptions([
     { text: 'Back to Home', primary: true, action: () => restartChat() }
   ]);
 }
+
+async function skipSurvey() {
+  document.querySelector('.survey-container')?.closest('.interactive-content').remove();
+
+  addOptions([
+    { text: 'Back to Home', primary: true, action: () => restartChat() }
+  ]);
+}
+
+// Make survey functions available globally
+window.submitSurveyRating = submitSurveyRating;
+window.skipSurvey = skipSurvey;
 
 async function showError(title, message) {
   const errorHtml = `
@@ -642,7 +824,17 @@ async function showHomeMenu() {
   ]);
 }
 
-function restartChat() {
+async function restartChat() {
+  // Show confirmation dialog
+  const confirmed = await showConfirmDialog(
+    'Start Over?',
+    'This will clear your current conversation and take you back to the home screen.',
+    'Yes, Start Over',
+    'Cancel'
+  );
+
+  if (!confirmed) return;
+
   // Reset state
   Object.assign(state, {
     currentStep: 'welcome',
@@ -1040,7 +1232,7 @@ async function submitManualHelp() {
   
   await showSuccess(
     "Request Submitted!",
-    `Your case ID is <strong>${state.caseId}</strong>. Our team will reach out to you at ${email} within 24 hours.`
+    `Our team will reach out to you at ${email} within 24 hours.<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -1504,7 +1696,7 @@ async function acceptOffer(percent, amount) {
   
   await showSuccess(
     "Refund Approved!",
-    `Your ${percent}% refund of ${formatCurrency(amount)} will be processed within 3-5 business days.<br><br>Case ID: <strong>${state.caseId}</strong>`
+    `Your ${percent}% refund of ${formatCurrency(amount)} will be processed within 3-5 business days.<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -1614,7 +1806,7 @@ async function createRefundCase(type, keepProduct) {
   
   await showSuccess(
     "Case Created!",
-    `${message}<br><br>Case ID: <strong>${state.caseId}</strong>`
+    `${message}<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -1696,7 +1888,7 @@ async function handleOrderSwap(isUsed) {
   
   await showSuccess(
     "Order Change Requested!",
-    `We'll process your change to: <strong>${state.intentDetails}</strong><br><br>Case ID: <strong>${state.caseId}</strong>`
+    `We'll process your change to: <strong>${state.intentDetails}</strong><br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -1784,7 +1976,7 @@ async function submitEvidence() {
       
       await showSuccess(
         "Investigation Started!",
-        `We'll look into this and ship any missing items free of charge. You'll hear from us within 24-48 hours.<br><br>Case ID: <strong>${state.caseId}</strong>`
+        `We'll look into this and ship any missing items free of charge. You'll hear from us within 24-48 hours.<br><br>${getCaseIdHtml(state.caseId)}`
       );
     }},
     { text: "Cancel", action: showHomeMenu }
@@ -1822,7 +2014,7 @@ Is this the charge you're referring to?`);
         
         await showSuccess(
           "Investigation Started",
-          `We'll review the charge and get back to you within 24 hours.<br><br>Case ID: <strong>${state.caseId}</strong>`
+          `We'll review the charge and get back to you within 24 hours.<br><br>${getCaseIdHtml(state.caseId)}`
         );
       });
     }},
@@ -1838,7 +2030,7 @@ Is this the charge you're referring to?`);
         
         await showSuccess(
           "Investigation Started",
-          `We'll look into this and contact you soon.<br><br>Case ID: <strong>${state.caseId}</strong>`
+          `We'll look into this and contact you soon.<br><br>${getCaseIdHtml(state.caseId)}`
         );
       });
     }}
@@ -1869,7 +2061,7 @@ async function handleQualityDifference() {
           
           await showSuccess(
             "Free Reship Created!",
-            `We'll ship out the original PuppyPads within 1-2 business days. Keep the premium ones too! 🎁<br><br>Case ID: <strong>${state.caseId}</strong>`
+            `We'll ship out the original PuppyPads within 1-2 business days. Keep the premium ones too! 🎁<br><br>${getCaseIdHtml(state.caseId)}`
           );
         }},
         { text: "No thanks", action: showHomeMenu }
@@ -2107,7 +2299,7 @@ async function confirmReship() {
   
   await showSuccess(
     "Reship Created!",
-    `Your order will be reshipped free of charge within 1-2 business days. We'll email you the tracking info.<br><br>Case ID: <strong>${state.caseId}</strong>`
+    `Your order will be reshipped free of charge within 1-2 business days. We'll email you the tracking info.<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -2157,7 +2349,7 @@ async function acceptShippingOffer(percent, amount) {
   
   await showSuccess(
     "All Set!",
-    `Your ${percent}% refund (${formatCurrency(amount)}) will process in 3-5 days, and your reship will go out within 1-2 business days.<br><br>Case ID: <strong>${state.caseId}</strong>`
+    `Your ${percent}% refund (${formatCurrency(amount)}) will process in 3-5 days, and your reship will go out within 1-2 business days.<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -2188,7 +2380,7 @@ async function handleDeliveredNotReceived() {
       
       await showSuccess(
         "Investigation Started",
-        `We'll investigate with the carrier and get back to you within 48 hours. If we can't locate it, we'll reship or refund.<br><br>Case ID: <strong>${state.caseId}</strong>`
+        `We'll investigate with the carrier and get back to you within 48 hours. If we can't locate it, we'll reship or refund.<br><br>${getCaseIdHtml(state.caseId)}`
       );
     }},
     { text: "Just reship it", action: () => handleReship() },
@@ -2207,7 +2399,7 @@ async function createShippingCase(type) {
   
   await showSuccess(
     "Case Created!",
-    `Our team will investigate and get back to you within 24-48 hours.<br><br>Case ID: <strong>${state.caseId}</strong>`
+    `Our team will investigate and get back to you within 24-48 hours.<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -2431,7 +2623,7 @@ async function confirmPause(days) {
   
   await showSuccess(
     "Subscription Paused!",
-    `Your subscription will automatically resume on <strong>${formatDate(resumeDate.toISOString())}</strong>.<br><br>Case ID: <strong>${state.caseId}</strong>`
+    `Your subscription will automatically resume on <strong>${formatDate(resumeDate.toISOString())}</strong>.<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -2469,7 +2661,7 @@ async function submitCustomPause() {
   
   await showSuccess(
     "Subscription Paused!",
-    `Your subscription will resume on <strong>${formatDate(dateInput)}</strong>.<br><br>Case ID: <strong>${state.caseId}</strong>`
+    `Your subscription will resume on <strong>${formatDate(dateInput)}</strong>.<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -2583,7 +2775,7 @@ async function acceptSubscriptionOffer(percent) {
   
   await showSuccess(
     "Discount Applied!",
-    `Great choice! Your ${percent}% discount will apply to all future shipments automatically.<br><br>Case ID: <strong>${state.caseId}</strong>`
+    `Great choice! Your ${percent}% discount will apply to all future shipments automatically.<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -2625,7 +2817,7 @@ async function processSubscriptionCancel(isUsed) {
   
   await showSuccess(
     "Subscription Cancelled",
-    `Your subscription has been cancelled and a full refund will be processed within 3-5 business days.<br><br>Case ID: <strong>${state.caseId}</strong>`
+    `Your subscription has been cancelled and a full refund will be processed within 3-5 business days.<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -2649,7 +2841,7 @@ async function confirmScheduleChange(days) {
   
   await showSuccess(
     "Schedule Updated!",
-    `Your deliveries will now arrive every <strong>${days} days</strong>.<br><br>Case ID: <strong>${state.caseId}</strong>`
+    `Your deliveries will now arrive every <strong>${days} days</strong>.<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -2721,7 +2913,7 @@ async function submitNewAddress() {
   
   await showSuccess(
     "Address Updated!",
-    `Your new shipping address has been saved and will be used for all future deliveries.<br><br>Case ID: <strong>${state.caseId}</strong>`
+    `Your new shipping address has been saved and will be used for all future deliveries.<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
