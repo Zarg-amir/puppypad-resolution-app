@@ -4029,11 +4029,13 @@ function getDateRange(range) {
 3. ✅ Dashboard endpoint (admin login, metrics, cases list, events log)
 
 ### Sprint 3: Richpanel Integration ✅ COMPLETE
-1. ✅ Email creation (`createRichpanelTicket` - HTML email with case details)
+1. ✅ Email creation (`createRichpanelTicket` - simulated customer email)
 2. ✅ Private notes (`createRichpanelPrivateNote` - action steps for agents)
 3. ✅ Test mode (`RICHPANEL_CONFIG.testMode` - routes all emails to test address)
+4. ✅ ClickUp conversation URL update (auto-populates after Richpanel ticket created)
+5. ✅ Frontend connected to backend (`submitCase` calls `/api/create-case`)
 
-### Sprint 4: Frontend Flow Completion (2-3 days)
+### Sprint 4: Frontend Flow Completion
 1. Deep search
 2. Phone formatting
 3. Dynamic address fields
@@ -4113,10 +4115,12 @@ See `CODING_GUIDELINES.md` for complete checklist.
 - ✅ Frontend Analytics module with session/event/survey/policy-block logging
 - ✅ Admin dashboard with login, metrics, cases table, events log
 
-**Sprint 3 (3/3 items):** ✅ COMPLETE
-- ✅ Email creation (`createRichpanelTicket` with HTML template)
+**Sprint 3 (5/5 items):** ✅ COMPLETE
+- ✅ Email creation (`createRichpanelTicket` - simulated customer email)
 - ✅ Private notes (`createRichpanelPrivateNote` with action steps)
 - ✅ Test mode (`RICHPANEL_CONFIG.testMode` routes to test email)
+- ✅ ClickUp conversation URL auto-populated
+- ✅ Frontend `submitCase()` connected to backend
 
 **Sprint 6 (3/3 items):** ✅ COMPLETE
 - ✅ Backend config sections (POLICY_CONFIG, ADMIN_CONFIG, PERSONA_PROMPTS, PRODUCT_DOC_MAP)
