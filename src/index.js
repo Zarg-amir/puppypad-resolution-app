@@ -3,6 +3,62 @@
  * Backend API for the Resolution App
  */
 
+// ============================================
+// CLICKUP CONFIGURATION
+// ============================================
+const CLICKUP_CONFIG = {
+  lists: {
+    refundRequests: '901518836463',
+    returnRequests: '901519002456',
+    shippingIssues: '901519012573',
+    subscriptionManagement: '901519256086',
+    manualHelp: '901519256097'
+  },
+  fields: {
+    caseId: '8edc1dca-f349-4663-ab04-be7e1a1c6732',
+    emailAddress: '200cbfa0-5bdf-4a90-910e-986ee1fbbed1',
+    resolution: '44a77a25-2b98-4b79-b1f0-caf2a67a137a',
+    orderNumber: '5f89f376-9bf7-45dd-a06b-ffafda305260',
+    orderUrl: '71ece2eb-d082-4135-8a11-fb6a1b1c90f4',
+    conversationUrl: 'c9e884af-bfa8-4b79-bffe-fed6a8e3fa8f',
+    refundAmount: '3a85cb2e-2607-487c-9aaf-5d22b018aae2',
+    selectedItems: 'aabe9246-54fd-4b8b-b8e2-09347265aa06',
+    orderIssue: '3602bb2f-d07b-48aa-97f3-3590a06b35d4',
+    returnStatus: 'f1bc2f2f-3f5b-4b85-a316-6f74675a8e32',
+    trackingUrl: 'f443b9bd-3044-464b-a2db-ac45d09daf91',
+    carrierIssue: 'e058af04-bb11-4d65-9ade-f1810ae16b22',
+    subscriptionStatus: '05c30d78-d38b-437b-8fbb-42094dcba3ed',
+    actionType: 'a13af7b6-b656-4e9a-9e3a-663d386ad867'
+  },
+  options: {
+    returnStatus: {
+      awaitingReturn: '8fdc441c-d187-45a2-8375-d8226e86568c',
+      inTransit: '6be07ee9-2124-4325-9895-7f6fd775b1e3',
+      delivered: 'caa19b8c-c229-4390-9a49-6a2a89cbdc4c',
+      failed: 'e17dbd41-4ce3-405e-b86f-fe2390b6622d'
+    },
+    carrierIssue: {
+      addressCorrection: '61ee026a-deaa-4a36-8f4b-6fb03d26eeb2',
+      failedDelivery: '45e02527-7941-44d0-85e1-0e9d53ad0cb3',
+      exception: 'b68f8a6d-e4f2-4125-89a2-0c345325bbea',
+      expiredTracking: '6f126cd4-8382-4887-8728-d5b4f8243cb1',
+      extendedTransit: '89258fc3-145e-4610-bf2e-f2cb05467900',
+      deliveredNotReceived: '9c631d27-f8a4-495f-94f8-e278cb6ca8c6'
+    },
+    subscriptionStatus: {
+      active: 'd3cef57a-a2ac-4c42-a6ae-2b3c5eb6d615',
+      paused: 'd042ffdb-00b7-46ef-b571-d9a6064248de',
+      cancelled: '6402e72a-b4b3-48de-953c-4f976f5b6bbf'
+    },
+    actionType: {
+      pause: '1d307432-947e-4d54-b3ba-ffb1312d417e',
+      cancel: 'aba9ab01-45c0-42be-9f3d-31ecbaf31e60',
+      changeSchedule: '20da5eba-2e35-427d-9cdc-d715f168735f',
+      changeAddress: 'e33586ef-3502-4995-bb27-98f954846810'
+    }
+  }
+};
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -132,10 +188,13 @@ async function handleLookupOrder(request, env, corsHeaders) {
       totalPrice: order.total_price,
       currency: order.currency,
       customerName: `${order.billing_address?.first_name || ''} ${order.billing_address?.last_name || ''}`.trim(),
+      customerFirstName: order.billing_address?.first_name || order.customer?.first_name || '',
+      customerLastName: order.billing_address?.last_name || order.customer?.last_name || '',
       shippingAddress: order.shipping_address,
       billingAddress: order.billing_address,
       lineItems,
       clientOrderId,
+      orderUrl: `https://${env.SHOPIFY_STORE}/admin/orders/${order.id}`,
     };
   }));
 
@@ -200,62 +259,85 @@ function extractClientOrderId(order) {
 }
 
 // ============================================
-// PARCEL PANEL TRACKING
+// PARCEL PANEL TRACKING (FIXED API URL)
 // ============================================
 async function handleTracking(request, env, corsHeaders) {
-  const { orderNumber, trackingNumber, orderId } = await request.json();
+  const { orderNumber, trackingNumber } = await request.json();
 
-  let url = 'https://open.parcelpanel.com/api/v2/tracking/order?';
+  // Use correct ParcelPanel API v3 endpoint
+  let url = 'https://api.parcelpanel.com/api/v3/parcels?';
   if (orderNumber) {
-    url += `order_number=${encodeURIComponent(orderNumber)}`;
+    const cleanOrder = orderNumber.replace('#', '');
+    url += `order_number=${encodeURIComponent(cleanOrder)}`;
   } else if (trackingNumber) {
     url += `tracking_number=${encodeURIComponent(trackingNumber)}`;
-  } else if (orderId) {
-    url += `order_id=${encodeURIComponent(orderId)}`;
+  } else {
+    return Response.json({ tracking: null, message: 'No identifier provided' }, { headers: corsHeaders });
   }
 
   const response = await fetch(url, {
     headers: {
-      'x-parcelpanel-api-key': env.PARCELPANEL_API_KEY,
+      'Authorization': `Bearer ${env.PARCELPANEL_API_KEY}`,
       'Content-Type': 'application/json',
     },
   });
 
   if (!response.ok) {
-    return Response.json({ error: 'Tracking lookup failed' }, { status: 500, headers: corsHeaders });
+    return Response.json({ tracking: null, message: 'Tracking lookup failed' }, { headers: corsHeaders });
   }
 
   const data = await response.json();
-  const shipments = data.order?.shipments || [];
-  const shipment = shipments[0];
+  const parcels = data.data || [];
 
-  if (!shipment) {
+  if (parcels.length === 0) {
     return Response.json({ tracking: null, message: 'No tracking found' }, { headers: corsHeaders });
   }
 
-  // Calculate days in transit
-  const firstCheckpoint = shipment.checkpoints?.[shipment.checkpoints.length - 1];
-  const lastCheckpoint = shipment.checkpoints?.[0];
-  let daysInTransit = 0;
-  
-  if (firstCheckpoint?.checkpoint_time) {
-    const startDate = new Date(firstCheckpoint.checkpoint_time);
-    const now = new Date();
-    daysInTransit = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
-  }
+  // Process all parcels
+  const trackingResults = parcels.map(parcel => {
+    const checkpoints = parcel.checkpoints || [];
+    let daysInTransit = 0;
+    
+    if (checkpoints.length > 0) {
+      const firstCheckpoint = checkpoints[checkpoints.length - 1];
+      if (firstCheckpoint?.checkpoint_time) {
+        const startDate = new Date(firstCheckpoint.checkpoint_time);
+        daysInTransit = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
+      }
+    }
+
+    return {
+      trackingNumber: parcel.tracking_number,
+      carrier: parcel.courier_code,
+      status: parcel.delivery_status,
+      statusLabel: formatTrackingStatus(parcel.delivery_status),
+      deliveryDate: parcel.delivery_date,
+      estimatedDelivery: parcel.expected_delivery,
+      checkpoints: checkpoints.slice(0, 10),
+      daysInTransit,
+      lastUpdate: checkpoints[0]?.checkpoint_time || null
+    };
+  });
 
   return Response.json({
-    tracking: {
-      status: shipment.status,
-      statusLabel: shipment.status_label,
-      trackingNumber: shipment.tracking_number,
-      carrier: shipment.carrier,
-      deliveryDate: shipment.delivery_date,
-      estimatedDelivery: shipment.estimated_delivery_date,
-      checkpoints: shipment.checkpoints || [],
-      daysInTransit,
-    }
+    tracking: trackingResults[0],
+    allTracking: trackingResults
   }, { headers: corsHeaders });
+}
+
+function formatTrackingStatus(status) {
+  const statusMap = {
+    'pending': 'Pending',
+    'info_received': 'Info Received',
+    'in_transit': 'In Transit',
+    'out_for_delivery': 'Out for Delivery',
+    'delivered': 'Delivered',
+    'failed_attempt': 'Failed Delivery',
+    'exception': 'Exception',
+    'expired': 'Expired',
+    'pickup': 'Ready for Pickup'
+  };
+  return statusMap[status] || status;
 }
 
 // ============================================
@@ -352,6 +434,7 @@ async function handleCreateCase(request, env, corsHeaders) {
     success: true, 
     caseId,
     clickupTaskId: clickupTask?.id,
+    clickupTaskUrl: clickupTask?.url,
   }, { headers: corsHeaders });
 }
 
@@ -367,38 +450,77 @@ function getCasePrefix(caseType) {
 }
 
 function getClickUpListId(caseType) {
-  const listIds = {
-    'refund': '901518836463',
-    'return': '901519002456',
-    'shipping': '901519012573',
-    'subscription': '901518836463', // Using refund list for now
-    'manual': '901518836463', // Using refund list for now
+  const listMap = {
+    'refund': CLICKUP_CONFIG.lists.refundRequests,
+    'return': CLICKUP_CONFIG.lists.returnRequests,
+    'shipping': CLICKUP_CONFIG.lists.shippingIssues,
+    'subscription': CLICKUP_CONFIG.lists.subscriptionManagement,
+    'manual': CLICKUP_CONFIG.lists.manualHelp,
   };
-  return listIds[caseType] || '901518836463';
+  return listMap[caseType] || CLICKUP_CONFIG.lists.manualHelp;
 }
 
 async function createClickUpTask(env, listId, caseData) {
+  // Build custom fields array
   const customFields = [
-    { id: '8edc1dca-f349-4663-ab04-be7e1a1c6732', value: caseData.caseId }, // caseId
-    { id: '200cbfa0-5bdf-4a90-910e-986ee1fbbed1', value: caseData.email }, // emailAddress
-    { id: '44a77a25-2b98-4b79-b1f0-caf2a67a137a', value: caseData.resolution }, // resolution
-    { id: '5f89f376-9bf7-45dd-a06b-ffafda305260', value: caseData.orderNumber }, // orderNumber
+    { id: CLICKUP_CONFIG.fields.caseId, value: caseData.caseId },
+    { id: CLICKUP_CONFIG.fields.emailAddress, value: caseData.email || '' },
+    { id: CLICKUP_CONFIG.fields.resolution, value: caseData.resolution || '' },
   ];
 
-  if (caseData.refundAmount) {
-    customFields.push({ id: '3a85cb2e-2607-487c-9aaf-5d22b018aae2', value: caseData.refundAmount });
+  if (caseData.orderNumber) {
+    customFields.push({ id: CLICKUP_CONFIG.fields.orderNumber, value: caseData.orderNumber });
   }
 
   if (caseData.orderUrl) {
-    customFields.push({ id: '71ece2eb-d082-4135-8a11-fb6a1b1c90f4', value: caseData.orderUrl });
+    customFields.push({ id: CLICKUP_CONFIG.fields.orderUrl, value: caseData.orderUrl });
+  }
+
+  if (caseData.refundAmount) {
+    customFields.push({ id: CLICKUP_CONFIG.fields.refundAmount, value: String(caseData.refundAmount) });
   }
 
   if (caseData.selectedItems) {
-    customFields.push({ id: 'aabe9246-54fd-4b8b-b8e2-09347265aa06', value: JSON.stringify(caseData.selectedItems) });
+    const itemsText = Array.isArray(caseData.selectedItems) 
+      ? caseData.selectedItems.map(i => `${i.title} (${i.sku})`).join(', ')
+      : caseData.selectedItems;
+    customFields.push({ id: CLICKUP_CONFIG.fields.selectedItems, value: itemsText });
+  }
+
+  // Carrier issue dropdown for shipping cases
+  if (caseData.caseType === 'shipping' && caseData.carrierIssue) {
+    const optionId = CLICKUP_CONFIG.options.carrierIssue[caseData.carrierIssue];
+    if (optionId) {
+      customFields.push({ id: CLICKUP_CONFIG.fields.carrierIssue, value: optionId });
+    }
+  }
+
+  // Return status for return cases
+  if (caseData.caseType === 'return') {
+    customFields.push({ 
+      id: CLICKUP_CONFIG.fields.returnStatus, 
+      value: CLICKUP_CONFIG.options.returnStatus.awaitingReturn 
+    });
+  }
+
+  // Subscription fields
+  if (caseData.caseType === 'subscription') {
+    if (caseData.actionType) {
+      const actionId = CLICKUP_CONFIG.options.actionType[caseData.actionType];
+      if (actionId) {
+        customFields.push({ id: CLICKUP_CONFIG.fields.actionType, value: actionId });
+      }
+    }
+    if (caseData.subscriptionStatus) {
+      const statusId = CLICKUP_CONFIG.options.subscriptionStatus[caseData.subscriptionStatus];
+      if (statusId) {
+        customFields.push({ id: CLICKUP_CONFIG.fields.subscriptionStatus, value: statusId });
+      }
+    }
   }
 
   const taskBody = {
-    name: caseData.customerName, // Task title is customer name only
+    name: caseData.customerName || 'Unknown Customer', // Task title is customer name only
     description: caseData.description || '',
     custom_fields: customFields,
   };
@@ -461,30 +583,50 @@ ${caseData.notes || 'None'}
 // CHECK EXISTING CASE (DEDUPE)
 // ============================================
 async function handleCheckCase(request, env, corsHeaders) {
-  const { orderNumber } = await request.json();
+  const { orderNumber, email } = await request.json();
 
-  // Search ClickUp for existing cases with this order number
-  const lists = ['901518836463', '901519002456', '901519012573'];
+  if (!orderNumber && !email) {
+    return Response.json({ existingCase: false }, { headers: corsHeaders });
+  }
+
+  // Search all ClickUp lists for existing open cases
+  const lists = Object.values(CLICKUP_CONFIG.lists);
   
   for (const listId of lists) {
-    const response = await fetch(
-      `https://api.clickup.com/api/v2/list/${listId}/task?custom_fields=[{"field_id":"5f89f376-9bf7-45dd-a06b-ffafda305260","operator":"=","value":"${orderNumber}"}]`,
-      {
-        headers: {
-          'Authorization': env.CLICKUP_API_KEY,
-        },
-      }
-    );
+    try {
+      const response = await fetch(
+        `https://api.clickup.com/api/v2/list/${listId}/task?statuses[]=to%20do&statuses[]=in%20progress`,
+        {
+          headers: { 'Authorization': env.CLICKUP_API_KEY },
+        }
+      );
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.tasks && data.tasks.length > 0) {
-        return Response.json({ 
-          existingCase: true, 
-          taskId: data.tasks[0].id,
-          taskUrl: data.tasks[0].url,
-        }, { headers: corsHeaders });
+      if (response.ok) {
+        const data = await response.json();
+        const tasks = data.tasks || [];
+        
+        // Find matching task
+        const matchingTask = tasks.find(task => {
+          const orderField = task.custom_fields?.find(f => f.id === CLICKUP_CONFIG.fields.orderNumber);
+          const emailField = task.custom_fields?.find(f => f.id === CLICKUP_CONFIG.fields.emailAddress);
+          
+          return (orderNumber && orderField?.value === orderNumber) ||
+                 (email && emailField?.value === email);
+        });
+
+        if (matchingTask) {
+          const caseIdField = matchingTask.custom_fields?.find(f => f.id === CLICKUP_CONFIG.fields.caseId);
+          return Response.json({ 
+            existingCase: true, 
+            taskId: matchingTask.id,
+            taskUrl: matchingTask.url,
+            caseId: caseIdField?.value || null,
+            status: matchingTask.status?.status
+          }, { headers: corsHeaders });
+        }
       }
+    } catch (e) {
+      console.error(`Error checking list ${listId}:`, e);
     }
   }
 
