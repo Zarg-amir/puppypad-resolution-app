@@ -2127,4 +2127,3 @@ function getDashboardHTML() {
 </body>
 </html>`;
 }
-}
