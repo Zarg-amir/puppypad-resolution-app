@@ -438,10 +438,17 @@ h1, h2, h3, h4, h5, h6 {
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
+  width: 100%;
 }
 
 .chat-container.active {
   display: flex;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ============================================
@@ -1150,45 +1157,56 @@ textarea.form-input {
   min-height: 100px;
 }
 
-/* Toggle Switch */
+/* Toggle Switch - Segmented Control Style */
 .toggle-container {
   display: flex;
   background: var(--gray-100);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-full);
   padding: 4px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   position: relative;
+  border: 1px solid var(--gray-200);
+  overflow: hidden;
 }
 
 .toggle-option {
   flex: 1;
-  padding: 12px 20px;
+  padding: 12px 24px;
   text-align: center;
   font-weight: 600;
-  color: var(--gray-500);
+  font-size: 14px;
+  color: var(--gray-400);
   cursor: pointer;
-  transition: all var(--transition-fast);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
+  transition: all 0.25s ease;
   z-index: 1;
+  position: relative;
+}
+
+.toggle-option:hover:not(.active) {
+  color: var(--gray-600);
 }
 
 .toggle-option.active {
-  color: var(--brand-navy);
+  color: white;
+  font-weight: 700;
 }
 
-.toggle-slider {
+/* Active background pill */
+.toggle-container::before {
+  content: '';
   position: absolute;
   top: 4px;
   left: 4px;
   width: calc(50% - 4px);
   height: calc(100% - 8px);
-  background: white;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  transition: transform var(--transition-normal);
+  background: var(--brand-navy);
+  border-radius: var(--radius-full);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
 }
 
-.toggle-container.phone .toggle-slider {
+.toggle-container.phone::before {
   transform: translateX(100%);
 }
 
