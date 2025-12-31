@@ -825,25 +825,27 @@ async function createRichpanelEntry(env, caseData, caseId) {
 
   try {
     // 1. Create the customer email (ticket)
-    const ticket = await createRichpanelTicket(env, caseData, caseId);
+    const ticketResult = await createRichpanelTicket(env, caseData, caseId);
 
-    if (!ticket.success) {
-      return ticket;
+    if (!ticketResult.success) {
+      return ticketResult;
     }
 
-    const conversationId = ticket.conversationId;
+    const ticketId = ticketResult.ticketId;
+    const conversationNo = ticketResult.conversationNo;
 
     // 2. Add private note with action steps
-    await createRichpanelPrivateNote(env, conversationId, caseData, caseId);
+    await createRichpanelPrivateNote(env, ticketId, caseData, caseId);
 
-    // 3. Return conversation URL for ClickUp
-    const conversationUrl = `https://app.richpanel.com/conversations/${conversationId}`;
+    // 3. Return conversation URL for ClickUp (uses conversationNo for search)
+    const conversationUrl = `https://app.richpanel.com/conversations?viewId=search&conversationNo=${conversationNo}`;
 
-    console.log('Richpanel: Entry created successfully', { caseId, conversationId });
+    console.log('Richpanel: Entry created successfully', { caseId, ticketId, conversationNo });
 
     return {
       success: true,
-      conversationId,
+      ticketId,
+      conversationNo,
       conversationUrl
     };
   } catch (error) {
@@ -863,14 +865,15 @@ async function createRichpanelTicket(env, caseData, caseId) {
     ? RICHPANEL_CONFIG.testEmail
     : (caseData.email || RICHPANEL_CONFIG.testEmail);
 
-  const customerName = caseData.customerName || 'PuppyPad Customer';
+  const customerFirstName = caseData.customerFirstName || 'Customer';
+  const customerLastName = caseData.customerLastName || '';
 
   // Build subject line (with [TEST] prefix in test mode)
   const testPrefix = RICHPANEL_CONFIG.testMode ? '[TEST] ' : '';
   const subject = `${testPrefix}${getSubjectByType(caseData.caseType, caseData.resolution)} - Order ${caseData.orderNumber || 'N/A'}`;
 
-  // Build email body
-  const emailBody = buildRichpanelEmailBody(caseData, caseId);
+  // Build customer message (simulated email from customer)
+  const customerMessage = buildCustomerMessage(caseData, caseId);
 
   const response = await fetch('https://api.richpanel.com/v1/tickets', {
     method: 'POST',
@@ -879,19 +882,24 @@ async function createRichpanelTicket(env, caseData, caseId) {
       'x-richpanel-key': env.RICHPANEL_API_KEY
     },
     body: JSON.stringify({
-      subject: subject,
-      message: {
-        body: emailBody,
-        content_type: 'text/html'
-      },
-      customer: {
-        email: fromEmail,
-        name: customerName
-      },
-      custom_fields: {
-        case_id: caseId,
-        order_number: caseData.orderNumber || '',
-        case_type: caseData.caseType || ''
+      ticket: {
+        status: 'OPEN',
+        subject: subject,
+        comment: {
+          sender_type: 'customer',
+          body: customerMessage
+        },
+        customer_profile: {
+          firstName: customerFirstName,
+          lastName: customerLastName
+        },
+        via: {
+          channel: 'email',
+          source: {
+            from: { address: fromEmail },
+            to: { address: RICHPANEL_CONFIG.supportEmail }
+          }
+        }
       }
     })
   });
@@ -902,11 +910,41 @@ async function createRichpanelTicket(env, caseData, caseId) {
     return { success: false, error: `Richpanel API error: ${response.status}` };
   }
 
-  const ticket = await response.json();
+  const result = await response.json();
   return {
     success: true,
-    conversationId: ticket.id
+    ticketId: result.ticket?.id || result.id,
+    conversationNo: result.ticket?.conversationNo || result.conversationNo
   };
+}
+
+function buildCustomerMessage(caseData, caseId) {
+  const items = caseData.selectedItems?.map(item =>
+    `- ${item.title}${item.sku ? ` (SKU: ${item.sku})` : ''}`
+  ).join('\n') || 'No items selected';
+
+  const testNotice = RICHPANEL_CONFIG.testMode
+    ? '\n\n[TEST MODE - This is not a real customer request]\n'
+    : '';
+
+  return `${testNotice}
+Hi,
+
+I would like to request a ${caseData.resolution || 'refund'} for my order.
+
+Order Number: ${caseData.orderNumber || 'N/A'}
+Case ID: ${caseId}
+
+Items:
+${items}
+
+${caseData.refundAmount ? `Refund Amount: $${parseFloat(caseData.refundAmount).toFixed(2)}` : ''}
+
+${caseData.intentDetails ? `Reason: ${caseData.intentDetails}` : ''}
+
+Thank you,
+${caseData.customerName || 'Customer'}
+`.trim();
 }
 
 function getSubjectByType(caseType, resolution) {
@@ -920,107 +958,48 @@ function getSubjectByType(caseType, resolution) {
   return subjects[caseType] || 'Customer Support Request';
 }
 
-function buildRichpanelEmailBody(caseData, caseId) {
-  const selectedItemsHtml = caseData.selectedItems?.length
-    ? `<ul style="margin: 0; padding-left: 20px;">
-        ${caseData.selectedItems.map(item =>
-          `<li>${item.title}${item.sku ? ` (${item.sku})` : ''} - Qty: ${item.quantity || 1}</li>`
-        ).join('')}
-       </ul>`
-    : '<p>No items selected</p>';
-
-  const testModeNotice = RICHPANEL_CONFIG.testMode
-    ? '<p style="color: #EF4444; font-weight: bold; background: #FEF2F2; padding: 8px; border-radius: 4px;">[TEST MODE - Not a real customer request]</p>'
-    : '';
-
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 20px;">
-      ${testModeNotice}
-
-      <h2 style="color: #1F2937; margin-bottom: 16px;">Customer Resolution Request</h2>
-
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-        <tr>
-          <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB; font-weight: bold; width: 140px;">Case ID:</td>
-          <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${caseId}</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB; font-weight: bold;">Order Number:</td>
-          <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${caseData.orderNumber || 'N/A'}</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB; font-weight: bold;">Request Type:</td>
-          <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${caseData.caseType || 'N/A'}</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB; font-weight: bold;">Resolution:</td>
-          <td style="padding: 8px 0; border-bottom: 1px solid #E5E7EB;">${caseData.resolution || 'N/A'}</td>
-        </tr>
-      </table>
-
-      <h3 style="color: #1F2937; margin-bottom: 8px;">Customer Details</h3>
-      <p style="margin: 4px 0;"><strong>Name:</strong> ${caseData.customerName || 'N/A'}</p>
-      <p style="margin: 4px 0;"><strong>Email:</strong> ${caseData.email || 'N/A'}</p>
-      ${caseData.phone ? `<p style="margin: 4px 0;"><strong>Phone:</strong> ${caseData.phone}</p>` : ''}
-
-      <h3 style="color: #1F2937; margin-top: 20px; margin-bottom: 8px;">Selected Items</h3>
-      ${selectedItemsHtml}
-
-      ${caseData.refundAmount ? `
-        <h3 style="color: #1F2937; margin-top: 20px; margin-bottom: 8px;">Refund Amount</h3>
-        <p style="font-size: 18px; color: #059669; font-weight: bold;">$${parseFloat(caseData.refundAmount).toFixed(2)}</p>
-      ` : ''}
-
-      ${caseData.notes ? `
-        <h3 style="color: #1F2937; margin-top: 20px; margin-bottom: 8px;">Additional Notes</h3>
-        <p style="background: #F9FAFB; padding: 12px; border-radius: 4px;">${caseData.notes}</p>
-      ` : ''}
-
-      <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;">
-      <p style="color: #6B7280; font-size: 12px;">
-        This email was generated by the PuppyPad Resolution App.
-      </p>
-    </div>
-  `;
-}
-
-async function createRichpanelPrivateNote(env, conversationId, caseData, caseId) {
+async function createRichpanelPrivateNote(env, ticketId, caseData, caseId) {
   const actionSteps = getActionSteps(caseData);
 
-  const noteContent = `
-## 🎯 ACTION REQUIRED
+  const noteContent = `🎯 ACTION REQUIRED
 
-**Case ID:** ${caseId}
-**Order:** ${caseData.orderNumber || 'N/A'}
-**Type:** ${caseData.caseType || 'N/A'}
-**Resolution:** ${caseData.resolution || 'N/A'}
+Case ID: ${caseId}
+Order: ${caseData.orderNumber || 'N/A'}
+Type: ${caseData.caseType || 'N/A'}
+Resolution: ${caseData.resolution || 'N/A'}
 
 ---
 
-### Action Steps:
+Action Steps:
 ${actionSteps}
 
 ---
 
-${caseData.refundAmount ? `**Refund Amount:** $${parseFloat(caseData.refundAmount).toFixed(2)}` : ''}
+${caseData.refundAmount ? `Refund Amount: $${parseFloat(caseData.refundAmount).toFixed(2)}` : ''}
 
-**Items:**
+Items:
 ${caseData.selectedItems?.map(item => `- ${item.title} (${item.sku || 'N/A'})`).join('\n') || 'No items selected'}
 
-${caseData.orderUrl ? `**Shopify Order:** ${caseData.orderUrl}` : ''}
+${caseData.orderUrl ? `Shopify Order: ${caseData.orderUrl}` : ''}
   `.trim();
 
+  // Use PUT to add a private note (operator comment)
   const response = await fetch(
-    `https://api.richpanel.com/v1/tickets/${conversationId}/notes`,
+    `https://api.richpanel.com/v1/tickets/${ticketId}`,
     {
-      method: 'POST',
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'x-richpanel-key': env.RICHPANEL_API_KEY
       },
       body: JSON.stringify({
-        body: noteContent,
-        is_private: true
+        ticket: {
+          comment: {
+            body: noteContent,
+            public: false,
+            sender_type: 'operator'
+          }
+        }
       })
     }
   );

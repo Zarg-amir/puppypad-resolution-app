@@ -1966,13 +1966,20 @@ function showOfferCard(percent, amount) {
 async function acceptOffer(percent, amount) {
   document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage(`I'll accept the ${percent}% refund`);
-  
+
   showProgress("Processing your refund...", "Creating your case");
-  await delay(1500);
+
+  // Submit to backend (ClickUp + Richpanel)
+  const result = await submitCase('refund', `partial_${percent}`, {
+    refundAmount: amount,
+    refundPercent: percent,
+    keepProduct: true,
+  });
+
   hideProgress();
-  
-  state.caseId = generateCaseId('refund');
-  
+
+  state.caseId = result.caseId;
+
   await showSuccess(
     "Refund Approved!",
     `Your ${percent}% refund of ${formatCurrency(amount)} will be processed within 3-5 business days.<br><br>${getCaseIdHtml(state.caseId)}`
@@ -2068,21 +2075,116 @@ function showReturnInstructions() {
 async function confirmReturn() {
   document.querySelector('.form-container')?.closest('.interactive-content').remove();
   addUserMessage("I understand the return process");
-  
+
   await createRefundCase('full', false);
+}
+
+// ============================================
+// SUBMIT CASE TO BACKEND (ClickUp + Richpanel)
+// ============================================
+async function submitCase(caseType, resolution, options = {}) {
+  const order = state.selectedOrder;
+  const items = state.selectedItems || [];
+
+  const caseData = {
+    // Session info
+    sessionId: Analytics.sessionId,
+
+    // Case type
+    caseType: caseType,           // 'refund', 'return', 'shipping', 'subscription', 'manual'
+    resolution: resolution,        // 'partial_20', 'partial_50', 'full_refund', etc.
+
+    // Customer info
+    email: state.customerData?.email || order?.email || '',
+    phone: state.customerData?.phone || order?.phone || '',
+    customerName: `${state.customerData?.firstName || order?.customerFirstName || ''} ${state.customerData?.lastName || order?.customerLastName || ''}`.trim(),
+    customerFirstName: state.customerData?.firstName || order?.customerFirstName || '',
+    customerLastName: state.customerData?.lastName || order?.customerLastName || '',
+
+    // Order info
+    orderNumber: order?.orderNumber || '',
+    orderId: order?.id || '',
+    orderUrl: order?.orderUrl || '',
+
+    // Items
+    selectedItems: items.map(item => ({
+      id: item.id,
+      title: item.title,
+      sku: item.sku || '',
+      price: item.price,
+      quantity: item.quantity || 1,
+    })),
+
+    // Refund details
+    refundAmount: options.refundAmount || null,
+    refundPercent: options.refundPercent || null,
+    keepProduct: options.keepProduct ?? true,
+
+    // Additional context
+    intentDetails: state.intentDetails || '',
+    notes: options.notes || '',
+
+    // Timestamps
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(caseData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    // Log success event
+    Analytics.logEvent('case_created', {
+      caseId: result.caseId,
+      caseType,
+      resolution,
+      clickupTaskId: result.clickupTaskId,
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Error creating case:', error);
+    Analytics.logEvent('case_creation_error', { error: error.message });
+
+    // Return a fallback case ID so user flow isn't broken
+    return {
+      success: false,
+      caseId: generateCaseId(caseType),
+      error: error.message,
+    };
+  }
 }
 
 async function createRefundCase(type, keepProduct) {
   showProgress("Creating your case...", "Notifying our team");
-  await delay(1500);
+
+  // Calculate refund amount for full refunds
+  const totalAmount = state.selectedItems?.reduce((sum, item) => sum + parseFloat(item.price || 0), 0) || 0;
+
+  // Submit to backend (ClickUp + Richpanel)
+  const caseType = keepProduct ? 'refund' : 'return';
+  const result = await submitCase(caseType, 'full_refund', {
+    refundAmount: totalAmount,
+    refundPercent: 100,
+    keepProduct: keepProduct,
+  });
+
   hideProgress();
-  
-  state.caseId = generateCaseId(keepProduct ? 'refund' : 'return');
-  
-  const message = keepProduct 
+
+  state.caseId = result.caseId;
+
+  const message = keepProduct
     ? `Your refund will be processed within 3-5 business days.`
     : `Once we receive your return, we'll process your refund within 3-5 business days. Don't forget to send us the tracking number!`;
-  
+
   await showSuccess(
     "Case Created!",
     `${message}<br><br>${getCaseIdHtml(state.caseId)}`
