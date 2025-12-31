@@ -219,9 +219,14 @@ function formatCurrency(amount, currency = 'USD') {
 }
 
 function scrollToBottom() {
-  setTimeout(() => {
+  if (elements.chatArea) {
+    // Immediate scroll
     elements.chatArea.scrollTop = elements.chatArea.scrollHeight;
-  }, 100);
+    // Also scroll with slight delay for dynamic content
+    requestAnimationFrame(() => {
+      elements.chatArea.scrollTop = elements.chatArea.scrollHeight;
+    });
+  }
 }
 
 function delay(ms) {
@@ -327,10 +332,7 @@ function setTyping(isTyping) {
 // ============================================
 
 // Character-by-character typing animation
-async function typeText(element, text, speed = 40) {
-  // Show typing status in header during character typing
-  setTyping(true);
-
+async function typeText(element, text, speed = 40, isBot = true) {
   element.innerHTML = '';
   element.classList.add('typing-cursor');
 
@@ -350,26 +352,29 @@ async function typeText(element, text, speed = 40) {
         element.innerHTML = displayText;
         scrollToBottom();
         // Add slight variation to typing speed for realism
-        const variance = Math.random() * 20 - 10;
-        await delay(speed + variance);
+        const variance = Math.random() * 15 - 7;
+        await delay(Math.max(speed + variance, 10));
       }
     }
   }
 
   element.classList.remove('typing-cursor');
-  setTyping(false);
+
+  // Only update typing status for bot messages
+  if (isBot) {
+    setTyping(false);
+  }
 }
 
-async function addBotMessage(text, persona = state.currentPersona, options = {}) {
-  const { useTypingAnimation = false } = options;
+async function addBotMessage(text, persona = state.currentPersona) {
   const info = PERSONA_INFO[persona] || PERSONA_INFO.amy;
 
   setTyping(true);
 
-  // Show typing indicator (the three dots)
-  const typingDiv = document.createElement('div');
-  typingDiv.className = `message bot ${persona}`;
-  typingDiv.innerHTML = `
+  // Create message container that will hold both typing indicator and final message
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message bot ${persona}`;
+  messageDiv.innerHTML = `
     <img src="${info.avatar}" alt="${info.name}" class="message-avatar">
     <div class="message-content">
       <div class="message-sender">
@@ -379,50 +384,32 @@ async function addBotMessage(text, persona = state.currentPersona, options = {})
       <div class="typing-indicator"><span></span><span></span><span></span></div>
     </div>
   `;
-  elements.chatArea.appendChild(typingDiv);
-  scrollToBottom();
-
-  // Wait for initial thinking delay
-  const typingDelay = Math.min(500 + text.length * 5, 1000);
-  await delay(typingDelay);
-
-  // Replace typing indicator with actual message
-  typingDiv.remove();
-
-  // Only set typing to false if NOT using character animation
-  // (typeText will handle typing state if animation is used)
-  if (!useTypingAnimation) {
-    setTyping(false);
-  }
-
-  const messageDiv = document.createElement('div');
-  messageDiv.className = `message bot ${persona}`;
-
-  const bubbleContent = useTypingAnimation ? '' : text;
-
-  messageDiv.innerHTML = `
-    <img src="${info.avatar}" alt="${info.name}" class="message-avatar">
-    <div class="message-content">
-      <div class="message-sender">
-        <span class="sender-name">${info.name}</span>
-        <span class="sender-role">${info.role}</span>
-      </div>
-      <div class="message-bubble">${bubbleContent}</div>
-    </div>
-  `;
   elements.chatArea.appendChild(messageDiv);
   scrollToBottom();
 
-  // If using typing animation, type out the text character by character
-  if (useTypingAnimation) {
-    const bubble = messageDiv.querySelector('.message-bubble');
-    await typeText(bubble, text);
-  }
+  // Wait for "thinking" delay (shorter, between 400-800ms)
+  const thinkingDelay = Math.min(400 + text.length * 3, 800);
+  await delay(thinkingDelay);
+
+  // Replace typing indicator with message bubble (no removal/re-add, smooth transition)
+  const contentDiv = messageDiv.querySelector('.message-content');
+  const typingIndicator = messageDiv.querySelector('.typing-indicator');
+
+  // Create the bubble
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+
+  // Remove typing indicator and add bubble
+  typingIndicator.remove();
+  contentDiv.appendChild(bubble);
+
+  // Type out the message character by character
+  await typeText(bubble, text);
 
   return messageDiv;
 }
 
-function addUserMessage(text) {
+async function addUserMessage(text) {
   const messageDiv = document.createElement('div');
   messageDiv.className = 'message user';
   messageDiv.innerHTML = `
@@ -430,11 +417,17 @@ function addUserMessage(text) {
       <div class="message-sender">
         <span class="sender-name">You</span>
       </div>
-      <div class="message-bubble">${text}</div>
+      <div class="message-bubble"></div>
     </div>
   `;
   elements.chatArea.appendChild(messageDiv);
   scrollToBottom();
+
+  // Type out user message quickly (faster than bot, no typing indicator change)
+  const bubble = messageDiv.querySelector('.message-bubble');
+  await typeText(bubble, text, 15, false);
+
+  return messageDiv;
 }
 
 // ============================================
@@ -531,7 +524,12 @@ function addCustomContent(html) {
   contentDiv.className = 'custom-content';
   contentDiv.innerHTML = html;
   elements.chatArea.appendChild(contentDiv);
+
+  // Multiple scroll attempts to ensure content is visible
   scrollToBottom();
+  setTimeout(scrollToBottom, 100);
+  setTimeout(scrollToBottom, 300);
+
   return contentDiv;
 }
 
@@ -620,12 +618,12 @@ async function showWelcomeMessage(flowType) {
   state.currentStep = 'welcome';
 
   const messages = {
-    track: "Hi! I'm Amy. Let me help you track your order. 📦",
-    subscription: "Hi! I'm Amy. I'll help you manage your subscription. 🔄",
-    help: "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. 🙂"
+    track: "Hi! I'm Amy. Let me help you track your order — just enter your details below and I'll pull it right up. 📦",
+    subscription: "Hi! I'm Amy. I'll help you manage your subscription — just enter your details below to get started. 🔄",
+    help: "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below. 🙂"
   };
 
-  await addBotMessage(messages[flowType] || messages.help, 'amy', { useTypingAnimation: true });
+  await addBotMessage(messages[flowType] || messages.help, 'amy');
 }
 
 // Legacy function - kept for backward compatibility
@@ -682,7 +680,7 @@ function restartChat() {
 // ============================================
 async function showIdentifyForm(flowType) {
   state.flowType = flowType;
-  await addBotMessage("Let me find your order. Please enter your details below:");
+  // Message is shown by the calling function, just render the form
   renderIdentifyForm(flowType);
 }
 
@@ -729,9 +727,19 @@ function renderIdentifyForm(flowType) {
 
 function toggleIdentifyMethod(method) {
   state.identifyMethod = method;
+
+  // Update toggle container class for CSS animation
+  const container = document.querySelector('.toggle-container');
+  if (container) {
+    container.classList.toggle('phone', method === 'phone');
+  }
+
+  // Update active states
   document.querySelectorAll('.toggle-option').forEach(el => {
     el.classList.toggle('active', el.dataset.method === method);
   });
+
+  // Show/hide relevant form groups
   document.getElementById('emailGroup')?.classList.toggle('hidden', method !== 'email');
   document.getElementById('phoneGroup')?.classList.toggle('hidden', method !== 'phone');
 }
@@ -2203,7 +2211,6 @@ async function createShippingCase(type) {
 async function startTrackOrder() {
   state.flowType = 'track';
   await showWelcomeMessage('track');
-  await addBotMessage("Let me get your details to find your order:");
   await showIdentifyForm('track');
 }
 
@@ -2294,7 +2301,6 @@ async function showTrackingCard() {
 async function startManageSubscription() {
   state.flowType = 'subscription';
   await showWelcomeMessage('subscription');
-  await addBotMessage("Let me find your account:");
   await showIdentifyForm('subscription');
 }
 
@@ -2719,7 +2725,6 @@ async function submitNewAddress() {
 async function startHelpWithOrder() {
   state.flowType = 'help';
   await showWelcomeMessage('help');
-  await addBotMessage("Let me find your order first:");
   await showIdentifyForm('help');
 }
 
