@@ -4136,5 +4136,5 @@ See `CODING_GUIDELINES.md` for complete checklist.
 ## Assets Needed
 
 - **Brand Logo:** https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041 ✅
-- **Wisconsin Return Address:** STILL NEEDED
-- **SOP Links:** STILL NEEDED (placeholders will be used)
+- **Wisconsin Return Address:** ✅ 1007 S 12th St., Watertown, WI 53094
+- **SOP Links:** See `SOP_REQUIREMENTS.md` for all SOPs to create (using placeholders until created in Slite)
