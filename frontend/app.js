@@ -680,10 +680,10 @@ function restartChat() {
 async function showIdentifyForm(flowType) {
   state.flowType = flowType;
   // Message is shown by the calling function, just render the form
-  renderIdentifyForm(flowType);
+  await renderIdentifyForm(flowType);
 }
 
-function renderIdentifyForm(flowType) {
+async function renderIdentifyForm(flowType) {
   const formHtml = `
     <div class="form-container" id="identifyForm">
       <div class="toggle-container">
