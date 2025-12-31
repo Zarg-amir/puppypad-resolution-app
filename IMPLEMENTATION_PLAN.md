@@ -135,6 +135,559 @@ After analyzing the current codebase against the detailed specification, this do
 }
 ```
 
+### 0.1.5 Home Screen / Welcome Screen ⭐ NEW
+
+**Purpose:** Create a polished, inviting entry point that sets the tone for the entire experience.
+
+**Home Screen Structure:**
+```html
+<div class="home-screen" id="homeScreen">
+  <!-- Hero Section -->
+  <div class="home-hero">
+    <div class="hero-background">
+      <div class="hero-gradient"></div>
+      <div class="hero-pattern"></div>
+    </div>
+
+    <div class="hero-content">
+      <!-- Brand Logo -->
+      <div class="brand-container">
+        <img
+          src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041"
+          alt="PuppyPad"
+          class="home-logo"
+        >
+      </div>
+
+      <!-- Welcome Message -->
+      <div class="welcome-text">
+        <h1 class="welcome-title">Welcome to Resolution Center</h1>
+        <p class="welcome-subtitle">
+          Get instant help with your order, subscription, or tracking.
+          Our team is here to make things right.
+        </p>
+      </div>
+
+      <!-- Support Team Preview -->
+      <div class="team-preview">
+        <div class="team-avatars">
+          <img src="amy-avatar.jpg" alt="Amy" class="team-avatar" title="Amy - Customer Support">
+          <img src="claudia-avatar.jpg" alt="Claudia" class="team-avatar" title="Claudia - Veterinarian">
+          <img src="sarah-avatar.jpg" alt="Sarah" class="team-avatar" title="Sarah - CX Lead">
+        </div>
+        <span class="team-text">Our support team is ready to help</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Action Cards -->
+  <div class="home-actions">
+    <h2 class="actions-title">How can we help you today?</h2>
+
+    <div class="action-cards">
+      <!-- Track Order -->
+      <button class="action-card" data-action="track">
+        <div class="action-icon-wrapper">
+          <div class="action-icon">📦</div>
+          <div class="action-icon-bg"></div>
+        </div>
+        <div class="action-content">
+          <h3 class="action-title">Track My Order</h3>
+          <p class="action-description">See where your package is and estimated delivery</p>
+        </div>
+        <div class="action-arrow">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </button>
+
+      <!-- Manage Subscription -->
+      <button class="action-card" data-action="subscription">
+        <div class="action-icon-wrapper">
+          <div class="action-icon">🔄</div>
+          <div class="action-icon-bg"></div>
+        </div>
+        <div class="action-content">
+          <h3 class="action-title">Manage Subscription</h3>
+          <p class="action-description">Pause, cancel, or update your subscription</p>
+        </div>
+        <div class="action-arrow">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </button>
+
+      <!-- Help With Order -->
+      <button class="action-card" data-action="help">
+        <div class="action-icon-wrapper">
+          <div class="action-icon">💬</div>
+          <div class="action-icon-bg"></div>
+        </div>
+        <div class="action-content">
+          <h3 class="action-title">Help With An Order</h3>
+          <p class="action-description">Refunds, returns, missing items, or other issues</p>
+        </div>
+        <div class="action-arrow">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Trust Indicators -->
+  <div class="trust-section">
+    <div class="trust-item">
+      <span class="trust-icon">⚡</span>
+      <span class="trust-text">Instant Resolution</span>
+    </div>
+    <div class="trust-divider"></div>
+    <div class="trust-item">
+      <span class="trust-icon">🛡️</span>
+      <span class="trust-text">90-Day Guarantee</span>
+    </div>
+    <div class="trust-divider"></div>
+    <div class="trust-item">
+      <span class="trust-icon">💚</span>
+      <span class="trust-text">24/7 Support</span>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="home-footer">
+    <p class="footer-text">Powered by</p>
+    <img
+      src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041"
+      alt="PuppyPad"
+      class="footer-logo"
+    >
+  </footer>
+</div>
+```
+
+**Home Screen Styles:**
+```css
+/* Home Screen Container */
+.home-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #FAFBFC 0%, #F3F4F6 100%);
+  overflow-y: auto;
+}
+
+/* Hero Section */
+.home-hero {
+  position: relative;
+  padding: 48px 24px 40px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.hero-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.hero-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #0A1628 0%, #1E3A5F 60%, #2D4A6F 100%);
+}
+
+.hero-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 20% 80%, rgba(255,107,107,0.15) 0%, transparent 50%),
+                    radial-gradient(circle at 80% 20%, rgba(78,205,196,0.15) 0%, transparent 50%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Brand Logo */
+.brand-container {
+  margin-bottom: 32px;
+  animation: fade-in-down 0.6s ease-out;
+}
+
+.home-logo {
+  height: 48px;
+  width: auto;
+  filter: brightness(0) invert(1);
+}
+
+/* Welcome Text */
+.welcome-text {
+  margin-bottom: 32px;
+  animation: fade-in-up 0.6s ease-out 0.2s backwards;
+}
+
+.welcome-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: white;
+  margin: 0 0 12px;
+  letter-spacing: -0.5px;
+}
+
+.welcome-subtitle {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  line-height: 1.5;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+/* Team Preview */
+.team-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: fade-in-up 0.6s ease-out 0.4s backwards;
+}
+
+.team-avatars {
+  display: flex;
+  align-items: center;
+}
+
+.team-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid white;
+  object-fit: cover;
+  margin-left: -12px;
+  transition: transform 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.team-avatar:first-child {
+  margin-left: 0;
+}
+
+.team-avatar:hover {
+  transform: scale(1.1) translateY(-4px);
+  z-index: 10;
+}
+
+.team-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+/* Action Cards Section */
+.home-actions {
+  padding: 32px 20px;
+  flex: 1;
+}
+
+.actions-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+.action-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.action-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-align: left;
+  width: 100%;
+  box-shadow: var(--shadow-sm);
+}
+
+.action-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--brand-navy);
+}
+
+.action-card:active {
+  transform: translateY(-2px) scale(0.99);
+}
+
+.action-icon-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.action-icon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  border-radius: var(--radius-lg);
+  background: var(--gray-100);
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+.action-card:hover .action-icon {
+  background: var(--brand-navy);
+  transform: scale(1.1) rotate(-5deg);
+}
+
+.action-card:hover .action-icon::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: var(--radius-lg);
+  background: var(--brand-navy);
+  opacity: 0.2;
+  z-index: -1;
+}
+
+.action-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.action-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 4px;
+}
+
+.action-description {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.action-arrow {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  transition: all 0.3s ease;
+}
+
+.action-card:hover .action-arrow {
+  color: var(--brand-navy);
+  transform: translateX(4px);
+}
+
+/* Trust Section */
+.trust-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 20px;
+  background: white;
+  border-top: 1px solid var(--gray-100);
+}
+
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trust-icon {
+  font-size: 16px;
+}
+
+.trust-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+
+.trust-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--gray-200);
+}
+
+/* Home Footer */
+.home-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 20px 24px;
+  background: white;
+}
+
+.footer-text {
+  font-size: 12px;
+  color: var(--gray-400);
+  margin: 0;
+}
+
+.footer-logo {
+  height: 20px;
+  width: auto;
+  opacity: 0.7;
+}
+
+/* Animations */
+@keyframes fade-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered card animations */
+.action-card:nth-child(1) { animation: slide-up 0.4s ease-out 0.3s backwards; }
+.action-card:nth-child(2) { animation: slide-up 0.4s ease-out 0.4s backwards; }
+.action-card:nth-child(3) { animation: slide-up 0.4s ease-out 0.5s backwards; }
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Desktop Enhancement */
+@media (min-width: 768px) {
+  .home-screen {
+    max-width: 480px;
+    margin: 24px auto;
+    min-height: calc(100vh - 48px);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+  }
+
+  body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .welcome-title {
+    font-size: 32px;
+  }
+
+  .action-cards {
+    gap: 16px;
+  }
+}
+```
+
+**Home Screen JavaScript:**
+```javascript
+// Home Screen Controller
+const HomeScreen = {
+  init() {
+    this.bindEvents();
+    this.show();
+  },
+
+  show() {
+    document.getElementById('homeScreen').classList.add('active');
+    document.getElementById('chatContainer').classList.remove('active');
+  },
+
+  hide() {
+    document.getElementById('homeScreen').classList.remove('active');
+    document.getElementById('chatContainer').classList.add('active');
+  },
+
+  bindEvents() {
+    document.querySelectorAll('.action-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        const action = e.currentTarget.dataset.action;
+        this.handleAction(action);
+      });
+    });
+  },
+
+  handleAction(action) {
+    // Add ripple effect
+    this.addRipple(event.currentTarget);
+
+    // Transition to chat
+    setTimeout(() => {
+      this.hide();
+
+      switch(action) {
+        case 'track':
+          startTrackOrderFlow();
+          break;
+        case 'subscription':
+          startSubscriptionFlow();
+          break;
+        case 'help':
+          startHelpFlow();
+          break;
+      }
+    }, 200);
+  },
+
+  addRipple(element) {
+    const ripple = document.createElement('div');
+    ripple.className = 'ripple-effect';
+    element.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+  }
+};
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', () => {
+  HomeScreen.init();
+});
+```
+
+---
+
 ### 0.2 Message Bubbles with Name & Role
 
 **Current:** Just avatar + bubble
@@ -1027,27 +1580,735 @@ async function typeMessage(element, text, speed = 25) {
 
 ---
 
+### 0.12 Additional Enhancements ⭐ NEW
+
+These additional features will elevate the app from good to exceptional:
+
+#### 0.12.1 Progress Indicator
+
+Show customers where they are in the resolution flow:
+
+```html
+<div class="progress-indicator" id="progressIndicator">
+  <div class="progress-steps">
+    <div class="progress-step completed" data-step="identify">
+      <div class="step-dot">
+        <svg class="check-icon">...</svg>
+      </div>
+      <span class="step-label">Identify</span>
+    </div>
+    <div class="progress-line completed"></div>
+    <div class="progress-step active" data-step="select">
+      <div class="step-dot">2</div>
+      <span class="step-label">Select Items</span>
+    </div>
+    <div class="progress-line"></div>
+    <div class="progress-step" data-step="resolve">
+      <div class="step-dot">3</div>
+      <span class="step-label">Resolve</span>
+    </div>
+  </div>
+</div>
+```
+
+```css
+.progress-indicator {
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.progress-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--gray-200);
+  color: var(--gray-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.progress-step.active .step-dot {
+  background: var(--brand-navy);
+  color: white;
+  box-shadow: 0 0 0 4px rgba(10, 22, 40, 0.15);
+}
+
+.progress-step.completed .step-dot {
+  background: var(--accent-teal);
+  color: white;
+}
+
+.step-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gray-400);
+}
+
+.progress-step.active .step-label,
+.progress-step.completed .step-label {
+  color: var(--gray-700);
+}
+
+.progress-line {
+  width: 40px;
+  height: 2px;
+  background: var(--gray-200);
+  margin: 0 8px 20px;
+  transition: background 0.3s ease;
+}
+
+.progress-line.completed {
+  background: var(--accent-teal);
+}
+```
+
+#### 0.12.2 Copy Case ID Feature
+
+Allow customers to easily copy their case ID:
+
+```javascript
+function createCaseIdDisplay(caseId) {
+  return `
+    <div class="case-id-display">
+      <span class="case-id-label">Your Case ID</span>
+      <div class="case-id-value">
+        <code>${caseId}</code>
+        <button class="copy-btn" onclick="copyCaseId('${caseId}')" title="Copy to clipboard">
+          <svg class="copy-icon" width="16" height="16" viewBox="0 0 16 16">
+            <path d="M4 4v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2v2a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h2zm2-2v2h4a2 2 0 0 1 2 2v4h2v-6h-6z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+      <span class="copy-feedback" id="copyFeedback">Copied!</span>
+    </div>
+  `;
+}
+
+async function copyCaseId(caseId) {
+  try {
+    await navigator.clipboard.writeText(caseId);
+    const feedback = document.getElementById('copyFeedback');
+    feedback.classList.add('show');
+    setTimeout(() => feedback.classList.remove('show'), 2000);
+  } catch (err) {
+    // Fallback for older browsers
+    const textarea = document.createElement('textarea');
+    textarea.value = caseId;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
+}
+```
+
+```css
+.case-id-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  background: var(--gray-50);
+  border-radius: var(--radius-lg);
+  margin-top: 16px;
+}
+
+.case-id-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.case-id-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.case-id-value code {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--brand-navy);
+  background: white;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+}
+
+.copy-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--gray-500);
+  transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+  background: var(--brand-navy);
+  color: white;
+  border-color: var(--brand-navy);
+}
+
+.copy-feedback {
+  font-size: 12px;
+  color: var(--accent-teal);
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: all 0.2s ease;
+}
+
+.copy-feedback.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+```
+
+#### 0.12.3 Session Recovery
+
+Recover session if user accidentally closes browser:
+
+```javascript
+const SessionManager = {
+  STORAGE_KEY: 'puppypad_session',
+  EXPIRY_HOURS: 2,
+
+  save(state) {
+    const session = {
+      state,
+      timestamp: Date.now(),
+      expiresAt: Date.now() + (this.EXPIRY_HOURS * 60 * 60 * 1000)
+    };
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(session));
+  },
+
+  load() {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (!stored) return null;
+
+      const session = JSON.parse(stored);
+      if (Date.now() > session.expiresAt) {
+        this.clear();
+        return null;
+      }
+      return session.state;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  clear() {
+    localStorage.removeItem(this.STORAGE_KEY);
+  },
+
+  checkForRecovery() {
+    const saved = this.load();
+    if (saved && saved.currentStep !== 'home') {
+      return this.showRecoveryPrompt(saved);
+    }
+    return false;
+  },
+
+  showRecoveryPrompt(savedState) {
+    return new Promise(resolve => {
+      const modal = document.createElement('div');
+      modal.className = 'recovery-modal';
+      modal.innerHTML = `
+        <div class="recovery-content">
+          <div class="recovery-icon">🔄</div>
+          <h3>Continue where you left off?</h3>
+          <p>You have an unfinished session from earlier.</p>
+          <div class="recovery-actions">
+            <button class="btn btn-primary" id="recoverSession">Continue</button>
+            <button class="btn btn-ghost" id="startFresh">Start Fresh</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      document.getElementById('recoverSession').onclick = () => {
+        modal.remove();
+        resolve(savedState);
+      };
+
+      document.getElementById('startFresh').onclick = () => {
+        this.clear();
+        modal.remove();
+        resolve(null);
+      };
+    });
+  }
+};
+
+// Auto-save on state changes
+function updateState(newState) {
+  state = { ...state, ...newState };
+  SessionManager.save(state);
+}
+```
+
+#### 0.12.4 Loading Skeleton States
+
+Show beautiful skeleton loaders while content loads:
+
+```css
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--gray-200) 25%,
+    var(--gray-100) 50%,
+    var(--gray-200) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-order-card {
+  padding: 20px;
+  background: white;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+}
+
+.skeleton-line {
+  height: 16px;
+  margin-bottom: 12px;
+}
+
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.full { width: 100%; }
+
+.skeleton-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+.skeleton-button {
+  height: 48px;
+  border-radius: var(--radius-lg);
+}
+```
+
+```javascript
+function showOrderSkeleton() {
+  return `
+    <div class="skeleton-order-card">
+      <div class="skeleton skeleton-line short"></div>
+      <div class="skeleton skeleton-line medium"></div>
+      <div class="skeleton skeleton-line full"></div>
+      <div class="skeleton skeleton-button" style="margin-top: 16px;"></div>
+    </div>
+  `;
+}
+```
+
+#### 0.12.5 Confirmation Dialogs
+
+Add confirmation before destructive actions:
+
+```javascript
+function showConfirmDialog(options) {
+  const { title, message, confirmText = 'Confirm', cancelText = 'Cancel', type = 'warning' } = options;
+
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-dialog ${type}">
+        <div class="confirm-icon">
+          ${type === 'warning' ? '⚠️' : type === 'danger' ? '🚨' : 'ℹ️'}
+        </div>
+        <h3 class="confirm-title">${title}</h3>
+        <p class="confirm-message">${message}</p>
+        <div class="confirm-actions">
+          <button class="btn btn-ghost confirm-cancel">${cancelText}</button>
+          <button class="btn ${type === 'danger' ? 'btn-danger' : 'btn-primary'} confirm-ok">${confirmText}</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+
+    overlay.querySelector('.confirm-ok').onclick = () => {
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.remove(), 300);
+      resolve(true);
+    };
+
+    overlay.querySelector('.confirm-cancel').onclick = () => {
+      overlay.classList.remove('active');
+      setTimeout(() => overlay.remove(), 300);
+      resolve(false);
+    };
+  });
+}
+
+// Usage
+async function handleCancelSubscription() {
+  const confirmed = await showConfirmDialog({
+    title: 'Cancel Subscription?',
+    message: 'Your subscription will be cancelled immediately. You can resubscribe anytime.',
+    confirmText: 'Yes, Cancel',
+    cancelText: 'Keep Subscription',
+    type: 'danger'
+  });
+
+  if (confirmed) {
+    // Proceed with cancellation
+  }
+}
+```
+
+```css
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  padding: 20px;
+}
+
+.confirm-overlay.active {
+  opacity: 1;
+}
+
+.confirm-dialog {
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: 32px 24px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  transform: scale(0.9);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.confirm-overlay.active .confirm-dialog {
+  transform: scale(1);
+}
+
+.confirm-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.confirm-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 8px;
+}
+
+.confirm-message {
+  font-size: 14px;
+  color: var(--gray-600);
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.confirm-actions .btn {
+  flex: 1;
+}
+```
+
+#### 0.12.6 Network Status Indicator
+
+Show when connection is lost:
+
+```javascript
+const NetworkStatus = {
+  init() {
+    window.addEventListener('online', () => this.updateStatus(true));
+    window.addEventListener('offline', () => this.updateStatus(false));
+  },
+
+  updateStatus(isOnline) {
+    const banner = document.getElementById('networkBanner');
+    if (isOnline) {
+      banner.className = 'network-banner online';
+      banner.innerHTML = '✓ Back online';
+      setTimeout(() => banner.classList.remove('show'), 3000);
+    } else {
+      banner.className = 'network-banner offline show';
+      banner.innerHTML = '⚠️ No internet connection';
+    }
+  }
+};
+```
+
+```css
+.network-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 20px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  transform: translateY(-100%);
+  transition: transform 0.3s ease;
+  z-index: 9999;
+}
+
+.network-banner.show {
+  transform: translateY(0);
+}
+
+.network-banner.offline {
+  background: var(--accent-coral);
+  color: white;
+}
+
+.network-banner.online {
+  background: var(--accent-teal);
+  color: white;
+}
+```
+
+#### 0.12.7 Accessibility Enhancements
+
+Ensure the app is usable by everyone:
+
+```css
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid var(--brand-navy);
+  outline-offset: 2px;
+}
+
+/* Reduced motion for vestibular disorders */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .btn-primary {
+    border: 2px solid white;
+  }
+
+  .message-bubble {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Screen reader only class */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+```
+
+```javascript
+// Announce dynamic content to screen readers
+function announceToScreenReader(message) {
+  const announcer = document.getElementById('srAnnouncer');
+  announcer.textContent = message;
+}
+
+// Keyboard navigation for options
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    const focused = document.activeElement;
+    if (focused.classList.contains('btn-option')) {
+      focused.click();
+    }
+  }
+});
+```
+
+#### 0.12.8 End-of-Session Survey
+
+Quick satisfaction survey after resolution:
+
+```javascript
+function showEndSurvey(caseId) {
+  return `
+    <div class="survey-card">
+      <h3 class="survey-title">How was your experience?</h3>
+      <div class="survey-emojis">
+        <button class="survey-emoji" data-rating="1" aria-label="Very unhappy">😢</button>
+        <button class="survey-emoji" data-rating="2" aria-label="Unhappy">😕</button>
+        <button class="survey-emoji" data-rating="3" aria-label="Neutral">😐</button>
+        <button class="survey-emoji" data-rating="4" aria-label="Happy">🙂</button>
+        <button class="survey-emoji" data-rating="5" aria-label="Very happy">😍</button>
+      </div>
+      <p class="survey-skip">
+        <button class="btn-ghost" onclick="skipSurvey()">Skip</button>
+      </p>
+    </div>
+  `;
+}
+
+async function submitRating(rating, caseId) {
+  await fetch('/api/analytics/rating', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ caseId, rating, timestamp: Date.now() })
+  });
+
+  // Show thank you
+  showThankYou();
+}
+```
+
+```css
+.survey-card {
+  text-align: center;
+  padding: 32px 24px;
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.survey-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 24px;
+}
+
+.survey-emojis {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.survey-emoji {
+  font-size: 40px;
+  padding: 12px;
+  background: var(--gray-50);
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.survey-emoji:hover {
+  transform: scale(1.2);
+  border-color: var(--brand-navy);
+  background: var(--brand-navy-soft);
+}
+
+.survey-emoji.selected {
+  transform: scale(1.3);
+  border-color: var(--accent-teal);
+  background: #E8FFF0;
+}
+
+.survey-skip {
+  margin-top: 16px;
+}
+```
+
+---
+
 ## IMPLEMENTATION FILES SUMMARY
 
 ### Files to Modify:
 
 1. **frontend/index.html**
-   - Add footer structure
-   - Update header structure
+   - Add Home Screen structure (hero, action cards, trust indicators)
+   - Add footer structure with brand logo
+   - Update header structure with persona indicator
+   - Add network status banner element
+   - Add screen reader announcer element
    - Add meta viewport improvements
    - Link to updated CSS
 
 2. **frontend/styles.css** (Complete Rewrite)
-   - New design system variables
-   - All component styles updated
-   - Animations and transitions
+   - New design system variables (colors, shadows, radii, transitions)
+   - Home Screen styles (hero, action cards, trust section, animations)
+   - Message bubbles with name/role
+   - Button system (primary, secondary, ghost, option cards)
+   - Header & footer styles
+   - Form styling updates
+   - Offer card premium design
+   - Success/error cards
+   - Progress indicator
+   - Skeleton loading states
+   - Confirmation dialogs
+   - Network status banner
+   - Accessibility enhancements
    - Responsive improvements
+   - Print styles
 
 3. **frontend/app.js**
+   - Add HomeScreen controller
+   - Add SessionManager for recovery
+   - Add NetworkStatus handler
    - Update message rendering with name/role
-   - Add character-by-character typing
+   - Add character-by-character typing with cursor
    - Update all button/option rendering
    - Add persona-specific styling
+   - Add progress indicator updates
+   - Add copy case ID functionality
+   - Add confirmation dialogs
+   - Add end-of-session survey
+   - Add screen reader announcements
    - Enhanced animations
 
 ---
@@ -2738,15 +3999,24 @@ function getDateRange(range) {
 
 ### Sprint 0: UI/UX Overhaul (2-3 days) ⭐ NEW FIRST PRIORITY
 1. Design system & CSS variables
-2. Message bubbles with name/role
-3. Button system redesign
-4. Header redesign with persona indicator
-5. Footer with brand logo
-6. Form styling updates
-7. Card and offer redesign
-8. Animation enhancements
-9. Character-by-character typing
-10. Mobile responsiveness polish
+2. **Home Screen / Welcome Screen** (hero, action cards, trust indicators) ⭐ NEW
+3. Message bubbles with name/role
+4. Button system redesign
+5. Header redesign with persona indicator
+6. Footer with brand logo
+7. Form styling updates
+8. Card and offer redesign
+9. Animation enhancements
+10. Character-by-character typing
+11. **Progress indicator** ⭐ NEW
+12. **Session recovery** ⭐ NEW
+13. **Copy case ID functionality** ⭐ NEW
+14. **Skeleton loading states** ⭐ NEW
+15. **Confirmation dialogs** ⭐ NEW
+16. **Network status indicator** ⭐ NEW
+17. **Accessibility enhancements** ⭐ NEW
+18. **End-of-session survey** ⭐ NEW
+19. Mobile responsiveness polish
 
 ### Sprint 1: Policy & Validation (1-2 days)
 1. 90-day guarantee validation
