@@ -4018,10 +4018,10 @@ function getDateRange(range) {
 18. ✅ **End-of-session survey** (5-point emoji rating scale)
 19. ✅ Mobile responsiveness polish
 
-### Sprint 1: Policy & Validation (1-2 days)
-1. 90-day guarantee validation
-2. 10-hour fulfillment check
-3. ClickUp deduplication
+### Sprint 1: Policy & Validation ✅ COMPLETE
+1. ✅ 90-day guarantee validation (backend API + frontend integration)
+2. ✅ 10-hour fulfillment check (already in frontend, verified working)
+3. ✅ ClickUp deduplication (backend API + frontend integration)
 
 ### Sprint 2: Analytics Foundation (1 day)
 1. D1 schema creation
@@ -4049,26 +4049,31 @@ function getDateRange(range) {
 
 ## Summary
 
-**Total Completion: ~80%** (Updated 2025-12-31)
+**Total Completion: ~85%** (Updated 2025-12-31)
 
 | Category | Status | Progress |
 |----------|--------|----------|
 | Frontend UI | ✅ Sprint 0 COMPLETE | 100% |
-| Frontend Flows | In progress | 75% |
-| Backend APIs | Complete | 80% |
+| Frontend Flows | In progress | 80% |
+| Backend APIs | ✅ Sprint 1 COMPLETE | 90% |
 | Analytics | Pending | 20% |
-| Policy Logic | Pending | 40% |
+| Policy Logic | ✅ Sprint 1 COMPLETE | 100% |
 
-**Sprint 0 Progress (19/19 items complete):** ✅ DONE
+**Sprint 0 (19/19 items):** ✅ COMPLETE
 - ✅ Design system, Home Screen, Message bubbles, Buttons, Header, Footer
 - ✅ Forms, Cards, Animations, Typing, Progress indicator, Session recovery
 - ✅ Skeleton loading, Network status, Accessibility, Mobile responsiveness
 - ✅ Copy case ID, Confirmation dialogs, End-of-session survey
 
-**Next Up: Sprint 1 - Policy & Validation**
-- 90-day guarantee validation
-- 10-hour fulfillment check
-- ClickUp deduplication
+**Sprint 1 (3/3 items):** ✅ COMPLETE
+- ✅ 90-day guarantee validation (ParcelPanel + fallback)
+- ✅ 10-hour fulfillment check
+- ✅ ClickUp deduplication
+
+**Next Up: Sprint 2 - Analytics Foundation**
+- D1 schema creation
+- Event logging
+- Dashboard endpoint
 
 ---
 
