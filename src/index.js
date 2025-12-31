@@ -180,6 +180,11 @@ export default {
         return await serveDashboard(env, corsHeaders);
       }
 
+      // Admin setup endpoint (one-time use to create admin user)
+      if (pathname === '/admin/setup' && request.method === 'POST') {
+        return await handleAdminSetup(request, env, corsHeaders);
+      }
+
       // 404 for unknown routes
       return Response.json({ error: 'Not found' }, { status: 404, headers: corsHeaders });
 
@@ -1184,6 +1189,38 @@ async function handleAdminLogin(request, env, corsHeaders) {
   } catch (e) {
     console.error('Login error:', e);
     return Response.json({ success: false, error: 'Login failed' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Admin setup - creates or updates admin user (one-time setup)
+async function handleAdminSetup(request, env, corsHeaders) {
+  try {
+    const { username, password, setupKey } = await request.json();
+
+    // Simple setup key protection (change this in production!)
+    if (setupKey !== 'puppypad-setup-2025') {
+      return Response.json({ error: 'Invalid setup key' }, { status: 403, headers: corsHeaders });
+    }
+
+    if (!username || !password) {
+      return Response.json({ error: 'Username and password required' }, { status: 400, headers: corsHeaders });
+    }
+
+    const passwordHash = await hashPassword(password);
+
+    // Insert or replace admin user
+    await env.ANALYTICS_DB.prepare(`
+      INSERT OR REPLACE INTO admin_users (username, password_hash, name, role)
+      VALUES (?, ?, 'Administrator', 'admin')
+    `).bind(username, passwordHash).run();
+
+    return Response.json({
+      success: true,
+      message: `Admin user '${username}' created successfully. You can now login at /admin`
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Admin setup error:', e);
+    return Response.json({ error: 'Setup failed: ' + e.message }, { status: 500, headers: corsHeaders });
   }
 }
 
