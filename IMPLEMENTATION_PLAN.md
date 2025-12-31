@@ -4127,9 +4127,17 @@ See `CODING_GUIDELINES.md` for complete checklist.
 - ✅ Frontend config sections (CONFIG, PERSONAS, MESSAGES)
 - ✅ Code updated to use new configs
 
-**Next Up: Sprint 4 - Frontend Flow Completion**
-- Deep search, phone formatting, dynamic address fields
-- ParcelPanel branching, investigation flows
+**Sprint 4 (5/5 items):** ✅ COMPLETE
+- ✅ Deep search - Actually calls API with lastName/phone/address
+- ✅ Phone number formatting - Auto-formats as user types (+1 (XXX) XXX-XXXX)
+- ✅ Dynamic address fields by country - Labels/placeholders change for US/CA/UK/AU
+- ✅ ParcelPanel status branching - Handles all statuses (delivered, in_transit, out_for_delivery, pending, failed_attempt, pickup, exception)
+- ✅ Investigation flows - Damaged, wrong item, missing item flows with specific resolutions
+
+**Next Up: Sprint 5 - Polish & Testing**
+- End-to-end testing
+- Cross-browser testing
+- Bug fixes and polish
 
 ---
 
