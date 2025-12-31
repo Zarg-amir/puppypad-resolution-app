@@ -720,13 +720,78 @@ function getClickUpListId(caseType) {
   return listMap[caseType] || CLICKUP_CONFIG.lists.manualHelp;
 }
 
+// Format resolution code to human-readable text
+function formatResolution(resolution, caseData) {
+  if (!resolution) return 'Pending Review';
+
+  const resolutionMap = {
+    // Partial refunds
+    'partial_20': `20% Partial Refund ($${caseData.refundAmount ? parseFloat(caseData.refundAmount).toFixed(2) : 'TBD'}) - Customer keeping product`,
+    'partial_50': `50% Partial Refund ($${caseData.refundAmount ? parseFloat(caseData.refundAmount).toFixed(2) : 'TBD'}) - Customer keeping product`,
+    'partial_75': `75% Partial Refund ($${caseData.refundAmount ? parseFloat(caseData.refundAmount).toFixed(2) : 'TBD'}) - Customer keeping product`,
+
+    // Full refunds
+    'full_refund': caseData.keepProduct
+      ? `Full Refund ($${caseData.refundAmount ? parseFloat(caseData.refundAmount).toFixed(2) : 'TBD'}) - Customer keeping product`
+      : `Full Refund ($${caseData.refundAmount ? parseFloat(caseData.refundAmount).toFixed(2) : 'TBD'}) - Return required`,
+
+    // Returns
+    'return_refund': 'Full Refund - Awaiting return shipment',
+    'exchange': 'Exchange for replacement product',
+
+    // Shipping
+    'reship': 'Reship order to customer',
+    'refund_lost': 'Full Refund - Package lost in transit',
+    'refund_damaged': 'Full Refund - Package damaged in transit',
+
+    // Subscription
+    'pause': 'Subscription paused',
+    'cancel': 'Subscription cancelled',
+    'change_schedule': 'Delivery schedule updated',
+    'change_address': 'Shipping address updated',
+  };
+
+  return resolutionMap[resolution] || resolution.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Format order issue from customer's reason
+function formatOrderIssue(caseData) {
+  // If there's detailed intent from the customer
+  if (caseData.intentDetails) {
+    return caseData.intentDetails;
+  }
+
+  // Map issue types to readable descriptions
+  const issueMap = {
+    'not_met_expectations': "Product didn't meet expectations",
+    'changed_mind': 'Customer changed their mind',
+    'ordered_mistake': 'Ordered by mistake',
+    'defective': 'Product is defective',
+    'wrong_item': 'Received wrong item',
+    'damaged': 'Product arrived damaged',
+    'late_delivery': 'Delivery took too long',
+    'not_as_described': 'Product not as described',
+  };
+
+  return issueMap[caseData.issueType] || caseData.issueType || 'Customer requested assistance';
+}
+
 async function createClickUpTask(env, listId, caseData) {
+  // Format resolution to human-readable text
+  const formattedResolution = formatResolution(caseData.resolution, caseData);
+
   // Build custom fields array
   const customFields = [
     { id: CLICKUP_CONFIG.fields.caseId, value: caseData.caseId },
     { id: CLICKUP_CONFIG.fields.emailAddress, value: caseData.email || '' },
-    { id: CLICKUP_CONFIG.fields.resolution, value: caseData.resolution || '' },
+    { id: CLICKUP_CONFIG.fields.resolution, value: formattedResolution },
   ];
+
+  // Order Issue field (reason for refund/return)
+  if (caseData.intentDetails || caseData.issueType) {
+    const orderIssue = formatOrderIssue(caseData);
+    customFields.push({ id: CLICKUP_CONFIG.fields.orderIssue, value: orderIssue });
+  }
 
   if (caseData.orderNumber) {
     customFields.push({ id: CLICKUP_CONFIG.fields.orderNumber, value: caseData.orderNumber });
@@ -973,10 +1038,15 @@ function buildCustomerMessage(caseData, caseId) {
     ? '\n\n[TEST MODE - This is not a real customer request]\n'
     : '';
 
+  // Use formatted resolution for the email
+  const formattedResolution = formatResolution(caseData.resolution, caseData);
+
   return `${testNotice}
 Hi,
 
-I would like to request a ${caseData.resolution || 'refund'} for my order.
+I would like to request the following resolution for my order:
+
+Resolution: ${formattedResolution}
 
 Order Number: ${caseData.orderNumber || 'N/A'}
 Case ID: ${caseId}
@@ -1006,13 +1076,16 @@ function getSubjectByType(caseType, resolution) {
 
 async function createRichpanelPrivateNote(env, ticketId, caseData, caseId) {
   const actionSteps = getActionSteps(caseData);
+  const formattedResolution = formatResolution(caseData.resolution, caseData);
+  const orderIssue = formatOrderIssue(caseData);
 
   const noteContent = `🎯 ACTION REQUIRED
 
 Case ID: ${caseId}
 Order: ${caseData.orderNumber || 'N/A'}
 Type: ${caseData.caseType || 'N/A'}
-Resolution: ${caseData.resolution || 'N/A'}
+Resolution: ${formattedResolution}
+Issue: ${orderIssue}
 
 ---
 
