@@ -518,7 +518,10 @@ function addOptionsRow(options) {
   scrollToBottom();
 }
 
-function addInteractiveContent(html) {
+async function addInteractiveContent(html, delayMs = 600) {
+  // Give customer time to read Amy's message before showing interactive content
+  await delay(delayMs);
+
   const contentDiv = document.createElement('div');
   contentDiv.className = 'interactive-content';
   contentDiv.innerHTML = html;
@@ -584,7 +587,7 @@ async function showSuccess(title, message) {
       <div class="success-message">${message}</div>
     </div>
   `;
-  addInteractiveContent(successHtml);
+  await addInteractiveContent(successHtml, 300);
   
   await delay(1000);
   
@@ -601,7 +604,7 @@ async function showError(title, message) {
       <div class="error-message">${message}</div>
     </div>
   `;
-  addInteractiveContent(errorHtml);
+  await addInteractiveContent(errorHtml, 300);
 }
 
 // ============================================
@@ -718,7 +721,7 @@ function renderIdentifyForm(flowType) {
     </div>
   `;
   
-  addInteractiveContent(formHtml);
+  await addInteractiveContent(formHtml);
 }
 
 function toggleIdentifyMethod(method) {
@@ -917,7 +920,14 @@ async function handleOrdersFound(flowType) {
     await handleOrderNotFound(flowType);
     return;
   }
-  
+
+  // Show "Found your order" message first
+  const orderCount = state.orders.length;
+  const foundMessage = orderCount === 1
+    ? `Found your order! Let me pull up the details. ✨`
+    : `Found ${orderCount} orders! Let me show you what I found. ✨`;
+  await addBotMessage(foundMessage);
+
   if (flowType === 'subscription') {
     await handleSubscriptionFlow();
   } else if (flowType === 'help') {
@@ -929,29 +939,29 @@ async function handleOrdersFound(flowType) {
 
 async function handleOrderNotFound(flowType) {
   await addBotMessage("I couldn't find an order with those details. Let's try a deeper search with more information.");
-  renderDeepSearchForm(flowType);
+  await renderDeepSearchForm(flowType);
 }
 
-function renderDeepSearchForm(flowType) {
+async function renderDeepSearchForm(flowType) {
   const formHtml = `
     <div class="form-container" id="deepSearchForm">
       <div class="form-group">
         <label>Last Name *</label>
         <input type="text" class="form-input" id="inputLastName" placeholder="Your last name" value="${state.customerData.lastName || ''}">
       </div>
-      
+
       <div class="form-group">
         <label>Shipping Address (first line) *</label>
         <input type="text" class="form-input" id="inputAddress1" placeholder="123 Main Street" value="${state.customerData.address1 || ''}">
       </div>
-      
+
       <button class="option-btn primary" onclick="submitDeepSearch('${flowType}')" style="margin-top: 8px; width: 100%;">
         Search Again
       </button>
     </div>
   `;
-  
-  addInteractiveContent(formHtml);
+
+  await addInteractiveContent(formHtml);
 }
 
 async function submitDeepSearch(flowType) {
