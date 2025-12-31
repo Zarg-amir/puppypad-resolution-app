@@ -4045,36 +4045,28 @@ function getDateRange(range) {
 2. Cross-browser testing
 3. Performance optimization
 
-### Sprint 6: Code Organization & Maintainability (Optional)
+### Sprint 6: Code Organization & Maintainability ✅ COMPLETE
 **Goal:** Make code easier to modify without touching core logic
 
-1. **Extract Persona Configuration**
-   - Create `src/config/personas.js` with Amy/Sarah/Claudia:
-     - Names, avatars, colors
-     - Default messages
-     - Personality traits
-   - Create `src/config/prompts.js` with OpenAI prompts
+**Approach:** Instead of separate files (which breaks Cloudflare Workers), we added clear "EASY CONFIG" sections at TOP of existing files.
 
-2. **Extract App Configuration**
-   - API endpoints
-   - Timing constants (delays, timeouts)
-   - Feature flags
+1. ✅ **Backend Config (src/index.js top):**
+   - `POLICY_CONFIG` - Guarantee days, fulfillment cutoff
+   - `ADMIN_CONFIG` - Token secret, setup key, expiry
+   - `PERSONA_PROMPTS` - Amy/Sarah/Claudia AI personalities
+   - `PRODUCT_DOC_MAP` - Product to R2 file mapping
 
-3. **Extract Messages/Copy**
-   - All user-facing text in one place
-   - Easy to update without touching logic
-   - Support for future i18n
+2. ✅ **Frontend Config (frontend/app.js top):**
+   - `CONFIG` - API URL, policy constants
+   - `PERSONAS` - Names, titles, avatars, colors
+   - `MESSAGES` - Welcome, survey, error messages
 
-4. **Frontend Module Separation**
-   - `frontend/modules/analytics.js`
-   - `frontend/modules/flows.js`
-   - `frontend/config/messages.js`
+3. ✅ **Code Updated to Use Configs**
 
-**Benefits:**
-- Change Amy's tone without touching business logic
-- Update prompts without risk of breaking code
-- Non-developers can update copy
-- Easier debugging and testing
+**How to Modify:**
+- Amy's AI personality → `PERSONA_PROMPTS.amy` in index.js
+- Greeting messages → `MESSAGES.welcome` in app.js
+- 90-day policy → `POLICY_CONFIG.guaranteeDays`
 
 ---
 
@@ -4120,6 +4112,11 @@ See `CODING_GUIDELINES.md` for complete checklist.
 - ✅ D1 schema (schema.sql) with 6 tables: sessions, events, cases, survey_responses, policy_blocks, admin_users
 - ✅ Frontend Analytics module with session/event/survey/policy-block logging
 - ✅ Admin dashboard with login, metrics, cases table, events log
+
+**Sprint 6 (3/3 items):** ✅ COMPLETE
+- ✅ Backend config sections (POLICY_CONFIG, ADMIN_CONFIG, PERSONA_PROMPTS, PRODUCT_DOC_MAP)
+- ✅ Frontend config sections (CONFIG, PERSONAS, MESSAGES)
+- ✅ Code updated to use new configs
 
 **Next Up: Sprint 3 - Richpanel Integration**
 - Email creation for customer proof

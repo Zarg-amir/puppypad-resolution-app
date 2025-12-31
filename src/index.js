@@ -1,7 +1,85 @@
 /**
  * PuppyPad Resolution Worker
  * Backend API for the Resolution App
+ *
+ * CONFIGURATION GUIDE:
+ * - All easy-to-modify settings are at the TOP of this file
+ * - Search for "EASY CONFIG" to find customizable sections
+ * - See CODING_GUIDELINES.md for modification rules
  */
+
+// ============================================
+// EASY CONFIG: POLICY SETTINGS
+// ============================================
+const POLICY_CONFIG = {
+  guaranteeDays: 90,              // Money-back guarantee period
+  fulfillmentCutoffHours: 10,     // Hours before fulfillment check applies
+};
+
+// ============================================
+// EASY CONFIG: ADMIN SETTINGS
+// ============================================
+const ADMIN_CONFIG = {
+  tokenSecret: 'puppypad-admin-secret-2025',  // Change in production!
+  setupKey: 'puppypad-setup-2025',            // One-time setup key
+  tokenExpiryHours: 24,
+};
+
+// ============================================
+// EASY CONFIG: PERSONA PROMPTS (Amy, Claudia)
+// Modify these to change AI personality/responses
+// ============================================
+const PERSONA_PROMPTS = {
+  amy: {
+    name: 'Amy',
+    role: 'Customer Support',
+    characteristics: [
+      'Warm and heartwarming tone',
+      'Use occasional emojis like 🙂 ❤️ but don\'t overuse them',
+      'Sound like a real human friend, not a corporate bot',
+      'Be empathetic and understanding',
+      'Keep responses concise but caring',
+    ],
+    instruction: 'Respond naturally to help the customer. If tackling an objection, be persuasive but genuine about the product\'s value.',
+  },
+  claudia: {
+    name: 'Claudia',
+    role: 'In-house Veterinarian',
+    characteristics: [
+      'Professional but warm and friendly',
+      'Knowledgeable about dog behavior and training',
+      'Encouraging and supportive',
+      'Provide specific, actionable tips',
+      'Sound like a trusted friend who happens to be an expert',
+    ],
+    instruction: 'Provide personalized training tips based on the dog\'s information. Be specific and helpful. Make the customer feel confident they can succeed.',
+  },
+  sarah: {
+    name: 'Sarah',
+    role: 'CX Lead',
+    characteristics: [
+      'Professional and solution-focused',
+      'Takes ownership of issues',
+      'Apologetic when needed',
+      'Offers concrete next steps',
+    ],
+    instruction: 'Handle escalated issues with empathy and clear action plans.',
+  },
+};
+
+// ============================================
+// EASY CONFIG: PRODUCT DOC MAPPING
+// Maps product names to R2 file names
+// ============================================
+const PRODUCT_DOC_MAP = {
+  'puppypad': 'PuppyPad-_Reusable-Pee-Pad_-_1_.txt',
+  'pee pad': 'PuppyPad-_Reusable-Pee-Pad_-_1_.txt',
+  'busypet': 'BusyPet.txt',
+  'calmbuddy': 'CalmBuddy Premium Diffuser Kit.txt',
+  'cozybed': 'CozyBed (1).txt',
+  'laundry': 'Laundry-Detergent-Sheets.txt',
+  'stain': 'Stain-and-Odor-Eliminator.txt',
+};
 
 // ============================================
 // CLICKUP CONFIGURATION
@@ -406,8 +484,6 @@ function formatTrackingStatus(status) {
 // ============================================
 // 90-DAY GUARANTEE VALIDATION
 // ============================================
-const GUARANTEE_DAYS = 90;
-
 async function handleValidateGuarantee(request, env, corsHeaders) {
   const { orderNumber, orderCreatedAt } = await request.json();
 
@@ -490,8 +566,8 @@ async function handleValidateGuarantee(request, env, corsHeaders) {
   // Calculate days since delivery/order
   const now = new Date();
   const daysSince = Math.floor((now - referenceDate) / (1000 * 60 * 60 * 24));
-  const daysRemaining = Math.max(0, GUARANTEE_DAYS - daysSince);
-  const eligible = daysSince <= GUARANTEE_DAYS;
+  const daysRemaining = Math.max(0, POLICY_CONFIG.guaranteeDays - daysSince);
+  const eligible = daysSince <= POLICY_CONFIG.guaranteeDays;
 
   return Response.json({
     eligible,
@@ -500,7 +576,7 @@ async function handleValidateGuarantee(request, env, corsHeaders) {
     usedFallback,
     deliverySource,
     referenceDate: referenceDate.toISOString(),
-    guaranteeDays: GUARANTEE_DAYS
+    guaranteeDays: POLICY_CONFIG.guaranteeDays
   }, { headers: corsHeaders });
 }
 
@@ -851,20 +927,11 @@ async function handleAIResponse(request, env, corsHeaders) {
 }
 
 async function getProductDoc(env, productName) {
-  const productDocMap = {
-    'puppypad': 'PuppyPad-_Reusable-Pee-Pad_-_1_.txt',
-    'pee pad': 'PuppyPad-_Reusable-Pee-Pad_-_1_.txt',
-    'busypet': 'BusyPet.txt',
-    'calmbuddy': 'CalmBuddy Premium Diffuser Kit.txt',
-    'cozybed': 'CozyBed (1).txt',
-    'laundry': 'Laundry-Detergent-Sheets.txt',
-    'stain': 'Stain-and-Odor-Eliminator.txt',
-  };
-
+  // Uses PRODUCT_DOC_MAP from config at top of file
   const lowerName = productName.toLowerCase();
   let filename = null;
 
-  for (const [key, value] of Object.entries(productDocMap)) {
+  for (const [key, value] of Object.entries(PRODUCT_DOC_MAP)) {
     if (lowerName.includes(key)) {
       filename = value;
       break;
@@ -885,33 +952,29 @@ async function getProductDoc(env, productName) {
   return '';
 }
 
+// Builds prompt from PERSONA_PROMPTS config
 function buildAmyPrompt(productDoc, context) {
-  return `You are Amy from PuppyPad customer support. You are warm, caring, and helpful.
+  const persona = PERSONA_PROMPTS.amy;
+  return `You are ${persona.name} from PuppyPad ${persona.role}. You are warm, caring, and helpful.
 
 Your characteristics:
-- Warm and heartwarming tone
-- Use occasional emojis like 🙂 ❤️ but don't overuse them
-- Sound like a real human friend, not a corporate bot
-- Be empathetic and understanding
-- Keep responses concise but caring
+${persona.characteristics.map(c => '- ' + c).join('\n')}
 
 Product knowledge:
 ${productDoc}
 
 Context: ${context || 'General customer support'}
 
-Respond naturally to help the customer. If tackling an objection, be persuasive but genuine about the product's value.`;
+${persona.instruction}`;
 }
 
+// Builds prompt from PERSONA_PROMPTS config
 function buildClaudiaPrompt(productDoc, methodsTried) {
-  return `You are Claudia, an in-house veterinarian at PuppyPad. You specialize in helping customers train their dogs to use PuppyPad products.
+  const persona = PERSONA_PROMPTS.claudia;
+  return `You are ${persona.name}, an ${persona.role} at PuppyPad. You specialize in helping customers train their dogs to use PuppyPad products.
 
 Your characteristics:
-- Professional but warm and friendly
-- Knowledgeable about dog behavior and training
-- Encouraging and supportive
-- Provide specific, actionable tips
-- Sound like a trusted friend who happens to be an expert
+${persona.characteristics.map(c => '- ' + c).join('\n')}
 
 Product knowledge:
 ${productDoc}
@@ -919,7 +982,7 @@ ${productDoc}
 Methods the customer has already tried (DO NOT suggest these again):
 ${methodsTried || 'None specified'}
 
-Provide personalized training tips based on the dog's information. Be specific and helpful. Make the customer feel confident they can succeed.`;
+${persona.instruction}`;
 }
 
 function splitMessage(message) {
@@ -1113,11 +1176,9 @@ async function logCaseToAnalytics(env, caseData) {
 // ============================================
 // ADMIN AUTHENTICATION
 // ============================================
-const ADMIN_TOKEN_SECRET = 'puppypad-admin-secret-2025'; // In production, use env variable
-
 async function hashPassword(password) {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password + ADMIN_TOKEN_SECRET);
+  const data = encoder.encode(password + ADMIN_CONFIG.tokenSecret);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -1126,10 +1187,10 @@ async function hashPassword(password) {
 async function generateToken(username) {
   const payload = {
     username,
-    exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+    exp: Date.now() + (ADMIN_CONFIG.tokenExpiryHours * 60 * 60 * 1000)
   };
   const encoder = new TextEncoder();
-  const data = encoder.encode(JSON.stringify(payload) + ADMIN_TOKEN_SECRET);
+  const data = encoder.encode(JSON.stringify(payload) + ADMIN_CONFIG.tokenSecret);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -1146,7 +1207,7 @@ async function verifyToken(token) {
     }
 
     const encoder = new TextEncoder();
-    const data = encoder.encode(JSON.stringify(payload) + ADMIN_TOKEN_SECRET);
+    const data = encoder.encode(JSON.stringify(payload) + ADMIN_CONFIG.tokenSecret);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const expectedSignature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -1197,8 +1258,8 @@ async function handleAdminSetup(request, env, corsHeaders) {
   try {
     const { username, password, setupKey } = await request.json();
 
-    // Simple setup key protection (change this in production!)
-    if (setupKey !== 'puppypad-setup-2025') {
+    // Simple setup key protection (configured in ADMIN_CONFIG at top of file)
+    if (setupKey !== ADMIN_CONFIG.setupKey) {
       return Response.json({ error: 'Invalid setup key' }, { status: 403, headers: corsHeaders });
     }
 
