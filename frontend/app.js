@@ -168,13 +168,9 @@ function initializeApp() {
   // Initialize network status handler
   NetworkStatus.init();
 
-  // Check for saved session
-  const savedSession = SessionManager.restore();
-  if (savedSession) {
-    // Resume from saved session
-    Object.assign(state, savedSession);
-    HomeScreen.handleAction(state.flowType || 'help');
-  }
+  // Always clear session on page load - start fresh at home screen
+  SessionManager.clear();
+
   // Home screen is shown by default via HTML (has .active class)
 }
 
@@ -327,8 +323,16 @@ function setTyping(isTyping) {
 
 // Character-by-character typing animation
 async function typeText(element, text, speed = 40, isBot = true) {
+  // Create a stable structure: text container + cursor
+  const textSpan = document.createElement('span');
+  textSpan.className = 'typing-text';
+  const cursorSpan = document.createElement('span');
+  cursorSpan.className = 'typing-cursor';
+  cursorSpan.textContent = '|';
+
   element.innerHTML = '';
-  element.classList.add('typing-cursor');
+  element.appendChild(textSpan);
+  element.appendChild(cursorSpan);
 
   // Split by HTML tags vs plain text
   const parts = text.split(/(<[^>]+>)/);
@@ -338,12 +342,12 @@ async function typeText(element, text, speed = 40, isBot = true) {
     if (part.startsWith('<')) {
       // It's an HTML tag, add it immediately
       displayText += part;
-      element.innerHTML = displayText;
+      textSpan.innerHTML = displayText;
     } else {
       // It's plain text, type character by character
       for (const char of part) {
         displayText += char;
-        element.innerHTML = displayText;
+        textSpan.innerHTML = displayText;
         scrollToBottom();
         // Add slight variation to typing speed for realism
         const variance = Math.random() * 15 - 7;
@@ -352,7 +356,8 @@ async function typeText(element, text, speed = 40, isBot = true) {
     }
   }
 
-  element.classList.remove('typing-cursor');
+  // Remove cursor when done
+  cursorSpan.remove();
 
   // Only update typing status for bot messages
   if (isBot) {
@@ -513,12 +518,14 @@ function addOptionsRow(options) {
   scrollToBottom();
 }
 
-function addCustomContent(html) {
+function addInteractiveContent(html) {
   const contentDiv = document.createElement('div');
-  contentDiv.className = 'custom-content';
+  contentDiv.className = 'interactive-content';
   contentDiv.innerHTML = html;
   elements.chatArea.appendChild(contentDiv);
   scrollToBottom();
+  // Scroll again after animation completes to ensure visibility
+  setTimeout(scrollToBottom, 450);
   return contentDiv;
 }
 
@@ -551,7 +558,7 @@ function sendMessage() {
 // ============================================
 function showProgress(message, subMessage = '') {
   const progressDiv = document.createElement('div');
-  progressDiv.className = 'custom-content progress-wrapper';
+  progressDiv.className = 'interactive-content progress-wrapper';
   progressDiv.id = 'progressIndicator';
   progressDiv.innerHTML = `
     <div class="progress-container">
@@ -577,7 +584,7 @@ async function showSuccess(title, message) {
       <div class="success-message">${message}</div>
     </div>
   `;
-  addCustomContent(successHtml);
+  addInteractiveContent(successHtml);
   
   await delay(1000);
   
@@ -594,7 +601,7 @@ async function showError(title, message) {
       <div class="error-message">${message}</div>
     </div>
   `;
-  addCustomContent(errorHtml);
+  addInteractiveContent(errorHtml);
 }
 
 // ============================================
@@ -711,7 +718,7 @@ function renderIdentifyForm(flowType) {
     </div>
   `;
   
-  addCustomContent(formHtml);
+  addInteractiveContent(formHtml);
 }
 
 function toggleIdentifyMethod(method) {
@@ -783,7 +790,7 @@ async function submitIdentifyForm(flowType) {
   if (hasError) return;
   
   // Remove form
-  document.getElementById('identifyForm')?.closest('.custom-content').remove();
+  document.getElementById('identifyForm')?.closest('.interactive-content').remove();
   
   // Create editable summary
   const summaryHtml = `
@@ -944,7 +951,7 @@ function renderDeepSearchForm(flowType) {
     </div>
   `;
   
-  addCustomContent(formHtml);
+  addInteractiveContent(formHtml);
 }
 
 async function submitDeepSearch(flowType) {
@@ -959,7 +966,7 @@ async function submitDeepSearch(flowType) {
   state.customerData.lastName = lastName;
   state.customerData.address1 = address1;
   
-  document.getElementById('deepSearchForm')?.closest('.custom-content').remove();
+  document.getElementById('deepSearchForm')?.closest('.interactive-content').remove();
   
   addUserMessage(`Searching with ${lastName}, ${address1}...`);
   
@@ -998,7 +1005,7 @@ async function showManualHelpForm() {
     </div>
   `;
   
-  addCustomContent(formHtml);
+  addInteractiveContent(formHtml);
 }
 
 async function submitManualHelp() {
@@ -1012,7 +1019,7 @@ async function submitManualHelp() {
     return;
   }
   
-  document.getElementById('manualHelpForm')?.closest('.custom-content').remove();
+  document.getElementById('manualHelpForm')?.closest('.interactive-content').remove();
   addUserMessage(`Email: ${email}, Issue: ${issue || 'Not specified'}`);
   
   showProgress("Creating your support case...", "Our team will be notified");
@@ -1061,14 +1068,14 @@ function renderOrderCards(flowType) {
     `;
   }).join('');
   
-  addCustomContent(`<div class="orders-list">${ordersHtml}</div>`);
+  addInteractiveContent(`<div class="orders-list">${ordersHtml}</div>`);
 }
 
 async function selectOrder(index, flowType) {
   state.selectedOrder = state.orders[index];
   
   // Remove order cards
-  document.querySelector('.orders-list')?.closest('.custom-content').remove();
+  document.querySelector('.orders-list')?.closest('.interactive-content').remove();
   
   // Show editable selection
   const summaryHtml = `
@@ -1159,7 +1166,7 @@ function renderItemCards() {
     </div>
   `;
   
-  addCustomContent(containerHtml);
+  addInteractiveContent(containerHtml);
 }
 
 function toggleItemSelection(index) {
@@ -1201,7 +1208,7 @@ async function confirmItemSelection() {
   }
   
   // Remove item selection UI
-  document.getElementById('itemsSelection')?.closest('.custom-content').remove();
+  document.getElementById('itemsSelection')?.closest('.interactive-content').remove();
   
   // Create editable summary
   const itemsList = state.selectedItems.map(i => i.title).join(', ');
@@ -1338,7 +1345,7 @@ function renderDogInfoForm() {
     </div>
   `;
   
-  addCustomContent(formHtml);
+  addInteractiveContent(formHtml);
 }
 
 async function submitDogInfo() {
@@ -1352,7 +1359,7 @@ async function submitDogInfo() {
     return;
   }
   
-  document.getElementById('dogInfoForm')?.closest('.custom-content').remove();
+  document.getElementById('dogInfoForm')?.closest('.interactive-content').remove();
   
   const summaryHtml = `
     <div class="editable-summary">
@@ -1412,11 +1419,11 @@ function showSatisfactionButtons() {
     </div>
   `;
   
-  addCustomContent(html);
+  addInteractiveContent(html);
 }
 
 async function handleSatisfied(satisfied) {
-  document.querySelector('.satisfaction-container')?.closest('.custom-content').remove();
+  document.querySelector('.satisfaction-container')?.closest('.interactive-content').remove();
   
   addUserMessage(satisfied ? "Yes, I'll try these!" : "No, I need more help");
   
@@ -1472,11 +1479,11 @@ function showOfferCard(percent, amount) {
     </div>
   `;
   
-  addCustomContent(html);
+  addInteractiveContent(html);
 }
 
 async function acceptOffer(percent, amount) {
-  document.querySelector('.offer-card')?.closest('.custom-content').remove();
+  document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage(`I'll accept the ${percent}% refund`);
   
   showProgress("Processing your refund...", "Creating your case");
@@ -1492,7 +1499,7 @@ async function acceptOffer(percent, amount) {
 }
 
 async function declineOffer() {
-  document.querySelector('.offer-card')?.closest('.custom-content').remove();
+  document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage("No thanks, I need more help");
   
   state.ladderStep++;
@@ -1574,11 +1581,11 @@ function showReturnInstructions() {
     </div>
   `;
   
-  addCustomContent(html);
+  addInteractiveContent(html);
 }
 
 async function confirmReturn() {
-  document.querySelector('.form-container')?.closest('.custom-content').remove();
+  document.querySelector('.form-container')?.closest('.interactive-content').remove();
   addUserMessage("I understand the return process");
   
   await createRefundCase('full', false);
@@ -1703,7 +1710,7 @@ function showUploadArea() {
     </button>
   `;
   
-  addCustomContent(html);
+  addInteractiveContent(html);
 }
 
 function handleFileUpload(event) {
@@ -1752,7 +1759,7 @@ async function submitEvidence() {
     return;
   }
   
-  document.getElementById('uploadArea')?.closest('.custom-content').remove();
+  document.getElementById('uploadArea')?.closest('.interactive-content').remove();
   addUserMessage(`Uploaded ${state.uploadedFiles.length} photo(s)`);
   
   await addBotMessage("Thank you for the photos. I've noted this issue and we'll investigate with our fulfillment center.<br><br>We'll send out any missing items free of charge once confirmed. Should I proceed with creating this case?");
@@ -1973,7 +1980,7 @@ async function showSarahVoiceNote() {
     <audio id="voiceNote" src="/audio/Sarah%20USA%20In%20Transit%20Shipping%20Update.mp3"></audio>
   `;
   
-  addCustomContent(audioHtml);
+  addInteractiveContent(audioHtml);
   
   setPersona('amy');
   
@@ -2066,7 +2073,7 @@ async function handleReship() {
     </div>
   `;
   
-  addCustomContent(addressHtml);
+  addInteractiveContent(addressHtml);
 }
 
 async function confirmReship() {
@@ -2079,7 +2086,7 @@ async function confirmReship() {
     return;
   }
   
-  document.getElementById('addressForm')?.closest('.custom-content').remove();
+  document.getElementById('addressForm')?.closest('.interactive-content').remove();
   addUserMessage("Address confirmed");
   
   showProgress("Creating your free reship order...", "This will ship within 1-2 business days");
@@ -2125,11 +2132,11 @@ async function startShippingLadder() {
     </div>
   `;
   
-  addCustomContent(html);
+  addInteractiveContent(html);
 }
 
 async function acceptShippingOffer(percent, amount) {
-  document.querySelector('.offer-card')?.closest('.custom-content').remove();
+  document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage(`I'll take the ${percent}% refund + reship`);
   
   showProgress("Processing refund and creating reship...");
@@ -2145,7 +2152,7 @@ async function acceptShippingOffer(percent, amount) {
 }
 
 async function declineShippingOffer() {
-  document.querySelector('.offer-card')?.closest('.custom-content').remove();
+  document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage("I just want a full refund");
   
   state.ladderStep++;
@@ -2269,7 +2276,7 @@ async function showTrackingCard() {
     </div>
   `;
   
-  addCustomContent(trackingHtml);
+  addInteractiveContent(trackingHtml);
   
   await addBotMessage(tracking.status === 'delivered' 
     ? "Your order has been delivered! 🎉" 
@@ -2358,13 +2365,13 @@ async function showSubscriptionCards() {
     `;
   }).join('');
   
-  addCustomContent(`<div class="subscriptions-list">${subsHtml}</div>`);
+  addInteractiveContent(`<div class="subscriptions-list">${subsHtml}</div>`);
 }
 
 async function selectSubscription(index) {
   state.selectedSubscription = state.subscriptions[index];
   
-  document.querySelector('.subscriptions-list')?.closest('.custom-content').remove();
+  document.querySelector('.subscriptions-list')?.closest('.interactive-content').remove();
   
   const summaryHtml = `
     <div class="editable-summary">
@@ -2431,7 +2438,7 @@ function showCustomPauseDate() {
     </div>
   `;
   
-  addCustomContent(html);
+  addInteractiveContent(html);
 }
 
 async function submitCustomPause() {
@@ -2442,7 +2449,7 @@ async function submitCustomPause() {
     return;
   }
   
-  document.querySelector('.form-container')?.closest('.custom-content').remove();
+  document.querySelector('.form-container')?.closest('.interactive-content').remove();
   
   showProgress("Pausing your subscription...");
   await delay(1500);
@@ -2551,11 +2558,11 @@ async function startSubscriptionLadder() {
     </div>
   `;
   
-  addCustomContent(html);
+  addInteractiveContent(html);
 }
 
 async function acceptSubscriptionOffer(percent) {
-  document.querySelector('.offer-card')?.closest('.custom-content').remove();
+  document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage(`I'll keep my subscription with ${percent}% off`);
   
   showProgress("Applying your discount...");
@@ -2571,7 +2578,7 @@ async function acceptSubscriptionOffer(percent) {
 }
 
 async function declineSubscriptionOffer() {
-  document.querySelector('.offer-card')?.closest('.custom-content').remove();
+  document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage("I still want to cancel");
   
   state.ladderStep++;
@@ -2680,7 +2687,7 @@ async function handleChangeAddress() {
     </div>
   `;
   
-  addCustomContent(html);
+  addInteractiveContent(html);
 }
 
 async function submitNewAddress() {
@@ -2693,7 +2700,7 @@ async function submitNewAddress() {
     return;
   }
   
-  document.getElementById('newAddressForm')?.closest('.custom-content').remove();
+  document.getElementById('newAddressForm')?.closest('.interactive-content').remove();
   addUserMessage("New address submitted");
   
   showProgress("Updating your shipping address...", "This will apply to all future shipments");
