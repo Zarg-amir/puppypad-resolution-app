@@ -478,6 +478,7 @@ h1, h2, h3, h4, h5, h6 {
   padding: 3px;
   border-radius: 50%;
   background: var(--amy-gradient);
+  flex-shrink: 0;
 }
 
 .avatar-ring[data-persona="sarah"] {
@@ -501,8 +502,9 @@ h1, h2, h3, h4, h5, h6 {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border: 3px solid white;
+  background: white;
   object-fit: cover;
+  display: block;
 }
 
 .header-info, .persona-info {
@@ -680,38 +682,10 @@ h1, h2, h3, h4, h5, h6 {
   height: 16px;
 }
 
-/* Message Bubble */
-.message-bubble {
-  padding: 14px 18px;
-  border-radius: var(--radius-lg);
-  font-size: 15px;
-  line-height: 1.5;
-  word-wrap: break-word;
-}
-
-.message-wrapper.bot .message-bubble {
-  background: var(--amy-bg);
-  border-bottom-left-radius: 4px;
-}
-
-.message-wrapper.bot[data-persona="sarah"] .message-bubble {
-  background: var(--sarah-bg);
-}
-
-.message-wrapper.bot[data-persona="claudia"] .message-bubble {
-  background: var(--claudia-bg);
-}
-
-.message-wrapper.customer .message-bubble {
-  background: var(--customer-gradient);
-  color: white;
-  border-bottom-right-radius: 4px;
-}
-
-/* Legacy message support */
+/* Message Container */
 .message {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   max-width: 85%;
   animation: fadeInUp 0.3s ease;
 }
@@ -721,8 +695,14 @@ h1, h2, h3, h4, h5, h6 {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.message.bot { align-self: flex-start; }
-.message.user { align-self: flex-end; flex-direction: row-reverse; }
+.message.bot {
+  align-self: flex-start;
+}
+
+.message.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
 
 .message-avatar {
   width: 36px;
@@ -730,27 +710,64 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+  margin-top: 4px;
 }
 
 .message-content {
   display: flex;
   flex-direction: column;
+  gap: 4px;
+}
+
+/* Sender Info */
+.message-sender {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  font-size: 13px;
+}
+
+.sender-name {
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.sender-role {
+  color: var(--gray-500);
+  font-weight: 400;
+}
+
+.message.user .message-sender {
+  justify-content: flex-end;
+}
+
+.message.user .sender-name {
+  color: var(--gray-600);
+}
+
+/* Message Bubble */
+.message-bubble {
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  font-size: 15px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  background: white;
+  border: 1px solid var(--gray-100);
 }
 
 .message.bot .message-bubble {
-  background: var(--amy-bg);
+  background: white;
+  border: 1px solid var(--gray-100);
   border-bottom-left-radius: 6px;
 }
 
 .message.user .message-bubble {
   background: var(--brand-navy);
   color: white;
+  border: none;
   border-bottom-right-radius: 6px;
 }
-
-.message.bot.claudia .message-bubble { background: var(--claudia-bg); }
-.message.bot.sarah .message-bubble { background: var(--sarah-bg); }
 
 /* ============================================
    TYPING INDICATOR
@@ -758,15 +775,13 @@ h1, h2, h3, h4, h5, h6 {
 .typing-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   padding: 16px 20px;
-  background: var(--amy-bg);
+  background: white;
+  border: 1px solid var(--gray-100);
   border-radius: var(--radius-lg);
-  border-bottom-left-radius: 4px;
+  border-bottom-left-radius: 6px;
 }
-
-.typing-indicator[data-persona="sarah"] { background: var(--sarah-bg); }
-.typing-indicator[data-persona="claudia"] { background: var(--claudia-bg); }
 
 .typing-dot {
   width: 8px;
@@ -1053,6 +1068,19 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--gray-100);
   margin-top: 8px;
+  margin-bottom: 20px;
+  animation: slideUpFade 0.4s ease-out;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .form-group {
@@ -1096,7 +1124,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .form-error, .error-text {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 6px;
   margin-top: 6px;
@@ -1104,7 +1132,8 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--accent-coral);
 }
 
-.form-input.error + .error-text {
+.form-input.error + .error-text,
+.form-input.error ~ .error-text {
   display: flex;
 }
 
