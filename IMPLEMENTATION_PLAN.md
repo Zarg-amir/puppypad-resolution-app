@@ -4023,10 +4023,10 @@ function getDateRange(range) {
 2. ✅ 10-hour fulfillment check (already in frontend, verified working)
 3. ✅ ClickUp deduplication (backend API + frontend integration)
 
-### Sprint 2: Analytics Foundation (1 day)
-1. D1 schema creation
-2. Event logging
-3. Dashboard endpoint
+### Sprint 2: Analytics Foundation ✅ COMPLETE
+1. ✅ D1 schema creation (schema.sql with sessions, events, cases, survey_responses, policy_blocks, admin_users)
+2. ✅ Event logging (frontend Analytics module + backend API endpoints)
+3. ✅ Dashboard endpoint (admin login, metrics, cases list, events log)
 
 ### Sprint 3: Richpanel Integration (1-2 days)
 1. Email creation
@@ -4055,8 +4055,8 @@ function getDateRange(range) {
 |----------|--------|----------|
 | Frontend UI | ✅ Sprint 0 COMPLETE | 100% |
 | Frontend Flows | In progress | 80% |
-| Backend APIs | ✅ Sprint 1 COMPLETE | 90% |
-| Analytics | Pending | 20% |
+| Backend APIs | ✅ Sprint 1+2 COMPLETE | 95% |
+| Analytics | ✅ Sprint 2 COMPLETE | 100% |
 | Policy Logic | ✅ Sprint 1 COMPLETE | 100% |
 
 **Sprint 0 (19/19 items):** ✅ COMPLETE
@@ -4070,10 +4070,15 @@ function getDateRange(range) {
 - ✅ 10-hour fulfillment check
 - ✅ ClickUp deduplication
 
-**Next Up: Sprint 2 - Analytics Foundation**
-- D1 schema creation
-- Event logging
-- Dashboard endpoint
+**Sprint 2 (3/3 items):** ✅ COMPLETE
+- ✅ D1 schema (schema.sql) with 6 tables: sessions, events, cases, survey_responses, policy_blocks, admin_users
+- ✅ Frontend Analytics module with session/event/survey/policy-block logging
+- ✅ Admin dashboard with login, metrics, cases table, events log
+
+**Next Up: Sprint 3 - Richpanel Integration**
+- Email creation for customer proof
+- Private notes for agents
+- Test mode for development
 
 ---
 

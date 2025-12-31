@@ -20,6 +20,90 @@ const CONFIG = {
 };
 
 // ============================================
+// ANALYTICS MODULE
+// ============================================
+const Analytics = {
+  // Log session start
+  async logSession(data) {
+    try {
+      await fetch(`${CONFIG.API_URL}/api/analytics/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          flowType: data.flowType || state.flowType,
+          customerEmail: state.customerData.email,
+          orderNumber: state.customerData.orderNumber,
+          persona: state.currentPersona,
+          deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+          ...data
+        })
+      });
+    } catch (e) {
+      console.warn('Analytics session log failed:', e);
+    }
+  },
+
+  // Log user event
+  async logEvent(eventType, eventName, eventData = {}) {
+    try {
+      await fetch(`${CONFIG.API_URL}/api/analytics/event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          eventType,
+          eventName,
+          eventData
+        })
+      });
+    } catch (e) {
+      console.warn('Analytics event log failed:', e);
+    }
+  },
+
+  // Log survey response
+  async logSurvey(rating) {
+    try {
+      await fetch(`${CONFIG.API_URL}/api/analytics/survey`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          caseId: state.caseId,
+          rating
+        })
+      });
+    } catch (e) {
+      console.warn('Analytics survey log failed:', e);
+    }
+  },
+
+  // Log policy block
+  async logPolicyBlock(blockType, data = {}) {
+    try {
+      await fetch(`${CONFIG.API_URL}/api/analytics/policy-block`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          blockType,
+          orderNumber: state.selectedOrder?.orderNumber,
+          ...data
+        })
+      });
+    } catch (e) {
+      console.warn('Analytics policy block log failed:', e);
+    }
+  },
+
+  // Mark session as ended/completed
+  async endSession(completed = false) {
+    await this.logSession({ ended: true, completed });
+  }
+};
+
+// ============================================
 // STATE MANAGEMENT
 // ============================================
 const state = {
@@ -687,6 +771,13 @@ function hideProgress() {
 }
 
 async function showSuccess(title, message) {
+  // Log session completed successfully
+  Analytics.endSession(true);
+  Analytics.logEvent('flow_complete', 'resolution_success', {
+    flowType: state.flowType,
+    caseId: state.caseId
+  });
+
   const successHtml = `
     <div class="success-card">
       <div class="success-icon">✓</div>
@@ -747,8 +838,9 @@ async function submitSurveyRating(rating, buttonElement) {
   await delay(300);
   document.querySelector('.survey-container')?.closest('.interactive-content').remove();
 
-  // Log the rating (would send to analytics in production)
-  console.log('Survey rating:', rating, 'Session:', state.sessionId, 'Case:', state.caseId);
+  // Log the rating to analytics
+  Analytics.logSurvey(rating);
+  Analytics.logEvent('survey', 'rating_submitted', { rating, caseId: state.caseId });
 
   // Thank the user
   if (rating >= 4) {
@@ -834,6 +926,10 @@ async function restartChat() {
   );
 
   if (!confirmed) return;
+
+  // Log session end
+  Analytics.endSession(false);
+  Analytics.logEvent('flow_end', 'user_restart');
 
   // Reset state
   Object.assign(state, {
@@ -1641,9 +1737,9 @@ async function showExistingCaseMessage(caseInfo) {
     `Our team is on it and will reach out to you soon. Would you like to do something else?`
   );
 
-  // Log for analytics
-  console.log('Dedupe: Existing case found', {
-    sessionId: state.sessionId,
+  // Log policy block to analytics
+  Analytics.logPolicyBlock('existing_case', { existingCaseId: caseInfo.caseId });
+  Analytics.logEvent('policy_block', 'existing_case_found', {
     existingCaseId: caseInfo.caseId,
     orderNumber: state.selectedOrder?.orderNumber
   });
@@ -1697,9 +1793,9 @@ async function showGuaranteeExpired(guarantee) {
     `I know that's not what you wanted to hear, and I'm genuinely sorry. Is there anything else I can help you with?`
   );
 
-  // Log for analytics
-  console.log('Policy block: 90-day guarantee expired', {
-    sessionId: state.sessionId,
+  // Log policy block to analytics
+  Analytics.logPolicyBlock('90_day_guarantee', { daysSince: guarantee.daysSince });
+  Analytics.logEvent('policy_block', '90_day_guarantee_expired', {
     orderNumber: state.selectedOrder?.orderNumber,
     daysSince: guarantee.daysSince,
     usedFallback: guarantee.usedFallback
@@ -2524,6 +2620,9 @@ async function createShippingCase(type) {
 // ============================================
 async function startTrackOrder() {
   state.flowType = 'track';
+  // Log session and flow start
+  Analytics.logSession({ flowType: 'track' });
+  Analytics.logEvent('flow_start', 'track_order');
   await showWelcomeMessage('track');
   await showIdentifyForm('track');
 }
@@ -2614,6 +2713,9 @@ async function showTrackingCard() {
 // ============================================
 async function startManageSubscription() {
   state.flowType = 'subscription';
+  // Log session and flow start
+  Analytics.logSession({ flowType: 'subscription' });
+  Analytics.logEvent('flow_start', 'manage_subscription');
   await showWelcomeMessage('subscription');
   await showIdentifyForm('subscription');
 }
@@ -3038,12 +3140,16 @@ async function submitNewAddress() {
 // ============================================
 async function startHelpWithOrder() {
   state.flowType = 'help';
+  // Log session and flow start
+  Analytics.logSession({ flowType: 'help' });
+  Analytics.logEvent('flow_start', 'help_with_order');
   await showWelcomeMessage('help');
   await showIdentifyForm('help');
 }
 
 async function startHelpWithOrderDirect() {
   state.flowType = 'help';
+  Analytics.logEvent('flow_start', 'help_direct');
   await showItemSelection();
 }
 
