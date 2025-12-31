@@ -668,7 +668,12 @@ async function handleCreateCase(request, env, corsHeaders) {
   });
 
   // Create Richpanel email and private note
-  await createRichpanelEntry(env, caseData, caseId);
+  const richpanelResult = await createRichpanelEntry(env, caseData, caseId);
+
+  // Update ClickUp with Richpanel conversation URL
+  if (richpanelResult.success && richpanelResult.conversationNo && clickupTask?.id) {
+    await updateClickUpWithConversationUrl(env, clickupTask.id, richpanelResult.conversationNo);
+  }
 
   // Log to D1 analytics database
   await logCaseToAnalytics(env, {
@@ -811,6 +816,31 @@ async function createClickUpTask(env, listId, caseData) {
   return task;
 }
 
+// Update ClickUp task with Richpanel conversation URL
+async function updateClickUpWithConversationUrl(env, taskId, conversationNo) {
+  const conversationUrl = `https://app.richpanel.com/conversations?viewId=search&conversationNo=${conversationNo}`;
+  const fieldId = CLICKUP_CONFIG.fields.conversationUrl;
+
+  try {
+    const response = await fetch(`https://api.clickup.com/api/v2/task/${taskId}/field/${fieldId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': env.CLICKUP_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ value: conversationUrl }),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to update ClickUp conversation URL:', response.status);
+    } else {
+      console.log('ClickUp conversation URL updated:', conversationUrl);
+    }
+  } catch (error) {
+    console.error('Error updating ClickUp conversation URL:', error);
+  }
+}
+
 // ============================================
 // RICHPANEL INTEGRATION
 // Requires env.RICHPANEL_API_KEY
@@ -911,10 +941,26 @@ async function createRichpanelTicket(env, caseData, caseId) {
   }
 
   const result = await response.json();
+
+  // Extract ticketId and conversationNo with multiple fallback variations
+  const ticketId = result.id || result.ticket?.id;
+
+  // Richpanel API response format can vary, check all possible field names
+  const conversationNo = result.conversationNo ||
+                         result.ticket?.conversationNo ||
+                         result.conversation_no ||
+                         result.ticket?.conversation_no ||
+                         result.ticketNumber ||
+                         result.ticket?.ticketNumber ||
+                         result.ticket_number ||
+                         result.ticket?.ticket_number;
+
+  console.log('Richpanel ticket created:', { ticketId, conversationNo, rawResult: JSON.stringify(result) });
+
   return {
     success: true,
-    ticketId: result.ticket?.id || result.id,
-    conversationNo: result.ticket?.conversationNo || result.conversationNo
+    ticketId,
+    conversationNo
   };
 }
 
