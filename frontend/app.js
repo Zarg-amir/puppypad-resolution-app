@@ -202,8 +202,10 @@ const state = {
   ladderStep: 0,
   ladderType: null,
   uploadedFiles: [],
+  evidenceType: null,
   caseId: null,
   flowType: null,
+  allTracking: null,
   // Store references for edit functionality
   editHistory: []
 };
@@ -368,6 +370,135 @@ function formatDate(dateString) {
 
 function formatCurrency(amount, currency = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(parseFloat(amount));
+}
+
+// Format phone number as user types
+function formatPhoneInput(input) {
+  // Get just the digits
+  let digits = input.value.replace(/\D/g, '');
+
+  // Limit to 11 digits (1 + 10 for US)
+  if (digits.length > 11) {
+    digits = digits.substring(0, 11);
+  }
+
+  // Format based on length
+  let formatted = '';
+
+  if (digits.length === 0) {
+    formatted = '';
+  } else if (digits.length <= 3) {
+    // Just area code starting
+    if (digits.startsWith('1')) {
+      formatted = `+1 (${digits.substring(1)}`;
+    } else {
+      formatted = `(${digits}`;
+    }
+  } else if (digits.length <= 6) {
+    if (digits.startsWith('1')) {
+      formatted = `+1 (${digits.substring(1, 4)}) ${digits.substring(4)}`;
+    } else {
+      formatted = `(${digits.substring(0, 3)}) ${digits.substring(3)}`;
+    }
+  } else {
+    if (digits.startsWith('1')) {
+      formatted = `+1 (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7)}`;
+    } else {
+      formatted = `(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}`;
+    }
+  }
+
+  input.value = formatted;
+}
+
+// Clean phone number for API (just digits)
+function cleanPhoneNumber(phone) {
+  if (!phone) return '';
+  return phone.replace(/\D/g, '');
+}
+
+// ============================================
+// DYNAMIC ADDRESS FIELDS BY COUNTRY
+// ============================================
+
+// Get address field configuration by country
+function getAddressFieldsConfig(country) {
+  const configs = {
+    'United States': {
+      stateLabel: 'State *',
+      statePlaceholder: 'CA',
+      zipLabel: 'ZIP Code *',
+      zipPlaceholder: '12345',
+      phonePlaceholder: '+1 (555) 000-0000',
+      states: ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC']
+    },
+    'Canada': {
+      stateLabel: 'Province *',
+      statePlaceholder: 'ON',
+      zipLabel: 'Postal Code *',
+      zipPlaceholder: 'A1A 1A1',
+      phonePlaceholder: '+1 (555) 000-0000',
+      states: ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT']
+    },
+    'United Kingdom': {
+      stateLabel: 'County',
+      statePlaceholder: 'County (optional)',
+      zipLabel: 'Postcode *',
+      zipPlaceholder: 'SW1A 1AA',
+      phonePlaceholder: '+44 20 7123 4567',
+      states: [] // UK doesn't use state dropdown
+    },
+    'Australia': {
+      stateLabel: 'State/Territory *',
+      statePlaceholder: 'NSW',
+      zipLabel: 'Postcode *',
+      zipPlaceholder: '2000',
+      phonePlaceholder: '+61 2 1234 5678',
+      states: ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA']
+    }
+  };
+
+  return configs[country] || configs['United States'];
+}
+
+// Update address form fields when country changes
+// formPrefix: 'new' for subscription form, '' for reship form
+function updateAddressFields(formPrefix = '') {
+  // Handle both naming conventions
+  const countryId = formPrefix ? formPrefix + 'Country' : 'country';
+  const provinceId = formPrefix ? formPrefix + 'Province' : 'province';
+  const zipId = formPrefix ? formPrefix + 'Zip' : 'zip';
+  const phoneId = formPrefix ? formPrefix + 'Phone' : null;
+
+  const countrySelect = document.getElementById(countryId);
+  if (!countrySelect) return;
+
+  const country = countrySelect.value;
+  const config = getAddressFieldsConfig(country);
+
+  // Update State/Province label and placeholder
+  const stateInput = document.getElementById(provinceId);
+  if (stateInput) {
+    const stateLabel = stateInput.closest('.form-group')?.querySelector('label');
+    if (stateLabel) stateLabel.textContent = config.stateLabel;
+    stateInput.placeholder = config.statePlaceholder;
+  }
+
+  // Update ZIP/Postal Code label and placeholder
+  const zipInput = document.getElementById(zipId);
+  if (zipInput) {
+    const zipLabel = zipInput.closest('.form-group')?.querySelector('label');
+    if (zipLabel) zipLabel.textContent = config.zipLabel;
+    zipInput.placeholder = config.zipPlaceholder;
+  }
+
+  // Update phone placeholder if phone field exists
+  if (phoneId) {
+    const phoneInput = document.getElementById(phoneId);
+    if (phoneInput) {
+      phoneInput.placeholder = config.phonePlaceholder;
+    }
+  }
 }
 
 function scrollToBottom() {
@@ -1054,7 +1185,7 @@ async function renderIdentifyForm(flowType) {
       
       <div class="form-group ${state.identifyMethod !== 'phone' ? 'hidden' : ''}" id="phoneGroup">
         <label>Phone Number *</label>
-        <input type="tel" class="form-input" id="inputPhone" placeholder="+1 (555) 000-0000" value="${state.customerData.phone || ''}">
+        <input type="tel" class="form-input" id="inputPhone" placeholder="+1 (555) 000-0000" value="${state.customerData.phone || ''}" oninput="formatPhoneInput(this)">
         <div class="error-text">Please enter the phone number used at checkout.</div>
       </div>
       
@@ -1300,13 +1431,22 @@ async function handleOrderNotFound(flowType) {
 async function renderDeepSearchForm(flowType) {
   const formHtml = `
     <div class="form-container" id="deepSearchForm">
+      <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
+        Fill in any additional details you have to help me find your order:
+      </p>
+
       <div class="form-group">
-        <label>Last Name *</label>
+        <label>Last Name</label>
         <input type="text" class="form-input" id="inputLastName" placeholder="Your last name" value="${state.customerData.lastName || ''}">
       </div>
 
       <div class="form-group">
-        <label>Shipping Address (first line) *</label>
+        <label>Phone Number</label>
+        <input type="tel" class="form-input" id="inputDeepPhone" placeholder="+1 (555) 000-0000" value="${state.customerData.phone || ''}" oninput="formatPhoneInput(this)">
+      </div>
+
+      <div class="form-group">
+        <label>Shipping Address (first line)</label>
         <input type="text" class="form-input" id="inputAddress1" placeholder="123 Main Street" value="${state.customerData.address1 || ''}">
       </div>
 
@@ -1322,20 +1462,49 @@ async function renderDeepSearchForm(flowType) {
 async function submitDeepSearch(flowType) {
   const lastName = document.getElementById('inputLastName')?.value.trim();
   const address1 = document.getElementById('inputAddress1')?.value.trim();
-  
-  if (!lastName || !address1) {
-    await addBotMessage("Please fill in both fields to continue.");
+  const phone = document.getElementById('inputDeepPhone')?.value.trim();
+
+  if (!lastName && !address1 && !phone) {
+    await addBotMessage("Please fill in at least one field to continue.");
     return;
   }
-  
-  state.customerData.lastName = lastName;
-  state.customerData.address1 = address1;
-  
+
+  state.customerData.lastName = lastName || state.customerData.lastName;
+  state.customerData.address1 = address1 || state.customerData.address1;
+  if (phone) state.customerData.phone = phone;
+
   document.getElementById('deepSearchForm')?.closest('.interactive-content').remove();
-  
-  addUserMessage(`Searching with ${lastName}, ${address1}...`);
-  
-  // For demo, show manual help form
+
+  addUserMessage(`Searching with additional info...`);
+  await addBotMessage("Let me search again with those details... 🔍");
+
+  try {
+    // Actually call the API with additional parameters
+    const response = await fetch(`${CONFIG.API_URL}/api/lookup-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: state.customerData.email,
+        phone: state.customerData.phone,
+        firstName: state.customerData.firstName,
+        lastName: state.customerData.lastName,
+        orderNumber: state.customerData.orderNumber,
+        address1: state.customerData.address1
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.orders && data.orders.length > 0) {
+      state.orders = data.orders;
+      await handleOrdersFound(flowType);
+      return;
+    }
+  } catch (error) {
+    console.error('Deep search error:', error);
+  }
+
+  // Still not found - show manual help form
   await showManualHelpForm();
 }
 
@@ -1615,6 +1784,7 @@ async function showIntentOptions() {
       { icon: '😕', text: "It didn't meet expectations", action: () => handleIntent('not_met_expectations') },
       { icon: '🔄', text: "Ordered by mistake / Change order", action: () => handleIntent('ordered_mistake') },
       { icon: '📦', text: "Something was missing", action: () => handleIntent('missing_item') },
+      { icon: '🔀', text: "I received the wrong item", action: () => handleIntent('wrong_item') },
       { icon: '💔', text: "My order arrived damaged", action: () => handleIntent('damaged') },
       { icon: '💳', text: "I was charged unexpectedly", action: () => handleIntent('charged_unexpectedly') }
     );
@@ -1651,6 +1821,9 @@ async function handleIntent(intent) {
       break;
     case 'missing_item':
       await handleMissingItem();
+      break;
+    case 'wrong_item':
+      await handleWrongItem();
       break;
     case 'damaged':
       await handleDamaged();
@@ -2274,12 +2447,15 @@ async function handleOrderSwap(isUsed) {
 }
 
 async function handleMissingItem() {
-  await addBotMessage("Oh no! I'm really sorry something was missing 😔 To help investigate, could you please upload a photo of what you received (including any packaging)?");
-  
-  showUploadArea();
+  await addBotMessage("Oh no! I'm really sorry something was missing. To help investigate, could you please upload a photo of what you received (including any packaging)?");
+
+  showUploadArea('missing_item');
 }
 
-function showUploadArea() {
+function showUploadArea(evidenceType = 'general') {
+  // Store the evidence type for later use
+  state.evidenceType = evidenceType;
+
   const html = `
     <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
       <input type="file" id="fileInput" accept="image/*" multiple style="display: none" onchange="handleFileUpload(event)">
@@ -2292,7 +2468,7 @@ function showUploadArea() {
       Submit Photos
     </button>
   `;
-  
+
   addInteractiveContent(html);
 }
 
@@ -2341,23 +2517,154 @@ async function submitEvidence() {
     await addBotMessage("Please upload at least one photo so we can help.");
     return;
   }
-  
+
   document.getElementById('uploadArea')?.closest('.interactive-content').remove();
   addUserMessage(`Uploaded ${state.uploadedFiles.length} photo(s)`);
-  
-  await addBotMessage("Thank you for the photos. I've noted this issue and we'll investigate with our fulfillment center.<br><br>We'll send out any missing items free of charge once confirmed. Should I proceed with creating this case?");
-  
+
+  // Handle different evidence types with specific flows
+  switch (state.evidenceType) {
+    case 'damaged':
+      await handleDamagedEvidence();
+      break;
+    case 'wrong_item':
+      await handleWrongItemEvidence();
+      break;
+    case 'missing_item':
+      await handleMissingItemEvidence();
+      break;
+    default:
+      await handleGenericEvidence();
+  }
+}
+
+// Damaged item evidence flow
+async function handleDamagedEvidence() {
+  await addBotMessage("Thank you for the photos. I can see the damage and I'm very sorry this happened.<br><br>I'd like to make this right. Would you prefer a replacement or a refund?");
+
+  addOptions([
+    { text: "Send me a replacement", action: async () => {
+      showProgress("Creating replacement order...");
+      await delay(1500);
+      hideProgress();
+
+      await addBotMessage("Perfect! I'll ship out a replacement right away. You can keep or dispose of the damaged item - no need to return it.");
+
+      state.caseId = generateCaseId('shipping');
+      state.resolution = 'replacement_damaged';
+
+      await submitCase();
+
+      await showSuccess(
+        "Replacement Ordered!",
+        `Your replacement will ship within 1-2 business days. We'll email you the tracking info.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    }},
+    { text: "I'd prefer a refund", action: async () => {
+      await addBotMessage("No problem. Since you received a damaged item, you're entitled to a full refund. Do you want to return the damaged item or keep it?");
+
+      addOptionsRow([
+        { text: "Keep it, just refund", primary: true, action: async () => {
+          state.resolution = 'full_refund';
+          state.keepProduct = true;
+          await createRefundCase('full', true);
+        }},
+        { text: "Return it for refund", action: async () => {
+          state.resolution = 'full_refund';
+          state.keepProduct = false;
+          await showReturnInstructions();
+        }}
+      ]);
+    }}
+  ]);
+}
+
+// Wrong item evidence flow
+async function handleWrongItemEvidence() {
+  await addBotMessage("Thank you for the photos. I've confirmed you received the wrong item and I sincerely apologize for this error.<br><br>I'll ship the correct item right away. You can keep or donate the wrong item - no need to return it.");
+
+  addOptionsRow([
+    { text: "Ship correct item", primary: true, action: async () => {
+      showProgress("Creating correction order...");
+      await delay(1500);
+      hideProgress();
+
+      state.caseId = generateCaseId('shipping');
+      state.resolution = 'reship_wrong_item';
+
+      await submitCase();
+
+      await showSuccess(
+        "Correct Item Shipping!",
+        `The correct item will ship within 1-2 business days. We'll email you the tracking info. Thanks for your patience!<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    }},
+    { text: "I'd prefer a refund", action: async () => {
+      state.resolution = 'full_refund';
+      state.keepProduct = true;
+      await createRefundCase('full', true);
+    }}
+  ]);
+}
+
+// Missing item evidence flow
+async function handleMissingItemEvidence() {
+  await addBotMessage("Thank you for the photos. I've noted the missing item and we'll investigate with our fulfillment center.<br><br>Would you like us to ship the missing item, or would you prefer a refund for it?");
+
+  addOptions([
+    { text: "Ship the missing item", action: async () => {
+      showProgress("Creating shipment for missing item...");
+      await delay(1500);
+      hideProgress();
+
+      state.caseId = generateCaseId('shipping');
+      state.resolution = 'reship_missing_item';
+
+      await submitCase();
+
+      await showSuccess(
+        "Missing Item Shipping!",
+        `The missing item will ship within 1-2 business days. We'll email you the tracking info.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    }},
+    { text: "Refund for missing item", action: async () => {
+      // Partial refund for just the missing item
+      const missingValue = state.selectedItems?.[0]?.price || state.selectedOrder?.totalPrice || 0;
+      state.refundAmount = missingValue;
+      state.resolution = 'partial_missing';
+
+      showProgress("Processing refund for missing item...");
+      await delay(1500);
+      hideProgress();
+
+      state.caseId = generateCaseId('refund');
+
+      await submitCase();
+
+      await showSuccess(
+        "Refund Processed!",
+        `We've issued a refund of ${formatCurrency(missingValue)} for the missing item. It will appear in your account within 3-5 business days.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    }}
+  ]);
+}
+
+// Generic evidence flow (fallback)
+async function handleGenericEvidence() {
+  await addBotMessage("Thank you for the photos. I've noted this issue and we'll investigate. Should I proceed with creating this case?");
+
   addOptionsRow([
     { text: "Yes, create case", primary: true, action: async () => {
       showProgress("Creating case and uploading evidence...");
       await delay(2000);
       hideProgress();
-      
+
       state.caseId = generateCaseId('shipping');
-      
+
+      await submitCase();
+
       await showSuccess(
         "Investigation Started!",
-        `We'll look into this and ship any missing items free of charge. You'll hear from us within 24-48 hours.<br><br>${getCaseIdHtml(state.caseId)}`
+        `We'll look into this and get back to you within 24-48 hours.<br><br>${getCaseIdHtml(state.caseId)}`
       );
     }},
     { text: "Cancel", action: showHomeMenu }
@@ -2365,8 +2672,13 @@ async function submitEvidence() {
 }
 
 async function handleDamaged() {
-  await addBotMessage("I'm so sorry your order arrived damaged 😔 To help process this quickly, please upload photos of the damage:");
-  showUploadArea();
+  await addBotMessage("I'm so sorry your order arrived damaged. To help process this quickly, please upload photos of the damage (including packaging if relevant):");
+  showUploadArea('damaged');
+}
+
+async function handleWrongItem() {
+  await addBotMessage("I'm sorry to hear you received the wrong item! To help us investigate, please upload photos of what you received:");
+  showUploadArea('wrong_item');
 }
 
 async function handleChargedUnexpectedly() {
@@ -2475,66 +2787,218 @@ async function handleNotReceived() {
 }
 
 async function getTrackingForIntent() {
-  // Simulate tracking lookup
-  state.tracking = {
-    status: 'in_transit',
-    statusLabel: 'In Transit',
-    daysInTransit: 8,
-    trackingNumber: 'TRK123456789',
-    checkpoints: [
-      { checkpoint_time: new Date().toISOString(), message: 'In transit', location: 'Chicago, IL' }
-    ]
-  };
-  
-  await handleTrackingResult();
+  showProgress("Looking up tracking...", "Checking ParcelPanel for your package status");
+
+  try {
+    const orderNumber = state.selectedOrder?.orderNumber || state.customerData?.orderNumber;
+
+    if (!orderNumber) {
+      hideProgress();
+      state.tracking = null;
+      await handleTrackingResult();
+      return;
+    }
+
+    const response = await fetch(`${CONFIG.API_URL}/api/tracking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderNumber: orderNumber.replace('#', '') })
+    });
+
+    hideProgress();
+
+    if (!response.ok) {
+      state.tracking = null;
+      await handleTrackingResult();
+      return;
+    }
+
+    const data = await response.json();
+    state.tracking = data.tracking;
+    state.allTracking = data.allTracking; // Store all parcels if multi-parcel order
+
+    await handleTrackingResult();
+  } catch (error) {
+    console.error('Tracking lookup error:', error);
+    hideProgress();
+    state.tracking = null;
+    await handleTrackingResult();
+  }
 }
 
 async function handleTrackingResult() {
   const tracking = state.tracking;
-  
+
   if (!tracking) {
     await addBotMessage("I couldn't find tracking info for this order. Let me create a case for our team to investigate.");
     await createShippingCase('no_tracking');
     return;
   }
-  
-  if (tracking.status === 'delivered') {
-    await addBotMessage(`According to tracking, your order was delivered. Have you checked with neighbors or looked in safe spots around your home?`);
-    
-    addOptions([
-      { text: "Yes, I've checked everywhere", action: () => handleDeliveredNotReceived() },
-      { text: "Let me check again", action: () => {
-        addBotMessage("Take your time! Feel free to come back if you still can't find it. 🙂");
-        addOptions([{ text: "Back to Home", action: showHomeMenu }]);
-      }},
-      { text: "I think I found it!", action: () => showSuccess("Great!", "Glad you found it! 🎉") }
-    ]);
-  } else if (tracking.status === 'in_transit') {
-    if (tracking.daysInTransit >= CONFIG.IN_TRANSIT_ESCALATE_DAYS) {
-      await handleExtendedTransit();
-    } else if (tracking.daysInTransit >= CONFIG.IN_TRANSIT_VOICE_DAYS) {
-      await showSarahVoiceNote();
-    } else {
-      await addBotMessage(`Your order is currently in transit and has been shipping for ${tracking.daysInTransit} days. Delivery typically takes 5-10 business days.<br><br>It's still within the normal delivery window — I'd recommend checking back in a few days.`);
-      
-      addOptions([
-        { text: "Okay, I'll wait", action: () => showSuccess("Thanks!", "Your package is on its way! 📦") },
-        { text: "I need it urgently", action: () => handleExtendedTransit() }
-      ]);
-    }
+
+  // Handle different ParcelPanel statuses
+  switch (tracking.status) {
+    case 'delivered':
+      await handleStatusDelivered(tracking);
+      break;
+
+    case 'out_for_delivery':
+      await handleStatusOutForDelivery(tracking);
+      break;
+
+    case 'in_transit':
+      await handleStatusInTransit(tracking);
+      break;
+
+    case 'pending':
+    case 'info_received':
+      await handleStatusPending(tracking);
+      break;
+
+    case 'failed_attempt':
+      await handleStatusFailedAttempt(tracking);
+      break;
+
+    case 'pickup':
+      await handleStatusPickup(tracking);
+      break;
+
+    case 'exception':
+    case 'expired':
+    default:
+      await handleStatusException(tracking);
+      break;
+  }
+}
+
+// Status: Delivered - but customer says not received
+async function handleStatusDelivered(tracking) {
+  const deliveryDate = tracking.deliveryDate ? formatDate(tracking.deliveryDate) : 'recently';
+
+  await addBotMessage(`According to tracking, your order was delivered on <strong>${deliveryDate}</strong>. Have you checked with neighbors or looked in safe spots around your home?`);
+
+  addOptions([
+    { text: "Yes, I've checked everywhere", action: () => handleDeliveredNotReceived() },
+    { text: "Let me check again", action: () => {
+      addBotMessage("Take your time! Feel free to come back if you still can't find it.");
+      addOptions([{ text: "Back to Home", action: showHomeMenu }]);
+    }},
+    { text: "I think I found it!", action: () => showSuccess("Great!", "Glad you found it!") }
+  ]);
+}
+
+// Status: Out for Delivery - package should arrive today
+async function handleStatusOutForDelivery(tracking) {
+  await addBotMessage(`Great news! Your package is <strong>out for delivery today</strong>. It should arrive within the next few hours.<br><br>Carrier: ${tracking.carrier?.toUpperCase() || 'Carrier'}<br>Tracking: ${tracking.trackingNumber || 'N/A'}`);
+
+  addOptions([
+    { text: "Perfect, I'll wait", action: () => showSuccess("Almost there!", "Your package should arrive today!") },
+    { text: "It's been out for delivery for days", action: async () => {
+      await addBotMessage("That's unusual. Let me create a case for our team to investigate with the carrier.");
+      await createShippingCase('stuck_out_for_delivery');
+    }}
+  ]);
+}
+
+// Status: In Transit - check how long
+async function handleStatusInTransit(tracking) {
+  const daysInTransit = tracking.daysInTransit || 0;
+
+  if (daysInTransit >= CONFIG.IN_TRANSIT_ESCALATE_DAYS) {
+    // Extended transit - escalate
+    await handleExtendedTransit();
+  } else if (daysInTransit >= CONFIG.IN_TRANSIT_VOICE_DAYS) {
+    // Moderate delay - show Sarah voice note
+    await showSarahVoiceNote();
   } else {
-    // Exception, failed, expired
-    await addBotMessage(`There seems to be an issue with your delivery (Status: ${tracking.statusLabel}). This could be due to an address issue or carrier problem.<br><br>Let me help you resolve this.`);
-    
+    // Normal transit time
+    const estimatedDelivery = tracking.estimatedDelivery ? ` Expected delivery: <strong>${formatDate(tracking.estimatedDelivery)}</strong>` : '';
+
+    await addBotMessage(`Your order is currently <strong>in transit</strong> and has been shipping for ${daysInTransit} day${daysInTransit !== 1 ? 's' : ''}. Delivery typically takes 5-10 business days.${estimatedDelivery}<br><br>It's still within the normal delivery window — I'd recommend checking back in a few days.`);
+
     addOptions([
-      { text: "Reship my order", action: () => handleReship() },
-      { text: "I want a refund instead", action: async () => {
-        state.ladderType = 'shipping';
+      { text: "Okay, I'll wait", action: () => showSuccess("Thanks!", "Your package is on its way!") },
+      { text: "I need it urgently", action: () => handleExtendedTransit() }
+    ]);
+  }
+}
+
+// Status: Pending/Info Received - not yet shipped
+async function handleStatusPending(tracking) {
+  await addBotMessage(`Your order is currently being prepared for shipment. The carrier has received the shipping information but hasn't picked up the package yet.<br><br>This typically happens within 1-2 business days of placing your order.`);
+
+  // Check if it's been too long in pending status
+  const daysInTransit = tracking.daysInTransit || 0;
+
+  if (daysInTransit > 3) {
+    await addBotMessage("However, I notice it's been a few days. Would you like me to look into this for you?");
+    addOptions([
+      { text: "Yes, please investigate", action: async () => {
+        await createShippingCase('pending_too_long');
+      }},
+      { text: "I'll wait a bit longer", action: () => showSuccess("Thanks!", "We'll ship it soon!") }
+    ]);
+  } else {
+    addOptions([
+      { text: "Got it, I'll wait", action: () => showSuccess("Thanks!", "Your order will ship soon!") },
+      { text: "I need to cancel instead", action: async () => {
+        await addBotMessage("Since your order hasn't shipped yet, I can process a full cancellation and refund.");
+        state.ladderType = 'order_refund';
         state.ladderStep = 0;
-        await startShippingLadder();
+        await createRefundCase('full', true);
       }}
     ]);
   }
+}
+
+// Status: Failed Attempt - delivery was attempted but failed
+async function handleStatusFailedAttempt(tracking) {
+  await addBotMessage(`The carrier attempted to deliver your package but was unsuccessful. This could be due to:<br><br>• No one available to sign<br>• Address access issues<br>• Weather conditions<br><br>They'll typically try again within 1-2 business days.`);
+
+  addOptions([
+    { text: "Update my address", action: () => handleReship() },
+    { text: "They've tried multiple times", action: async () => {
+      await addBotMessage("I understand this is frustrating. Let me create a case to coordinate with the carrier and find a solution.");
+      await createShippingCase('multiple_failed_attempts');
+    }},
+    { text: "I'll be home next time", action: () => showSuccess("Noted!", "The carrier will attempt delivery again soon.") }
+  ]);
+}
+
+// Status: Pickup - ready for customer pickup
+async function handleStatusPickup(tracking) {
+  await addBotMessage(`Your package is <strong>ready for pickup</strong> at a local carrier facility or access point.<br><br>Carrier: ${tracking.carrier?.toUpperCase() || 'Carrier'}<br>Tracking: ${tracking.trackingNumber || 'N/A'}<br><br>Please check your email for pickup location details, or track your package on the carrier's website.`);
+
+  addOptions([
+    { text: "Where do I pick it up?", action: async () => {
+      await addBotMessage(`You can find the pickup location by:<br><br>1. Checking your email for a carrier notification<br>2. Visiting ${tracking.carrier === 'usps' ? 'usps.com' : tracking.carrier === 'ups' ? 'ups.com' : tracking.carrier === 'fedex' ? 'fedex.com' : 'the carrier website'} with tracking number: <strong>${tracking.trackingNumber}</strong><br><br>Most packages are held for 5-7 days before being returned.`);
+      addOptions([{ text: "Back to Home", action: showHomeMenu }]);
+    }},
+    { text: "I can't pick it up", action: async () => {
+      await addBotMessage("No problem. Would you like me to have this reshipped to a different address, or would you prefer a refund?");
+      addOptions([
+        { text: "Reship to different address", action: () => handleReship() },
+        { text: "I'd prefer a refund", action: async () => {
+          state.ladderType = 'shipping';
+          state.ladderStep = 0;
+          await startShippingLadder();
+        }}
+      ]);
+    }}
+  ]);
+}
+
+// Status: Exception/Expired/Unknown - problem with delivery
+async function handleStatusException(tracking) {
+  await addBotMessage(`There seems to be an issue with your delivery (Status: <strong>${tracking.statusLabel}</strong>). This could be due to an address issue, customs hold, or carrier problem.<br><br>Let me help you resolve this.`);
+
+  addOptions([
+    { text: "Reship my order", action: () => handleReship() },
+    { text: "I want a refund instead", action: async () => {
+      state.ladderType = 'shipping';
+      state.ladderStep = 0;
+      await startShippingLadder();
+    }}
+  ]);
 }
 
 async function showSarahVoiceNote() {
@@ -2643,7 +3107,7 @@ async function handleReship() {
       </div>
       <div class="form-group">
         <label>Country *</label>
-        <select class="form-input" id="country">
+        <select class="form-input" id="country" onchange="updateAddressFields('')">
           <option value="United States" ${address?.country?.includes('United States') ? 'selected' : ''}>United States</option>
           <option value="Canada" ${address?.country?.includes('Canada') ? 'selected' : ''}>Canada</option>
           <option value="United Kingdom" ${address?.country?.includes('United Kingdom') ? 'selected' : ''}>United Kingdom</option>
@@ -3259,7 +3723,7 @@ async function handleChangeAddress() {
       </div>
       <div class="form-group">
         <label>Country *</label>
-        <select class="form-input" id="newCountry">
+        <select class="form-input" id="newCountry" onchange="updateAddressFields('new')">
           <option value="United States">United States</option>
           <option value="Canada">Canada</option>
           <option value="United Kingdom">United Kingdom</option>
@@ -3268,7 +3732,7 @@ async function handleChangeAddress() {
       </div>
       <div class="form-group">
         <label>Phone Number</label>
-        <input type="tel" class="form-input" id="newPhone" placeholder="+1 (555) 000-0000">
+        <input type="tel" class="form-input" id="newPhone" placeholder="+1 (555) 000-0000" oninput="formatPhoneInput(this)">
       </div>
       <button class="option-btn primary" onclick="submitNewAddress()" style="width: 100%;">
         Update Address
@@ -3468,3 +3932,5 @@ window.acceptShippingOffer = acceptShippingOffer;
 window.declineShippingOffer = declineShippingOffer;
 window.playAudio = playAudio;
 window.restartChat = restartChat;
+window.formatPhoneInput = formatPhoneInput;
+window.updateAddressFields = updateAddressFields;

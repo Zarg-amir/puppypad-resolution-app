@@ -744,6 +744,12 @@ function formatResolution(resolution, caseData) {
     'refund_lost': 'Full Refund - Package lost in transit',
     'refund_damaged': 'Full Refund - Package damaged in transit',
 
+    // Investigation flows
+    'replacement_damaged': 'Replacement ordered - Damaged item received',
+    'reship_wrong_item': 'Correct item shipped - Wrong item received',
+    'reship_missing_item': 'Missing item shipped',
+    'partial_missing': `Partial Refund ($${caseData.refundAmount ? parseFloat(caseData.refundAmount).toFixed(2) : 'TBD'}) - Missing item refund`,
+
     // Subscription
     'pause': 'Subscription paused',
     'cancel': 'Subscription cancelled',
@@ -769,8 +775,13 @@ function formatOrderIssue(caseData) {
     'defective': 'Product is defective',
     'wrong_item': 'Received wrong item',
     'damaged': 'Product arrived damaged',
+    'missing_item': 'Item missing from order',
     'late_delivery': 'Delivery took too long',
     'not_as_described': 'Product not as described',
+    'not_received': 'Order not received',
+    'charged_unexpectedly': 'Unexpected charge',
+    'dog_not_using': 'Dog not using product',
+    'quality_difference': 'Quality difference noticed',
   };
 
   return issueMap[caseData.issueType] || caseData.issueType || 'Customer requested assistance';
