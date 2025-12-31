@@ -32,7 +32,6 @@ const RICHPANEL_CONFIG = {
   testMode: true,                              // Set to false for production
   testEmail: 'zarg.business@gmail.com',        // Test mode routes all emails here
   supportEmail: 'help@teampuppypad.com',       // Production support email
-  apiBaseUrl: 'https://api.richpanel.com/v1',  // Richpanel API base URL
 };
 
 // ============================================
@@ -814,7 +813,7 @@ async function createClickUpTask(env, listId, caseData) {
 
 // ============================================
 // RICHPANEL INTEGRATION
-// Requires env.RICHPANEL_API_KEY and env.RICHPANEL_WORKSPACE_ID
+// Requires env.RICHPANEL_API_KEY
 // ============================================
 
 async function createRichpanelEntry(env, caseData, caseId) {
@@ -873,12 +872,11 @@ async function createRichpanelTicket(env, caseData, caseId) {
   // Build email body
   const emailBody = buildRichpanelEmailBody(caseData, caseId);
 
-  const response = await fetch(`${RICHPANEL_CONFIG.apiBaseUrl}/conversations`, {
+  const response = await fetch('https://api.richpanel.com/v1/tickets', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${env.RICHPANEL_API_KEY}`,
       'Content-Type': 'application/json',
-      'X-Workspace-Id': env.RICHPANEL_WORKSPACE_ID || ''
+      'x-richpanel-key': env.RICHPANEL_API_KEY
     },
     body: JSON.stringify({
       subject: subject,
@@ -1013,13 +1011,12 @@ ${caseData.orderUrl ? `**Shopify Order:** ${caseData.orderUrl}` : ''}
   `.trim();
 
   const response = await fetch(
-    `${RICHPANEL_CONFIG.apiBaseUrl}/conversations/${conversationId}/notes`,
+    `https://api.richpanel.com/v1/tickets/${conversationId}/notes`,
     {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.RICHPANEL_API_KEY}`,
         'Content-Type': 'application/json',
-        'X-Workspace-Id': env.RICHPANEL_WORKSPACE_ID || ''
+        'x-richpanel-key': env.RICHPANEL_API_KEY
       },
       body: JSON.stringify({
         body: noteContent,
