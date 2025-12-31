@@ -1980,6 +1980,231 @@ textarea.form-input {
   font-weight: 600;
 }
 
+/* Copyable Case ID */
+.case-id-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+}
+
+.case-id-label {
+  font-size: 13px;
+  color: var(--gray-500);
+  font-weight: 500;
+}
+
+.case-id-value {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand-navy);
+}
+
+.case-id-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.case-id-copy-btn:hover {
+  background: var(--brand-navy);
+  color: white;
+  border-color: var(--brand-navy);
+}
+
+.case-id-copy-btn.copied {
+  background: var(--accent-teal);
+  color: white;
+  border-color: var(--accent-teal);
+}
+
+.case-id-copy-btn svg {
+  flex-shrink: 0;
+}
+
+/* ============================================
+   CONFIRMATION DIALOG
+   ============================================ */
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  padding: 20px;
+}
+
+.confirm-dialog-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.confirm-dialog {
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-xl);
+  transform: scale(0.9) translateY(20px);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.confirm-dialog-overlay.visible .confirm-dialog {
+  transform: scale(1) translateY(0);
+}
+
+.confirm-dialog-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.confirm-dialog-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 8px;
+}
+
+.confirm-dialog-message {
+  font-size: 15px;
+  color: var(--gray-600);
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+
+.confirm-dialog-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.confirm-dialog-btn {
+  flex: 1;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+}
+
+.confirm-dialog-btn.cancel {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.confirm-dialog-btn.cancel:hover {
+  background: var(--gray-200);
+}
+
+.confirm-dialog-btn.confirm {
+  background: var(--accent-coral);
+  color: white;
+}
+
+.confirm-dialog-btn.confirm:hover {
+  background: var(--accent-coral-light);
+  transform: translateY(-1px);
+}
+
+/* ============================================
+   END-OF-SESSION SURVEY
+   ============================================ */
+.survey-container {
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--gray-100);
+  text-align: center;
+}
+
+.survey-ratings {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.survey-rating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--gray-50);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.survey-rating:hover {
+  background: white;
+  border-color: var(--gray-200);
+  transform: translateY(-2px);
+}
+
+.survey-rating.selected {
+  background: var(--brand-navy-soft);
+  border-color: var(--brand-navy);
+  transform: scale(1.05);
+}
+
+.survey-emoji {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.survey-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.survey-rating.selected .survey-label {
+  color: var(--brand-navy);
+}
+
+.survey-skip {
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 16px;
+  transition: color var(--transition-fast);
+}
+
+.survey-skip:hover {
+  color: var(--gray-600);
+}
+
 /* ============================================
    SATISFACTION BUTTONS
    ============================================ */
