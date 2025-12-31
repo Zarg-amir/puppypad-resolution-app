@@ -327,12 +327,10 @@ function setTyping(isTyping) {
 // ============================================
 
 // Character-by-character typing animation
-async function typeText(element, text, speed = 20) {
-  // Parse HTML to handle tags properly
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = text;
+async function typeText(element, text, speed = 40) {
+  // Show typing status in header during character typing
+  setTyping(true);
 
-  // For simple text or if HTML is complex, just set it directly with animation
   element.innerHTML = '';
   element.classList.add('typing-cursor');
 
@@ -351,12 +349,15 @@ async function typeText(element, text, speed = 20) {
         displayText += char;
         element.innerHTML = displayText;
         scrollToBottom();
-        await delay(speed);
+        // Add slight variation to typing speed for realism
+        const variance = Math.random() * 20 - 10;
+        await delay(speed + variance);
       }
     }
   }
 
   element.classList.remove('typing-cursor');
+  setTyping(false);
 }
 
 async function addBotMessage(text, persona = state.currentPersona, options = {}) {
@@ -365,7 +366,7 @@ async function addBotMessage(text, persona = state.currentPersona, options = {})
 
   setTyping(true);
 
-  // Show typing indicator
+  // Show typing indicator (the three dots)
   const typingDiv = document.createElement('div');
   typingDiv.className = `message bot ${persona}`;
   typingDiv.innerHTML = `
@@ -381,13 +382,18 @@ async function addBotMessage(text, persona = state.currentPersona, options = {})
   elements.chatArea.appendChild(typingDiv);
   scrollToBottom();
 
-  // Wait for typing delay
-  const typingDelay = Math.min(400 + text.length * 8, 1200);
+  // Wait for initial thinking delay
+  const typingDelay = Math.min(500 + text.length * 5, 1000);
   await delay(typingDelay);
 
   // Replace typing indicator with actual message
   typingDiv.remove();
-  setTyping(false);
+
+  // Only set typing to false if NOT using character animation
+  // (typeText will handle typing state if animation is used)
+  if (!useTypingAnimation) {
+    setTyping(false);
+  }
 
   const messageDiv = document.createElement('div');
   messageDiv.className = `message bot ${persona}`;
@@ -407,7 +413,7 @@ async function addBotMessage(text, persona = state.currentPersona, options = {})
   elements.chatArea.appendChild(messageDiv);
   scrollToBottom();
 
-  // If using typing animation, type out the text
+  // If using typing animation, type out the text character by character
   if (useTypingAnimation) {
     const bubble = messageDiv.querySelector('.message-bubble');
     await typeText(bubble, text);
