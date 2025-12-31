@@ -2046,8 +2046,8 @@ function showReturnInstructions() {
       <div style="background: var(--navy-soft); padding: 14px; border-radius: 10px; margin-bottom: 16px;">
         <strong>Ship to:</strong><br>
         PuppyPad Returns<br>
-        123 Warehouse Drive<br>
-        Wisconsin, WI 53001<br>
+        1007 S 12th St.<br>
+        Watertown, WI 53094<br>
         USA
       </div>
       
