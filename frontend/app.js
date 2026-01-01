@@ -210,7 +210,9 @@ const state = {
   allTracking: null,
   lookupAttempts: [],
   // Store references for edit functionality
-  editHistory: []
+  editHistory: [],
+  // Store existing case info for append flow (dedupe)
+  existingCaseInfo: null
 };
 
 // ============================================
@@ -1232,7 +1234,8 @@ async function restartChat() {
     uploadedFiles: [],
     caseId: null,
     flowType: null,
-    editHistory: []
+    editHistory: [],
+    existingCaseInfo: null
   });
 
   // Clear session
@@ -1256,19 +1259,23 @@ async function showIdentifyForm(flowType) {
 }
 
 async function renderIdentifyForm(flowType) {
+  // Track Order flow: simplified form (email/phone + order number)
+  // Help/Subscription flows: full form (email/phone + name + order number)
+  const isTrackFlow = flowType === 'track';
+
   const formHtml = `
     <div class="form-container" id="identifyForm">
       <div class="toggle-container">
         <div class="toggle-option ${state.identifyMethod === 'email' ? 'active' : ''}" data-method="email" onclick="toggleIdentifyMethod('email')">Email</div>
         <div class="toggle-option ${state.identifyMethod === 'phone' ? 'active' : ''}" data-method="phone" onclick="toggleIdentifyMethod('phone')">Phone</div>
       </div>
-      
+
       <div class="form-group ${state.identifyMethod !== 'email' ? 'hidden' : ''}" id="emailGroup">
         <label>Email Address *</label>
         <input type="email" class="form-input" id="inputEmail" placeholder="you@example.com" value="${state.customerData.email || ''}">
         <div class="error-text">Please enter the email used at checkout.</div>
       </div>
-      
+
       <div class="form-group ${state.identifyMethod !== 'phone' ? 'hidden' : ''}" id="phoneGroup">
         <label>Phone Number *</label>
         <div class="phone-input-wrapper">
@@ -1277,25 +1284,27 @@ async function renderIdentifyForm(flowType) {
         </div>
         <div class="error-text">Please enter the phone number used at checkout.</div>
       </div>
-      
+
+      ${!isTrackFlow ? `
       <div class="form-group">
         <label>First Name *</label>
         <input type="text" class="form-input" id="inputFirstName" placeholder="Your first name" value="${state.customerData.firstName || ''}">
         <div class="error-text">Please enter the first name used at checkout.</div>
       </div>
-      
+      ` : ''}
+
       <div class="form-group">
-        <label>Order Number (optional)</label>
+        <label>Order Number${isTrackFlow ? ' (recommended)' : ' (optional)'}</label>
         <input type="text" class="form-input" id="inputOrderNumber" placeholder="#12345P" value="${state.customerData.orderNumber || ''}">
         <div class="error-text">Order number must look like #12345P.</div>
       </div>
-      
+
       <button class="option-btn primary" onclick="submitIdentifyForm('${flowType}')" style="margin-top: 8px; width: 100%;">
-        Find My Order
+        ${isTrackFlow ? 'Track My Order' : 'Find My Order'}
       </button>
     </div>
   `;
-  
+
   await addInteractiveContent(formHtml);
 }
 
@@ -1321,12 +1330,15 @@ function toggleIdentifyMethod(method) {
 async function submitIdentifyForm(flowType) {
   const email = document.getElementById('inputEmail')?.value.trim();
   const phone = document.getElementById('inputPhone')?.value.trim();
-  const firstName = document.getElementById('inputFirstName')?.value.trim();
+  const firstName = document.getElementById('inputFirstName')?.value.trim() || '';
   const orderNumber = document.getElementById('inputOrderNumber')?.value.trim();
-  
+
+  // Track flow only requires email/phone (firstName not required)
+  const isTrackFlow = flowType === 'track';
+
   // Validation
   let hasError = false;
-  
+
   if (state.identifyMethod === 'email') {
     const emailInput = document.getElementById('inputEmail');
     if (!email || !email.includes('@') || !email.includes('.')) {
@@ -1350,16 +1362,22 @@ async function submitIdentifyForm(flowType) {
       state.customerData.phone = countryCode + phoneDigits;
     }
   }
-  
+
+  // First name validation - only required for non-track flows
   const firstNameInput = document.getElementById('inputFirstName');
-  if (!firstName) {
-    firstNameInput.classList.add('error');
-    hasError = true;
+  if (!isTrackFlow) {
+    if (!firstName) {
+      firstNameInput?.classList.add('error');
+      hasError = true;
+    } else {
+      firstNameInput?.classList.remove('error');
+      state.customerData.firstName = firstName;
+    }
   } else {
-    firstNameInput.classList.remove('error');
+    // For track flow, just store whatever was provided (optional)
     state.customerData.firstName = firstName;
   }
-  
+
   const orderInput = document.getElementById('inputOrderNumber');
   if (orderNumber && !orderNumber.match(/^#?\d+P?$/i)) {
     orderInput.classList.add('error');
@@ -1368,26 +1386,30 @@ async function submitIdentifyForm(flowType) {
     orderInput?.classList.remove('error');
     state.customerData.orderNumber = orderNumber;
   }
-  
+
   if (hasError) return;
-  
+
   // Remove form
   document.getElementById('identifyForm')?.closest('.interactive-content').remove();
-  
-  // Create editable summary
-  const summaryHtml = `
-    <div class="editable-summary">
-      <div class="summary-row"><span class="summary-label">${state.identifyMethod === 'email' ? 'Email' : 'Phone'}:</span> ${state.identifyMethod === 'email' ? email : phone}</div>
-      <div class="summary-row"><span class="summary-label">Name:</span> ${firstName}</div>
-      ${orderNumber ? `<div class="summary-row"><span class="summary-label">Order:</span> ${orderNumber}</div>` : ''}
-    </div>
-  `;
-  
+
+  // Create editable summary (conditionally show name for non-track flows)
+  const summaryRows = [
+    `<div class="summary-row"><span class="summary-label">${state.identifyMethod === 'email' ? 'Email' : 'Phone'}:</span> ${state.identifyMethod === 'email' ? email : phone}</div>`
+  ];
+  if (!isTrackFlow && firstName) {
+    summaryRows.push(`<div class="summary-row"><span class="summary-label">Name:</span> ${firstName}</div>`);
+  }
+  if (orderNumber) {
+    summaryRows.push(`<div class="summary-row"><span class="summary-label">Order:</span> ${orderNumber}</div>`);
+  }
+
+  const summaryHtml = `<div class="editable-summary">${summaryRows.join('')}</div>`;
+
   addEditableUserMessage(summaryHtml, () => {
     // Re-show the form for editing
     renderIdentifyForm(flowType);
   }, 'Edit Details');
-  
+
   await lookupOrder(flowType);
 }
 
@@ -2086,24 +2108,98 @@ async function checkExistingCase() {
 }
 
 async function showExistingCaseMessage(caseInfo) {
+  // Store existing case info in state for potential append flow
+  state.existingCaseInfo = caseInfo;
+
   await addBotMessage(
     `I see we already have an open case for this order! 📋<br><br>` +
     `Your case ID is <strong>${caseInfo.caseId || 'N/A'}</strong> and it's currently being worked on.<br><br>` +
-    `Our team is on it and will reach out to you soon. Would you like to do something else?`
+    `Would you like to add new information to this existing case, or do you have a different issue?`
   );
 
-  // Log policy block to analytics
-  Analytics.logPolicyBlock('existing_case', { existingCaseId: caseInfo.caseId });
-  Analytics.logEvent('policy_block', 'existing_case_found', {
+  // Log to analytics
+  Analytics.logEvent('existing_case_found', {
     existingCaseId: caseInfo.caseId,
     orderNumber: state.selectedOrder?.orderNumber
   });
 
   addOptions([
-    { text: "I have a different issue", action: showItemSelection },
-    { text: "Back to Home", primary: true, action: () => restartChat() }
+    { icon: '📝', text: "Add info to this case", action: showAppendToExistingCase },
+    { icon: '🔄', text: "I have a different issue", action: showItemSelection },
+    { text: "Back to Home", action: () => restartChat() }
   ]);
 }
+
+async function showAppendToExistingCase() {
+  await addBotMessage("What additional information would you like to add to your existing case?");
+
+  const html = `
+    <div class="form-container" id="appendCaseForm">
+      <div class="form-group">
+        <label>Additional Information</label>
+        <textarea class="form-input" id="additionalInfo" rows="4" placeholder="Please describe any new details about your issue..."></textarea>
+      </div>
+      <button class="option-btn primary" onclick="submitAppendToCase()" style="width: 100%;">
+        Add to My Case
+      </button>
+    </div>
+  `;
+
+  addInteractiveContent(html);
+}
+
+async function submitAppendToCase() {
+  const additionalInfo = document.getElementById('additionalInfo')?.value.trim();
+
+  if (!additionalInfo) {
+    await addBotMessage("Please enter some information to add to your case.");
+    return;
+  }
+
+  document.getElementById('appendCaseForm')?.closest('.interactive-content').remove();
+  addUserMessage(additionalInfo);
+
+  showProgress("Updating your case...", "Adding new information");
+
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/append-to-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        taskId: state.existingCaseInfo?.taskId,
+        caseData: {
+          sessionId: Analytics.sessionId,
+          email: state.customerData?.email || state.selectedOrder?.email,
+          orderNumber: state.selectedOrder?.orderNumber,
+          selectedItems: state.selectedItems,
+          intentDetails: additionalInfo
+        },
+        additionalInfo: additionalInfo,
+        newIntent: state.currentIntent || 'Additional information'
+      })
+    });
+
+    hideProgress();
+
+    if (response.ok) {
+      await showSuccess(
+        "Case Updated!",
+        `Your additional information has been added to case <strong>${state.existingCaseInfo?.caseId || 'N/A'}</strong>.<br><br>Our team will review this and get back to you soon.`
+      );
+      Analytics.logEvent('case_appended', { caseId: state.existingCaseInfo?.caseId });
+    } else {
+      throw new Error('Failed to update case');
+    }
+  } catch (error) {
+    hideProgress();
+    console.error('Error appending to case:', error);
+    await addBotMessage("I'm sorry, there was an issue updating your case. Let me connect you with our team directly.");
+    await showManualHelpForm();
+  }
+}
+
+// Expose functions to window for onclick handlers
+window.submitAppendToCase = submitAppendToCase;
 
 // ============================================
 // 90-DAY GUARANTEE VALIDATION
@@ -2326,11 +2422,16 @@ async function handleUsedProduct(isUsed) {
 
 function showReturnInstructions() {
   const items = state.selectedItems.map(i => `• ${i.title} (SKU: ${i.sku})`).join('<br>');
-  
+
   const html = `
     <div class="form-container">
       <h3 style="margin-bottom: 12px; color: var(--navy);">📦 Return Instructions</h3>
-      
+
+      <div style="background: var(--coral-soft); padding: 14px; border-radius: 10px; margin-bottom: 16px;">
+        <strong>⚠️ Important: We cannot provide return shipping labels</strong><br><br>
+        Our system does not generate return labels, and our policy requires customers to ship returns using a carrier of their choice. We recommend USPS, UPS, or FedEx.
+      </div>
+
       <div style="background: var(--navy-soft); padding: 14px; border-radius: 10px; margin-bottom: 16px;">
         <strong>Ship to:</strong><br>
         PuppyPad Returns<br>
@@ -2338,7 +2439,7 @@ function showReturnInstructions() {
         Watertown, WI 53094<br>
         USA
       </div>
-      
+
       <div style="margin-bottom: 16px;">
         <strong>Include in package:</strong><br>
         ${items}<br><br>
@@ -2346,17 +2447,17 @@ function showReturnInstructions() {
         <strong>Your Name:</strong> ${state.customerData.firstName}<br>
         <strong>Reason:</strong> Return for refund
       </div>
-      
+
       <div style="background: var(--yellow); padding: 14px; border-radius: 10px; margin-bottom: 16px;">
-        <strong>⚠️ Important:</strong> Please reply to your confirmation email with the tracking number once you've shipped the return.
+        <strong>📧 After shipping:</strong> Please reply to your confirmation email with your tracking number so we can monitor the return and process your refund promptly.
       </div>
-      
+
       <button class="option-btn primary" onclick="confirmReturn()" style="width: 100%;">
         I Understand — Create My Case
       </button>
     </div>
   `;
-  
+
   addInteractiveContent(html);
 }
 
@@ -2411,6 +2512,15 @@ async function submitCase(caseType, resolution, options = {}) {
     // Additional context
     intentDetails: state.intentDetails || '',
     notes: options.notes || '',
+
+    // Subscription-specific fields (for subscription cases)
+    purchaseId: options.purchaseId || state.selectedSubscription?.purchaseId || '',
+    clientOrderId: options.clientOrderId || state.selectedSubscription?.clientOrderId || '',
+    subscriptionProductName: options.subscriptionProductName || state.selectedSubscription?.productName || '',
+    actionType: options.actionType || '',
+    discountPercent: options.discountPercent || null,
+    subscriptionStatus: options.subscriptionStatus || state.selectedSubscription?.status || '',
+    cancelReason: options.cancelReason || state.cancelReason || '',
 
     // Timestamps
     createdAt: new Date().toISOString(),
@@ -2546,19 +2656,32 @@ async function handleOrderSwap(isUsed) {
   if (isUsed) {
     await addBotMessage("Since it's been used, we'll send you the new item and give you a <strong>20% refund</strong> as well. You can keep the used one!");
   } else {
-    await addBotMessage("Great! We'll send you a return label and ship out your new order once we receive the return. Free of charge!");
+    await addBotMessage("Great! Once you ship back the item using a carrier of your choice, we'll send out your new order. Just reply to your confirmation email with the tracking number so we can monitor the return. Free of charge!");
   }
-  
+
   showProgress("Creating your order change request...");
-  await delay(1500);
+
+  // Create case in ClickUp + Richpanel with change order details
+  const resolution = isUsed ? 'order_change_used_20_percent' : 'order_change_return_swap';
+  const result = await submitCase('shipping', resolution, {
+    issueType: 'order_change',
+    changeOrderDetails: state.intentDetails,   // What they want instead
+    productUsed: isUsed,
+  });
+
   hideProgress();
-  
-  state.caseId = generateCaseId('shipping');
-  
-  await showSuccess(
-    "Order Change Requested!",
-    `We'll process your change to: <strong>${state.intentDetails}</strong><br><br>${getCaseIdHtml(state.caseId)}`
-  );
+
+  if (result.success) {
+    await showSuccess(
+      "Order Change Requested!",
+      `We'll process your change to: <strong>${state.intentDetails}</strong><br><br>${getCaseIdHtml(result.caseId)}`
+    );
+  } else {
+    await showSuccess(
+      "Request Submitted",
+      `We've noted your change request for: <strong>${state.intentDetails}</strong>. Our team will reach out shortly.`
+    );
+  }
 }
 
 async function handleMissingItem() {
@@ -2989,15 +3112,24 @@ async function handleTrackingResult() {
 async function handleStatusDelivered(tracking) {
   const deliveryDate = tracking.deliveryDate ? formatDate(tracking.deliveryDate) : 'recently';
 
-  await addBotMessage(`According to tracking, your order was delivered on <strong>${deliveryDate}</strong>. Have you checked with neighbors or looked in safe spots around your home?`);
+  await addBotMessage(`According to tracking, your order was delivered on <strong>${deliveryDate}</strong>.`);
+
+  await addBotMessage(`Before we investigate, could you please double-check these common locations?<br><br>
+• <strong>Neighbors</strong> - Sometimes packages are left next door<br>
+• <strong>Family/household members</strong> - Someone may have brought it inside<br>
+• <strong>Safe spots</strong> - Behind pillars, under mats, in bushes<br>
+• <strong>Front desk/mailroom</strong> - If you live in an apartment or building<br>
+• <strong>Garage or side door</strong> - Carriers sometimes leave packages there`);
 
   addOptions([
-    { text: "Yes, I've checked everywhere", action: () => handleDeliveredNotReceived() },
-    { text: "Let me check again", action: () => {
-      addBotMessage("Take your time! Feel free to come back if you still can't find it.");
+    { text: "I've checked all these places", action: () => handleDeliveredNotReceived() },
+    { text: "Give me time to check", action: async () => {
+      await addBotMessage("Take your time! 🙂 Feel free to come back if you still can't find it. We're here to help.");
+      // Log that customer is checking - analytics
+      Analytics.logEvent('delivered_checking_locations');
       addOptions([{ text: "Back to Home", action: showHomeMenu }]);
     }},
-    { text: "I think I found it!", action: () => showSuccess("Great!", "Glad you found it!") }
+    { text: "I found it!", action: () => showSuccess("Great!", "So glad you found your package! 🎉") }
   ]);
 }
 
@@ -3328,20 +3460,41 @@ async function declineShippingOffer() {
 }
 
 async function handleDeliveredNotReceived() {
-  await addBotMessage("I'm sorry to hear that 😔 When packages show as delivered but aren't received, it usually means there was an issue with the carrier.<br><br>Here's what we'll do: I'll open an investigation with our fulfillment team and the carrier. This may involve reviewing delivery photos and contacting your local postal service.<br><br>Would you like me to proceed?");
-  
+  await addBotMessage("I'm really sorry to hear that 😔 This is frustrating, and I want to help resolve it.");
+
+  await addBotMessage(`When packages show as delivered but aren't received, we take it very seriously. Here's what our investigation process includes:<br><br>
+• <strong>Carrier investigation</strong> - We'll contact ${state.trackingInfo?.carrier?.toUpperCase() || 'the carrier'} directly<br>
+• <strong>GPS & delivery photos</strong> - Request proof of delivery location<br>
+• <strong>Local facility check</strong> - Contact the local post office/hub<br>
+• <strong>Police report option</strong> - For high-value packages, you may file a report with your local police department which can help with CCTV footage retrieval<br><br>
+Would you like us to proceed with the investigation?`);
+
   addOptions([
     { text: "Yes, please investigate", action: async () => {
       showProgress("Creating investigation case...");
-      await delay(1500);
+
+      // Create proper case in ClickUp + Richpanel
+      const result = await submitCase('shipping', 'investigation_delivered_not_received', {
+        issueType: 'delivered_not_received',
+        carrierName: state.trackingInfo?.carrier || 'Unknown',
+        trackingNumber: state.trackingInfo?.trackingNumber || '',
+        deliveryDate: state.trackingInfo?.deliveryDate || '',
+      });
+
       hideProgress();
-      
-      state.caseId = generateCaseId('shipping');
-      
-      await showSuccess(
-        "Investigation Started",
-        `We'll investigate with the carrier and get back to you within 48 hours. If we can't locate it, we'll reship or refund.<br><br>${getCaseIdHtml(state.caseId)}`
-      );
+
+      if (result.success) {
+        await showSuccess(
+          "Investigation Started",
+          `We'll investigate with the carrier and get back to you within 48 hours. If we can't locate it, we'll reship or refund your order.<br><br>
+          <strong>Tip:</strong> If you'd like to file a police report, your local department can request CCTV footage from nearby cameras.<br><br>${getCaseIdHtml(result.caseId)}`
+        );
+      } else {
+        await showSuccess(
+          "Investigation Started",
+          `Our team will investigate and contact the carrier. We'll reach out within 48 hours.`
+        );
+      }
     }},
     { text: "Just reship it", action: () => handleReship() },
     { text: "Just refund me", action: async () => {
@@ -3580,13 +3733,19 @@ async function handlePauseSubscription() {
 
 async function confirmPause(days) {
   const resumeDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-  
-  showProgress("Pausing your subscription...");
-  await delay(1500);
+
+  showProgress("Pausing your subscription...", "Creating case...");
+
+  // Submit case to ClickUp/Richpanel with subscription fields
+  const result = await submitCase('subscription', 'subscription_paused', {
+    actionType: 'pause',
+    notes: `Pause for ${days} days. Resume on ${formatDate(resumeDate.toISOString())}`,
+  });
+
   hideProgress();
-  
-  state.caseId = generateCaseId('subscription');
-  
+
+  state.caseId = result.caseId;
+
   await showSuccess(
     "Subscription Paused!",
     `Your subscription will automatically resume on <strong>${formatDate(resumeDate.toISOString())}</strong>.<br><br>${getCaseIdHtml(state.caseId)}`
@@ -3611,20 +3770,26 @@ function showCustomPauseDate() {
 
 async function submitCustomPause() {
   const dateInput = document.getElementById('customPauseDate')?.value;
-  
+
   if (!dateInput) {
     await addBotMessage("Please select a date.");
     return;
   }
-  
+
   document.querySelector('.form-container')?.closest('.interactive-content').remove();
-  
-  showProgress("Pausing your subscription...");
-  await delay(1500);
+
+  showProgress("Pausing your subscription...", "Creating case...");
+
+  // Submit case to ClickUp/Richpanel with subscription fields
+  const result = await submitCase('subscription', 'subscription_paused', {
+    actionType: 'pause',
+    notes: `Custom pause. Resume on ${formatDate(dateInput)}`,
+  });
+
   hideProgress();
-  
-  state.caseId = generateCaseId('subscription');
-  
+
+  state.caseId = result.caseId;
+
   await showSuccess(
     "Subscription Paused!",
     `Your subscription will resume on <strong>${formatDate(dateInput)}</strong>.<br><br>${getCaseIdHtml(state.caseId)}`
@@ -3732,13 +3897,20 @@ async function startSubscriptionLadder() {
 async function acceptSubscriptionOffer(percent) {
   document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage(`I'll keep my subscription with ${percent}% off`);
-  
-  showProgress("Applying your discount...");
-  await delay(1500);
+
+  showProgress("Applying your discount...", "Creating case...");
+
+  // Submit case to ClickUp/Richpanel with discount info
+  const result = await submitCase('subscription', 'discount_applied', {
+    actionType: 'cancel', // Intent was to cancel, but saved with discount
+    discountPercent: percent,
+    notes: `Customer retained with ${percent}% discount on future shipments.`,
+  });
+
   hideProgress();
-  
-  state.caseId = generateCaseId('subscription');
-  
+
+  state.caseId = result.caseId;
+
   await showSuccess(
     "Discount Applied!",
     `Great choice! Your ${percent}% discount will apply to all future shipments automatically.<br><br>${getCaseIdHtml(state.caseId)}`
@@ -3766,21 +3938,29 @@ async function processSubscriptionCancel(isUsed) {
   const address = state.selectedOrder?.shippingAddress;
   const country = address?.country || 'United States';
   const isUSorCanada = country.toLowerCase().includes('united states') || country.toLowerCase().includes('canada');
-  
-  if (isUsed || !isUSorCanada) {
+  const keepProduct = isUsed || !isUSorCanada;
+
+  if (keepProduct) {
     await addBotMessage("Because we value you as a customer, we'll process a <strong>full refund</strong> and cancel your subscription. You can keep the product! ❤️");
   } else {
     await addBotMessage("We'll process a <strong>full refund</strong> once we receive the product back. Here are the return details:");
     showReturnInstructions();
     return;
   }
-  
-  showProgress("Cancelling subscription and processing refund...");
-  await delay(2000);
+
+  showProgress("Cancelling subscription and processing refund...", "Creating case...");
+
+  // Submit case to ClickUp/Richpanel with cancel details
+  const result = await submitCase('subscription', 'subscription_cancelled', {
+    actionType: 'cancel',
+    keepProduct: keepProduct,
+    notes: `Full cancellation. Reason: ${state.cancelReason || 'Not specified'}. Keep product: ${keepProduct ? 'Yes' : 'No (return required)'}`,
+  });
+
   hideProgress();
-  
-  state.caseId = generateCaseId('subscription');
-  
+
+  state.caseId = result.caseId;
+
   await showSuccess(
     "Subscription Cancelled",
     `Your subscription has been cancelled and a full refund will be processed within 3-5 business days.<br><br>${getCaseIdHtml(state.caseId)}`
@@ -3799,12 +3979,20 @@ async function handleChangeSchedule() {
 }
 
 async function confirmScheduleChange(days) {
-  showProgress("Updating your delivery schedule...");
-  await delay(1500);
+  const previousFrequency = state.selectedSubscription?.frequency || 'Unknown';
+
+  showProgress("Updating your delivery schedule...", "Creating case...");
+
+  // Submit case to ClickUp/Richpanel with schedule change
+  const result = await submitCase('subscription', 'schedule_changed', {
+    actionType: 'changeSchedule',
+    notes: `Schedule changed from every ${previousFrequency} days to every ${days} days.`,
+  });
+
   hideProgress();
-  
-  state.caseId = generateCaseId('subscription');
-  
+
+  state.caseId = result.caseId;
+
   await showSuccess(
     "Schedule Updated!",
     `Your deliveries will now arrive every <strong>${days} days</strong>.<br><br>${getCaseIdHtml(state.caseId)}`
@@ -3860,23 +4048,34 @@ async function handleChangeAddress() {
 
 async function submitNewAddress() {
   const address1 = document.getElementById('newAddress1')?.value.trim();
+  const address2 = document.getElementById('newAddress2')?.value.trim();
   const city = document.getElementById('newCity')?.value.trim();
+  const province = document.getElementById('newProvince')?.value.trim();
   const zip = document.getElementById('newZip')?.value.trim();
-  
+  const country = document.getElementById('newCountry')?.value;
+
   if (!address1 || !city || !zip) {
     await addBotMessage("Please fill in all required fields.");
     return;
   }
-  
+
   document.getElementById('newAddressForm')?.closest('.interactive-content').remove();
   addUserMessage("New address submitted");
-  
-  showProgress("Updating your shipping address...", "This will apply to all future shipments");
-  await delay(1500);
+
+  const newAddressFormatted = [address1, address2, `${city}, ${province} ${zip}`, country].filter(Boolean).join(', ');
+
+  showProgress("Updating your shipping address...", "Creating case...");
+
+  // Submit case to ClickUp/Richpanel with address change
+  const result = await submitCase('subscription', 'address_changed', {
+    actionType: 'changeAddress',
+    notes: `New address: ${newAddressFormatted}`,
+  });
+
   hideProgress();
-  
-  state.caseId = generateCaseId('subscription');
-  
+
+  state.caseId = result.caseId;
+
   await showSuccess(
     "Address Updated!",
     `Your new shipping address has been saved and will be used for all future deliveries.<br><br>${getCaseIdHtml(state.caseId)}`
@@ -3916,11 +4115,9 @@ async function handleHelpFlow() {
     return;
   }
 
-  // Check if within fulfillment window (can still modify/cancel)
-  const orderDate = new Date(state.selectedOrder.createdAt);
-  const hoursSinceOrder = (Date.now() - orderDate.getTime()) / (1000 * 60 * 60);
-
-  if (hoursSinceOrder < CONFIG.FULFILLMENT_CUTOFF_HOURS && state.selectedOrder.fulfillmentStatus !== 'fulfilled') {
+  // Check if within fulfillment window (backend-enforced via canModify flag)
+  // The backend computes this based on created_at + fulfillment_status
+  if (state.selectedOrder.canModify) {
     await handleUnfulfilledOrder();
   } else {
     await showItemSelection();

@@ -27,12 +27,27 @@ const ADMIN_CONFIG = {
 
 // ============================================
 // EASY CONFIG: RICHPANEL INTEGRATION
+// Note: testMode is determined by env.RICHPANEL_TEST_MODE or env.APP_ENV
+// Set RICHPANEL_TEST_MODE=false in production, or APP_ENV=production
 // ============================================
 const RICHPANEL_CONFIG = {
-  testMode: true,                              // Set to false for production
   testEmail: 'zarg.business@gmail.com',        // Test mode routes all emails here
   supportEmail: 'help@teampuppypad.com',       // Production support email
 };
+
+// Helper to check if we're in test mode (reads from env)
+function isTestMode(env) {
+  // Explicit RICHPANEL_TEST_MODE takes priority
+  if (env.RICHPANEL_TEST_MODE !== undefined) {
+    return env.RICHPANEL_TEST_MODE === 'true' || env.RICHPANEL_TEST_MODE === true;
+  }
+  // Otherwise check APP_ENV
+  if (env.APP_ENV === 'production') {
+    return false;
+  }
+  // Default to test mode for safety (prevents accidental production emails)
+  return true;
+}
 
 // ============================================
 // EASY CONFIG: PERSONA PROMPTS (Amy, Claudia)
@@ -73,6 +88,93 @@ const PERSONA_PROMPTS = {
       'Offers concrete next steps',
     ],
     instruction: 'Handle escalated issues with empathy and clear action plans.',
+  },
+};
+
+// ============================================
+// INTENT-SPECIFIC PROMPT PACKS
+// Provides tailored context for different customer situations
+// ============================================
+const PROMPT_PACKS = {
+  // Subscription-related intents
+  subscription: {
+    too_expensive: {
+      context: 'Customer finds the subscription too expensive and is considering cancellation.',
+      instruction: 'Acknowledge the customer\'s budget concerns genuinely. Highlight the long-term savings compared to disposable pads. Mention the quality and durability (1000+ washes). Do NOT offer discounts unless prompted by the system - focus on value, not price cuts.',
+      objectionHandling: 'Avoid being pushy. If they\'ve made up their mind, respect it while leaving the door open for the future.',
+    },
+    too_many: {
+      context: 'Customer has too many pads and wants to pause or cancel their subscription.',
+      instruction: 'Validate their situation. Suggest pausing instead of cancelling to lock in their current price (prices may increase). Mention they can resume whenever they\'re ready.',
+      objectionHandling: 'Be understanding. A pause is a win - they stay in the system.',
+    },
+    not_working: {
+      context: 'Customer says the product isn\'t working as described.',
+      instruction: 'Show genuine concern and ask specific questions about the issue. Offer to connect them with Claudia (our veterinarian) for training tips. Product may need break-in period or proper training approach.',
+      objectionHandling: 'Listen first. Many "not working" issues are training-related, not product defects.',
+    },
+    moving: {
+      context: 'Customer is moving and wants to cancel.',
+      instruction: 'Offer to update their shipping address instead of cancelling. Emphasize continuity and that the service follows them.',
+      objectionHandling: 'Moving is logistical, not dissatisfaction. Easy to resolve.',
+    },
+  },
+
+  // Refund-related intents
+  refund: {
+    damaged: {
+      context: 'Customer received a damaged product and wants a refund.',
+      instruction: 'Apologize sincerely for the damaged item. Express that this isn\'t the experience we want. Ask for a photo if not already provided. Process quickly to rebuild trust.',
+      objectionHandling: 'Damage claims should be handled generously. Speed matters more than investigation.',
+    },
+    not_as_described: {
+      context: 'Customer feels the product doesn\'t match the description.',
+      instruction: 'Listen to their specific concerns. Clarify any misunderstandings about features. If it\'s truly a mismatch, process the refund while noting feedback for product team.',
+      objectionHandling: 'Don\'t be defensive. Acknowledge their perspective.',
+    },
+    changed_mind: {
+      context: 'Customer simply changed their mind about the purchase.',
+      instruction: 'Be understanding. Process within our return policy. Gently ask what changed to gather feedback.',
+      objectionHandling: 'No need to convince. A smooth return creates future customers.',
+    },
+    doesnt_work: {
+      context: 'Customer says the product doesn\'t work for their situation.',
+      instruction: 'Ask about their specific use case. Offer training tips if applicable. If truly not suitable, process refund gracefully.',
+      objectionHandling: 'May be a training opportunity. Suggest Claudia if dog-related.',
+    },
+  },
+
+  // Tracking-related intents
+  track: {
+    late: {
+      context: 'Customer\'s package is late and they\'re frustrated.',
+      instruction: 'Apologize for the delay. Provide current tracking status. Explain carrier delays are outside our control but we\'re monitoring. Offer proactive updates.',
+      objectionHandling: 'Focus on what we CAN do (monitor, follow up) rather than blame carriers.',
+    },
+    lost: {
+      context: 'Package appears lost in transit.',
+      instruction: 'Take ownership of the situation. Explain our investigation process. Assure them we\'ll either locate it or ship a replacement. Be specific about timeline.',
+      objectionHandling: 'Lost packages are stressful. Speed and certainty help.',
+    },
+    delivered_not_received: {
+      context: 'Carrier marked delivered but customer didn\'t receive it.',
+      instruction: 'Take this seriously - package theft is real. Ask about common locations (neighbors, safe spots). Explain our investigation process including carrier contact and GPS verification.',
+      objectionHandling: 'Never imply the customer is lying. Investigate thoroughly.',
+    },
+    stuck: {
+      context: 'Package stuck at carrier facility or in transit.',
+      instruction: 'Explain common reasons for delays (customs, facility backlogs). Provide realistic timeline. Offer to contact carrier on their behalf.',
+      objectionHandling: 'Patience is needed. Set expectations clearly.',
+    },
+  },
+
+  // General/fallback
+  general: {
+    default: {
+      context: 'General customer inquiry.',
+      instruction: 'Be helpful and friendly. Address their question directly. Offer additional assistance if relevant.',
+      objectionHandling: 'Listen actively and respond to their actual concern.',
+    },
   },
 };
 
@@ -211,6 +313,11 @@ export default {
       // Check existing case
       if (pathname === '/api/check-case' && request.method === 'POST') {
         return await handleCheckCase(request, env, corsHeaders);
+      }
+
+      // Append to existing case (dedupe flow)
+      if (pathname === '/api/append-to-case' && request.method === 'POST') {
+        return await handleAppendToCase(request, env, corsHeaders);
       }
 
       // AI response (Amy/Claudia)
@@ -407,7 +514,20 @@ async function handleLookupOrder(request, env, corsHeaders) {
   const processedOrders = await Promise.all(orders.map(async (order) => {
     const lineItems = await processLineItems(order.line_items, env);
     const clientOrderId = extractClientOrderId(order);
-    
+
+    // Calculate fulfillment window (backend enforcement)
+    const orderDate = new Date(order.created_at);
+    const now = new Date();
+    const hoursSinceOrder = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
+    const isUnfulfilled = !order.fulfillment_status || order.fulfillment_status === 'null';
+    const withinFulfillmentWindow = hoursSinceOrder < POLICY_CONFIG.fulfillmentCutoffHours;
+
+    // canModify = unfulfilled AND within 10-hour window
+    const canModify = isUnfulfilled && withinFulfillmentWindow;
+    const hoursUntilFulfillment = withinFulfillmentWindow
+      ? Math.max(0, POLICY_CONFIG.fulfillmentCutoffHours - hoursSinceOrder)
+      : 0;
+
     return {
       id: order.id,
       orderNumber: order.name,
@@ -426,6 +546,10 @@ async function handleLookupOrder(request, env, corsHeaders) {
       lineItems,
       clientOrderId,
       orderUrl: `https://${env.SHOPIFY_STORE}/admin/orders/${order.id}`,
+      // Fulfillment window fields (backend-enforced)
+      canModify,                    // true if order can be changed/cancelled
+      hoursUntilFulfillment,        // hours remaining in window
+      hoursSinceOrder,              // for debugging/display
     };
   }));
 
@@ -1163,6 +1287,45 @@ async function createClickUpTask(env, listId, caseData) {
     commentLines.push(``, `**Shopify Order:** ${caseData.orderUrl}`);
   }
 
+  // Add subscription-specific details for subscription cases
+  if (caseData.caseType === 'subscription') {
+    commentLines.push(``, `**SUBSCRIPTION DETAILS**`);
+    if (caseData.purchaseId) {
+      commentLines.push(`**Purchase ID:** ${caseData.purchaseId}`);
+    }
+    if (caseData.clientOrderId) {
+      commentLines.push(`**Client Order ID:** ${caseData.clientOrderId}`);
+    }
+    if (caseData.subscriptionProductName) {
+      commentLines.push(`**Product:** ${caseData.subscriptionProductName}`);
+    }
+    if (caseData.actionType) {
+      const actionLabels = {
+        pause: 'Pause Subscription',
+        cancel: 'Cancel Subscription',
+        changeSchedule: 'Change Schedule',
+        changeAddress: 'Change Address'
+      };
+      commentLines.push(`**Action:** ${actionLabels[caseData.actionType] || caseData.actionType}`);
+    }
+    if (caseData.discountPercent) {
+      commentLines.push(`**Discount Applied:** ${caseData.discountPercent}%`);
+    }
+    if (caseData.cancelReason) {
+      const reasonLabels = {
+        expensive: 'Too expensive',
+        too_many: 'Has too many',
+        not_working: 'Not working as described',
+        moving: 'Moving',
+        other: 'Other reason'
+      };
+      commentLines.push(`**Cancel Reason:** ${reasonLabels[caseData.cancelReason] || caseData.cancelReason}`);
+    }
+    if (caseData.subscriptionStatus) {
+      commentLines.push(`**Status:** ${caseData.subscriptionStatus}`);
+    }
+  }
+
   const commentText = commentLines.join('\n');
 
   await fetch(`https://api.clickup.com/api/v2/task/${task.id}/comment`, {
@@ -1251,8 +1414,9 @@ async function createRichpanelEntry(env, caseData, caseId) {
 }
 
 async function createRichpanelTicket(env, caseData, caseId) {
-  // Use test email in test mode
-  const fromEmail = RICHPANEL_CONFIG.testMode
+  // Use test email in test mode (determined by env variables)
+  const testMode = isTestMode(env);
+  const fromEmail = testMode
     ? RICHPANEL_CONFIG.testEmail
     : (caseData.email || RICHPANEL_CONFIG.testEmail);
 
@@ -1260,11 +1424,11 @@ async function createRichpanelTicket(env, caseData, caseId) {
   const customerLastName = caseData.customerLastName || '';
 
   // Build subject line (with [TEST] prefix in test mode)
-  const testPrefix = RICHPANEL_CONFIG.testMode ? '[TEST] ' : '';
+  const testPrefix = testMode ? '[TEST] ' : '';
   const subject = `${testPrefix}${getSubjectByType(caseData.caseType, caseData.resolution)} - Order ${caseData.orderNumber || 'N/A'}`;
 
   // Build customer message (simulated email from customer)
-  const customerMessage = buildCustomerMessage(caseData, caseId);
+  const customerMessage = buildCustomerMessage(caseData, caseId, testMode);
 
   const response = await fetch('https://api.richpanel.com/v1/tickets', {
     method: 'POST',
@@ -1325,17 +1489,44 @@ async function createRichpanelTicket(env, caseData, caseId) {
   };
 }
 
-function buildCustomerMessage(caseData, caseId) {
+function buildCustomerMessage(caseData, caseId, testMode = true) {
   const items = caseData.selectedItems?.map(item =>
     `- ${item.title}${item.sku ? ` (SKU: ${item.sku})` : ''}`
   ).join('\n') || 'No items selected';
 
-  const testNotice = RICHPANEL_CONFIG.testMode
+  const testNotice = testMode
     ? '\n\n[TEST MODE - This is not a real customer request]\n'
     : '';
 
   // Use formatted resolution for the email
   const formattedResolution = formatResolution(caseData.resolution, caseData);
+
+  // Build subscription-specific details
+  let subscriptionDetails = '';
+  if (caseData.caseType === 'subscription') {
+    const actionLabels = {
+      pause: 'Pause Subscription',
+      cancel: 'Cancel Subscription',
+      changeSchedule: 'Change Schedule',
+      changeAddress: 'Change Address'
+    };
+    const reasonLabels = {
+      expensive: 'Too expensive',
+      too_many: 'Has too many',
+      not_working: 'Not working as described',
+      moving: 'Moving',
+      other: 'Other reason'
+    };
+    subscriptionDetails = `
+SUBSCRIPTION DETAILS:
+${caseData.purchaseId ? `Purchase ID: ${caseData.purchaseId}` : ''}
+${caseData.clientOrderId ? `Client Order ID: ${caseData.clientOrderId}` : ''}
+${caseData.subscriptionProductName ? `Product: ${caseData.subscriptionProductName}` : ''}
+${caseData.actionType ? `Action: ${actionLabels[caseData.actionType] || caseData.actionType}` : ''}
+${caseData.discountPercent ? `Discount Applied: ${caseData.discountPercent}%` : ''}
+${caseData.cancelReason ? `Cancel Reason: ${reasonLabels[caseData.cancelReason] || caseData.cancelReason}` : ''}
+`.trim();
+  }
 
   return `${testNotice}
 Hi,
@@ -1347,12 +1538,11 @@ Resolution: ${formattedResolution}
 Order Number: ${caseData.orderNumber || 'N/A'}
 Case ID: ${caseId}
 
-Items:
-${items}
+${caseData.caseType !== 'subscription' ? `Items:\n${items}` : subscriptionDetails}
 
 ${caseData.refundAmount ? `Refund Amount: $${parseFloat(caseData.refundAmount).toFixed(2)}` : ''}
 
-${caseData.intentDetails ? `Reason: ${caseData.intentDetails}` : ''}
+${caseData.intentDetails || caseData.notes ? `Reason: ${caseData.intentDetails || caseData.notes}` : ''}
 
 Thank you,
 ${caseData.customerName || 'Customer'}
@@ -1384,6 +1574,37 @@ async function createRichpanelPrivateNote(env, ticketId, caseData, caseId) {
     ? caseData.selectedItems.map(item => `• ${item.title} (${item.sku || 'N/A'})`).join('<br>')
     : 'No items selected';
 
+  // Build subscription-specific details HTML
+  let subscriptionDetailsHtml = '';
+  if (caseData.caseType === 'subscription') {
+    const actionLabels = {
+      pause: 'Pause Subscription',
+      cancel: 'Cancel Subscription',
+      changeSchedule: 'Change Schedule',
+      changeAddress: 'Change Address'
+    };
+    const reasonLabels = {
+      expensive: 'Too expensive',
+      too_many: 'Has too many',
+      not_working: 'Not working as described',
+      moving: 'Moving',
+      other: 'Other reason'
+    };
+    subscriptionDetailsHtml = `
+<br>
+<b>─────────────────────</b><br>
+<br>
+<b>SUBSCRIPTION DETAILS</b><br>
+${caseData.purchaseId ? `<b>Purchase ID:</b> ${caseData.purchaseId}<br>` : ''}
+${caseData.clientOrderId ? `<b>Client Order ID:</b> ${caseData.clientOrderId}<br>` : ''}
+${caseData.subscriptionProductName ? `<b>Product:</b> ${caseData.subscriptionProductName}<br>` : ''}
+${caseData.actionType ? `<b>Action:</b> ${actionLabels[caseData.actionType] || caseData.actionType}<br>` : ''}
+${caseData.discountPercent ? `<b>Discount Applied:</b> ${caseData.discountPercent}%<br>` : ''}
+${caseData.cancelReason ? `<b>Cancel Reason:</b> ${reasonLabels[caseData.cancelReason] || caseData.cancelReason}<br>` : ''}
+${caseData.notes ? `<b>Notes:</b> ${caseData.notes}<br>` : ''}
+`;
+  }
+
   // Build HTML formatted note content with <br> and <b> tags (no italics)
   const noteContent = `
 <b>🎯 ACTION REQUIRED</b><br>
@@ -1401,12 +1622,11 @@ ${caseData.refundAmount ? `<b>Refund Amount:</b> $${parseFloat(caseData.refundAm
 <br>
 <b>Action Steps:</b><br>
 ${actionSteps}<br>
+${subscriptionDetailsHtml}
 <br>
 <b>─────────────────────</b><br>
 <br>
-<b>Items:</b><br>
-${itemsHtml}<br>
-<br>
+${caseData.caseType !== 'subscription' ? `<b>Items:</b><br>${itemsHtml}<br><br>` : ''}
 ${caseData.orderUrl ? `<b>Shopify Order:</b> <a href="${caseData.orderUrl}">${caseData.orderUrl}</a><br>` : ''}
 <b>SOP:</b> <a href="${sopUrl}">${sopUrl}</a>
 `.trim();
@@ -1572,10 +1792,88 @@ async function handleCheckCase(request, env, corsHeaders) {
 }
 
 // ============================================
+// APPEND TO EXISTING CASE
+// Adds new info as a comment to an existing ClickUp task
+// ============================================
+async function handleAppendToCase(request, env, corsHeaders) {
+  const { taskId, caseData, additionalInfo, newIntent } = await request.json();
+
+  if (!taskId) {
+    return Response.json({ success: false, error: 'No task ID provided' }, { status: 400, headers: corsHeaders });
+  }
+
+  try {
+    // Build comment with new information
+    const now = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
+    const formattedResolution = formatResolution(caseData?.resolution, caseData);
+    const orderIssue = formatOrderIssue(caseData);
+
+    const commentLines = [
+      `📝 **ADDITIONAL INFORMATION ADDED**`,
+      `Date: ${now}`,
+      ``,
+    ];
+
+    if (newIntent) {
+      commentLines.push(`**New Issue Type:** ${newIntent}`);
+    }
+    if (caseData?.resolution) {
+      commentLines.push(`**Requested Resolution:** ${formattedResolution}`);
+    }
+    if (orderIssue) {
+      commentLines.push(`**Issue Details:** ${orderIssue}`);
+    }
+    if (caseData?.intentDetails) {
+      commentLines.push(`**Customer Notes:** ${caseData.intentDetails}`);
+    }
+    if (additionalInfo) {
+      commentLines.push(`**Additional Info:** ${additionalInfo}`);
+    }
+    if (caseData?.selectedItems?.length > 0) {
+      commentLines.push(``, `**Items:**`);
+      caseData.selectedItems.forEach(item => {
+        commentLines.push(`- ${item.title}${item.sku ? ` (${item.sku})` : ''}`);
+      });
+    }
+
+    commentLines.push(``, `---`, `Session ID: ${caseData?.sessionId || 'N/A'}`);
+
+    const commentText = commentLines.join('\n');
+
+    // Add comment to ClickUp task
+    const response = await fetch(`https://api.clickup.com/api/v2/task/${taskId}/comment`, {
+      method: 'POST',
+      headers: {
+        'Authorization': env.CLICKUP_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ comment_text: commentText }),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to add comment to ClickUp task');
+      return Response.json({ success: false, error: 'Failed to update case' }, { status: 500, headers: corsHeaders });
+    }
+
+    // Also update Richpanel if we have a conversation
+    // (In a full implementation, we'd look up the Richpanel conversation and add a note)
+
+    return Response.json({
+      success: true,
+      message: 'Information added to existing case'
+    }, { headers: corsHeaders });
+
+  } catch (error) {
+    console.error('Error appending to case:', error);
+    return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
 // AI RESPONSE (AMY / CLAUDIA)
 // ============================================
 async function handleAIResponse(request, env, corsHeaders) {
-  const { persona, context, productName, customerInput, methodsTried } = await request.json();
+  const { persona, context, productName, customerInput, methodsTried, intentCategory, intentReason } = await request.json();
 
   // Get product doc from R2 if needed
   let productDoc = '';
@@ -1583,10 +1881,13 @@ async function handleAIResponse(request, env, corsHeaders) {
     productDoc = await getProductDoc(env, productName);
   }
 
+  // Get intent-specific prompt pack
+  const promptPack = getPromptPack(intentCategory, intentReason);
+
   // Build prompt based on persona
-  const systemPrompt = persona === 'claudia' 
-    ? buildClaudiaPrompt(productDoc, methodsTried)
-    : buildAmyPrompt(productDoc, context);
+  const systemPrompt = persona === 'claudia'
+    ? buildClaudiaPrompt(productDoc, methodsTried, promptPack)
+    : buildAmyPrompt(productDoc, context, promptPack);
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -1618,6 +1919,23 @@ async function handleAIResponse(request, env, corsHeaders) {
   return Response.json({ messages }, { headers: corsHeaders });
 }
 
+// Gets the appropriate prompt pack for the given intent
+function getPromptPack(category, reason) {
+  if (!category) return null;
+
+  const categoryPack = PROMPT_PACKS[category];
+  if (!categoryPack) return PROMPT_PACKS.general.default;
+
+  const reasonPack = categoryPack[reason];
+  if (!reasonPack) {
+    // If no specific reason, use the first one in the category as fallback
+    const firstReason = Object.keys(categoryPack)[0];
+    return categoryPack[firstReason] || PROMPT_PACKS.general.default;
+  }
+
+  return reasonPack;
+}
+
 async function getProductDoc(env, productName) {
   // Uses PRODUCT_DOC_MAP from config at top of file
   const lowerName = productName.toLowerCase();
@@ -1644,9 +1962,25 @@ async function getProductDoc(env, productName) {
   return '';
 }
 
-// Builds prompt from PERSONA_PROMPTS config
-function buildAmyPrompt(productDoc, context) {
+// Builds prompt from PERSONA_PROMPTS config + intent-specific prompt pack
+function buildAmyPrompt(productDoc, context, promptPack = null) {
   const persona = PERSONA_PROMPTS.amy;
+
+  // Build intent-specific section if prompt pack provided
+  let intentSection = '';
+  if (promptPack) {
+    intentSection = `
+SITUATION CONTEXT:
+${promptPack.context}
+
+YOUR APPROACH FOR THIS SITUATION:
+${promptPack.instruction}
+
+HANDLING PUSHBACK:
+${promptPack.objectionHandling}
+`;
+  }
+
   return `You are ${persona.name} from PuppyPad ${persona.role}. You are warm, caring, and helpful.
 
 Your characteristics:
@@ -1656,13 +1990,29 @@ Product knowledge:
 ${productDoc}
 
 Context: ${context || 'General customer support'}
-
+${intentSection}
 ${persona.instruction}`;
 }
 
-// Builds prompt from PERSONA_PROMPTS config
-function buildClaudiaPrompt(productDoc, methodsTried) {
+// Builds prompt from PERSONA_PROMPTS config + intent-specific prompt pack
+function buildClaudiaPrompt(productDoc, methodsTried, promptPack = null) {
   const persona = PERSONA_PROMPTS.claudia;
+
+  // Build intent-specific section if prompt pack provided
+  let intentSection = '';
+  if (promptPack) {
+    intentSection = `
+SITUATION CONTEXT:
+${promptPack.context}
+
+YOUR APPROACH FOR THIS SITUATION:
+${promptPack.instruction}
+
+HANDLING PUSHBACK:
+${promptPack.objectionHandling}
+`;
+  }
+
   return `You are ${persona.name}, an ${persona.role} at PuppyPad. You specialize in helping customers train their dogs to use PuppyPad products.
 
 Your characteristics:
@@ -1673,7 +2023,7 @@ ${productDoc}
 
 Methods the customer has already tried (DO NOT suggest these again):
 ${methodsTried || 'None specified'}
-
+${intentSection}
 ${persona.instruction}`;
 }
 
