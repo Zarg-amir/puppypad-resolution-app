@@ -4074,39 +4074,44 @@ function getDateRange(range) {
 **Goal:** Improve user experience with proper animation timing and reading flow
 
 1. ✅ **Staggered Option Animations (JavaScript-based)**
-   - Options now appear one-by-one with 150ms delay between each
-   - 700ms delay after Amy's message before options start appearing
+   - Options appear one-by-one with 400ms delay between each
+   - 1.5s delay after Amy finishes typing before options start appearing
    - Gives users time to read Amy's message before seeing choices
    - Removed CSS-only animations that caused all options to flash at once
 
 2. ✅ **Interactive Content Staggered Rendering**
-   - Order cards animate in one-by-one (120ms stagger)
+   - Order cards animate in one-by-one (350ms stagger)
    - Product/item cards animate in one-by-one
    - Form containers animate smoothly
-   - 600ms delay before interactive content appears
+   - 1.2s delay before interactive content appears
 
-3. ✅ **ANIMATION_CONFIG in app.js**
-   - `delayBeforeOptions: 700` - Wait after message before showing options
-   - `staggerDelay: 150` - Delay between each option appearing
-   - `delayBeforeCards: 600` - Wait before showing interactive cards
-   - `cardStaggerDelay: 120` - Delay between each card appearing
+3. ✅ **ANIMATION_CONFIG in app.js (line ~886)**
+   - `delayBeforeOptions: 1500` - Wait 1.5s after message before showing options
+   - `staggerDelay: 400` - 400ms between each option appearing
+   - `delayBeforeCards: 1200` - Wait 1.2s before showing interactive cards
+   - `cardStaggerDelay: 350` - 350ms between each card appearing
 
-4. ✅ **Scroll Behavior Improvements**
+4. ✅ **Slower Typing Speed**
+   - Changed from 40ms to 55ms per character (more readable)
+   - Scroll only every 15 characters (less jumpy)
+   - Users can read message as it types
+
+5. ✅ **Scroll Behavior Improvements**
    - New messages scroll into view at top of viewport
    - 40vh bottom padding for "space below" effect
    - User sees content at top, not forced to look at bottom
 
-5. ✅ **ClickUp Comments (not Description)**
+6. ✅ **ClickUp Comments (not Description)**
    - Case details now go in comments section
    - Includes: issue, resolution, email, order date, order number, order value, SOP link
 
-6. ✅ **Richpanel HTML Formatting**
+7. ✅ **Richpanel HTML Formatting**
    - Private notes use `<br>` and `<b>` tags (no italics)
    - Proper spacing and visual separators
    - Added SOP links to all notes
 
 **Files Modified:**
-- `frontend/app.js` - ANIMATION_CONFIG, addOptions(), addOptionsRow(), addInteractiveContent()
+- `frontend/app.js` - ANIMATION_CONFIG, typeText(), addOptions(), addOptionsRow(), addInteractiveContent()
 - `frontend/styles.css` - Removed conflicting CSS animations
 - `src/index.js` - SOP_URLS config, createClickUpTask(), createRichpanelPrivateNote()
 
@@ -4175,10 +4180,11 @@ See `CODING_GUIDELINES.md` for complete checklist.
 - ✅ ParcelPanel status branching - Handles all statuses (delivered, in_transit, out_for_delivery, pending, failed_attempt, pickup, exception)
 - ✅ Investigation flows - Damaged, wrong item, missing item flows with specific resolutions
 
-**Sprint 7 (6/6 items):** ✅ COMPLETE
-- ✅ Staggered option animations (JavaScript-based, one-by-one with 150ms delay)
-- ✅ Interactive content staggered rendering (order/product cards)
+**Sprint 7 (7/7 items):** ✅ COMPLETE
+- ✅ Staggered option animations (JavaScript-based, 400ms between each, 1.5s delay after message)
+- ✅ Interactive content staggered rendering (order/product cards, 350ms stagger)
 - ✅ ANIMATION_CONFIG for easy timing adjustments
+- ✅ Slower typing speed (55ms per char, scroll every 15 chars)
 - ✅ Scroll behavior improvements (content at top, space below)
 - ✅ ClickUp comments instead of description (with SOP links)
 - ✅ Richpanel HTML formatting (br, bold, proper spacing)
