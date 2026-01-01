@@ -3575,50 +3575,170 @@ async function handleExtendedTransit(tracking, isInternational = false) {
 
 async function handleReship() {
   const address = state.selectedOrder?.shippingAddress;
-  
-  await addBotMessage("I'll create a free reship for you! First, let me confirm your shipping address:");
-  
+
+  if (!address || !address.address1) {
+    await addBotMessage("I'll create a free reship for you! Please provide your shipping address:");
+    showAddressForm(null);
+    return;
+  }
+
+  // Format the current address for display
+  const formattedAddress = formatAddressForDisplay(address);
+
+  await addBotMessage(`I'll create a free reship for you! First, let me confirm your shipping address:<br><br><div class="address-display">${formattedAddress}</div>`);
+
+  await addBotMessage("Is this address correct, or would you like to update it?");
+
+  addOptions([
+    { text: "This address is correct", action: () => confirmReshipWithAddress(address) },
+    { text: "I need to update it", action: () => showAddressForm(address) }
+  ]);
+}
+
+// Format address for display
+function formatAddressForDisplay(address) {
+  const lines = [];
+  if (address.address1) lines.push(`<strong>${address.address1}</strong>`);
+  if (address.address2) lines.push(address.address2);
+
+  const cityLine = [];
+  if (address.city) cityLine.push(address.city);
+  if (address.province || address.provinceCode) cityLine.push(address.province || address.provinceCode);
+  if (address.zip) cityLine.push(address.zip);
+  if (cityLine.length > 0) lines.push(cityLine.join(', '));
+
+  if (address.country) lines.push(address.country);
+
+  return lines.join('<br>');
+}
+
+// Show address form with country-specific fields (Shopify format)
+function showAddressForm(currentAddress) {
+  const address = currentAddress || {};
+  const country = address.country || 'United States';
+
+  // Country-specific field configurations (Shopify format)
+  const countryConfigs = {
+    'United States': {
+      provinceLabel: 'State',
+      provinces: ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'],
+      zipLabel: 'ZIP Code',
+      zipPlaceholder: '12345'
+    },
+    'Canada': {
+      provinceLabel: 'Province',
+      provinces: ['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'],
+      zipLabel: 'Postal Code',
+      zipPlaceholder: 'A1A 1A1'
+    },
+    'United Kingdom': {
+      provinceLabel: 'County',
+      provinces: null, // Text input
+      zipLabel: 'Postcode',
+      zipPlaceholder: 'SW1A 1AA'
+    },
+    'Australia': {
+      provinceLabel: 'State',
+      provinces: ['ACT','NSW','NT','QLD','SA','TAS','VIC','WA'],
+      zipLabel: 'Postcode',
+      zipPlaceholder: '2000'
+    }
+  };
+
+  const config = countryConfigs[country] || countryConfigs['United States'];
+
+  // Build province field (dropdown or text input)
+  let provinceField;
+  if (config.provinces) {
+    const provinceOptions = config.provinces.map(p =>
+      `<option value="${p}" ${(address.province === p || address.provinceCode === p) ? 'selected' : ''}>${p}</option>`
+    ).join('');
+    provinceField = `<select class="form-input" id="province">${provinceOptions}</select>`;
+  } else {
+    provinceField = `<input type="text" class="form-input" id="province" value="${address.province || ''}" placeholder="${config.provinceLabel}">`;
+  }
+
+  // Build country dropdown
+  const countries = ['United States', 'Canada', 'United Kingdom', 'Australia'];
+  const countryOptions = countries.map(c =>
+    `<option value="${c}" ${country === c ? 'selected' : ''}>${c}</option>`
+  ).join('');
+
   const addressHtml = `
     <div class="form-container" id="addressForm">
       <div class="form-group">
+        <label>Country *</label>
+        <select class="form-input" id="country" onchange="updateAddressFieldsForCountry()">
+          ${countryOptions}
+        </select>
+      </div>
+      <div class="form-group">
         <label>Street Address *</label>
-        <input type="text" class="form-input" id="address1" value="${address?.address1 || ''}" placeholder="123 Main St">
+        <input type="text" class="form-input" id="address1" value="${address.address1 || ''}" placeholder="123 Main St">
       </div>
       <div class="form-group">
         <label>Apt/Suite/Unit</label>
-        <input type="text" class="form-input" id="address2" value="${address?.address2 || ''}" placeholder="Apt 4B">
+        <input type="text" class="form-input" id="address2" value="${address.address2 || ''}" placeholder="Apt 4B">
       </div>
       <div class="form-group">
         <label>City *</label>
-        <input type="text" class="form-input" id="city" value="${address?.city || ''}" placeholder="City">
+        <input type="text" class="form-input" id="city" value="${address.city || ''}" placeholder="City">
+      </div>
+      <div class="form-group" id="provinceGroup">
+        <label>${config.provinceLabel} *</label>
+        ${provinceField}
       </div>
       <div class="form-group">
-        <label>State/Province *</label>
-        <input type="text" class="form-input" id="province" value="${address?.province || ''}" placeholder="State">
+        <label>${config.zipLabel} *</label>
+        <input type="text" class="form-input" id="zip" value="${address.zip || ''}" placeholder="${config.zipPlaceholder}">
       </div>
-      <div class="form-group">
-        <label>ZIP/Postal Code *</label>
-        <input type="text" class="form-input" id="zip" value="${address?.zip || ''}" placeholder="12345">
-      </div>
-      <div class="form-group">
-        <label>Country *</label>
-        <select class="form-input" id="country" onchange="updateAddressFields('')">
-          <option value="United States" ${address?.country?.includes('United States') ? 'selected' : ''}>United States</option>
-          <option value="Canada" ${address?.country?.includes('Canada') ? 'selected' : ''}>Canada</option>
-          <option value="United Kingdom" ${address?.country?.includes('United Kingdom') ? 'selected' : ''}>United Kingdom</option>
-          <option value="Australia" ${address?.country?.includes('Australia') ? 'selected' : ''}>Australia</option>
-        </select>
-      </div>
-      <button class="option-btn primary" onclick="confirmReship()" style="width: 100%;">
+      <button class="option-btn primary" onclick="submitAddressForm()" style="width: 100%;">
         Confirm & Reship
       </button>
     </div>
   `;
-  
+
   addInteractiveContent(addressHtml);
 }
 
-async function confirmReship() {
+// Update address fields when country changes
+function updateAddressFieldsForCountry() {
+  const country = document.getElementById('country')?.value || 'United States';
+
+  const configs = {
+    'United States': { label: 'State', provinces: ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'], zipLabel: 'ZIP Code', zipPlaceholder: '12345' },
+    'Canada': { label: 'Province', provinces: ['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'], zipLabel: 'Postal Code', zipPlaceholder: 'A1A 1A1' },
+    'United Kingdom': { label: 'County', provinces: null, zipLabel: 'Postcode', zipPlaceholder: 'SW1A 1AA' },
+    'Australia': { label: 'State', provinces: ['ACT','NSW','NT','QLD','SA','TAS','VIC','WA'], zipLabel: 'Postcode', zipPlaceholder: '2000' }
+  };
+
+  const config = configs[country] || configs['United States'];
+  const provinceGroup = document.getElementById('provinceGroup');
+  const zipInput = document.getElementById('zip');
+
+  if (provinceGroup) {
+    let provinceField;
+    if (config.provinces) {
+      const options = config.provinces.map(p => `<option value="${p}">${p}</option>`).join('');
+      provinceField = `<select class="form-input" id="province">${options}</select>`;
+    } else {
+      provinceField = `<input type="text" class="form-input" id="province" placeholder="${config.label}">`;
+    }
+    provinceGroup.innerHTML = `<label>${config.label} *</label>${provinceField}`;
+  }
+
+  if (zipInput) {
+    zipInput.placeholder = config.zipPlaceholder;
+    const zipLabel = zipInput.parentElement?.querySelector('label');
+    if (zipLabel) zipLabel.textContent = config.zipLabel + ' *';
+  }
+}
+
+// Make function globally available
+window.updateAddressFieldsForCountry = updateAddressFieldsForCountry;
+
+// Submit address form and create reship
+async function submitAddressForm() {
   const address1 = document.getElementById('address1')?.value.trim();
   const address2 = document.getElementById('address2')?.value.trim();
   const city = document.getElementById('city')?.value.trim();
@@ -3627,49 +3747,86 @@ async function confirmReship() {
   const country = document.getElementById('country')?.value;
 
   if (!address1 || !city || !zip) {
-    await addBotMessage("Please fill in all required address fields.");
+    showToast("Please fill in all required address fields");
     return;
   }
 
-  document.getElementById('addressForm')?.closest('.interactive-content').remove();
-  addUserMessage("Address confirmed");
+  const newAddress = { address1, address2, city, province, zip, country };
+  state.addressChanged = true;
+  state.newAddress = newAddress;
 
-  showProgress("Creating your free reship order...", "This will ship within 1-2 business days");
+  document.getElementById('addressForm')?.closest('.interactive-content').remove();
+  addUserMessage(`Updated address: ${address1}, ${city}, ${province} ${zip}`);
+
+  // Check if we're processing a shipping offer or regular reship
+  if (state.afterAddressAction === 'shipping_offer') {
+    await processShippingOfferWithAddress(newAddress);
+  } else {
+    await confirmReshipWithAddress(newAddress);
+  }
+}
+
+window.submitAddressForm = submitAddressForm;
+
+// Confirm reship with address (new or existing)
+async function confirmReshipWithAddress(address) {
+  showProgress("Creating your free reship order...", "This will ship within 1-3 business days");
 
   const tracking = state.tracking || {};
+  const addressChanged = state.addressChanged || false;
+
+  // Determine carrier issue based on tracking status
+  let carrierIssue = 'extendedTransit';
+  if (tracking.status === 'exception') carrierIssue = 'exception';
+  else if (tracking.status === 'expired') carrierIssue = 'expiredTracking';
+  else if (tracking.status === 'failed_attempt') carrierIssue = 'failedDelivery';
+  else if (tracking.status === 'delivered') carrierIssue = 'deliveredNotReceived';
+
   const result = await submitCase('shipping', 'reship', {
     issueType: 'reship_request',
+    carrierIssue: carrierIssue,
     carrierName: tracking.carrier || 'Unknown',
     trackingNumber: tracking.trackingNumber || '',
     daysInTransit: tracking.daysInTransit || 0,
     trackingStatus: tracking.status || '',
     pickupReason: state.pickupReason || '',
-    newAddress: {
-      address1,
-      address2,
-      city,
-      province,
-      zip,
-      country
-    },
-    notes: `Free reship requested. New address: ${address1}, ${city}, ${province} ${zip}, ${country}`,
+    addressChanged: addressChanged,
+    shippingAddress: address,
+    notes: addressChanged
+      ? `Free reship requested with NEW address: ${address.address1}, ${address.city}, ${address.province} ${address.zip}, ${address.country}`
+      : `Free reship requested to SAME address: ${address.address1}, ${address.city}, ${address.province} ${address.zip}, ${address.country}`,
   });
 
   hideProgress();
 
+  // Clear state
+  state.addressChanged = false;
+  state.newAddress = null;
+
   if (result.success) {
     state.caseId = result.caseId;
     await showSuccess(
-      "Reship Created!",
-      `Your order will be reshipped free of charge within 1-2 business days. We'll email you the tracking info.<br><br>${getCaseIdHtml(result.caseId)}`
+      "Reship Request Received!",
+      `<strong>What happens next:</strong><br><br>
+      Our team has received your reship request and will process it within <strong>1-3 business days</strong>.<br><br>
+      Once your order ships, we'll send you a confirmation email with tracking information.<br><br>
+      ${getCaseIdHtml(result.caseId)}`
     );
   } else {
     state.caseId = generateCaseId('shipping');
     await showSuccess(
-      "Reship Created!",
-      `Your order will be reshipped free of charge within 1-2 business days. We'll email you the tracking info.<br><br>${getCaseIdHtml(state.caseId)}`
+      "Reship Request Received!",
+      `<strong>What happens next:</strong><br><br>
+      Our team has received your reship request and will process it within <strong>1-3 business days</strong>.<br><br>
+      Once your order ships, we'll send you a confirmation email with tracking information.<br><br>
+      ${getCaseIdHtml(state.caseId)}`
     );
   }
+}
+
+async function confirmReship() {
+  // Legacy function - redirect to new flow
+  await submitAddressForm();
 }
 
 async function startShippingLadder() {
@@ -3710,32 +3867,87 @@ async function acceptShippingOffer(percent, amount) {
   document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage(`I'll take the ${percent}% refund + reship`);
 
-  showProgress("Processing refund and creating reship...");
+  // Store the offer details for after address validation
+  state.pendingOffer = { percent, amount: parseFloat(amount) };
+
+  // Now validate the address before processing
+  const address = state.selectedOrder?.shippingAddress;
+
+  if (!address || !address.address1) {
+    await addBotMessage("Great choice! Before we process this, please provide your shipping address:");
+    showAddressForm(null);
+    state.afterAddressAction = 'shipping_offer';
+    return;
+  }
+
+  // Show address and ask for confirmation
+  const formattedAddress = formatAddressForDisplay(address);
+  await addBotMessage(`Great choice! Before we process your ${percent}% refund and reship, let me confirm your shipping address:<br><br><div class="address-display">${formattedAddress}</div>`);
+
+  addOptions([
+    { text: "This address is correct", action: () => processShippingOfferWithAddress(address) },
+    { text: "I need to update it", action: () => {
+      state.afterAddressAction = 'shipping_offer';
+      showAddressForm(address);
+    }}
+  ]);
+}
+
+// Process shipping offer after address is confirmed
+async function processShippingOfferWithAddress(address) {
+  const { percent, amount } = state.pendingOffer || { percent: 0, amount: 0 };
+
+  showProgress("Processing your refund and creating reship...");
 
   const tracking = state.tracking || {};
+  const addressChanged = state.addressChanged || false;
+
+  // Determine carrier issue based on tracking status
+  let carrierIssue = 'extendedTransit';
+  if (tracking.status === 'exception') carrierIssue = 'exception';
+  else if (tracking.status === 'expired') carrierIssue = 'expiredTracking';
+  else if (tracking.status === 'failed_attempt') carrierIssue = 'failedDelivery';
+  else if (tracking.status === 'delivered') carrierIssue = 'deliveredNotReceived';
+
   const result = await submitCase('shipping', `partial_${percent}_reship`, {
     issueType: 'shipping_partial_refund_reship',
+    carrierIssue: carrierIssue,
     refundPercent: percent,
-    refundAmount: parseFloat(amount),
+    refundAmount: amount,
     carrierName: tracking.carrier || 'Unknown',
     trackingNumber: tracking.trackingNumber || '',
     daysInTransit: tracking.daysInTransit || 0,
-    notes: `Customer accepted ${percent}% partial refund + free reship offer`,
+    addressChanged: addressChanged,
+    shippingAddress: address,
+    notes: `Process ${percent}% partial refund ($${amount.toFixed(2)}) and create free reship. ${addressChanged ? 'NEW ADDRESS' : 'Same address'}: ${address.address1}, ${address.city}, ${address.province} ${address.zip}`,
   });
 
   hideProgress();
 
+  // Clear state
+  state.pendingOffer = null;
+  state.addressChanged = false;
+  state.afterAddressAction = null;
+
+  const refundAmountFormatted = formatCurrency(amount);
+
   if (result.success) {
     state.caseId = result.caseId;
     await showSuccess(
-      "All Set!",
-      `Your ${percent}% refund (${formatCurrency(amount)}) will process in 3-5 business days, and your reship will go out within 1-2 business days.<br><br>${getCaseIdHtml(result.caseId)}`
+      "Request Received!",
+      `<strong>What happens next:</strong><br><br>
+      <strong>Refund:</strong> ${percent}% (${refundAmountFormatted}) will be processed within <strong>1-2 business days</strong>. Once processed, it takes 3-5 business days to appear in your account depending on your bank.<br><br>
+      <strong>Reship:</strong> Your new order will ship within <strong>1-3 business days</strong>. We'll email you tracking information once it's on its way.<br><br>
+      ${getCaseIdHtml(result.caseId)}`
     );
   } else {
     state.caseId = generateCaseId('shipping');
     await showSuccess(
-      "All Set!",
-      `Your ${percent}% refund (${formatCurrency(amount)}) will process in 3-5 business days, and your reship will go out within 1-2 business days.<br><br>${getCaseIdHtml(state.caseId)}`
+      "Request Received!",
+      `<strong>What happens next:</strong><br><br>
+      <strong>Refund:</strong> ${percent}% (${refundAmountFormatted}) will be processed within <strong>1-2 business days</strong>. Once processed, it takes 3-5 business days to appear in your account depending on your bank.<br><br>
+      <strong>Reship:</strong> Your new order will ship within <strong>1-3 business days</strong>. We'll email you tracking information once it's on its way.<br><br>
+      ${getCaseIdHtml(state.caseId)}`
     );
   }
 }
