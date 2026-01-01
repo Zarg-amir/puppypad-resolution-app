@@ -146,6 +146,15 @@ const CLICKUP_CONFIG = {
   }
 };
 
+// SOP URLs for each case type (placeholder URLs - update with actual SOP links)
+const SOP_URLS = {
+  refund: 'https://docs.puppypad.com/sop/refunds',
+  return: 'https://docs.puppypad.com/sop/returns',
+  shipping: 'https://docs.puppypad.com/sop/shipping-issues',
+  subscription: 'https://docs.puppypad.com/sop/subscriptions',
+  manual: 'https://docs.puppypad.com/sop/manual-assistance'
+};
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -297,23 +306,15 @@ async function handleLookupOrder(request, env, corsHeaders) {
   let query = '';
 
   if (deepSearch && firstName && lastName && address1) {
-    // Deep search mode: Use name + address for fuzzy matching
-    // Shopify's search supports wildcards for partial matching
+    // Deep search mode: Search by name (Shopify will return matches)
+    // We'll filter for exact name/country match and fuzzy address match after
     query = `shipping_address.first_name:${firstName} shipping_address.last_name:${lastName}`;
-
-    // For address, extract key parts for matching (street number and street name)
-    const addressParts = address1.split(' ').filter(p => p.length > 2);
-    if (addressParts.length > 0) {
-      // Use the most significant parts of the address
-      const addressKey = addressParts.slice(0, 3).join(' ');
-      query += ` shipping_address.address1:*${addressKey}*`;
-    }
 
     // Add country filter if provided
     if (country) {
       const countryName = getCountryNameFromCode(country);
       if (countryName) {
-        query += ` shipping_address.country:${countryName}`;
+        query += ` shipping_address.country:"${countryName}"`;
       }
     }
   } else {
@@ -337,7 +338,7 @@ async function handleLookupOrder(request, env, corsHeaders) {
     }
   }
 
-  const shopifyUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=10&query=${encodeURIComponent(query)}`;
+  const shopifyUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=50&query=${encodeURIComponent(query)}`;
 
   const response = await fetch(shopifyUrl, {
     headers: {
@@ -353,18 +354,52 @@ async function handleLookupOrder(request, env, corsHeaders) {
   const data = await response.json();
   let orders = data.orders || [];
 
-  // For deep search, do additional fuzzy matching on address
-  if (deepSearch && address1 && orders.length > 0) {
+  // For deep search, apply strict filtering
+  if (deepSearch && orders.length > 0) {
+    const searchFirstName = firstName?.toLowerCase().trim();
+    const searchLastName = lastName?.toLowerCase().trim();
+    const searchAddress = address1?.toLowerCase().trim();
+    const searchCountryName = country ? getCountryNameFromCode(country)?.toLowerCase() : null;
+
     orders = orders.filter(order => {
-      const shippingAddr = order.shipping_address?.address1?.toLowerCase() || '';
-      const searchAddr = address1.toLowerCase();
+      const addr = order.shipping_address;
+      if (!addr) return false;
 
-      // Check if addresses are similar (contains key parts)
-      const searchParts = searchAddr.split(' ').filter(p => p.length > 2);
-      const matchCount = searchParts.filter(part => shippingAddr.includes(part)).length;
+      // EXACT match on first name (case insensitive)
+      const orderFirstName = (addr.first_name || '').toLowerCase().trim();
+      if (orderFirstName !== searchFirstName) return false;
 
-      // Require at least 50% of address parts to match
-      return matchCount >= Math.ceil(searchParts.length / 2);
+      // EXACT match on last name (case insensitive)
+      const orderLastName = (addr.last_name || '').toLowerCase().trim();
+      if (orderLastName !== searchLastName) return false;
+
+      // EXACT match on country (case insensitive)
+      if (searchCountryName) {
+        const orderCountry = (addr.country || '').toLowerCase().trim();
+        if (orderCountry !== searchCountryName) return false;
+      }
+
+      // FUZZY match on address - check if key parts match
+      if (searchAddress) {
+        const orderAddress = (addr.address1 || '').toLowerCase();
+
+        // Extract significant parts (numbers and words > 2 chars)
+        const searchParts = searchAddress.split(/[\s,]+/).filter(p => p.length > 1);
+
+        // Check how many parts match
+        let matchCount = 0;
+        for (const part of searchParts) {
+          if (orderAddress.includes(part)) {
+            matchCount++;
+          }
+        }
+
+        // Require at least 40% of parts to match for fuzzy address
+        const matchRatio = searchParts.length > 0 ? matchCount / searchParts.length : 0;
+        if (matchRatio < 0.4) return false;
+      }
+
+      return true;
     });
   }
 
@@ -783,33 +818,20 @@ async function handleCreateManualCase(request, env, corsHeaders) {
   const now = new Date();
   const caseId = `MAN-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 
-  // Build lookup attempts log
+  // Build lookup attempts log (plain text for ClickUp comment)
   const lookupLog = (lookupAttempts || []).map(attempt =>
     `✗ ${attempt.method}: ${attempt.value} - ${attempt.result}`
   ).join('\n');
 
-  // Create ClickUp task in Manual Help list
+  // Build lookup attempts log (HTML for Richpanel)
+  const lookupLogHtml = (lookupAttempts || []).map(attempt =>
+    `✗ ${attempt.method}: ${attempt.value} - ${attempt.result}`
+  ).join('<br>');
+
+  // Create ClickUp task with empty description (details go in comments)
   const taskData = {
     name: fullName || 'Unknown Customer',
-    description: `**MANUAL HELP REQUEST - ORDER NOT FOUND**
-
-**Customer Information:**
-- Name: ${fullName || 'Not provided'}
-- Email: ${email || 'Not provided'}
-- Phone: ${phone || 'Not provided'}
-- Order Number: ${orderNumber || 'Unknown'}
-- Preferred Contact: ${preferredContact === 'phone' ? 'Phone' : 'Email'}
-
-**Lookup Attempts:**
-${lookupLog || 'No lookup attempts recorded'}
-
-**Customer's Message:**
-"${issue || 'No message provided'}"
-
----
-Submitted via Resolution App
-Session ID: ${sessionId || 'N/A'}
-Case ID: ${caseId}`,
+    description: '', // Keep empty - details go in comments
     status: 'to do',
   };
 
@@ -823,6 +845,7 @@ Case ID: ${caseId}`,
   ];
 
   try {
+    // Create ClickUp task
     const response = await fetch(`https://api.clickup.com/api/v2/list/${CLICKUP_CONFIG.lists.manualHelp}/task`, {
       method: 'POST',
       headers: {
@@ -837,6 +860,64 @@ Case ID: ${caseId}`,
 
     const task = await response.json();
 
+    // Add formatted comment with all case details
+    const sopUrl = SOP_URLS.manual;
+    const commentLines = [
+      `📋 **MANUAL HELP REQUEST - ORDER NOT FOUND**`,
+      ``,
+      `**Issue:** ${issue || 'No message provided'}`,
+      `**Resolution:** Manual assistance required - order not found in system`,
+      ``,
+      `**Customer Email:** ${email || 'Not provided'}`,
+      `**Customer Name:** ${fullName || 'Not provided'}`,
+      `**Phone:** ${phone || 'Not provided'}`,
+      `**Order Number:** ${orderNumber || 'Unknown'}`,
+      `**Preferred Contact:** ${preferredContact === 'phone' ? 'Phone' : 'Email'}`,
+      ``,
+      `**Lookup Attempts:**`,
+      lookupLog || 'No lookup attempts recorded',
+      ``,
+      `**SOP:** ${sopUrl}`,
+      ``,
+      `---`,
+      `Session ID: ${sessionId || 'N/A'}`,
+      `Case ID: ${caseId}`,
+    ];
+
+    const commentText = commentLines.join('\n');
+
+    await fetch(`https://api.clickup.com/api/v2/task/${task.id}/comment`, {
+      method: 'POST',
+      headers: {
+        'Authorization': env.CLICKUP_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ comment_text: commentText }),
+    });
+
+    // Create Richpanel entry (email + private note)
+    let richpanelResult = null;
+    if (env.RICHPANEL_API_KEY && email) {
+      const caseData = {
+        email,
+        customerName: fullName,
+        customerFirstName: fullName ? fullName.split(' ')[0] : 'Customer',
+        customerLastName: fullName ? fullName.split(' ').slice(1).join(' ') : '',
+        orderNumber: orderNumber || 'N/A',
+        caseType: 'manual',
+        resolution: 'manual_assistance',
+        issueType: 'order_not_found',
+        intentDetails: issue,
+      };
+
+      richpanelResult = await createRichpanelEntry(env, caseData, caseId);
+
+      // Update ClickUp with conversation URL if available
+      if (richpanelResult?.success && richpanelResult.conversationNo && task?.id) {
+        await updateClickUpWithConversationUrl(env, task.id, richpanelResult.conversationNo);
+      }
+    }
+
     // Log to analytics
     await logCaseToAnalytics(env, {
       caseId,
@@ -848,6 +929,7 @@ Case ID: ${caseId}`,
       customerName: fullName || '',
       clickupTaskId: task?.id,
       clickupTaskUrl: task?.url,
+      richpanelConversationNo: richpanelResult?.conversationNo,
     });
 
     return Response.json({
@@ -855,6 +937,7 @@ Case ID: ${caseId}`,
       caseId,
       clickupTaskId: task?.id,
       clickupTaskUrl: task?.url,
+      richpanelConversationNo: richpanelResult?.conversationNo,
     }, { headers: corsHeaders });
 
   } catch (error) {
@@ -959,6 +1042,7 @@ function formatOrderIssue(caseData) {
 async function createClickUpTask(env, listId, caseData) {
   // Format resolution to human-readable text
   const formattedResolution = formatResolution(caseData.resolution, caseData);
+  const orderIssue = formatOrderIssue(caseData);
 
   // Build custom fields array
   const customFields = [
@@ -969,7 +1053,6 @@ async function createClickUpTask(env, listId, caseData) {
 
   // Order Issue field (reason for refund/return)
   if (caseData.intentDetails || caseData.issueType) {
-    const orderIssue = formatOrderIssue(caseData);
     customFields.push({ id: CLICKUP_CONFIG.fields.orderIssue, value: orderIssue });
   }
 
@@ -986,7 +1069,7 @@ async function createClickUpTask(env, listId, caseData) {
   }
 
   if (caseData.selectedItems) {
-    const itemsText = Array.isArray(caseData.selectedItems) 
+    const itemsText = Array.isArray(caseData.selectedItems)
       ? caseData.selectedItems.map(i => `${i.title} (${i.sku})`).join(', ')
       : caseData.selectedItems;
     customFields.push({ id: CLICKUP_CONFIG.fields.selectedItems, value: itemsText });
@@ -1002,9 +1085,9 @@ async function createClickUpTask(env, listId, caseData) {
 
   // Return status for return cases
   if (caseData.caseType === 'return') {
-    customFields.push({ 
-      id: CLICKUP_CONFIG.fields.returnStatus, 
-      value: CLICKUP_CONFIG.options.returnStatus.awaitingReturn 
+    customFields.push({
+      id: CLICKUP_CONFIG.fields.returnStatus,
+      value: CLICKUP_CONFIG.options.returnStatus.awaitingReturn
     });
   }
 
@@ -1024,9 +1107,10 @@ async function createClickUpTask(env, listId, caseData) {
     }
   }
 
+  // Task body with no description (details go in comments)
   const taskBody = {
-    name: caseData.customerName || 'Unknown Customer', // Task title is customer name only
-    description: caseData.description || '',
+    name: caseData.customerName || 'Unknown Customer',
+    description: '', // Keep empty - details go in comments
     custom_fields: customFields,
   };
 
@@ -1046,17 +1130,49 @@ async function createClickUpTask(env, listId, caseData) {
 
   const task = await response.json();
 
-  // Add comment with action steps
-  if (caseData.comment) {
-    await fetch(`https://api.clickup.com/api/v2/task/${task.id}/comment`, {
-      method: 'POST',
-      headers: {
-        'Authorization': env.CLICKUP_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ comment_text: caseData.comment }),
+  // Build formatted comment with all case details
+  const sopUrl = SOP_URLS[caseData.caseType] || SOP_URLS.manual;
+  const orderDate = caseData.orderDate ? new Date(caseData.orderDate).toLocaleDateString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric'
+  }) : 'Unknown';
+
+  const commentLines = [
+    `📋 **CASE DETAILS**`,
+    ``,
+    `**Issue:** ${orderIssue}`,
+    `**Resolution:** ${formattedResolution}`,
+    ``,
+    `**Customer Email:** ${caseData.email || 'Not provided'}`,
+    `**Order Number:** ${caseData.orderNumber || 'N/A'}`,
+    `**Order Date:** ${orderDate}`,
+    `**Order Value:** ${caseData.refundAmount ? `$${parseFloat(caseData.refundAmount).toFixed(2)}` : 'N/A'}`,
+    ``,
+    `**SOP:** ${sopUrl}`,
+  ];
+
+  // Add selected items if available
+  if (caseData.selectedItems && caseData.selectedItems.length > 0) {
+    commentLines.push(``, `**Items:**`);
+    caseData.selectedItems.forEach(item => {
+      commentLines.push(`- ${item.title} (${item.sku || 'N/A'})`);
     });
   }
+
+  // Add Shopify order link if available
+  if (caseData.orderUrl) {
+    commentLines.push(``, `**Shopify Order:** ${caseData.orderUrl}`);
+  }
+
+  const commentText = commentLines.join('\n');
+
+  await fetch(`https://api.clickup.com/api/v2/task/${task.id}/comment`, {
+    method: 'POST',
+    headers: {
+      'Authorization': env.CLICKUP_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ comment_text: commentText }),
+  });
 
   return task;
 }
@@ -1255,32 +1371,45 @@ function getSubjectByType(caseType, resolution) {
 }
 
 async function createRichpanelPrivateNote(env, ticketId, caseData, caseId) {
-  const actionSteps = getActionSteps(caseData);
+  const actionSteps = getActionStepsHtml(caseData);
   const formattedResolution = formatResolution(caseData.resolution, caseData);
   const orderIssue = formatOrderIssue(caseData);
+  const sopUrl = SOP_URLS[caseData.caseType] || SOP_URLS.manual;
+  const orderDate = caseData.orderDate ? new Date(caseData.orderDate).toLocaleDateString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric'
+  }) : 'Unknown';
 
-  const noteContent = `🎯 ACTION REQUIRED
+  // Build items list in HTML
+  const itemsHtml = caseData.selectedItems && caseData.selectedItems.length > 0
+    ? caseData.selectedItems.map(item => `• ${item.title} (${item.sku || 'N/A'})`).join('<br>')
+    : 'No items selected';
 
-Case ID: ${caseId}
-Order: ${caseData.orderNumber || 'N/A'}
-Type: ${caseData.caseType || 'N/A'}
-Resolution: ${formattedResolution}
-Issue: ${orderIssue}
-
----
-
-Action Steps:
-${actionSteps}
-
----
-
-${caseData.refundAmount ? `Refund Amount: $${parseFloat(caseData.refundAmount).toFixed(2)}` : ''}
-
-Items:
-${caseData.selectedItems?.map(item => `- ${item.title} (${item.sku || 'N/A'})`).join('\n') || 'No items selected'}
-
-${caseData.orderUrl ? `Shopify Order: ${caseData.orderUrl}` : ''}
-  `.trim();
+  // Build HTML formatted note content with <br> and <b> tags (no italics)
+  const noteContent = `
+<b>🎯 ACTION REQUIRED</b><br>
+<br>
+<b>Case ID:</b> ${caseId}<br>
+<b>Order Number:</b> ${caseData.orderNumber || 'N/A'}<br>
+<b>Order Date:</b> ${orderDate}<br>
+<b>Customer Email:</b> ${caseData.email || 'Not provided'}<br>
+<br>
+<b>Issue:</b> ${orderIssue}<br>
+<b>Resolution:</b> ${formattedResolution}<br>
+${caseData.refundAmount ? `<b>Refund Amount:</b> $${parseFloat(caseData.refundAmount).toFixed(2)}<br>` : ''}
+<br>
+<b>─────────────────────</b><br>
+<br>
+<b>Action Steps:</b><br>
+${actionSteps}<br>
+<br>
+<b>─────────────────────</b><br>
+<br>
+<b>Items:</b><br>
+${itemsHtml}<br>
+<br>
+${caseData.orderUrl ? `<b>Shopify Order:</b> <a href="${caseData.orderUrl}">${caseData.orderUrl}</a><br>` : ''}
+<b>SOP:</b> <a href="${sopUrl}">${sopUrl}</a>
+`.trim();
 
   // Use PUT to add a private note (operator comment)
   const response = await fetch(
@@ -1308,6 +1437,33 @@ ${caseData.orderUrl ? `Shopify Order: ${caseData.orderUrl}` : ''}
   }
 
   return response.ok;
+}
+
+// HTML version of action steps for Richpanel
+function getActionStepsHtml(caseData) {
+  const type = caseData.caseType;
+  const resolution = caseData.resolution;
+
+  if (type === 'refund') {
+    if (resolution === 'full_refund' || resolution === 'Full Refund') {
+      return `1. ✅ Verify order in Shopify<br>2. ✅ Process full refund in Shopify<br>3. ✅ Send refund confirmation email<br>4. ✅ Close ticket`;
+    }
+    return `1. ✅ Verify order in Shopify<br>2. ✅ Process partial refund: $${caseData.refundAmount || 'TBD'}<br>3. ✅ Send refund confirmation email<br>4. ✅ Close ticket`;
+  }
+
+  if (type === 'return') {
+    return `1. ✅ Verify order is within return window<br>2. ✅ Send return label to customer<br>3. ⏳ Wait for return to arrive<br>4. ✅ Process refund once received<br>5. ✅ Close ticket`;
+  }
+
+  if (type === 'shipping') {
+    return `1. ✅ Check tracking status in ParcelPanel<br>2. ✅ Contact carrier if needed<br>3. ✅ Update customer on status<br>4. ✅ Close ticket when resolved`;
+  }
+
+  if (type === 'subscription') {
+    return `1. ✅ Verify subscription in CheckoutChamp<br>2. ✅ Process requested change: ${resolution || 'N/A'}<br>3. ✅ Confirm change with customer<br>4. ✅ Close ticket`;
+  }
+
+  return `1. ✅ Review customer request<br>2. ✅ Take appropriate action<br>3. ✅ Update customer<br>4. ✅ Close ticket`;
 }
 
 function getActionSteps(caseData) {
