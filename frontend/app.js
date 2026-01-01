@@ -870,16 +870,33 @@ function addEditableUserMessage(summaryHtml, editCallback, editLabel = 'Edit') {
 }
 
 // ============================================
-// OPTIONS & BUTTONS
+// OPTIONS & BUTTONS (with staggered animations)
 // ============================================
-function addOptions(options) {
+
+// Configuration for staggered animations
+const ANIMATION_CONFIG = {
+  delayBeforeOptions: 700,    // Wait after message before showing options
+  staggerDelay: 150,          // Delay between each option appearing
+  delayBeforeCards: 600,      // Wait before showing interactive cards
+  cardStaggerDelay: 120       // Delay between each card appearing
+};
+
+async function addOptions(options) {
+  // Wait for user to read Amy's message before showing options
+  await delay(ANIMATION_CONFIG.delayBeforeOptions);
+
   const optionsDiv = document.createElement('div');
   optionsDiv.className = 'options-container';
-  
-  options.forEach(option => {
+  elements.chatArea.appendChild(optionsDiv);
+
+  // Add each button one-by-one with staggered timing
+  for (let i = 0; i < options.length; i++) {
+    const option = options[i];
     const btn = document.createElement('button');
     btn.className = `option-btn ${option.primary ? 'primary' : ''} ${option.secondary ? 'secondary' : ''}`;
     btn.innerHTML = option.icon ? `<span class="icon">${option.icon}</span>${option.text}` : option.text;
+    btn.style.opacity = '0';
+    btn.style.transform = 'translateY(20px)';
     btn.onclick = () => {
       optionsDiv.remove();
       if (option.showAsMessage !== false) {
@@ -888,23 +905,41 @@ function addOptions(options) {
       option.action();
     };
     optionsDiv.appendChild(btn);
-  });
-  
-  elements.chatArea.appendChild(optionsDiv);
-  scrollToBottom();
+
+    // Animate this button in
+    requestAnimationFrame(() => {
+      btn.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      btn.style.opacity = '1';
+      btn.style.transform = 'translateY(0)';
+    });
+
+    // Wait before adding next button
+    if (i < options.length - 1) {
+      await delay(ANIMATION_CONFIG.staggerDelay);
+    }
+  }
 }
 
-function addOptionsRow(options) {
+async function addOptionsRow(options) {
+  // Wait for user to read Amy's message
+  await delay(ANIMATION_CONFIG.delayBeforeOptions);
+
   const rowDiv = document.createElement('div');
   rowDiv.className = 'options-container';
-  
+
   const innerRow = document.createElement('div');
   innerRow.className = 'options-row';
-  
-  options.forEach(option => {
+  rowDiv.appendChild(innerRow);
+  elements.chatArea.appendChild(rowDiv);
+
+  // Add each button one-by-one
+  for (let i = 0; i < options.length; i++) {
+    const option = options[i];
     const btn = document.createElement('button');
     btn.className = `option-btn ${option.primary ? 'primary' : ''} ${option.class || ''}`;
     btn.textContent = option.text;
+    btn.style.opacity = '0';
+    btn.style.transform = 'translateY(20px)';
     btn.onclick = () => {
       rowDiv.remove();
       if (option.showAsMessage !== false) {
@@ -913,24 +948,58 @@ function addOptionsRow(options) {
       option.action();
     };
     innerRow.appendChild(btn);
-  });
-  
-  rowDiv.appendChild(innerRow);
-  elements.chatArea.appendChild(rowDiv);
-  scrollToBottom();
+
+    // Animate this button in
+    requestAnimationFrame(() => {
+      btn.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      btn.style.opacity = '1';
+      btn.style.transform = 'translateY(0)';
+    });
+
+    // Wait before adding next button
+    if (i < options.length - 1) {
+      await delay(ANIMATION_CONFIG.staggerDelay);
+    }
+  }
 }
 
-async function addInteractiveContent(html, delayMs = 600) {
+async function addInteractiveContent(html, delayMs = ANIMATION_CONFIG.delayBeforeCards) {
   // Give customer time to read Amy's message before showing interactive content
   await delay(delayMs);
 
   const contentDiv = document.createElement('div');
   contentDiv.className = 'interactive-content';
   contentDiv.innerHTML = html;
+
+  // Find all child cards/items that should animate
+  const animatableItems = contentDiv.querySelectorAll('.order-card, .product-card, .form-container, .editable-summary');
+
+  if (animatableItems.length > 0) {
+    // Hide all items initially
+    animatableItems.forEach(item => {
+      item.style.opacity = '0';
+      item.style.transform = 'translateY(20px)';
+    });
+  }
+
   elements.chatArea.appendChild(contentDiv);
-  scrollToBottom();
-  // Scroll again after animation completes to ensure visibility
-  setTimeout(scrollToBottom, 450);
+
+  // Animate items one-by-one
+  if (animatableItems.length > 0) {
+    for (let i = 0; i < animatableItems.length; i++) {
+      const item = animatableItems[i];
+      requestAnimationFrame(() => {
+        item.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        item.style.opacity = '1';
+        item.style.transform = 'translateY(0)';
+      });
+
+      if (i < animatableItems.length - 1) {
+        await delay(ANIMATION_CONFIG.cardStaggerDelay);
+      }
+    }
+  }
+
   return contentDiv;
 }
 
