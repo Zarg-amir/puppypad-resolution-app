@@ -3620,27 +3620,56 @@ async function handleReship() {
 
 async function confirmReship() {
   const address1 = document.getElementById('address1')?.value.trim();
+  const address2 = document.getElementById('address2')?.value.trim();
   const city = document.getElementById('city')?.value.trim();
+  const province = document.getElementById('province')?.value.trim();
   const zip = document.getElementById('zip')?.value.trim();
-  
+  const country = document.getElementById('country')?.value;
+
   if (!address1 || !city || !zip) {
     await addBotMessage("Please fill in all required address fields.");
     return;
   }
-  
+
   document.getElementById('addressForm')?.closest('.interactive-content').remove();
   addUserMessage("Address confirmed");
-  
+
   showProgress("Creating your free reship order...", "This will ship within 1-2 business days");
-  await delay(2000);
+
+  const tracking = state.tracking || {};
+  const result = await submitCase('shipping', 'reship', {
+    issueType: 'reship_request',
+    carrierName: tracking.carrier || 'Unknown',
+    trackingNumber: tracking.trackingNumber || '',
+    daysInTransit: tracking.daysInTransit || 0,
+    trackingStatus: tracking.status || '',
+    pickupReason: state.pickupReason || '',
+    newAddress: {
+      address1,
+      address2,
+      city,
+      province,
+      zip,
+      country
+    },
+    notes: `Free reship requested. New address: ${address1}, ${city}, ${province} ${zip}, ${country}`,
+  });
+
   hideProgress();
-  
-  state.caseId = generateCaseId('shipping');
-  
-  await showSuccess(
-    "Reship Created!",
-    `Your order will be reshipped free of charge within 1-2 business days. We'll email you the tracking info.<br><br>${getCaseIdHtml(state.caseId)}`
-  );
+
+  if (result.success) {
+    state.caseId = result.caseId;
+    await showSuccess(
+      "Reship Created!",
+      `Your order will be reshipped free of charge within 1-2 business days. We'll email you the tracking info.<br><br>${getCaseIdHtml(result.caseId)}`
+    );
+  } else {
+    state.caseId = generateCaseId('shipping');
+    await showSuccess(
+      "Reship Created!",
+      `Your order will be reshipped free of charge within 1-2 business days. We'll email you the tracking info.<br><br>${getCaseIdHtml(state.caseId)}`
+    );
+  }
 }
 
 async function startShippingLadder() {
