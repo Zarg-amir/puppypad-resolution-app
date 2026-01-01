@@ -874,11 +874,12 @@ function addEditableUserMessage(summaryHtml, editCallback, editLabel = 'Edit') {
 // ============================================
 
 // Configuration for staggered animations
+// These values control how long users have to read before seeing options
 const ANIMATION_CONFIG = {
-  delayBeforeOptions: 700,    // Wait after message before showing options
-  staggerDelay: 150,          // Delay between each option appearing
-  delayBeforeCards: 600,      // Wait before showing interactive cards
-  cardStaggerDelay: 120       // Delay between each card appearing
+  delayBeforeOptions: 1200,   // Wait 1.2s after Amy's message before showing options
+  staggerDelay: 350,          // 350ms between each option appearing (visible one-by-one)
+  delayBeforeCards: 1000,     // Wait 1s before showing interactive cards
+  cardStaggerDelay: 280       // 280ms between each card appearing
 };
 
 async function addOptions(options) {
