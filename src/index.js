@@ -614,70 +614,106 @@ function extractClientOrderId(order) {
 }
 
 // ============================================
-// PARCEL PANEL TRACKING (FIXED API URL)
+// PARCEL PANEL TRACKING (API v2)
 // ============================================
 async function handleTracking(request, env, corsHeaders) {
-  const { orderNumber, trackingNumber } = await request.json();
+  try {
+    const { orderNumber, trackingNumber } = await request.json();
 
-  // Use correct ParcelPanel API v3 endpoint
-  let url = 'https://api.parcelpanel.com/api/v3/parcels?';
-  if (orderNumber) {
-    const cleanOrder = orderNumber.replace('#', '');
-    url += `order_number=${encodeURIComponent(cleanOrder)}`;
-  } else if (trackingNumber) {
-    url += `tracking_number=${encodeURIComponent(trackingNumber)}`;
-  } else {
-    return Response.json({ tracking: null, message: 'No identifier provided' }, { headers: corsHeaders });
-  }
-
-  const response = await fetch(url, {
-    headers: {
-      'Authorization': `Bearer ${env.PARCELPANEL_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    return Response.json({ tracking: null, message: 'Tracking lookup failed' }, { headers: corsHeaders });
-  }
-
-  const data = await response.json();
-  const parcels = data.data || [];
-
-  if (parcels.length === 0) {
-    return Response.json({ tracking: null, message: 'No tracking found' }, { headers: corsHeaders });
-  }
-
-  // Process all parcels
-  const trackingResults = parcels.map(parcel => {
-    const checkpoints = parcel.checkpoints || [];
-    let daysInTransit = 0;
-    
-    if (checkpoints.length > 0) {
-      const firstCheckpoint = checkpoints[checkpoints.length - 1];
-      if (firstCheckpoint?.checkpoint_time) {
-        const startDate = new Date(firstCheckpoint.checkpoint_time);
-        daysInTransit = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
-      }
+    if (!orderNumber && !trackingNumber) {
+      return Response.json({ tracking: null, message: 'No identifier provided' }, { headers: corsHeaders });
     }
 
-    return {
-      trackingNumber: parcel.tracking_number,
-      carrier: parcel.courier_code,
-      status: parcel.delivery_status,
-      statusLabel: formatTrackingStatus(parcel.delivery_status),
-      deliveryDate: parcel.delivery_date,
-      estimatedDelivery: parcel.expected_delivery,
-      checkpoints: checkpoints.slice(0, 10),
-      daysInTransit,
-      lastUpdate: checkpoints[0]?.checkpoint_time || null
-    };
-  });
+    // Use ParcelPanel API v2 endpoint
+    // Docs: https://docs.parcelpanel.com/shopify/api-webhook/api-v2/
+    let url = 'https://open.parcelpanel.com/api/v2/tracking/order?';
 
-  return Response.json({
-    tracking: trackingResults[0],
-    allTracking: trackingResults
-  }, { headers: corsHeaders });
+    if (orderNumber) {
+      // Keep the # in order number as ParcelPanel expects it
+      const orderNum = orderNumber.startsWith('#') ? orderNumber : `#${orderNumber}`;
+      url += `order_number=${encodeURIComponent(orderNum)}`;
+    } else if (trackingNumber) {
+      url = `https://open.parcelpanel.com/api/v2/tracking?tracking_number=${encodeURIComponent(trackingNumber)}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'x-parcelpanel-api-key': env.PARCELPANEL_API_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('ParcelPanel API error:', response.status, await response.text());
+      return Response.json({ tracking: null, message: 'Tracking lookup failed' }, { headers: corsHeaders });
+    }
+
+    const data = await response.json();
+
+    // ParcelPanel v2 returns { order: { shipments: [...] } }
+    const shipments = data?.order?.shipments || [];
+
+    if (shipments.length === 0) {
+      return Response.json({ tracking: null, message: 'No tracking found' }, { headers: corsHeaders });
+    }
+
+    // Process all shipments
+    const trackingResults = shipments.map(shipment => {
+      const checkpoints = shipment.checkpoints || [];
+
+      // Map numeric status to string status
+      const statusMap = {
+        1: 'pending',
+        2: 'info_received',
+        3: 'in_transit',
+        4: 'in_transit',
+        5: 'out_for_delivery',
+        6: 'delivered',
+        7: 'failed_attempt',
+        8: 'exception',
+        9: 'expired',
+        10: 'pickup'
+      };
+
+      const statusCode = shipment.status;
+      const status = statusMap[statusCode] || shipment.status_label?.toLowerCase().replace(/\s+/g, '_') || 'unknown';
+
+      return {
+        trackingNumber: shipment.tracking_number,
+        carrier: shipment.carrier?.name || shipment.carrier?.code || 'Unknown',
+        carrierCode: shipment.carrier?.code,
+        carrierLogo: shipment.carrier?.logo_url,
+        carrierUrl: shipment.carrier?.url,
+        status: status,
+        statusLabel: shipment.status_label || formatTrackingStatus(status),
+        substatus: shipment.substatus,
+        substatusLabel: shipment.substatus_label,
+        deliveryDate: shipment.delivery_date,
+        estimatedDelivery: shipment.estimated_delivery_date,
+        daysInTransit: shipment.transit_time || 0,
+        orderDate: shipment.order_date,
+        fulfillmentDate: shipment.fulfillment_date,
+        lastMile: shipment.last_mile,
+        checkpoints: checkpoints.slice(0, 10).map(cp => ({
+          checkpoint_time: cp.checkpoint_time,
+          message: cp.message,
+          location: cp.location,
+          tag: cp.tag
+        })),
+        lastUpdate: checkpoints[0]?.checkpoint_time || null
+      };
+    });
+
+    return Response.json({
+      tracking: trackingResults[0],
+      allTracking: trackingResults
+    }, { headers: corsHeaders });
+
+  } catch (error) {
+    console.error('Tracking error:', error);
+    return Response.json({ tracking: null, message: 'Tracking lookup error' }, { headers: corsHeaders });
+  }
 }
 
 function formatTrackingStatus(status) {
