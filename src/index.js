@@ -194,6 +194,11 @@ export default {
         return await handleCreateCase(request, env, corsHeaders);
       }
 
+      // Create manual help case (order not found)
+      if (pathname === '/api/create-manual-case' && request.method === 'POST') {
+        return await handleCreateManualCase(request, env, corsHeaders);
+      }
+
       // Check existing case
       if (pathname === '/api/check-case' && request.method === 'POST') {
         return await handleCheckCase(request, env, corsHeaders);
@@ -286,24 +291,50 @@ export default {
 // SHOPIFY ORDER LOOKUP
 // ============================================
 async function handleLookupOrder(request, env, corsHeaders) {
-  const { email, phone, firstName, lastName, orderNumber, address1 } = await request.json();
+  const { email, phone, firstName, lastName, orderNumber, address1, country, deepSearch } = await request.json();
 
   // Build Shopify search query
   let query = '';
-  if (email) {
-    query = `email:${email}`;
-  } else if (phone) {
-    query = `phone:${phone}`;
-  }
 
-  if (orderNumber) {
-    query += ` name:#${orderNumber.replace('#', '').replace('P', '').replace('p', '')}`;
-  }
-  if (firstName) {
-    query += ` billing_address.first_name:${firstName}`;
-  }
-  if (lastName) {
-    query += ` billing_address.last_name:${lastName}`;
+  if (deepSearch && firstName && lastName && address1) {
+    // Deep search mode: Use name + address for fuzzy matching
+    // Shopify's search supports wildcards for partial matching
+    query = `shipping_address.first_name:${firstName} shipping_address.last_name:${lastName}`;
+
+    // For address, extract key parts for matching (street number and street name)
+    const addressParts = address1.split(' ').filter(p => p.length > 2);
+    if (addressParts.length > 0) {
+      // Use the most significant parts of the address
+      const addressKey = addressParts.slice(0, 3).join(' ');
+      query += ` shipping_address.address1:*${addressKey}*`;
+    }
+
+    // Add country filter if provided
+    if (country) {
+      const countryName = getCountryNameFromCode(country);
+      if (countryName) {
+        query += ` shipping_address.country:${countryName}`;
+      }
+    }
+  } else {
+    // Standard lookup: email or phone
+    if (email) {
+      query = `email:${email}`;
+    } else if (phone) {
+      // Clean phone number for search
+      const cleanPhone = phone.replace(/\D/g, '');
+      query = `phone:*${cleanPhone.slice(-10)}*`; // Last 10 digits
+    }
+
+    if (orderNumber) {
+      query += ` name:#${orderNumber.replace('#', '').replace('P', '').replace('p', '')}`;
+    }
+    if (firstName) {
+      query += ` billing_address.first_name:${firstName}`;
+    }
+    if (lastName) {
+      query += ` billing_address.last_name:${lastName}`;
+    }
   }
 
   const shopifyUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=10&query=${encodeURIComponent(query)}`;
@@ -320,7 +351,22 @@ async function handleLookupOrder(request, env, corsHeaders) {
   }
 
   const data = await response.json();
-  const orders = data.orders || [];
+  let orders = data.orders || [];
+
+  // For deep search, do additional fuzzy matching on address
+  if (deepSearch && address1 && orders.length > 0) {
+    orders = orders.filter(order => {
+      const shippingAddr = order.shipping_address?.address1?.toLowerCase() || '';
+      const searchAddr = address1.toLowerCase();
+
+      // Check if addresses are similar (contains key parts)
+      const searchParts = searchAddr.split(' ').filter(p => p.length > 2);
+      const matchCount = searchParts.filter(part => shippingAddr.includes(part)).length;
+
+      // Require at least 50% of address parts to match
+      return matchCount >= Math.ceil(searchParts.length / 2);
+    });
+  }
 
   // Process orders - extract line items with images and product type
   const processedOrders = await Promise.all(orders.map(async (order) => {
@@ -488,6 +534,35 @@ function formatTrackingStatus(status) {
     'pickup': 'Ready for Pickup'
   };
   return statusMap[status] || status;
+}
+
+// Convert country code to full name for Shopify search
+function getCountryNameFromCode(code) {
+  const countryMap = {
+    'US': 'United States',
+    'CA': 'Canada',
+    'GB': 'United Kingdom',
+    'AU': 'Australia',
+    'DE': 'Germany',
+    'FR': 'France',
+    'IT': 'Italy',
+    'ES': 'Spain',
+    'NL': 'Netherlands',
+    'BE': 'Belgium',
+    'AT': 'Austria',
+    'CH': 'Switzerland',
+    'SE': 'Sweden',
+    'NO': 'Norway',
+    'DK': 'Denmark',
+    'FI': 'Finland',
+    'IE': 'Ireland',
+    'PT': 'Portugal',
+    'NZ': 'New Zealand',
+    'JP': 'Japan',
+    'MX': 'Mexico',
+    'BR': 'Brazil'
+  };
+  return countryMap[code] || null;
 }
 
 // ============================================
@@ -696,6 +771,100 @@ async function handleCreateCase(request, env, corsHeaders) {
     clickupTaskId: clickupTask?.id,
     clickupTaskUrl: clickupTask?.url,
   }, { headers: corsHeaders });
+}
+
+// ============================================
+// CREATE MANUAL HELP CASE (ORDER NOT FOUND)
+// ============================================
+async function handleCreateManualCase(request, env, corsHeaders) {
+  const { email, fullName, phone, orderNumber, issue, preferredContact, lookupAttempts, sessionId } = await request.json();
+
+  // Generate case ID
+  const now = new Date();
+  const caseId = `MAN-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+
+  // Build lookup attempts log
+  const lookupLog = (lookupAttempts || []).map(attempt =>
+    `✗ ${attempt.method}: ${attempt.value} - ${attempt.result}`
+  ).join('\n');
+
+  // Create ClickUp task in Manual Help list
+  const taskData = {
+    name: fullName || 'Unknown Customer',
+    description: `**MANUAL HELP REQUEST - ORDER NOT FOUND**
+
+**Customer Information:**
+- Name: ${fullName || 'Not provided'}
+- Email: ${email || 'Not provided'}
+- Phone: ${phone || 'Not provided'}
+- Order Number: ${orderNumber || 'Unknown'}
+- Preferred Contact: ${preferredContact === 'phone' ? 'Phone' : 'Email'}
+
+**Lookup Attempts:**
+${lookupLog || 'No lookup attempts recorded'}
+
+**Customer's Message:**
+"${issue || 'No message provided'}"
+
+---
+Submitted via Resolution App
+Session ID: ${sessionId || 'N/A'}
+Case ID: ${caseId}`,
+    status: 'to do',
+  };
+
+  // Build custom fields
+  const customFields = [
+    { id: CLICKUP_CONFIG.fields.caseId, value: caseId },
+    { id: CLICKUP_CONFIG.fields.emailAddress, value: email || '' },
+    { id: CLICKUP_CONFIG.fields.orderNumber, value: orderNumber || '' },
+    { id: CLICKUP_CONFIG.fields.resolution, value: 'Manual assistance - order not found' },
+    { id: CLICKUP_CONFIG.fields.orderIssue, value: issue ? issue.substring(0, 200) : 'Order not found in system' },
+  ];
+
+  try {
+    const response = await fetch(`https://api.clickup.com/api/v2/list/${CLICKUP_CONFIG.lists.manualHelp}/task`, {
+      method: 'POST',
+      headers: {
+        'Authorization': env.CLICKUP_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...taskData,
+        custom_fields: customFields,
+      }),
+    });
+
+    const task = await response.json();
+
+    // Log to analytics
+    await logCaseToAnalytics(env, {
+      caseId,
+      sessionId,
+      caseType: 'manual',
+      resolution: 'manual_order_not_found',
+      orderNumber: orderNumber || 'unknown',
+      email: email || '',
+      customerName: fullName || '',
+      clickupTaskId: task?.id,
+      clickupTaskUrl: task?.url,
+    });
+
+    return Response.json({
+      success: true,
+      caseId,
+      clickupTaskId: task?.id,
+      clickupTaskUrl: task?.url,
+    }, { headers: corsHeaders });
+
+  } catch (error) {
+    console.error('Error creating manual case:', error);
+    return Response.json({
+      success: false,
+      caseId, // Still return the case ID even if ClickUp fails
+      error: 'Failed to create ClickUp task',
+    }, { headers: corsHeaders });
+  }
 }
 
 function getCasePrefix(caseType) {

@@ -183,13 +183,15 @@ const state = {
   currentPersona: 'amy',
   currentStep: 'welcome',
   identifyMethod: 'email',
+  selectedCountryCode: 'US',
   customerData: {
     email: '',
     phone: '',
     firstName: '',
     lastName: '',
     orderNumber: '',
-    address1: ''
+    address1: '',
+    country: 'US'
   },
   orders: [],
   selectedOrder: null,
@@ -206,6 +208,7 @@ const state = {
   caseId: null,
   flowType: null,
   allTracking: null,
+  lookupAttempts: [],
   // Store references for edit functionality
   editHistory: []
 };
@@ -1185,7 +1188,10 @@ async function renderIdentifyForm(flowType) {
       
       <div class="form-group ${state.identifyMethod !== 'phone' ? 'hidden' : ''}" id="phoneGroup">
         <label>Phone Number *</label>
-        <input type="tel" class="form-input" id="inputPhone" placeholder="+1 (555) 000-0000" value="${state.customerData.phone || ''}" oninput="formatPhoneInput(this)">
+        <div class="phone-input-wrapper">
+          ${generateCountryCodeSelector(state.selectedCountryCode || 'US')}
+          <input type="tel" class="form-input" id="inputPhone" placeholder="(555) 000-0000" value="${state.customerData.phone || ''}" oninput="formatPhoneInput(this)">
+        </div>
         <div class="error-text">Please enter the phone number used at checkout.</div>
       </div>
       
@@ -1249,12 +1255,16 @@ async function submitIdentifyForm(flowType) {
     }
   } else {
     const phoneInput = document.getElementById('inputPhone');
-    if (!phone || phone.replace(/\D/g, '').length < 10) {
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (!phone || phoneDigits.length < 7) {
       phoneInput.classList.add('error');
       hasError = true;
     } else {
       phoneInput.classList.remove('error');
-      state.customerData.phone = phone;
+      // Combine country code with phone number
+      const countryCode = getSelectedCountryCode();
+      state.selectedCountryCode = document.getElementById('countryCodeSelect')?.value || 'US';
+      state.customerData.phone = countryCode + phoneDigits;
     }
   }
   
@@ -1302,8 +1312,8 @@ async function submitIdentifyForm(flowType) {
 // ORDER LOOKUP
 // ============================================
 async function lookupOrder(flowType) {
-  await addBotMessage("Looking up your order... 🔍");
-  
+  showProgress("Locating your order...", "Searching our database");
+
   try {
     // Try API call
     if (CONFIG.API_URL) {
@@ -1313,92 +1323,27 @@ async function lookupOrder(flowType) {
         body: JSON.stringify(state.customerData)
       });
       const data = await response.json();
-      
+
+      hideProgress();
+
       if (data.orders && data.orders.length > 0) {
         state.orders = data.orders;
         await handleOrdersFound(flowType);
         return;
       }
+    } else {
+      hideProgress();
     }
-    
-    // Fallback to mock data for testing
-    await loadMockOrders(flowType);
-    
+
+    // No orders found - go to deep search
+    await handleOrderNotFound(flowType);
+
   } catch (error) {
     console.error('Lookup error:', error);
-    await loadMockOrders(flowType);
+    hideProgress();
+    // API error - go to deep search
+    await handleOrderNotFound(flowType);
   }
-}
-
-async function loadMockOrders(flowType) {
-  // Mock data for testing
-  state.orders = [
-    {
-      id: '123456789',
-      orderNumber: '#78901P',
-      email: state.customerData.email || 'customer@example.com',
-      createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      financialStatus: 'paid',
-      fulfillmentStatus: 'fulfilled',
-      totalPrice: '89.99',
-      currency: 'USD',
-      customerName: state.customerData.firstName || 'Customer',
-      shippingAddress: {
-        address1: '123 Main St',
-        city: 'Austin',
-        province: 'TX',
-        zip: '78701',
-        country: 'United States'
-      },
-      lineItems: [
-        {
-          id: '1',
-          title: 'PuppyPad Reusable Pee Pad',
-          variantTitle: 'Large / Green',
-          sku: 'PP-LG-GRN',
-          quantity: 2,
-          price: '39.99',
-          image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=100&h=100&fit=crop',
-          fulfillmentStatus: 'fulfilled',
-          productType: 'OFFER',
-          isFree: false,
-          isDigital: false,
-          isPuppyPad: true
-        },
-        {
-          id: '2',
-          title: 'Stain & Odor Eliminator Spray',
-          variantTitle: '16oz',
-          sku: 'SOE-16',
-          quantity: 1,
-          price: '14.99',
-          image: 'https://images.unsplash.com/photo-1584305574647-0cc949a2bb9f?w=100&h=100&fit=crop',
-          fulfillmentStatus: 'fulfilled',
-          productType: 'UPSALE',
-          isFree: false,
-          isDigital: false,
-          isPuppyPad: false
-        },
-        {
-          id: '3',
-          title: 'Dog Training eBook',
-          variantTitle: 'Digital Download',
-          sku: 'EBOOK-001',
-          quantity: 1,
-          price: '0.00',
-          image: null,
-          fulfillmentStatus: 'fulfilled',
-          productType: null,
-          isFree: true,
-          isDigital: true,
-          isPuppyPad: false
-        }
-      ],
-      clientOrderId: '99887766'
-    }
-  ];
-  
-  await handleOrdersFound(flowType);
 }
 
 async function handleOrdersFound(flowType) {
@@ -1424,7 +1369,7 @@ async function handleOrdersFound(flowType) {
 }
 
 async function handleOrderNotFound(flowType) {
-  await addBotMessage("I couldn't find an order with those details. Let's try a deeper search with more information.");
+  await addBotMessage("I couldn't find an order with those details. Let's try a deeper search with your shipping information.");
   await renderDeepSearchForm(flowType);
 }
 
@@ -1432,22 +1377,27 @@ async function renderDeepSearchForm(flowType) {
   const formHtml = `
     <div class="form-container" id="deepSearchForm">
       <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
-        Fill in any additional details you have to help me find your order:
+        Please provide your shipping address details to help me find your order:
       </p>
 
       <div class="form-group">
-        <label>Last Name</label>
-        <input type="text" class="form-input" id="inputLastName" placeholder="Your last name" value="${state.customerData.lastName || ''}">
+        <label>First Name *</label>
+        <input type="text" class="form-input" id="inputDeepFirstName" placeholder="Your first name" value="${state.customerData.firstName || ''}">
       </div>
 
       <div class="form-group">
-        <label>Phone Number</label>
-        <input type="tel" class="form-input" id="inputDeepPhone" placeholder="+1 (555) 000-0000" value="${state.customerData.phone || ''}" oninput="formatPhoneInput(this)">
+        <label>Last Name *</label>
+        <input type="text" class="form-input" id="inputDeepLastName" placeholder="Your last name" value="${state.customerData.lastName || ''}">
       </div>
 
       <div class="form-group">
-        <label>Shipping Address (first line)</label>
-        <input type="text" class="form-input" id="inputAddress1" placeholder="123 Main Street" value="${state.customerData.address1 || ''}">
+        <label>Street Address *</label>
+        <input type="text" class="form-input" id="inputDeepAddress1" placeholder="123 Main Street" value="${state.customerData.address1 || ''}">
+      </div>
+
+      <div class="form-group">
+        <label>Country *</label>
+        ${generateCountryDropdown(state.customerData.country || 'US', 'inputDeepCountry')}
       </div>
 
       <button class="option-btn primary" onclick="submitDeepSearch('${flowType}')" style="margin-top: 8px; width: 100%;">
@@ -1460,26 +1410,29 @@ async function renderDeepSearchForm(flowType) {
 }
 
 async function submitDeepSearch(flowType) {
-  const lastName = document.getElementById('inputLastName')?.value.trim();
-  const address1 = document.getElementById('inputAddress1')?.value.trim();
-  const phone = document.getElementById('inputDeepPhone')?.value.trim();
+  const firstName = document.getElementById('inputDeepFirstName')?.value.trim();
+  const lastName = document.getElementById('inputDeepLastName')?.value.trim();
+  const address1 = document.getElementById('inputDeepAddress1')?.value.trim();
+  const country = document.getElementById('inputDeepCountry')?.value;
 
-  if (!lastName && !address1 && !phone) {
-    await addBotMessage("Please fill in at least one field to continue.");
+  // Require at least firstName + lastName + address
+  if (!firstName || !lastName || !address1) {
+    await addBotMessage("Please fill in your first name, last name, and street address to continue.");
     return;
   }
 
-  state.customerData.lastName = lastName || state.customerData.lastName;
-  state.customerData.address1 = address1 || state.customerData.address1;
-  if (phone) state.customerData.phone = phone;
+  state.customerData.firstName = firstName;
+  state.customerData.lastName = lastName;
+  state.customerData.address1 = address1;
+  state.customerData.country = country || 'US';
 
   document.getElementById('deepSearchForm')?.closest('.interactive-content').remove();
 
-  addUserMessage(`Searching with additional info...`);
-  await addBotMessage("Let me search again with those details... 🔍");
+  addUserMessage(`Searching with: ${firstName} ${lastName}, ${address1}`);
+  showProgress("Searching deeper...", "Looking for orders matching your address");
 
   try {
-    // Actually call the API with additional parameters
+    // Call the API with deep search parameters
     const response = await fetch(`${CONFIG.API_URL}/api/lookup-order`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1489,9 +1442,13 @@ async function submitDeepSearch(flowType) {
         firstName: state.customerData.firstName,
         lastName: state.customerData.lastName,
         orderNumber: state.customerData.orderNumber,
-        address1: state.customerData.address1
+        address1: state.customerData.address1,
+        country: state.customerData.country,
+        deepSearch: true // Flag for backend to use fuzzy matching
       })
     });
+
+    hideProgress();
 
     const data = await response.json();
 
@@ -1502,69 +1459,144 @@ async function submitDeepSearch(flowType) {
     }
   } catch (error) {
     console.error('Deep search error:', error);
+    hideProgress();
   }
 
   // Still not found - show manual help form
+  // Store lookup attempts for the manual form
+  state.lookupAttempts = [
+    { method: state.identifyMethod === 'email' ? 'Email lookup' : 'Phone lookup', value: state.customerData.email || state.customerData.phone, result: 'no results' },
+    { method: 'Deep lookup', value: `${state.customerData.firstName} ${state.customerData.lastName}, ${state.customerData.address1}`, result: 'no results' }
+  ];
   await showManualHelpForm();
 }
 
 async function showManualHelpForm() {
-  await addBotMessage("I still couldn't find your order, but don't worry — I'll make sure our team helps you personally. Please fill in these details:");
-  
+  await addBotMessage("I'm really sorry - I still couldn't find your order in our system. But don't worry, I'll connect you with our team who can dig deeper!");
+
+  const fullName = `${state.customerData.firstName || ''} ${state.customerData.lastName || ''}`.trim();
+
   const formHtml = `
     <div class="form-container" id="manualHelpForm">
+      <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">Tell Us More</h3>
+
       <div class="form-group">
-        <label>Your Email Address *</label>
+        <label>Email Address *</label>
         <input type="email" class="form-input" id="manualEmail" placeholder="you@example.com" value="${state.customerData.email || ''}">
       </div>
-      
+
       <div class="form-group">
-        <label>First Name *</label>
-        <input type="text" class="form-input" id="manualFirstName" placeholder="Your first name" value="${state.customerData.firstName || ''}">
+        <label>Full Name *</label>
+        <input type="text" class="form-input" id="manualFullName" placeholder="Your full name" value="${fullName}">
       </div>
-      
+
       <div class="form-group">
-        <label>What's the issue?</label>
-        <textarea class="form-input" id="manualIssue" rows="3" placeholder="Describe your issue..."></textarea>
+        <label>Phone (optional)</label>
+        <input type="tel" class="form-input" id="manualPhone" placeholder="+1 (555) 000-0000" value="${state.customerData.phone || ''}" oninput="formatPhoneInput(this)">
       </div>
-      
+
       <div class="form-group">
-        <label>What resolution would you like?</label>
-        <textarea class="form-input" id="manualResolution" rows="2" placeholder="How can we help?"></textarea>
+        <label>Order # if you have it</label>
+        <input type="text" class="form-input" id="manualOrderNumber" placeholder="#12345P" value="${state.customerData.orderNumber || ''}">
       </div>
-      
+
+      <div class="form-group">
+        <label>What happened? *</label>
+        <textarea class="form-input" id="manualIssue" rows="4" placeholder="I ordered 3 weeks ago, was charged $49.99 but never got confirmation..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>How should we reach you?</label>
+        <div class="contact-method-toggle">
+          <div class="contact-method-option active" onclick="selectContactMethod('email', this)">
+            <span class="checkmark">✓</span>
+            <span>Email</span>
+          </div>
+          <div class="contact-method-option" onclick="selectContactMethod('phone', this)">
+            <span class="checkmark">✓</span>
+            <span>Phone</span>
+          </div>
+        </div>
+        <input type="hidden" id="preferredContact" value="email">
+      </div>
+
       <button class="option-btn primary" onclick="submitManualHelp()" style="margin-top: 8px; width: 100%;">
         Submit Request
       </button>
     </div>
   `;
-  
+
   addInteractiveContent(formHtml);
+}
+
+function selectContactMethod(method, element) {
+  // Update hidden input
+  document.getElementById('preferredContact').value = method;
+
+  // Update UI
+  document.querySelectorAll('.contact-method-option').forEach(el => {
+    el.classList.remove('active');
+  });
+  element.classList.add('active');
 }
 
 async function submitManualHelp() {
   const email = document.getElementById('manualEmail')?.value.trim();
-  const firstName = document.getElementById('manualFirstName')?.value.trim();
+  const fullName = document.getElementById('manualFullName')?.value.trim();
+  const phone = document.getElementById('manualPhone')?.value.trim();
+  const orderNumber = document.getElementById('manualOrderNumber')?.value.trim();
   const issue = document.getElementById('manualIssue')?.value.trim();
-  const resolution = document.getElementById('manualResolution')?.value.trim();
-  
-  if (!email || !firstName) {
-    await addBotMessage("Please enter your email and first name so we can help you.");
+  const preferredContact = document.getElementById('preferredContact')?.value || 'email';
+
+  if (!email || !fullName || !issue) {
+    await addBotMessage("Please enter your email, full name, and describe what happened so we can help you.");
     return;
   }
-  
+
   document.getElementById('manualHelpForm')?.closest('.interactive-content').remove();
-  addUserMessage(`Email: ${email}, Issue: ${issue || 'Not specified'}`);
-  
+  addUserMessage("Request submitted");
+
   showProgress("Creating your support case...", "Our team will be notified");
-  await delay(1500);
-  hideProgress();
-  
-  state.caseId = generateCaseId('manual');
-  
+
+  // Build case data for backend
+  const caseData = {
+    email,
+    fullName,
+    phone,
+    orderNumber,
+    issue,
+    preferredContact,
+    lookupAttempts: state.lookupAttempts || [],
+    sessionId: state.sessionId
+  };
+
+  try {
+    // Call backend to create manual help case
+    const response = await fetch(`${CONFIG.API_URL}/api/create-manual-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(caseData)
+    });
+
+    const result = await response.json();
+    hideProgress();
+
+    if (result.success && result.caseId) {
+      state.caseId = result.caseId;
+    } else {
+      state.caseId = generateCaseId('manual');
+    }
+  } catch (error) {
+    console.error('Manual help submission error:', error);
+    hideProgress();
+    state.caseId = generateCaseId('manual');
+  }
+
+  const contactMethod = preferredContact === 'email' ? `email you at ${email}` : `call you at ${phone || email}`;
+
   await showSuccess(
     "Request Submitted!",
-    `Our team will reach out to you at ${email} within 24 hours.<br><br>${getCaseIdHtml(state.caseId)}`
+    `Got it, ${fullName.split(' ')[0]}! I've sent your request to our support team. Someone will ${contactMethod} within 24 hours to help track this down.<br><br>${getCaseIdHtml(state.caseId)}<br><br>Save this in case you need to reference it!`
   );
 }
 
@@ -3934,3 +3966,4 @@ window.playAudio = playAudio;
 window.restartChat = restartChat;
 window.formatPhoneInput = formatPhoneInput;
 window.updateAddressFields = updateAddressFields;
+window.selectContactMethod = selectContactMethod;
