@@ -4070,6 +4070,46 @@ function getDateRange(range) {
 - Greeting messages → `MESSAGES.welcome` in app.js
 - 90-day policy → `POLICY_CONFIG.guaranteeDays`
 
+### Sprint 7: UI Animation & UX Improvements ✅ COMPLETE
+**Goal:** Improve user experience with proper animation timing and reading flow
+
+1. ✅ **Staggered Option Animations (JavaScript-based)**
+   - Options now appear one-by-one with 150ms delay between each
+   - 700ms delay after Amy's message before options start appearing
+   - Gives users time to read Amy's message before seeing choices
+   - Removed CSS-only animations that caused all options to flash at once
+
+2. ✅ **Interactive Content Staggered Rendering**
+   - Order cards animate in one-by-one (120ms stagger)
+   - Product/item cards animate in one-by-one
+   - Form containers animate smoothly
+   - 600ms delay before interactive content appears
+
+3. ✅ **ANIMATION_CONFIG in app.js**
+   - `delayBeforeOptions: 700` - Wait after message before showing options
+   - `staggerDelay: 150` - Delay between each option appearing
+   - `delayBeforeCards: 600` - Wait before showing interactive cards
+   - `cardStaggerDelay: 120` - Delay between each card appearing
+
+4. ✅ **Scroll Behavior Improvements**
+   - New messages scroll into view at top of viewport
+   - 40vh bottom padding for "space below" effect
+   - User sees content at top, not forced to look at bottom
+
+5. ✅ **ClickUp Comments (not Description)**
+   - Case details now go in comments section
+   - Includes: issue, resolution, email, order date, order number, order value, SOP link
+
+6. ✅ **Richpanel HTML Formatting**
+   - Private notes use `<br>` and `<b>` tags (no italics)
+   - Proper spacing and visual separators
+   - Added SOP links to all notes
+
+**Files Modified:**
+- `frontend/app.js` - ANIMATION_CONFIG, addOptions(), addOptionsRow(), addInteractiveContent()
+- `frontend/styles.css` - Removed conflicting CSS animations
+- `src/index.js` - SOP_URLS config, createClickUpTask(), createRichpanelPrivateNote()
+
 ---
 
 ## Code Quality Guidelines
@@ -4089,15 +4129,16 @@ See `CODING_GUIDELINES.md` for complete checklist.
 
 ## Summary
 
-**Total Completion: ~85%** (Updated 2025-12-31)
+**Total Completion: ~90%** (Updated 2026-01-01)
 
 | Category | Status | Progress |
 |----------|--------|----------|
-| Frontend UI | ✅ Sprint 0 COMPLETE | 100% |
-| Frontend Flows | In progress | 80% |
-| Backend APIs | ✅ Sprint 1+2 COMPLETE | 95% |
+| Frontend UI | ✅ Sprint 0+7 COMPLETE | 100% |
+| Frontend Flows | ✅ Sprint 4 COMPLETE | 95% |
+| Backend APIs | ✅ Sprint 1+2+7 COMPLETE | 100% |
 | Analytics | ✅ Sprint 2 COMPLETE | 100% |
 | Policy Logic | ✅ Sprint 1 COMPLETE | 100% |
+| UX/Animations | ✅ Sprint 7 COMPLETE | 100% |
 
 **Sprint 0 (19/19 items):** ✅ COMPLETE
 - ✅ Design system, Home Screen, Message bubbles, Buttons, Header, Footer
@@ -4133,6 +4174,14 @@ See `CODING_GUIDELINES.md` for complete checklist.
 - ✅ Dynamic address fields by country - Labels/placeholders change for US/CA/UK/AU
 - ✅ ParcelPanel status branching - Handles all statuses (delivered, in_transit, out_for_delivery, pending, failed_attempt, pickup, exception)
 - ✅ Investigation flows - Damaged, wrong item, missing item flows with specific resolutions
+
+**Sprint 7 (6/6 items):** ✅ COMPLETE
+- ✅ Staggered option animations (JavaScript-based, one-by-one with 150ms delay)
+- ✅ Interactive content staggered rendering (order/product cards)
+- ✅ ANIMATION_CONFIG for easy timing adjustments
+- ✅ Scroll behavior improvements (content at top, space below)
+- ✅ ClickUp comments instead of description (with SOP links)
+- ✅ Richpanel HTML formatting (br, bold, proper spacing)
 
 **Next Up: Sprint 5 - Polish & Testing**
 - End-to-end testing
