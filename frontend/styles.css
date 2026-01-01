@@ -1878,6 +1878,157 @@ textarea.form-input {
 }
 
 /* ============================================
+   VOICE NOTE WAVEFORM PLAYER
+   ============================================ */
+.voice-note-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-md);
+  margin: 8px 0;
+}
+
+.voice-note-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.voice-note-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.voice-note-info {
+  flex: 1;
+}
+
+.voice-note-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--gray-900);
+  margin-bottom: 1px;
+}
+
+.voice-note-role {
+  font-size: 13px;
+  color: var(--gray-500);
+}
+
+.voice-note-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+}
+
+.voice-note-play-btn {
+  width: 40px;
+  height: 40px;
+  background: var(--brand-navy);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.voice-note-play-btn:hover {
+  background: var(--brand-navy-light);
+  transform: scale(1.05);
+}
+
+.voice-note-play-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.voice-note-waveform {
+  flex: 1;
+  height: 36px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.waveform-bars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+  padding: 4px 0;
+}
+
+.waveform-bar {
+  flex: 1;
+  background: var(--gray-300);
+  border-radius: 2px;
+  min-width: 3px;
+  transition: background 0.1s;
+}
+
+.waveform-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.waveform-progress::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: -100%;
+  bottom: 0;
+  background: linear-gradient(90deg, var(--brand-navy) 0%, var(--brand-navy) 100%);
+  opacity: 0.6;
+}
+
+.voice-note-duration {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-600);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* Waveform animation when playing */
+.voice-note-card.playing .waveform-bar {
+  animation: waveform-pulse 0.5s ease-in-out infinite alternate;
+}
+
+.voice-note-card.playing .waveform-bar:nth-child(odd) {
+  animation-delay: 0.1s;
+}
+
+.voice-note-card.playing .waveform-bar:nth-child(3n) {
+  animation-delay: 0.2s;
+}
+
+@keyframes waveform-pulse {
+  from {
+    transform: scaleY(0.8);
+  }
+  to {
+    transform: scaleY(1.2);
+  }
+}
+
+/* ============================================
    FILE UPLOAD
    ============================================ */
 .upload-area {
