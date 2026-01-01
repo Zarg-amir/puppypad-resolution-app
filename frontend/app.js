@@ -724,7 +724,7 @@ function setTyping(isTyping) {
 // ============================================
 
 // Character-by-character typing animation
-async function typeText(element, text, speed = 40, isBot = true) {
+async function typeText(element, text, speed = 55, isBot = true) {
   // Create a stable structure: text container + cursor
   const textSpan = document.createElement('span');
   textSpan.className = 'typing-text';
@@ -739,6 +739,7 @@ async function typeText(element, text, speed = 40, isBot = true) {
   // Split by HTML tags vs plain text
   const parts = text.split(/(<[^>]+>)/);
   let displayText = '';
+  let charCount = 0;
 
   for (const part of parts) {
     if (part.startsWith('<')) {
@@ -750,13 +751,20 @@ async function typeText(element, text, speed = 40, isBot = true) {
       for (const char of part) {
         displayText += char;
         textSpan.innerHTML = displayText;
-        scrollToBottom();
+        charCount++;
+        // Only scroll every 15 characters to reduce jumpiness
+        if (charCount % 15 === 0) {
+          scrollToBottom();
+        }
         // Add slight variation to typing speed for realism
         const variance = Math.random() * 15 - 7;
-        await delay(Math.max(speed + variance, 10));
+        await delay(Math.max(speed + variance, 20));
       }
     }
   }
+
+  // Final scroll to ensure message is visible
+  scrollToBottom();
 
   // Remove cursor when done
   cursorSpan.remove();
@@ -876,10 +884,10 @@ function addEditableUserMessage(summaryHtml, editCallback, editLabel = 'Edit') {
 // Configuration for staggered animations
 // These values control how long users have to read before seeing options
 const ANIMATION_CONFIG = {
-  delayBeforeOptions: 1200,   // Wait 1.2s after Amy's message before showing options
-  staggerDelay: 350,          // 350ms between each option appearing (visible one-by-one)
-  delayBeforeCards: 1000,     // Wait 1s before showing interactive cards
-  cardStaggerDelay: 280       // 280ms between each card appearing
+  delayBeforeOptions: 1500,   // Wait 1.5s after Amy's message before showing options
+  staggerDelay: 400,          // 400ms between each option appearing (clearly one-by-one)
+  delayBeforeCards: 1200,     // Wait 1.2s before showing interactive cards
+  cardStaggerDelay: 350       // 350ms between each card appearing
 };
 
 async function addOptions(options) {
