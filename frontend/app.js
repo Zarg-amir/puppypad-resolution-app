@@ -92,6 +92,43 @@ CONFIG.AVATARS = {
 };
 
 // ============================================
+// SHIPPING HELPERS
+// ============================================
+
+// Detect international carriers (China-based) - use "international warehouse" messaging
+function isInternationalCarrier(tracking) {
+  if (!tracking) return false;
+
+  const carrier = (tracking.carrier || '').toLowerCase();
+  const trackingNum = (tracking.trackingNumber || '').toUpperCase();
+
+  // Known China-based carriers
+  const chinaCarriers = ['yunexpress', 'yanwen', '4px', 'cne', 'cainiao', 'china post', 'chinapost', 'epacket'];
+  if (chinaCarriers.some(c => carrier.includes(c))) return true;
+
+  // YunExpress tracking patterns: starts with YT or ends with CN
+  if (trackingNum.startsWith('YT') || trackingNum.endsWith('CN')) return true;
+
+  // Yanwen patterns: VP, UV, LP, ABC prefixes or YP/CN suffix
+  if (/^(VP|UV|LP|ABC)/i.test(trackingNum)) return true;
+  if (/YP$/i.test(trackingNum)) return true;
+
+  return false;
+}
+
+// Get carrier contact info for failed delivery attempts
+function getCarrierContactInfo(carrier) {
+  const carrierUpper = (carrier || '').toUpperCase();
+  const contacts = {
+    'USPS': { name: 'USPS', phone: '1-800-275-8777', website: 'usps.com' },
+    'UPS': { name: 'UPS', phone: '1-800-742-5877', website: 'ups.com' },
+    'FEDEX': { name: 'FedEx', phone: '1-800-463-3339', website: 'fedex.com' },
+    'DHL': { name: 'DHL', phone: '1-800-225-5345', website: 'dhl.com' },
+  };
+  return contacts[carrierUpper] || { name: carrier || 'the carrier', phone: null, website: null };
+}
+
+// ============================================
 // ANALYTICS MODULE
 // ============================================
 const Analytics = {
@@ -3133,38 +3170,70 @@ async function handleStatusDelivered(tracking) {
   ]);
 }
 
-// Status: Out for Delivery - package should arrive today
+// Status: Out for Delivery - treat same as In Transit for day thresholds
 async function handleStatusOutForDelivery(tracking) {
-  await addBotMessage(`Great news! Your package is <strong>out for delivery today</strong>. It should arrive within the next few hours.<br><br>Carrier: ${tracking.carrier?.toUpperCase() || 'Carrier'}<br>Tracking: ${tracking.trackingNumber || 'N/A'}`);
-
-  addOptions([
-    { text: "Perfect, I'll wait", action: () => showSuccess("Almost there!", "Your package should arrive today!") },
-    { text: "It's been out for delivery for days", action: async () => {
-      await addBotMessage("That's unusual. Let me create a case for our team to investigate with the carrier.");
-      await createShippingCase('stuck_out_for_delivery');
-    }}
-  ]);
+  // Out for Delivery uses the same "on the way" logic as In Transit
+  await handleOnTheWay(tracking, 'out_for_delivery');
 }
 
 // Status: In Transit - check how long
 async function handleStatusInTransit(tracking) {
+  await handleOnTheWay(tracking, 'in_transit');
+}
+
+// Shared handler for "on the way" statuses (in_transit + out_for_delivery)
+async function handleOnTheWay(tracking, statusType) {
   const daysInTransit = tracking.daysInTransit || 0;
+  const isInternational = isInternationalCarrier(tracking);
+  const isOutForDelivery = statusType === 'out_for_delivery';
 
+  // 15+ days: Auto-escalate with reship/refund options
   if (daysInTransit >= CONFIG.IN_TRANSIT_ESCALATE_DAYS) {
-    // Extended transit - escalate
-    await handleExtendedTransit();
-  } else if (daysInTransit >= CONFIG.IN_TRANSIT_VOICE_DAYS) {
-    // Moderate delay - show Sarah voice note
-    await showSarahVoiceNote();
-  } else {
-    // Normal transit time
-    const estimatedDelivery = tracking.estimatedDelivery ? ` Expected delivery: <strong>${formatDate(tracking.estimatedDelivery)}</strong>` : '';
+    await handleExtendedTransit(tracking, isInternational);
+    return;
+  }
 
-    await addBotMessage(`Your order is currently <strong>in transit</strong> and has been shipping for ${daysInTransit} day${daysInTransit !== 1 ? 's' : ''}. Delivery typically takes 5-10 business days.${estimatedDelivery}<br><br>It's still within the normal delivery window — I'd recommend checking back in a few days.`);
+  // 6-14 days: Sarah voice note with reassurance
+  if (daysInTransit >= CONFIG.IN_TRANSIT_VOICE_DAYS) {
+    await showSarahVoiceNote(tracking, isInternational);
+    return;
+  }
+
+  // 0-5 days: Normal messaging
+  const estimatedDelivery = tracking.estimatedDelivery ? ` Expected delivery: <strong>${formatDate(tracking.estimatedDelivery)}</strong>` : '';
+
+  if (isOutForDelivery) {
+    // Out for delivery - should arrive today
+    await addBotMessage(`Great news! Your package is <strong>out for delivery today</strong>. It should arrive within the next few hours.${estimatedDelivery}`);
+
+    if (isInternational) {
+      await addBotMessage(`Your order is shipping from our international warehouse, which can sometimes take a bit longer but it's on its way to you!`);
+    }
 
     addOptions([
-      { text: "Okay, I'll wait", action: () => showSuccess("Thanks!", "Your package is on its way!") },
-      { text: "I need it urgently", action: () => handleExtendedTransit() }
+      { text: "Perfect, I'll wait", action: () => showSuccess("Almost there!", "Your package should arrive today!") },
+      { text: "It's been out for delivery for days", action: async () => {
+        await addBotMessage("That's unusual. Let me create a case for our team to investigate with the carrier.");
+        await createShippingCase('stuck_out_for_delivery');
+      }}
+    ]);
+  } else {
+    // In transit - normal progress
+    let message = `Your order is currently <strong>in transit</strong> and has been shipping for ${daysInTransit} day${daysInTransit !== 1 ? 's' : ''}.`;
+
+    if (isInternational) {
+      message += ` Since this is shipping from our international warehouse, delivery typically takes 10-20 business days.`;
+    } else {
+      message += ` Delivery typically takes 5-10 business days.`;
+    }
+
+    message += `${estimatedDelivery}<br><br>It's still within the normal delivery window — your package is on its way!`;
+
+    await addBotMessage(message);
+
+    addOptions([
+      { text: "Okay, I'll wait", action: () => showSuccess("Thanks for your patience!", "Your package is on its way! 📦") },
+      { text: "I have a concern", action: () => handleExtendedTransit(tracking, isInternational) }
     ]);
   }
 }
@@ -3202,45 +3271,141 @@ async function handleStatusFailedAttempt(tracking) {
   await addBotMessage(`The carrier attempted to deliver your package but was unsuccessful. This could be due to:<br><br>• No one available to sign<br>• Address access issues<br>• Weather conditions<br><br>They'll typically try again within 1-2 business days.`);
 
   addOptions([
-    { text: "Update my address", action: () => handleReship() },
-    { text: "They've tried multiple times", action: async () => {
-      await addBotMessage("I understand this is frustrating. Let me create a case to coordinate with the carrier and find a solution.");
-      await createShippingCase('multiple_failed_attempts');
-    }},
-    { text: "I'll be home next time", action: () => showSuccess("Noted!", "The carrier will attempt delivery again soon.") }
+    { text: "I'll be home next time", action: () => showSuccess("Sounds good!", "The carrier will attempt delivery again soon.") },
+    { text: "I need to change my address", action: () => handleFailedAttemptAddressChange(tracking) },
+    { text: "They've tried multiple times", action: () => handleMultipleFailedAttempts(tracking) }
   ]);
 }
 
-// Status: Pickup - ready for customer pickup
-async function handleStatusPickup(tracking) {
-  await addBotMessage(`Your package is <strong>ready for pickup</strong> at a local carrier facility or access point.<br><br>Carrier: ${tracking.carrier?.toUpperCase() || 'Carrier'}<br>Tracking: ${tracking.trackingNumber || 'N/A'}<br><br>Please check your email for pickup location details, or track your package on the carrier's website.`);
+// Handle address change request for failed attempts
+async function handleFailedAttemptAddressChange(tracking) {
+  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+
+  await addBotMessage(`Since your package is already with ${carrierInfo.name}, you'll need to contact them directly to update the delivery address or arrange a pickup.`);
+
+  let contactMessage = `<strong>${carrierInfo.name} Contact Information:</strong><br><br>`;
+
+  if (carrierInfo.phone) {
+    contactMessage += `📞 Phone: <strong>${carrierInfo.phone}</strong><br>`;
+  }
+  if (carrierInfo.website) {
+    contactMessage += `🌐 Website: <strong>${carrierInfo.website}</strong><br>`;
+  }
+  contactMessage += `📦 Tracking: <strong>${tracking?.trackingNumber || 'Check your email'}</strong>`;
+
+  await addBotMessage(contactMessage);
+
+  await addBotMessage(`When you call, they can help you:<br>• Update the delivery address<br>• Schedule a redelivery<br>• Arrange a pickup at a local facility`);
 
   addOptions([
-    { text: "Where do I pick it up?", action: async () => {
-      await addBotMessage(`You can find the pickup location by:<br><br>1. Checking your email for a carrier notification<br>2. Visiting ${tracking.carrier === 'usps' ? 'usps.com' : tracking.carrier === 'ups' ? 'ups.com' : tracking.carrier === 'fedex' ? 'fedex.com' : 'the carrier website'} with tracking number: <strong>${tracking.trackingNumber}</strong><br><br>Most packages are held for 5-7 days before being returned.`);
-      addOptions([{ text: "Back to Home", action: showHomeMenu }]);
-    }},
-    { text: "I can't pick it up", action: async () => {
-      await addBotMessage("No problem. Would you like me to have this reshipped to a different address, or would you prefer a refund?");
+    { text: "Thanks, I'll contact them", action: () => showSuccess("Good luck!", "The carrier should be able to help you with the address change.") },
+    { text: "I'd rather get a reship", action: async () => {
+      await addBotMessage("No problem! If you'd prefer, I can create a new shipment to your address once this one is returned to us, or you can provide a different address.");
+      await handleReship();
+    }}
+  ]);
+}
+
+// Handle multiple failed delivery attempts
+async function handleMultipleFailedAttempts(tracking) {
+  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+
+  await addBotMessage(`I'm really sorry you're dealing with this — multiple failed attempts is frustrating. Let me help you figure out the best solution.`);
+
+  await addBotMessage(`Is your address correct, or do you need to update it?`);
+
+  addOptions([
+    { text: "My address is correct", action: async () => {
+      await addBotMessage(`Got it. Since ${carrierInfo.name} has been unable to deliver, here are your options:`);
+
+      let optionsMessage = `<strong>Option 1: Contact ${carrierInfo.name}</strong><br>`;
+      if (carrierInfo.phone) {
+        optionsMessage += `Call ${carrierInfo.phone} to schedule a specific delivery time or arrange pickup.<br><br>`;
+      } else {
+        optionsMessage += `Contact them to schedule a specific delivery time or arrange pickup.<br><br>`;
+      }
+      optionsMessage += `<strong>Option 2: We reship to a different address</strong><br>If you have an alternate address (work, neighbor, etc.) that might work better.`;
+
+      await addBotMessage(optionsMessage);
+
       addOptions([
+        { text: "I'll contact the carrier", action: () => showSuccess("Sounds good!", "The carrier can help you schedule a specific delivery time.") },
         { text: "Reship to different address", action: () => handleReship() },
-        { text: "I'd prefer a refund", action: async () => {
+        { text: "I want a refund instead", action: async () => {
           state.ladderType = 'shipping';
           state.ladderStep = 0;
           await startShippingLadder();
         }}
       ]);
-    }}
+    }},
+    { text: "I need to update my address", action: () => handleFailedAttemptAddressChange(tracking) }
   ]);
 }
 
-// Status: Exception/Expired/Unknown - problem with delivery
-async function handleStatusException(tracking) {
-  await addBotMessage(`There seems to be an issue with your delivery (Status: <strong>${tracking.statusLabel}</strong>). This could be due to an address issue, customs hold, or carrier problem.<br><br>Let me help you resolve this.`);
+// Status: Pickup - ready for customer pickup
+async function handleStatusPickup(tracking) {
+  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+
+  await addBotMessage(`Your package is <strong>ready for pickup</strong> at a local ${carrierInfo.name} facility or access point.<br><br>Carrier: ${carrierInfo.name}<br>Tracking: ${tracking?.trackingNumber || 'N/A'}<br><br>Most packages are held for 5-7 days before being returned.`);
 
   addOptions([
-    { text: "Reship my order", action: () => handleReship() },
-    { text: "I want a refund instead", action: async () => {
+    { text: "I'll go pick it up", action: async () => {
+      let pickupMessage = `Great! You can find the pickup location by:<br><br>1. Checking your email for a carrier notification<br>`;
+      if (carrierInfo.website) {
+        pickupMessage += `2. Visiting <strong>${carrierInfo.website}</strong> and entering your tracking number<br>`;
+      }
+      pickupMessage += `<br>Tracking: <strong>${tracking?.trackingNumber || 'Check your email'}</strong>`;
+
+      await addBotMessage(pickupMessage);
+      addOptions([{ text: "Back to Home", action: showHomeMenu }]);
+    }},
+    { text: "I can't pick it up", action: () => handleCantPickup(tracking) }
+  ]);
+}
+
+// Handle customer who can't pick up their package
+async function handleCantPickup(tracking) {
+  await addBotMessage("No problem — I understand. Could you tell me a bit about why you can't pick it up? This helps us find the best solution for you.");
+
+  const formHtml = `
+    <div class="form-container" id="pickupReasonForm">
+      <div class="form-group">
+        <label>Why can't you pick it up?</label>
+        <textarea class="form-input" id="pickupReason" rows="3" placeholder="e.g., I'm out of town, the facility is too far, I don't have transportation, etc."></textarea>
+      </div>
+      <button class="form-button" onclick="submitPickupReason()">Submit</button>
+    </div>
+  `;
+
+  addInteractiveContent(formHtml);
+}
+
+// Submit pickup reason and show options
+async function submitPickupReason() {
+  const reasonEl = document.getElementById('pickupReason');
+  const reason = reasonEl?.value?.trim() || '';
+
+  if (!reason) {
+    showToast("Please tell us why you can't pick it up");
+    return;
+  }
+
+  document.getElementById('pickupReasonForm')?.closest('.interactive-content').remove();
+  addUserMessage(reason);
+
+  // Store reason for case creation
+  state.pickupReason = reason;
+
+  await addBotMessage("Thanks for letting me know. Here's how I can help:");
+
+  addOptions([
+    { text: "Reship to my address", action: async () => {
+      await handleReship();
+    }},
+    { text: "Reship to a different address", action: async () => {
+      await handleReship();
+    }},
+    { text: "I'd prefer a refund", action: async () => {
       state.ladderType = 'shipping';
       state.ladderStep = 0;
       await startShippingLadder();
@@ -3248,76 +3413,159 @@ async function handleStatusException(tracking) {
   ]);
 }
 
-async function showSarahVoiceNote() {
-  await addBotMessage("Your package has been in transit for a few days now. Our CX lead Sarah has a quick update for you...");
-  
+// Make submitPickupReason available globally
+window.submitPickupReason = submitPickupReason;
+
+// Status: Exception/Expired/Unknown - problem with delivery
+async function handleStatusException(tracking) {
+  const isExpired = tracking?.status === 'expired';
+  const isInternational = isInternationalCarrier(tracking);
+
+  if (isExpired) {
+    await addBotMessage(`I see that your shipment tracking has expired. This usually means the package was returned to sender or the tracking timed out.`);
+
+    if (isInternational) {
+      await addBotMessage(`Since this was shipping from our international warehouse, transit times can vary. Let me help make this right.`);
+    }
+
+    await addBotMessage(`Don't worry — I'll take care of this for you. Would you like me to reship your order or process a refund?`);
+  } else {
+    await addBotMessage(`There seems to be an issue with your delivery (Status: <strong>${tracking?.statusLabel || 'Exception'}</strong>). This could be due to:<br><br>• An address issue<br>• Customs hold (for international shipments)<br>• Carrier problem<br><br>I'm sorry for the trouble — let me help you resolve this.`);
+  }
+
+  addOptions([
+    { text: "Reship my order (free)", action: () => handleReship() },
+    { text: "I'd prefer a refund", action: async () => {
+      state.ladderType = 'shipping';
+      state.ladderStep = 0;
+      await startShippingLadder();
+    }}
+  ]);
+}
+
+async function showSarahVoiceNote(tracking, isInternational = false) {
+  const daysInTransit = tracking?.daysInTransit || 0;
+
+  let introMessage = `Your package has been in transit for ${daysInTransit} days now.`;
+  if (isInternational) {
+    introMessage += ` Since it's shipping from our international warehouse, it can take a bit longer than usual.`;
+  }
+  introMessage += ` Our CX lead Sarah has a quick update for you...`;
+
+  await addBotMessage(introMessage);
+
   setPersona('sarah');
-  
+
+  // Waveform-style audio player
   const audioHtml = `
-    <div class="audio-player" id="audioPlayer">
-      <img src="${CONFIG.AVATARS.sarah}" alt="Sarah" class="audio-avatar">
-      <div class="audio-info">
-        <div class="audio-name">Sarah</div>
-        <div class="audio-role">Customer Experience Lead</div>
+    <div class="voice-note-card" id="audioPlayer">
+      <div class="voice-note-header">
+        <img src="${CONFIG.AVATARS.sarah}" alt="Sarah" class="voice-note-avatar">
+        <div class="voice-note-info">
+          <div class="voice-note-name">Sarah</div>
+          <div class="voice-note-role">Customer Experience Lead</div>
+        </div>
       </div>
-      <div class="audio-controls">
-        <button class="play-btn" onclick="playAudio()">
-          <svg viewBox="0 0 24 24" fill="currentColor">
+      <div class="voice-note-player">
+        <button class="voice-note-play-btn" onclick="playAudio()">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="play-icon">
             <path d="M8 5v14l11-7z"/>
           </svg>
+          <svg viewBox="0 0 24 24" fill="currentColor" class="pause-icon" style="display:none;">
+            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+          </svg>
         </button>
-        <div class="audio-progress">
-          <div class="audio-progress-bar" id="audioProgress"></div>
+        <div class="voice-note-waveform">
+          <div class="waveform-bars">
+            ${Array.from({length: 40}, () => `<div class="waveform-bar" style="height: ${20 + Math.random() * 60}%"></div>`).join('')}
+          </div>
+          <div class="waveform-progress" id="waveformProgress"></div>
         </div>
+        <div class="voice-note-duration" id="audioDuration">0:00</div>
       </div>
     </div>
     <audio id="voiceNote" src="/audio/Sarah%20USA%20In%20Transit%20Shipping%20Update.mp3"></audio>
   `;
-  
+
   addInteractiveContent(audioHtml);
-  
+
   setPersona('amy');
-  
+
   await delay(1000);
-  
-  await addBotMessage("Your package is still on its way. Is there anything specific you'd like me to help with while you wait?");
-  
+
+  let followUpMessage = "Your package is still on its way and we're keeping an eye on it.";
+  if (isInternational) {
+    followUpMessage += " International shipments can sometimes take 10-20 business days, but rest assured it's moving.";
+  }
+  followUpMessage += " Is there anything specific you'd like me to help with while you wait?";
+
+  await addBotMessage(followUpMessage);
+
   addOptions([
     { text: "I'll wait a bit longer", action: () => showSuccess("Thanks for your patience!", "Your package is on its way! 📦") },
-    { text: "I need to escalate this", action: () => handleExtendedTransit() }
+    { text: "I'd like to explore my options", action: () => handleExtendedTransit(tracking, isInternational) }
   ]);
 }
 
 function playAudio() {
   const audio = document.getElementById('voiceNote');
-  const progress = document.getElementById('audioProgress');
-  const playBtn = document.querySelector('.play-btn');
-  
+  const waveformProgress = document.getElementById('waveformProgress');
+  const durationEl = document.getElementById('audioDuration');
+  const playIcon = document.querySelector('.play-icon');
+  const pauseIcon = document.querySelector('.pause-icon');
+
+  // Format time as M:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   if (audio.paused) {
     audio.play();
-    playBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-    
+    if (playIcon) playIcon.style.display = 'none';
+    if (pauseIcon) pauseIcon.style.display = 'block';
+
     audio.ontimeupdate = () => {
       const percent = (audio.currentTime / audio.duration) * 100;
-      progress.style.width = percent + '%';
+      if (waveformProgress) waveformProgress.style.width = percent + '%';
+      if (durationEl) durationEl.textContent = formatTime(audio.currentTime);
     };
-    
+
+    audio.onloadedmetadata = () => {
+      if (durationEl) durationEl.textContent = formatTime(audio.duration);
+    };
+
     audio.onended = () => {
-      playBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-      progress.style.width = '0%';
+      if (playIcon) playIcon.style.display = 'block';
+      if (pauseIcon) pauseIcon.style.display = 'none';
+      if (waveformProgress) waveformProgress.style.width = '0%';
+      if (durationEl) durationEl.textContent = formatTime(audio.duration);
     };
   } else {
     audio.pause();
-    playBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+    if (playIcon) playIcon.style.display = 'block';
+    if (pauseIcon) pauseIcon.style.display = 'none';
   }
 }
 
-async function handleExtendedTransit() {
-  await addBotMessage("I understand this has taken too long. Let me offer you some options to make this right:");
-  
+async function handleExtendedTransit(tracking, isInternational = false) {
+  const daysInTransit = tracking?.daysInTransit || 0;
+
+  let message = "I understand this has taken longer than expected";
+  if (daysInTransit >= CONFIG.IN_TRANSIT_ESCALATE_DAYS) {
+    message = `I see your package has been in transit for ${daysInTransit} days — that's definitely too long`;
+  }
+  if (isInternational) {
+    message += ", and I know waiting for international shipments can be frustrating";
+  }
+  message += ". Let me offer you some options to make this right:";
+
+  await addBotMessage(message);
+
   addOptions([
-    { icon: '📦', text: "Reship my order (free)", action: () => handleReship() },
-    { icon: '💰', text: "I'd prefer a refund", action: async () => {
+    { text: "Reship my order (free)", action: () => handleReship() },
+    { text: "I'd prefer a refund", action: async () => {
       state.ladderType = 'shipping';
       state.ladderStep = 0;
       await startShippingLadder();
@@ -3397,52 +3645,70 @@ async function confirmReship() {
 
 async function startShippingLadder() {
   const steps = [
-    { percent: 10, message: "How about I give you a <strong>10% refund PLUS reship your order</strong> free of charge? Best of both worlds!" },
-    { percent: 20, message: "Let me sweeten the deal — <strong>20% refund AND a free reship</strong>. You'll get your money back and your products!" }
+    { percent: 20, message: "I'd love to make this right for you. How about a <strong>20% refund PLUS we'll reship your order</strong> free of charge? That way you get your money back AND your products!" },
+    { percent: 50, message: "I really want to help you out here. Let me offer you a <strong>50% refund AND a free reship</strong>. You'll get half your money back plus we'll send out a new shipment right away." }
   ];
-  
+
   if (state.ladderStep >= steps.length) {
-    await addBotMessage("I understand. Let me process a full cancellation and refund for you.");
+    await addBotMessage("I completely understand. Let me process a full refund for you right away.");
     await createRefundCase('full', true);
     return;
   }
-  
+
   const step = steps[state.ladderStep];
   const totalPrice = parseFloat(state.selectedOrder?.totalPrice || 0);
   const refundAmount = (totalPrice * step.percent / 100).toFixed(2);
-  
+
   await addBotMessage(step.message);
-  
+
   const html = `
     <div class="offer-card">
       <div class="offer-icon">🎁</div>
-      <div class="offer-amount">${step.percent}% + Reship</div>
-      <div class="offer-value">${formatCurrency(refundAmount)} refund + free reship</div>
+      <div class="offer-amount">${step.percent}% + Free Reship</div>
+      <div class="offer-value">${formatCurrency(refundAmount)} back + new shipment</div>
       <div class="offer-label">Get your money back AND your products</div>
       <div class="offer-buttons">
-        <button class="offer-btn accept" onclick="acceptShippingOffer(${step.percent}, ${refundAmount})">Accept</button>
-        <button class="offer-btn decline" onclick="declineShippingOffer()">Full refund instead</button>
+        <button class="offer-btn accept" onclick="acceptShippingOffer(${step.percent}, ${refundAmount})">Accept This Offer</button>
+        <button class="offer-btn decline" onclick="declineShippingOffer()">I just want a refund</button>
       </div>
     </div>
   `;
-  
+
   addInteractiveContent(html);
 }
 
 async function acceptShippingOffer(percent, amount) {
   document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage(`I'll take the ${percent}% refund + reship`);
-  
+
   showProgress("Processing refund and creating reship...");
-  await delay(2000);
+
+  const tracking = state.tracking || {};
+  const result = await submitCase('shipping', `partial_${percent}_reship`, {
+    issueType: 'shipping_partial_refund_reship',
+    refundPercent: percent,
+    refundAmount: parseFloat(amount),
+    carrierName: tracking.carrier || 'Unknown',
+    trackingNumber: tracking.trackingNumber || '',
+    daysInTransit: tracking.daysInTransit || 0,
+    notes: `Customer accepted ${percent}% partial refund + free reship offer`,
+  });
+
   hideProgress();
-  
-  state.caseId = generateCaseId('shipping');
-  
-  await showSuccess(
-    "All Set!",
-    `Your ${percent}% refund (${formatCurrency(amount)}) will process in 3-5 days, and your reship will go out within 1-2 business days.<br><br>${getCaseIdHtml(state.caseId)}`
-  );
+
+  if (result.success) {
+    state.caseId = result.caseId;
+    await showSuccess(
+      "All Set!",
+      `Your ${percent}% refund (${formatCurrency(amount)}) will process in 3-5 business days, and your reship will go out within 1-2 business days.<br><br>${getCaseIdHtml(result.caseId)}`
+    );
+  } else {
+    state.caseId = generateCaseId('shipping');
+    await showSuccess(
+      "All Set!",
+      `Your ${percent}% refund (${formatCurrency(amount)}) will process in 3-5 business days, and your reship will go out within 1-2 business days.<br><br>${getCaseIdHtml(state.caseId)}`
+    );
+  }
 }
 
 async function declineShippingOffer() {
@@ -3460,60 +3726,97 @@ async function declineShippingOffer() {
 }
 
 async function handleDeliveredNotReceived() {
-  await addBotMessage("I'm really sorry to hear that 😔 This is frustrating, and I want to help resolve it.");
+  const tracking = state.tracking || state.trackingInfo || {};
+  const carrierName = tracking.carrier?.toUpperCase() || 'the carrier';
 
-  await addBotMessage(`When packages show as delivered but aren't received, we take it very seriously. Here's what our investigation process includes:<br><br>
-• <strong>Carrier investigation</strong> - We'll contact ${state.trackingInfo?.carrier?.toUpperCase() || 'the carrier'} directly<br>
-• <strong>GPS & delivery photos</strong> - Request proof of delivery location<br>
-• <strong>Local facility check</strong> - Contact the local post office/hub<br>
-• <strong>Police report option</strong> - For high-value packages, you may file a report with your local police department which can help with CCTV footage retrieval<br><br>
-Would you like us to proceed with the investigation?`);
+  await addBotMessage("I'm really sorry to hear that — this is frustrating, and I want to help you.");
 
+  // Psychological filter - describe the investigation process to deter false claims
+  await addBotMessage(`When a package shows as delivered but isn't received, we take it very seriously. Here's what happens in our investigation process:<br><br>
+• <strong>Carrier investigation</strong> - We contact ${carrierName} directly to verify delivery<br>
+• <strong>GPS verification</strong> - We request the exact GPS coordinates where the package was scanned<br>
+• <strong>Delivery photos</strong> - We obtain any proof-of-delivery photos from the carrier<br>
+• <strong>Address verification</strong> - We cross-reference with your shipping address on file<br>
+• <strong>Local facility check</strong> - We contact the local post office or hub`);
+
+  await addBotMessage(`<strong>Important note:</strong> For missing package claims, we may also recommend filing a police report. This helps with CCTV footage retrieval from nearby cameras and creates an official record.`);
+
+  // Two buttons - psychological filter
   addOptions([
-    { text: "Yes, please investigate", action: async () => {
-      showProgress("Creating investigation case...");
-
-      // Create proper case in ClickUp + Richpanel
-      const result = await submitCase('shipping', 'investigation_delivered_not_received', {
-        issueType: 'delivered_not_received',
-        carrierName: state.trackingInfo?.carrier || 'Unknown',
-        trackingNumber: state.trackingInfo?.trackingNumber || '',
-        deliveryDate: state.trackingInfo?.deliveryDate || '',
-      });
-
-      hideProgress();
-
-      if (result.success) {
-        await showSuccess(
-          "Investigation Started",
-          `We'll investigate with the carrier and get back to you within 48 hours. If we can't locate it, we'll reship or refund your order.<br><br>
-          <strong>Tip:</strong> If you'd like to file a police report, your local department can request CCTV footage from nearby cameras.<br><br>${getCaseIdHtml(result.caseId)}`
-        );
-      } else {
-        await showSuccess(
-          "Investigation Started",
-          `Our team will investigate and contact the carrier. We'll reach out within 48 hours.`
-        );
-      }
+    { text: "Actually, let me check again", action: async () => {
+      // Customer backing off - likely found it or was a false claim
+      await addBotMessage("No problem! Take your time to check all the spots we mentioned. Come back if you still can't find it — we're here to help.");
+      Analytics.logEvent('delivered_check_again');
+      addOptions([{ text: "Back to Home", action: showHomeMenu }]);
     }},
-    { text: "Just reship it", action: () => handleReship() },
-    { text: "Just refund me", action: async () => {
-      await createRefundCase('full', true);
+    { text: "I've checked everywhere, please investigate", action: async () => {
+      // Genuine claim - proceed with investigation
+      await handleDeliveredInvestigation(tracking);
     }}
   ]);
 }
 
-async function createShippingCase(type) {
-  showProgress("Creating case...");
-  await delay(1500);
+// Proceed with delivered not received investigation
+async function handleDeliveredInvestigation(tracking) {
+  showProgress("Creating investigation case...");
+
+  const result = await submitCase('shipping', 'investigation_delivered_not_received', {
+    issueType: 'delivered_not_received',
+    carrierName: tracking.carrier || 'Unknown',
+    trackingNumber: tracking.trackingNumber || '',
+    deliveryDate: tracking.deliveryDate || '',
+    notes: 'Customer confirmed they checked all locations and package is not found.',
+  });
+
   hideProgress();
-  
-  state.caseId = generateCaseId('shipping');
-  
-  await showSuccess(
-    "Case Created!",
-    `Our team will investigate and get back to you within 24-48 hours.<br><br>${getCaseIdHtml(state.caseId)}`
-  );
+
+  if (result.success) {
+    await showSuccess(
+      "Investigation Started",
+      `We've opened a case and will investigate with ${tracking.carrier?.toUpperCase() || 'the carrier'}. We'll get back to you within 48 hours.<br><br>
+If we can't locate your package, we'll either reship or refund your order — whichever you prefer.<br><br>
+<strong>Optional:</strong> If you'd like to file a police report, your local department can request CCTV footage from nearby cameras.<br><br>${getCaseIdHtml(result.caseId)}`
+    );
+  } else {
+    await showSuccess(
+      "Investigation Started",
+      `Our team will investigate and contact the carrier. We'll reach out within 48 hours. If we can't locate it, we'll reship or refund your order.`
+    );
+  }
+}
+
+async function createShippingCase(type, options = {}) {
+  showProgress("Creating case...");
+
+  const tracking = state.tracking || {};
+
+  const result = await submitCase('shipping', type, {
+    issueType: type,
+    carrierName: tracking.carrier || options.carrier || 'Unknown',
+    trackingNumber: tracking.trackingNumber || options.trackingNumber || '',
+    deliveryDate: tracking.deliveryDate || '',
+    daysInTransit: tracking.daysInTransit || 0,
+    trackingStatus: tracking.status || '',
+    customerReason: options.customerReason || '',
+    notes: options.notes || `Shipping issue: ${type}`,
+    ...options,
+  });
+
+  hideProgress();
+
+  if (result.success) {
+    state.caseId = result.caseId;
+    await showSuccess(
+      "Case Created!",
+      `Our team will investigate and get back to you within 24-48 hours.<br><br>${getCaseIdHtml(result.caseId)}`
+    );
+  } else {
+    state.caseId = generateCaseId('shipping');
+    await showSuccess(
+      "Case Created!",
+      `Our team will investigate and get back to you within 24-48 hours.<br><br>${getCaseIdHtml(state.caseId)}`
+    );
+  }
 }
 
 // ============================================
@@ -3538,25 +3841,64 @@ async function handleTrackFlow() {
 }
 
 async function getTrackingInfo() {
-  await addBotMessage("Checking your tracking info... 📦");
-  
-  // Mock tracking for demo
-  state.tracking = {
-    status: 'in_transit',
-    statusLabel: 'In Transit',
-    trackingNumber: 'USPS9400111899223456789012',
-    carrier: 'USPS',
-    estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-    daysInTransit: 4,
-    checkpoints: [
-      { checkpoint_time: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), message: 'Out for delivery', location: 'Austin, TX' },
-      { checkpoint_time: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), message: 'Arrived at local facility', location: 'Austin, TX' },
-      { checkpoint_time: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), message: 'In transit', location: 'Dallas, TX' },
-      { checkpoint_time: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), message: 'Shipped', location: 'Los Angeles, CA' }
-    ]
-  };
-  
-  await showTrackingCard();
+  showProgress("Looking up tracking...", "Checking ParcelPanel for your package status");
+
+  try {
+    const orderNumber = state.selectedOrder?.orderNumber || state.customerData?.orderNumber;
+
+    if (!orderNumber) {
+      hideProgress();
+      state.tracking = null;
+      await addBotMessage("I couldn't find tracking information for your order. Would you like to contact support?");
+      addOptions([
+        { text: "Contact Support", action: () => startHelpFlow() },
+        { text: "Back to Home", action: showHomeMenu }
+      ]);
+      return;
+    }
+
+    const response = await fetch(`${CONFIG.API_URL}/api/tracking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderNumber: orderNumber.replace('#', '') })
+    });
+
+    hideProgress();
+
+    if (!response.ok) {
+      state.tracking = null;
+      await addBotMessage("I couldn't retrieve tracking information right now. Would you like to contact support?");
+      addOptions([
+        { text: "Contact Support", action: () => startHelpFlow() },
+        { text: "Back to Home", action: showHomeMenu }
+      ]);
+      return;
+    }
+
+    const data = await response.json();
+    state.tracking = data.tracking;
+    state.allTracking = data.allTracking;
+
+    if (!state.tracking) {
+      await addBotMessage("Tracking information isn't available yet. Your order may still be processing. Would you like to check back later or contact support?");
+      addOptions([
+        { text: "Contact Support", action: () => startHelpFlow() },
+        { text: "Back to Home", action: showHomeMenu }
+      ]);
+      return;
+    }
+
+    await showTrackingCard();
+  } catch (error) {
+    console.error('Tracking lookup error:', error);
+    hideProgress();
+    state.tracking = null;
+    await addBotMessage("Something went wrong while looking up your tracking. Would you like to try again or contact support?");
+    addOptions([
+      { text: "Try Again", action: () => getTrackingInfo() },
+      { text: "Contact Support", action: () => startHelpFlow() }
+    ]);
+  }
 }
 
 async function showTrackingCard() {
