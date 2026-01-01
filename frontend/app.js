@@ -506,7 +506,12 @@ function updateAddressFields(formPrefix = '') {
 
 function scrollToBottom() {
   if (!elements.chatArea) return;
-  elements.chatArea.scrollTop = elements.chatArea.scrollHeight;
+  // Scroll to show the last element at the TOP of viewport (with space below)
+  // This gives the user a top-down reading experience
+  const lastElement = elements.chatArea.lastElementChild;
+  if (lastElement) {
+    lastElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 function delay(ms) {
