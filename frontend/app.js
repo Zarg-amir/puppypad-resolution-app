@@ -1941,9 +1941,13 @@ async function confirmItemSelection() {
 // ============================================
 async function showIntentOptions() {
   await addBotMessage("Got it! What's going on with your order?");
-  
+
   // Build dynamic intent options based on selected items
-  const hasPuppyPad = state.selectedItems.some(i => i.isPuppyPad);
+  // Check if any item is a PuppyPad product (by name)
+  const hasPuppyPad = state.selectedItems.some(i => {
+    const name = (i.name || i.title || '').toLowerCase();
+    return name.includes('puppypad') || name.includes('puppy pad') || name.includes('pee pad');
+  });
   const isFreeItem = state.selectedItems.every(i => i.isFree);
   
   let options = [];
