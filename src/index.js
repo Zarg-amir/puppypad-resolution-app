@@ -1559,9 +1559,8 @@ async function createRichpanelTicket(env, caseData, caseId) {
   const customerLastName = caseData.customerLastName || '';
 
   // Build subject line with Case ID and specific issue
-  const testPrefix = testMode ? '[TEST] ' : '';
   const orderIssue = formatOrderIssue(caseData);
-  const subject = `${testPrefix}${caseId} - ${orderIssue} - Order ${caseData.orderNumber || 'N/A'}`;
+  const subject = `${caseId} - ${orderIssue} - Order ${caseData.orderNumber || 'N/A'}`;
 
   // Build customer message (simulated email from customer)
   const customerMessage = buildCustomerMessage(caseData, caseId, testMode);

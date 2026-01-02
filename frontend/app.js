@@ -2531,6 +2531,7 @@ async function submitCase(caseType, resolution, options = {}) {
     orderNumber: order?.orderNumber || '',
     orderId: order?.id || '',
     orderUrl: order?.orderUrl || '',
+    orderDate: order?.createdAt || '',
 
     // Items
     selectedItems: items.map(item => ({
@@ -2558,6 +2559,16 @@ async function submitCase(caseType, resolution, options = {}) {
     discountPercent: options.discountPercent || null,
     subscriptionStatus: options.subscriptionStatus || state.selectedSubscription?.status || '',
     cancelReason: options.cancelReason || state.cancelReason || '',
+
+    // Shipping-specific fields (for shipping cases)
+    trackingNumber: options.trackingNumber || '',
+    carrierName: options.carrierName || '',
+    trackingStatus: options.trackingStatus || '',
+    daysInTransit: options.daysInTransit || null,
+    shippingAddress: options.shippingAddress || order?.shippingAddress || null,
+    carrierIssue: options.carrierIssue || '',
+    addressChanged: options.addressChanged || false,
+    pickupReason: options.pickupReason || '',
 
     // Timestamps
     createdAt: new Date().toISOString(),
