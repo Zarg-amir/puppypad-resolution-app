@@ -1943,19 +1943,13 @@ async function showIntentOptions() {
   await addBotMessage("Got it! What's going on with your order?");
 
   // Build dynamic intent options based on selected items
-  // Check if any item is a PuppyPad product (by name)
-  const hasPuppyPad = state.selectedItems.some(i => {
-    const name = (i.name || i.title || '').toLowerCase();
-    return name.includes('puppypad') || name.includes('puppy pad') || name.includes('pee pad');
-  });
   const isFreeItem = state.selectedItems.every(i => i.isFree);
-  
+
   let options = [];
-  
-  if (hasPuppyPad) {
-    options.push({ icon: '🐕', text: "My dog isn't using it", action: () => handleIntent('dog_not_using') });
-  }
-  
+
+  // Always show "dog not using" - this is a PuppyPad store, all products are pee pads
+  options.push({ icon: '🐕', text: "My dog isn't using it", action: () => handleIntent('dog_not_using') });
+
   if (!isFreeItem) {
     options.push(
       { icon: '💭', text: "I changed my mind", action: () => handleIntent('changed_mind') },
@@ -1967,17 +1961,17 @@ async function showIntentOptions() {
       { icon: '💳', text: "I was charged unexpectedly", action: () => handleIntent('charged_unexpectedly') }
     );
   }
-  
+
   options.push(
     { icon: '🚚', text: "I haven't received my order", action: () => handleIntent('not_received') }
   );
-  
-  if (hasPuppyPad && !isFreeItem) {
+
+  if (!isFreeItem) {
     options.push({ icon: '🔍', text: "Quality difference in my products", action: () => handleIntent('quality_difference') });
   }
-  
+
   options.push({ icon: '❓', text: "Other reason", action: () => handleIntent('other') });
-  
+
   addOptions(options);
 }
 
