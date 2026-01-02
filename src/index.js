@@ -2299,10 +2299,13 @@ Return ONLY JSON: {"pickupAddress": "full address", "openingHours": "hours", "ph
           }),
         });
 
+        console.log('Web search API status:', webSearchResponse.status);
+
         if (webSearchResponse.ok) {
           const webData = await webSearchResponse.json();
+          console.log('Web search RAW response:', JSON.stringify(webData, null, 2));
           const webContent = webData.output_text || webData.output?.[0]?.content?.[0]?.text || '';
-          console.log('Web search response:', webContent);
+          console.log('Web search extracted content:', webContent);
 
           try {
             const jsonMatch = webContent.match(/\{[\s\S]*\}/);
@@ -2315,6 +2318,9 @@ Return ONLY JSON: {"pickupAddress": "full address", "openingHours": "hours", "ph
           } catch (e) {
             console.log('Web search parse failed, using checkpoint data');
           }
+        } else {
+          const errorText = await webSearchResponse.text();
+          console.log('Web search API error:', webSearchResponse.status, errorText);
         }
       } catch (webError) {
         console.log('Web search failed, using checkpoint data:', webError.message);
