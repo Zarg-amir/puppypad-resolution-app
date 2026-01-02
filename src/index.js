@@ -901,24 +901,33 @@ export default {
         const posthogPath = pathname.replace('/ph/', '');
         const posthogUrl = `https://us.i.posthog.com/${posthogPath}${url.search}`;
 
-        // Forward the request with proper headers
-        const headers = new Headers();
-        headers.set('Content-Type', request.headers.get('Content-Type') || 'application/json');
-        headers.set('Origin', request.headers.get('Origin') || '');
-        headers.set('User-Agent', request.headers.get('User-Agent') || '');
+        // Read body as arrayBuffer to preserve binary/compressed data
+        const requestBody = request.method !== 'GET' && request.method !== 'HEAD'
+          ? await request.arrayBuffer()
+          : undefined;
 
-        // Use request body directly (not .text()) to preserve binary data
+        // Forward request with necessary headers for PostHog
+        const headers = new Headers();
+
+        // Copy all content-related headers
+        const contentType = request.headers.get('Content-Type');
+        if (contentType) headers.set('Content-Type', contentType);
+
+        // Critical: Forward Content-Encoding for gzip compressed data
+        const contentEncoding = request.headers.get('Content-Encoding');
+        if (contentEncoding) headers.set('Content-Encoding', contentEncoding);
+
         const response = await fetch(posthogUrl, {
           method: request.method,
           headers: headers,
-          body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
+          body: requestBody,
         });
 
         // Forward the response with CORS headers
         const responseHeaders = new Headers(response.headers);
         responseHeaders.set('Access-Control-Allow-Origin', '*');
         responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Content-Encoding');
 
         return new Response(response.body, {
           status: response.status,
