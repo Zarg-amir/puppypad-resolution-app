@@ -2292,9 +2292,17 @@ YOU MUST RETURN ONLY VALID JSON IN THIS EXACT FORMAT - NO OTHER TEXT:
 
     if (webSearchResponse.ok) {
       const webData = await webSearchResponse.json();
-      const webContent = webData.output_text || webData.output?.[0]?.content?.[0]?.text || '';
 
-      console.log('OpenAI Web Search Response:', webContent);
+      // Log the full response structure to debug
+      console.log('OpenAI Web Search - Full Response:', JSON.stringify(webData, null, 2));
+
+      // Try multiple ways to extract the content
+      const webContent = webData.output_text
+        || webData.output?.[0]?.content?.[0]?.text
+        || webData.choices?.[0]?.message?.content  // Chat completions format
+        || '';
+
+      console.log('OpenAI Web Search - Extracted Content:', webContent);
 
       try {
         const jsonMatch = webContent.match(/\{[\s\S]*\}/);
@@ -2309,12 +2317,16 @@ YOU MUST RETURN ONLY VALID JSON IN THIS EXACT FORMAT - NO OTHER TEXT:
             directions: parsed.directions || null,
             additionalInfo: parsed.additionalInfo || null
           };
+          console.log('OpenAI Web Search - Parsed location:', locationDetails);
+        } else {
+          console.log('OpenAI Web Search - No JSON found in response');
         }
       } catch (e) {
-        console.error('Failed to parse OpenAI response:', webContent);
+        console.error('Failed to parse OpenAI response:', e.message, webContent);
       }
     } else {
-      console.error('OpenAI Web Search API error:', webSearchResponse.status);
+      const errorText = await webSearchResponse.text();
+      console.error('OpenAI Web Search API error:', webSearchResponse.status, errorText);
     }
 
     // ============================================
