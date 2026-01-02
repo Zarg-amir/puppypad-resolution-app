@@ -2624,49 +2624,88 @@ async function handleUsedProduct(isUsed) {
   }
 }
 
-function showReturnInstructions() {
-  const items = state.selectedItems.map(i => `• ${i.title} (SKU: ${i.sku})`).join('<br>');
+async function showReturnInstructions() {
+  const items = state.selectedItems;
+  const itemsList = items.map(i => `${i.title} × ${i.quantity || 1}`).join(', ');
+  const orderNumber = state.selectedOrder?.orderNumber || 'N/A';
+  const customerName = `${state.customerData?.firstName || ''} ${state.customerData?.lastName || ''}`.trim() || 'Customer';
+  const issueReason = state.intentDetails || state.issueType?.replace(/_/g, ' ') || 'Return for refund';
 
-  const html = `
-    <div class="form-container">
-      <h3 style="margin-bottom: 12px; color: var(--navy);">📦 Return Instructions</h3>
+  // Step 1: Important notice
+  await addBotMessage(`<strong>⚠️ Important:</strong> We don't provide prepaid return labels. You'll need to ship the return using a carrier of your choice (USPS, UPS, or FedEx work great).`);
 
-      <div style="background: var(--coral-soft); padding: 14px; border-radius: 10px; margin-bottom: 16px;">
-        <strong>⚠️ Important: We cannot provide return shipping labels</strong><br><br>
-        Our system does not generate return labels, and our policy requires customers to ship returns using a carrier of their choice. We recommend USPS, UPS, or FedEx.
-      </div>
+  await delay(800);
 
-      <div style="background: var(--navy-soft); padding: 14px; border-radius: 10px; margin-bottom: 16px;">
-        <strong>Ship to:</strong><br>
-        PuppyPad Returns<br>
+  // Step 2: Return address card
+  const addressHtml = `
+    <div class="return-card">
+      <div class="return-card-header">📍 Return Address</div>
+      <div class="return-card-body">
+        <strong>PuppyPad Returns</strong><br>
         1007 S 12th St.<br>
         Watertown, WI 53094<br>
         USA
       </div>
+    </div>
+  `;
+  addInteractiveContent(addressHtml);
 
-      <div style="margin-bottom: 16px;">
-        <strong>Include in package:</strong><br>
-        ${items}<br><br>
-        <strong>Order Number:</strong> ${state.selectedOrder?.orderNumber}<br>
-        <strong>Your Name:</strong> ${state.customerData.firstName}<br>
-        <strong>Reason:</strong> Return for refund
+  await delay(600);
+
+  // Step 3: Packing slip instructions
+  await addBotMessage(`<strong>📝 Include a note in your package</strong><br><br>Please write the following on a piece of paper and put it inside the box:`);
+
+  await delay(500);
+
+  // Packing slip template
+  const packingSlipHtml = `
+    <div class="packing-slip">
+      <div class="packing-slip-header">✂️ Packing Slip</div>
+      <div class="packing-slip-body">
+        <div class="slip-row">
+          <span class="slip-label">Order #:</span>
+          <span class="slip-value">${orderNumber}</span>
+        </div>
+        <div class="slip-row">
+          <span class="slip-label">Name:</span>
+          <span class="slip-value">${customerName}</span>
+        </div>
+        <div class="slip-row">
+          <span class="slip-label">Items:</span>
+          <span class="slip-value">${itemsList}</span>
+        </div>
+        <div class="slip-row">
+          <span class="slip-label">Reason:</span>
+          <span class="slip-value">${issueReason}</span>
+        </div>
       </div>
+    </div>
+  `;
+  addInteractiveContent(packingSlipHtml);
 
-      <div style="background: var(--yellow); padding: 14px; border-radius: 10px; margin-bottom: 16px;">
-        <strong>📧 After shipping:</strong> Please reply to your confirmation email with your tracking number so we can monitor the return and process your refund promptly.
-      </div>
+  await delay(600);
 
+  // Step 4: After shipping instructions
+  await addBotMessage(`<strong>📧 After you ship:</strong><br><br>Reply to your confirmation email with the tracking number so we can monitor the return and process your refund quickly.`);
+
+  await delay(500);
+
+  // Confirmation button
+  const confirmHtml = `
+    <div class="return-confirm-container">
       <button class="option-btn primary" onclick="confirmReturn()" style="width: 100%;">
         I Understand — Create My Case
       </button>
     </div>
   `;
-
-  addInteractiveContent(html);
+  addInteractiveContent(confirmHtml);
 }
 
 async function confirmReturn() {
-  document.querySelector('.form-container')?.closest('.interactive-content').remove();
+  // Remove all return instruction elements
+  document.querySelectorAll('.return-card, .packing-slip, .return-confirm-container').forEach(el => {
+    el.closest('.interactive-content')?.remove();
+  });
   addUserMessage("I understand the return process");
 
   await createRefundCase('full', false);
