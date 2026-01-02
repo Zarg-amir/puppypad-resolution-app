@@ -3402,70 +3402,49 @@ async function handleStatusPickup(tracking) {
 
   hideProgress();
 
-  // Extract all pickup details from response
+  // Extract pickup details from response
   const pickupLocationName = pickupData?.pickupLocationName;
-  const pickupAddress = pickupData?.pickupAddress;
-  const openingHours = pickupData?.openingHours;
-  const phoneNumber = pickupData?.phoneNumber;
-  const googleMapsUrl = pickupData?.googleMapsUrl;
-  const directions = pickupData?.directions;
   const lastMileTracking = pickupData?.lastMileTrackingNumber;
+  const lastMileCarrierUrl = pickupData?.lastMileCarrierUrl;
   const isMainCarrierChina = pickupData?.isMainCarrierChina || false;
 
   // Use last-mile tracking if available, otherwise use main tracking ONLY if not China carrier
   const displayTracking = lastMileTracking || (!isMainCarrierChina ? tracking?.trackingNumber : null);
 
   // Get carrier info - use displayCarrier from backend (already filtered for China carriers)
-  // NEVER fall back to tracking?.carrier as it might be a China carrier (YunExpress, 4PX, etc.)
   const rawCarrier = pickupData?.displayCarrier;
   const displayCarrier = rawCarrier && !['unknown', 'null', 'undefined'].includes((rawCarrier || '').toLowerCase())
     ? rawCarrier
-    : null; // Don't fall back - backend already handled China carrier filtering
-  const carrierInfo = displayCarrier ? getCarrierContactInfo(displayCarrier) : null;
+    : null;
 
   // Store parsed data for later use in investigation flow
   state.pickupData = pickupData;
 
-  // Build comprehensive pickup info message
+  // Build pickup info message
   let message = `Your package is <strong>ready for pickup</strong>`;
-
   if (pickupLocationName) {
     message += ` at <strong>${pickupLocationName}</strong>`;
   }
   message += `!<br><br>`;
 
-  // Add location details if we have them
-  if (pickupAddress) {
-    message += `<strong>Address:</strong> ${pickupAddress}<br>`;
+  // Show carrier if we have a valid one
+  if (displayCarrier) {
+    message += `<strong>Carrier:</strong> ${displayCarrier}<br>`;
   }
 
-  if (openingHours) {
-    message += `<strong>Hours:</strong> ${openingHours}<br>`;
-  }
-
-  if (phoneNumber) {
-    message += `<strong>Phone:</strong> ${phoneNumber}<br>`;
-  }
-
-  if (directions) {
-    message += `<strong>How to find it:</strong> ${directions}<br>`;
-  }
-
-  // Add Google Maps link if available
-  if (googleMapsUrl) {
-    message += `<br><a href="${googleMapsUrl}" target="_blank" style="color: #4A90A4;">View on Google Maps</a><br>`;
-  }
-
-  // Only show carrier if we have a valid one
-  if (carrierInfo) {
-    message += `<br><strong>Carrier:</strong> ${carrierInfo.name}<br>`;
-  }
-  // Only show tracking if we have a valid one (not China tracking)
+  // Show tracking number if we have a valid one
   if (displayTracking) {
-    message += `<strong>Tracking:</strong> ${displayTracking}<br><br>`;
+    message += `<strong>Tracking:</strong> ${displayTracking}<br>`;
+  }
+
+  // Show tracking link - this is where customers find the full location details
+  if (lastMileCarrierUrl) {
+    message += `<br><a href="${lastMileCarrierUrl}" target="_blank" style="color: #4A90A4;">View tracking here</a><br>`;
+    message += `<em>This should show the pickup location and hours. If not, give them a call - you can usually find the number on their website.</em><br><br>`;
   } else {
     message += `<br>`;
   }
+
   message += `<em>Packages are usually held for 5-7 days before being returned to sender.</em>`;
 
   await addBotMessage(message);
@@ -3476,33 +3455,17 @@ async function handleStatusPickup(tracking) {
 
       if (pickupLocationName) {
         pickupMessage += `Head to <strong>${pickupLocationName}</strong> with your ID to collect your package.`;
-
-        // Add address again for convenience
-        if (pickupAddress) {
-          pickupMessage += `<br><br><strong>Address:</strong> ${pickupAddress}`;
-        }
-
-        // Add opening hours reminder
-        if (openingHours) {
-          pickupMessage += `<br><strong>Hours:</strong> ${openingHours}`;
-        }
-
-        // Add Google Maps link
-        if (googleMapsUrl) {
-          pickupMessage += `<br><br><a href="${googleMapsUrl}" target="_blank" style="color: #4A90A4;">Get Directions</a>`;
-        }
       } else {
-        pickupMessage += `Here's how to find your pickup location:<br><br>`;
-        pickupMessage += `1. Check your email for a pickup notification<br>`;
-        if (carrierInfo?.website) {
-          pickupMessage += `2. Visit <strong>${carrierInfo.website}</strong> and enter your tracking number<br>`;
-        }
-        if (carrierInfo?.phone) {
-          pickupMessage += `3. Or call ${carrierInfo.phone} for assistance`;
-        }
+        pickupMessage += `Bring your ID to collect your package.`;
       }
 
-      pickupMessage += `<br><br><strong>Your tracking number:</strong> ${displayTracking || 'Check your email'}`;
+      if (lastMileCarrierUrl) {
+        pickupMessage += `<br><br><a href="${lastMileCarrierUrl}" target="_blank" style="color: #4A90A4;">View tracking for location details</a>`;
+      }
+
+      if (displayTracking) {
+        pickupMessage += `<br><br><strong>Tracking:</strong> ${displayTracking}`;
+      }
 
       await addBotMessage(pickupMessage);
       await addBotMessage("Let me know if you have any trouble finding it!");

@@ -2170,18 +2170,20 @@ async function handleAIResponse(request, env, corsHeaders) {
 
 // ============================================
 // PARSE PICKUP LOCATION
-// Uses ParcelPanel data + Shipping Address + OpenAI Web Search
-// to find exact pickup location details for customer
+// Extracts pickup location name from checkpoints
+// Returns last-mile carrier tracking link for full details
 // ============================================
 async function handleParsePickupLocation(request, env, corsHeaders) {
   const { tracking, carrier, checkpoints, lastMile, shippingAddress } = await request.json();
 
-  // ============================================
-  // STEP 1: Get data from ParcelPanel
-  // ============================================
+  // Get data from ParcelPanel
   const lastMileCarrier = lastMile?.carrier_name || null;
   const lastMileTrackingNumber = lastMile?.tracking_number || null;
   const lastMileCarrierUrl = lastMile?.carrier_url || null;
+
+  // Check if main carrier is a China carrier
+  const isMainCarrierChina = isChinaCarrier(carrier);
+  const displayCarrier = lastMileCarrier || (isMainCarrierChina ? null : carrier);
 
   // Get recent checkpoints for context
   const recentCheckpoints = (checkpoints || []).slice(0, 6);
@@ -2189,31 +2191,10 @@ async function handleParsePickupLocation(request, env, corsHeaders) {
     .map(cp => `${cp.checkpoint_time || ''}: ${cp.message || cp.detail || ''} ${cp.location ? `(${cp.location})` : ''}`)
     .join('\n');
 
-  // ============================================
-  // STEP 2: Get shipping address
-  // ============================================
-  const customerCity = shippingAddress?.city || '';
-  const customerPostcode = shippingAddress?.zip || shippingAddress?.postcode || '';
-  const customerCountry = shippingAddress?.country || shippingAddress?.country_code || '';
-
-  // Check if main carrier is a China carrier
-  const isMainCarrierChina = isChinaCarrier(carrier);
-  const displayCarrier = lastMileCarrier || (isMainCarrierChina ? null : carrier);
-
-  console.log('Pickup location - Input:', {
-    displayCarrier,
-    customerCity,
-    customerPostcode,
-    checkpointCount: checkpoints?.length || 0,
-    recentCheckpoints: checkpointContext,
-  });
+  let pickupLocationName = null;
 
   try {
-    // ============================================
-    // STEP 3: Extract pickup location from checkpoints using ChatCompletions
-    // The checkpoints often contain the location (e.g., "Held at Post Office, MUNCIE, IN 47302")
-    // ============================================
-
+    // Extract pickup location NAME from checkpoints (e.g., "daoSHOP", "Post Office")
     const extractResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -2224,147 +2205,45 @@ async function handleParsePickupLocation(request, env, corsHeaders) {
         model: 'gpt-4o-mini',
         messages: [{
           role: 'user',
-          content: `Extract the pickup location from these tracking checkpoints.
-
-CARRIER: ${displayCarrier || 'Unknown'}
-CUSTOMER CITY: ${customerCity}, ${customerPostcode}
+          content: `Extract ONLY the pickup location name from these tracking checkpoints.
 
 TRACKING CHECKPOINTS:
 ${checkpointContext || 'No checkpoints'}
 
-Look for phrases like:
+Look for the location name in phrases like:
 - "Held at [LOCATION]"
-- "Arrived at [LOCATION]"
 - "Ready for pickup at [LOCATION]"
 - "Available at [LOCATION]"
+- "Awaiting collection at [LOCATION]"
 
-Return ONLY valid JSON:
-{
-  "pickupLocationName": "Name of pickup location (e.g., Post Office, FedEx Office, UPS Store)",
-  "pickupCity": "City and state/zip from checkpoints",
-  "pickupType": "post_office, fedex_office, ups_store, carrier_facility, locker, or other"
-}`
+Return ONLY the location name (e.g., "Post Office", "daoSHOP", "FedEx Office").
+If no location found, return "pickup location".`
         }],
-        max_tokens: 300,
+        max_tokens: 50,
         temperature: 0.1,
       }),
     });
 
-    let extracted = { pickupLocationName: null, pickupCity: null, pickupType: null };
-
     if (extractResponse.ok) {
       const data = await extractResponse.json();
-      const content = data.choices?.[0]?.message?.content || '';
-      console.log('Checkpoint extraction response:', content);
-
-      try {
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          extracted = JSON.parse(jsonMatch[0]);
-        }
-      } catch (e) {
-        console.error('Failed to parse extraction:', e.message);
+      const content = data.choices?.[0]?.message?.content?.trim() || '';
+      if (content && content.toLowerCase() !== 'null' && content.length < 100) {
+        pickupLocationName = content.replace(/^["']|["']$/g, ''); // Remove quotes if present
       }
     }
-
-    let locationDetails = {
-      pickupLocationName: extracted.pickupLocationName,
-      pickupAddress: extracted.pickupCity || `${customerCity}, ${customerPostcode}`,
-      openingHours: null,
-      phoneNumber: null,
-      googleMapsUrl: null,
-      directions: null,
-      additionalInfo: null
-    };
-
-    // ============================================
-    // STEP 4: If we found a location, try to get more details via web search
-    // ============================================
-    if (extracted.pickupLocationName && customerPostcode) {
-      try {
-        const searchQuery = `${displayCarrier || ''} ${extracted.pickupLocationName} ${customerPostcode} ${customerCity} address hours`;
-
-        const webSearchResponse = await fetch('https://api.openai.com/v1/responses', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o',
-            tools: [{ type: 'web_search' }],
-            input: `Find the ${displayCarrier || ''} ${extracted.pickupLocationName} in ${customerPostcode} ${customerCity}.
-Return the street address and opening hours.
-Return ONLY JSON: {"pickupAddress": "full address", "openingHours": "hours", "phoneNumber": "phone or null"}`,
-          }),
-        });
-
-        console.log('Web search API status:', webSearchResponse.status);
-
-        if (webSearchResponse.ok) {
-          const webData = await webSearchResponse.json();
-
-          // Find the message in output array (not the web_search_call)
-          const messageOutput = webData.output?.find(item => item.type === 'message');
-          const webContent = messageOutput?.content?.[0]?.text || '';
-          console.log('Web search extracted content:', webContent);
-
-          try {
-            const jsonMatch = webContent.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const webParsed = JSON.parse(jsonMatch[0]);
-              if (webParsed.pickupAddress) locationDetails.pickupAddress = webParsed.pickupAddress;
-              if (webParsed.openingHours) locationDetails.openingHours = webParsed.openingHours;
-              if (webParsed.phoneNumber) locationDetails.phoneNumber = webParsed.phoneNumber;
-            }
-          } catch (e) {
-            console.log('Web search parse failed, using checkpoint data');
-          }
-        } else {
-          const errorText = await webSearchResponse.text();
-          console.log('Web search API error:', webSearchResponse.status, errorText);
-        }
-      } catch (webError) {
-        console.log('Web search failed, using checkpoint data:', webError.message);
-      }
-    }
-
-    // Build Google Maps URL
-    if (locationDetails.pickupAddress) {
-      const mapsQuery = encodeURIComponent(`${locationDetails.pickupLocationName || ''} ${locationDetails.pickupAddress}`);
-      locationDetails.googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
-    }
-
-    // ============================================
-    // STEP 5: Return result
-    // ============================================
-    return Response.json({
-      success: true,
-      pickupLocationName: locationDetails.pickupLocationName,
-      pickupAddress: locationDetails.pickupAddress,
-      openingHours: locationDetails.openingHours,
-      phoneNumber: locationDetails.phoneNumber,
-      googleMapsUrl: locationDetails.googleMapsUrl,
-      directions: locationDetails.directions,
-      additionalInfo: locationDetails.additionalInfo,
-      lastMileCarrier: lastMileCarrier,
-      lastMileTrackingNumber: lastMileTrackingNumber,
-      lastMileCarrierUrl: lastMileCarrierUrl,
-      displayCarrier: displayCarrier,
-      isMainCarrierChina,
-    }, { headers: corsHeaders });
   } catch (error) {
-    console.error('Pickup location parse error:', error);
-    return Response.json({
-      success: false,
-      error: error.message,
-      pickupLocationName: null,
-      lastMileCarrier: lastMileCarrier,
-      lastMileTrackingNumber: lastMileTrackingNumber,
-      displayCarrier: displayCarrier,
-      isMainCarrierChina,
-    }, { headers: corsHeaders });
+    console.error('Pickup location extraction error:', error.message);
   }
+
+  return Response.json({
+    success: true,
+    pickupLocationName: pickupLocationName,
+    lastMileCarrier: lastMileCarrier,
+    lastMileTrackingNumber: lastMileTrackingNumber,
+    lastMileCarrierUrl: lastMileCarrierUrl,
+    displayCarrier: displayCarrier,
+    isMainCarrierChina,
+  }, { headers: corsHeaders });
 }
 
 // Gets the appropriate prompt pack for the given intent
