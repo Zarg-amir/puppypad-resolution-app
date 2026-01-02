@@ -2041,14 +2041,17 @@ function renderDogInfoForm() {
             <div class="form-group form-group-inline">
               <label>Name *</label>
               <input type="text" class="form-input dog-name" placeholder="e.g., Max">
+              <span class="field-error">Required</span>
             </div>
             <div class="form-group form-group-inline">
               <label>Breed *</label>
               <input type="text" class="form-input dog-breed" placeholder="e.g., Golden Retriever">
+              <span class="field-error">Required</span>
             </div>
             <div class="form-group form-group-inline">
               <label>Age *</label>
               <input type="text" class="form-input dog-age" placeholder="e.g., 2 years">
+              <span class="field-error">Required</span>
             </div>
           </div>
         </div>
@@ -2063,11 +2066,7 @@ function renderDogInfoForm() {
         <textarea class="form-input" id="methodsTried" rows="3" placeholder="Tell us what methods you've already attempted..."></textarea>
       </div>
 
-      <div id="formValidationError" class="validation-error" style="display: none;">
-        Please fill in all required fields (name, breed, and age) for each dog.
-      </div>
-
-      <button class="option-btn primary" onclick="submitDogInfo()" style="margin-top: 8px; width: 100%;">
+      <button class="option-btn primary" onclick="submitDogInfo()" style="margin-top: 12px; width: 100%;">
         Get Personalized Tips
       </button>
     </div>
@@ -2089,14 +2088,17 @@ function addAnotherDog() {
         <div class="form-group form-group-inline">
           <label>Name *</label>
           <input type="text" class="form-input dog-name" placeholder="e.g., Bella">
+          <span class="field-error">Required</span>
         </div>
         <div class="form-group form-group-inline">
           <label>Breed *</label>
           <input type="text" class="form-input dog-breed" placeholder="e.g., Labrador">
+          <span class="field-error">Required</span>
         </div>
         <div class="form-group form-group-inline">
           <label>Age *</label>
           <input type="text" class="form-input dog-age" placeholder="e.g., 3 years">
+          <span class="field-error">Required</span>
         </div>
       </div>
     </div>
@@ -2124,8 +2126,6 @@ async function submitDogInfo() {
 
   // Clear previous error states
   document.querySelectorAll('.form-input.error').forEach(el => el.classList.remove('error'));
-  const errorDiv = document.getElementById('formValidationError');
-  errorDiv.style.display = 'none';
 
   dogEntries.forEach(entry => {
     const nameInput = entry.querySelector('.dog-name');
@@ -2147,7 +2147,7 @@ async function submitDogInfo() {
   });
 
   if (hasValidationError || dogs.length === 0) {
-    errorDiv.style.display = 'block';
+    // Errors are shown inline under each field via CSS
     return;
   }
 
