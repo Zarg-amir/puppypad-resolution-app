@@ -1483,7 +1483,7 @@ async function handleCreateCase(request, env, corsHeaders) {
 // CREATE MANUAL HELP CASE (ORDER NOT FOUND)
 // ============================================
 async function handleCreateManualCase(request, env, corsHeaders) {
-  const { email, fullName, phone, orderNumber, issue, preferredContact, lookupAttempts, sessionId } = await request.json();
+  const { email, fullName, phone, orderNumber, issue, preferredContact, lookupAttempts, sessionId, sessionReplayUrl } = await request.json();
 
   // Generate case ID
   const now = new Date();
@@ -1550,10 +1550,12 @@ async function handleCreateManualCase(request, env, corsHeaders) {
       ``,
       `**SOP:** ${sopUrl}`,
       ``,
+      sessionReplayUrl ? `🎥 **Session Recording:** ${sessionReplayUrl}` : '',
+      ``,
       `---`,
       `Session ID: ${sessionId || 'N/A'}`,
       `Case ID: ${caseId}`,
-    ];
+    ].filter(Boolean);
 
     const commentText = commentLines.join('\n');
 
@@ -1861,7 +1863,7 @@ async function createClickUpTask(env, listId, caseData) {
   }) : 'Unknown';
 
   // Build ClickUp comment with proper JSON formatting
-  const comment = buildClickUpComment(caseData, orderIssue, formattedResolution, orderDate, sopUrl);
+  const comment = buildClickUpComment(caseData, orderIssue, formattedResolution, orderDate, sopUrl, caseData.sessionReplayUrl);
 
   await fetch(`https://api.clickup.com/api/v2/task/${task.id}/comment`, {
     method: 'POST',
@@ -1876,7 +1878,7 @@ async function createClickUpTask(env, listId, caseData) {
 }
 
 // Build ClickUp comment with proper rich text formatting
-function buildClickUpComment(caseData, orderIssue, formattedResolution, orderDate, sopUrl) {
+function buildClickUpComment(caseData, orderIssue, formattedResolution, orderDate, sopUrl, sessionReplayUrl) {
   const comment = [];
 
   // Helper to add bold label with value
@@ -2008,6 +2010,16 @@ function buildClickUpComment(caseData, orderIssue, formattedResolution, orderDat
       addBoldLine('Cancel Reason:', reasonLabels[caseData.cancelReason] || caseData.cancelReason);
     }
     if (caseData.subscriptionStatus) addBoldLine('Status:', caseData.subscriptionStatus);
+  }
+
+  // Session replay link (always include if available)
+  if (sessionReplayUrl) {
+    comment.push({ text: '\n', attributes: {} });
+    comment.push({ text: '🎥', type: 'emoticon', emoticon: { code: '1f3a5' } });
+    comment.push({ text: ' Session Recording:', attributes: { bold: true } });
+    comment.push({ text: ' ' });
+    comment.push({ text: sessionReplayUrl, attributes: { link: sessionReplayUrl } });
+    comment.push({ text: '\n', attributes: {} });
   }
 
   return comment;
