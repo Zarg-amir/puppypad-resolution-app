@@ -3400,10 +3400,15 @@ async function handleStatusPickup(tracking) {
   const phoneNumber = pickupData?.phoneNumber;
   const googleMapsUrl = pickupData?.googleMapsUrl;
   const directions = pickupData?.directions;
-  const displayCarrier = pickupData?.displayCarrier || tracking?.carrier || 'the carrier';
   const lastMileTracking = pickupData?.lastMileTrackingNumber;
   const displayTracking = lastMileTracking || tracking?.trackingNumber;
-  const carrierInfo = getCarrierContactInfo(displayCarrier);
+
+  // Get carrier info - prefer displayCarrier, but don't use invalid values
+  const rawCarrier = pickupData?.displayCarrier;
+  const displayCarrier = rawCarrier && !['unknown', 'null', 'undefined'].includes(rawCarrier.toLowerCase())
+    ? rawCarrier
+    : tracking?.carrier;
+  const carrierInfo = displayCarrier ? getCarrierContactInfo(displayCarrier) : null;
 
   // Store parsed data for later use in investigation flow
   state.pickupData = pickupData;
@@ -3438,7 +3443,10 @@ async function handleStatusPickup(tracking) {
     message += `<br><a href="${googleMapsUrl}" target="_blank" style="color: #4A90A4;">View on Google Maps</a><br>`;
   }
 
-  message += `<br><strong>Carrier:</strong> ${carrierInfo.name}<br>`;
+  // Only show carrier if we have a valid one
+  if (carrierInfo) {
+    message += `<br><strong>Carrier:</strong> ${carrierInfo.name}<br>`;
+  }
   message += `<strong>Tracking:</strong> ${displayTracking || 'N/A'}<br><br>`;
   message += `<em>Packages are usually held for 5-7 days before being returned to sender.</em>`;
 
@@ -3467,11 +3475,11 @@ async function handleStatusPickup(tracking) {
         }
       } else {
         pickupMessage += `Here's how to find your pickup location:<br><br>`;
-        pickupMessage += `1. Check your email for a notification from ${carrierInfo.name}<br>`;
-        if (carrierInfo.website) {
+        pickupMessage += `1. Check your email for a pickup notification<br>`;
+        if (carrierInfo?.website) {
           pickupMessage += `2. Visit <strong>${carrierInfo.website}</strong> and enter your tracking number<br>`;
         }
-        if (carrierInfo.phone) {
+        if (carrierInfo?.phone) {
           pickupMessage += `3. Or call ${carrierInfo.phone} for assistance`;
         }
       }
