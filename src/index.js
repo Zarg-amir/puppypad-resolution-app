@@ -896,25 +896,33 @@ export default {
         });
       }
 
-      // Proxy PostHog ingest (events, recordings, etc.)
+      // Proxy PostHog ingest (events, recordings, decide, etc.)
       if (pathname.startsWith('/ph/')) {
         const posthogPath = pathname.replace('/ph/', '');
         const posthogUrl = `https://us.i.posthog.com/${posthogPath}${url.search}`;
 
+        // Forward the request with proper headers
+        const headers = new Headers();
+        headers.set('Content-Type', request.headers.get('Content-Type') || 'application/json');
+        headers.set('Origin', request.headers.get('Origin') || '');
+        headers.set('User-Agent', request.headers.get('User-Agent') || '');
+
+        // Use request body directly (not .text()) to preserve binary data
         const response = await fetch(posthogUrl, {
           method: request.method,
-          headers: {
-            'Content-Type': request.headers.get('Content-Type') || 'application/json',
-          },
-          body: request.method !== 'GET' ? await request.text() : undefined,
+          headers: headers,
+          body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
         });
+
+        // Forward the response with CORS headers
+        const responseHeaders = new Headers(response.headers);
+        responseHeaders.set('Access-Control-Allow-Origin', '*');
+        responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
         return new Response(response.body, {
           status: response.status,
-          headers: {
-            'Content-Type': response.headers.get('Content-Type') || 'application/json',
-            ...corsHeaders
-          }
+          headers: responseHeaders
         });
       }
 
