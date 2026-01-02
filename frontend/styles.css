@@ -1229,6 +1229,79 @@ select.form-input {
   margin-bottom: 12px;
 }
 
+/* Return Instructions Styles */
+.return-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 8px;
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+}
+
+.return-card-header {
+  background: var(--brand-navy);
+  color: white;
+  padding: 10px 16px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.return-card-body {
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--gray-700);
+}
+
+.packing-slip {
+  background: white;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 8px;
+  border: 2px dashed var(--gray-300);
+}
+
+.packing-slip-header {
+  background: var(--gray-100);
+  color: var(--gray-700);
+  padding: 10px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 2px dashed var(--gray-300);
+}
+
+.packing-slip-body {
+  padding: 16px;
+}
+
+.slip-row {
+  display: flex;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.slip-row:last-child {
+  border-bottom: none;
+}
+
+.slip-label {
+  font-weight: 600;
+  color: var(--gray-600);
+  width: 80px;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.slip-value {
+  color: var(--gray-800);
+  font-size: 14px;
+}
+
+.return-confirm-container {
+  margin-top: 12px;
+}
+
 textarea.form-input {
   resize: vertical;
   min-height: 100px;

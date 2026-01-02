@@ -2188,56 +2188,86 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     addressSection = `\nNEW ADDRESS: ${addressParts.join(', ')}`;
   }
 
-  // Build message parts
-  const messageParts = [
-    testNotice,
-    'Hi,',
-    '',
-    `I have submitted my request through the Resolution App.`,
-    '',
-    `My issue: ${orderIssue}`,
-    '',
-    `Order Number: ${caseData.orderNumber || 'N/A'}`,
-    `Case ID: ${caseId}`,
-  ];
+  // Build message parts based on case type
+  const messageParts = [testNotice, 'Hi,', ''];
 
-  // Add items if available
-  if (itemsList) {
-    messageParts.push('', 'Items:', itemsList);
+  // RETURN CASE - Special messaging
+  if (caseData.caseType === 'return') {
+    messageParts.push(
+      'I am returning my products for a refund.',
+      '',
+      '--- RETURN DETAILS ---',
+      '',
+      `Order Number: ${caseData.orderNumber || 'N/A'}`,
+      `Case ID: ${caseId}`,
+      '',
+      'Items I am returning:'
+    );
+    if (itemsList) {
+      messageParts.push(itemsList);
+    }
+    messageParts.push(
+      '',
+      `Reason for return: ${orderIssue}`,
+      '',
+      '--- WHAT HAPPENS NEXT ---',
+      '',
+      'Once my return is received and inspected, I expect to receive:',
+      `• ${formattedResolution}`,
+      caseData.refundAmount ? `• Refund Amount: $${parseFloat(caseData.refundAmount).toFixed(2)}` : '',
+      '',
+      'I will reply to this email with my tracking number once I have shipped the return.'
+    );
   }
+  // OTHER CASES - Standard messaging
+  else {
+    messageParts.push(
+      `I have submitted my request through the Resolution App.`,
+      '',
+      `My issue: ${orderIssue}`,
+      '',
+      `Order Number: ${caseData.orderNumber || 'N/A'}`,
+      `Case ID: ${caseId}`
+    );
 
-  // Add resolution
-  messageParts.push('', `Resolution: ${formattedResolution}`);
+    // Add items if available
+    if (itemsList) {
+      messageParts.push('', 'Items:', itemsList);
+    }
 
-  // Add refund amount if applicable
-  if (caseData.refundAmount) {
-    messageParts.push(`Refund Amount: $${parseFloat(caseData.refundAmount).toFixed(2)}`);
-  }
+    // Add resolution
+    messageParts.push('', `Resolution requested: ${formattedResolution}`);
 
-  // Add address if changed
-  if (addressSection) {
-    messageParts.push(addressSection);
-  }
+    // Add refund amount if applicable
+    if (caseData.refundAmount) {
+      messageParts.push(`Refund Amount: $${parseFloat(caseData.refundAmount).toFixed(2)}`);
+    }
 
-  // Add subscription details if applicable
-  if (caseData.caseType === 'subscription') {
-    const actionLabels = {
-      pause: 'Pause Subscription',
-      cancel: 'Cancel Subscription',
-      changeSchedule: 'Change Schedule',
-      changeAddress: 'Change Address'
-    };
-    messageParts.push('', 'SUBSCRIPTION DETAILS:');
-    if (caseData.purchaseId) messageParts.push(`Purchase ID: ${caseData.purchaseId}`);
-    if (caseData.clientOrderId) messageParts.push(`Client Order ID: ${caseData.clientOrderId}`);
-    if (caseData.subscriptionProductName) messageParts.push(`Product: ${caseData.subscriptionProductName}`);
-    if (caseData.actionType) messageParts.push(`Action: ${actionLabels[caseData.actionType] || caseData.actionType}`);
+    // Add address if changed
+    if (addressSection) {
+      messageParts.push(addressSection);
+    }
+
+    // Add subscription details if applicable
+    if (caseData.caseType === 'subscription') {
+      const actionLabels = {
+        pause: 'Pause Subscription',
+        cancel: 'Cancel Subscription',
+        changeSchedule: 'Change Schedule',
+        changeAddress: 'Change Address'
+      };
+      messageParts.push('', 'SUBSCRIPTION DETAILS:');
+      if (caseData.purchaseId) messageParts.push(`Purchase ID: ${caseData.purchaseId}`);
+      if (caseData.clientOrderId) messageParts.push(`Client Order ID: ${caseData.clientOrderId}`);
+      if (caseData.subscriptionProductName) messageParts.push(`Product: ${caseData.subscriptionProductName}`);
+      if (caseData.actionType) messageParts.push(`Action: ${actionLabels[caseData.actionType] || caseData.actionType}`);
+    }
   }
 
   // Sign off
   messageParts.push('', 'Thank you,', caseData.customerName || 'Customer');
 
-  return messageParts.join('\n').trim();
+  return messageParts.filter(Boolean).join('\n').trim();
 }
 
 function getSubjectByType(caseType, resolution) {
