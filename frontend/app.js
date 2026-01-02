@@ -2346,10 +2346,26 @@ async function startRefundLadder() {
   }
 
   const ladderSteps = [
-    { percent: 20, message: "I understand. As a valued customer, I'd like to offer you a <strong>20% partial refund</strong> while you keep the product and continue trying." },
-    { percent: 30, message: "I really want to make this right. Let me offer you a <strong>30% refund</strong> — that's a significant amount back while you keep everything." },
-    { percent: 40, message: "You're clearly not satisfied, and I get it. How about <strong>40% back</strong>? That way you've got nearly half your money back and can keep trying." },
-    { percent: 50, message: "Let me do something special. I can offer you a <strong>50% refund</strong> — half your money back, no return needed." }
+    {
+      percent: 20,
+      message: "I understand. As a valued customer, I'd like to offer you a <strong>20% partial refund</strong> while you keep the product and continue trying.",
+      needsManagerCheck: false
+    },
+    {
+      percent: 30,
+      message: "I really want to make this right. Let me offer you a <strong>30% refund</strong> — that's a significant amount back while you keep everything.",
+      needsManagerCheck: false
+    },
+    {
+      percent: 40,
+      message: "Great news! My manager has approved a <strong>40% refund</strong> for you. That's nearly half your money back and you still get to keep the products.",
+      needsManagerCheck: true
+    },
+    {
+      percent: 50,
+      message: "Okay, I've just spoken with my manager again and they've approved our <strong>maximum offer: 50% refund</strong>. This is the very best we can do — half your money back, no return needed.",
+      needsManagerCheck: true
+    }
   ];
 
   if (state.ladderStep >= ladderSteps.length) {
@@ -2361,8 +2377,15 @@ async function startRefundLadder() {
   const totalPrice = parseFloat(state.selectedOrder?.totalPrice || 0);
   const refundAmount = (totalPrice * step.percent / 100).toFixed(2);
 
+  // For steps that need manager check, show loading first
+  if (step.needsManagerCheck) {
+    showProgress("Checking with manager...");
+    await new Promise(resolve => setTimeout(resolve, 8000)); // 8 second delay
+    hideProgress();
+  }
+
   await addBotMessage(step.message);
-  
+
   showOfferCard(step.percent, refundAmount);
 }
 
@@ -2410,9 +2433,22 @@ async function acceptOffer(percent, amount) {
 async function declineOffer() {
   document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage("No thanks, I need more help");
-  
+
+  // Get the decline message for the current step before incrementing
+  const declineMessages = [
+    "I understand that might not feel like enough. Let me see what else I can do for you.",
+    "I hear you. Please give me just a moment while I check with my manager to see if there's anything else we can offer...",
+    "I understand. Let me make one final check to see what the absolute best we can do is...",
+    null // Final step - no message needed
+  ];
+
+  const declineMessage = declineMessages[state.ladderStep];
+  if (declineMessage) {
+    await addBotMessage(declineMessage);
+  }
+
   state.ladderStep++;
-  
+
   if (state.ladderStep >= 4) {
     await handleFullRefund();
   } else {
@@ -3760,16 +3796,23 @@ function playAudio() {
 async function handleExtendedTransit(tracking, isInternational = false) {
   const daysInTransit = tracking?.daysInTransit || 0;
 
-  let message = "I understand this has taken longer than expected";
-  if (daysInTransit >= CONFIG.IN_TRANSIT_ESCALATE_DAYS) {
-    message = `I see your package has been in transit for ${daysInTransit} days — that's definitely too long`;
-  }
-  if (isInternational) {
-    message += ", and I know waiting for international shipments can be frustrating";
-  }
-  message += ". Let me offer you some options to make this right:";
-
+  // First message: Acknowledge and explain possible reasons
+  let message = `I see your package has been in transit for <strong>${daysInTransit} days</strong> — that's definitely longer than expected, and I completely understand your frustration.`;
   await addBotMessage(message);
+
+  // Second message: Explain why this might have happened
+  let explanationMessage = `There could be a few reasons why this has happened:<br><br>`;
+  explanationMessage += `<strong>1. International warehouse shipping:</strong> Due to high demand, your order may have shipped from one of our international warehouses instead of a local one. We try to keep all our warehouses stocked, but sometimes items go out of stock locally.<br><br>`;
+  explanationMessage += `<strong>2. Address issues:</strong> Sometimes there are problems with the delivery address — a missing apartment number, incorrect postcode, or the carrier couldn't access the location.<br><br>`;
+  explanationMessage += `<strong>3. Customs or carrier delays:</strong> Packages can get held up in customs processing or experience unexpected carrier delays along the route.`;
+  await addBotMessage(explanationMessage);
+
+  // Third message: Offer resolution with empathy
+  let resolutionMessage = `Whatever the reason, ${daysInTransit} days is too long and we want to make this right for you.<br><br>`;
+  resolutionMessage += `Here's the thing — we don't charge you for shipping, so if we reship your order, we'll likely lose money on both the shipping costs and the product itself. But your satisfaction matters more to us, and we want to make sure you receive your order.`;
+  await addBotMessage(resolutionMessage);
+
+  await addBotMessage(`So here's what I can offer you:`);
 
   addOptions([
     { text: "Reship my order (free)", action: () => handleReship() },
@@ -4039,8 +4082,28 @@ async function confirmReship() {
 
 async function startShippingLadder() {
   const steps = [
-    { percent: 20, message: "I'd love to make this right for you. How about a <strong>20% refund PLUS we'll reship your order</strong> free of charge? That way you get your money back AND your products!" },
-    { percent: 50, message: "I really want to help you out here. Let me offer you a <strong>50% refund AND a free reship</strong>. You'll get half your money back plus we'll send out a new shipment right away." }
+    {
+      percent: 20,
+      message: "I'd love to make this right for you. How about a <strong>20% refund PLUS we'll reship your order</strong> free of charge? That way you get some money back AND your products!",
+      declineMessage: "I understand that might not feel like enough. Let me see what else I can do for you."
+    },
+    {
+      percent: 30,
+      message: "I really want to help you here. Let me offer you a <strong>30% refund AND a free reship</strong>. You'll get a good chunk of money back plus we'll send out a new shipment right away.",
+      declineMessage: "I hear you. Please give me just a moment while I check with my manager to see if there's anything else we can offer..."
+    },
+    {
+      percent: 40,
+      message: "Great news! My manager has approved a <strong>40% refund PLUS a free reship</strong> for you. This is a significant discount and we really want to make sure you're happy.",
+      declineMessage: "I understand. Let me make one final check to see what the absolute best we can do is...",
+      needsManagerCheck: true
+    },
+    {
+      percent: 50,
+      message: "Okay, I've just spoken with my manager again and they've approved our <strong>maximum offer: 50% refund PLUS a free reship</strong>. This is the very best we can do — you'll get half your money back and still receive your products.",
+      declineMessage: null, // Final step - no decline message needed
+      needsManagerCheck: true
+    }
   ];
 
   if (state.ladderStep >= steps.length) {
@@ -4052,6 +4115,13 @@ async function startShippingLadder() {
   const step = steps[state.ladderStep];
   const totalPrice = parseFloat(state.selectedOrder?.totalPrice || 0);
   const refundAmount = (totalPrice * step.percent / 100).toFixed(2);
+
+  // For steps that need manager check, show loading first
+  if (step.needsManagerCheck) {
+    showProgress("Checking with manager...");
+    await new Promise(resolve => setTimeout(resolve, 8000)); // 8 second delay
+    hideProgress();
+  }
 
   await addBotMessage(step.message);
 
@@ -4163,10 +4233,23 @@ async function processShippingOfferWithAddress(address) {
 async function declineShippingOffer() {
   document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage("I just want a full refund");
-  
+
+  // Get the decline message for the current step before incrementing
+  const steps = [
+    { declineMessage: "I understand that might not feel like enough. Let me see what else I can do for you." },
+    { declineMessage: "I hear you. Please give me just a moment while I check with my manager to see if there's anything else we can offer..." },
+    { declineMessage: "I understand. Let me make one final check to see what the absolute best we can do is..." },
+    { declineMessage: null }
+  ];
+
+  const currentStep = steps[state.ladderStep];
+  if (currentStep?.declineMessage) {
+    await addBotMessage(currentStep.declineMessage);
+  }
+
   state.ladderStep++;
-  
-  if (state.ladderStep >= 2) {
+
+  if (state.ladderStep >= 4) {
     await addBotMessage("I completely understand. Let me process a full refund for you.");
     await createRefundCase('full', true);
   } else {
