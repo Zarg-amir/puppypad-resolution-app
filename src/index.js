@@ -2218,8 +2218,23 @@ async function handleParsePickupLocation(request, env, corsHeaders) {
     // Find exact pickup location using carrier + address + checkpoints
     // ============================================
 
+    // Debug logging
+    console.log('Pickup location search - Input data:', {
+      lastMileCarrier,
+      lastMileTrackingNumber,
+      mainCarrier: carrier,
+      isMainCarrierChina,
+      displayCarrier,
+      customerPostcode,
+      customerCity,
+      customerCountry,
+      checkpointCount: checkpoints?.length || 0,
+      recentCheckpoints: checkpointContext,
+    });
+
     if (!displayCarrier && !customerPostcode) {
       // Not enough info to search
+      console.log('Pickup location search - SKIPPED: No carrier or postcode');
       return Response.json({
         success: false,
         error: 'Insufficient data for pickup location search',
