@@ -2168,7 +2168,7 @@ async function handleAIResponse(request, env, corsHeaders) {
 // Uses OpenAI to intelligently extract pickup info from tracking data
 // ============================================
 async function handleParsePickupLocation(request, env, corsHeaders) {
-  const { tracking, carrier, checkpoints, lastMile } = await request.json();
+  const { tracking, carrier, checkpoints, lastMile, shippingAddress } = await request.json();
 
   // Build context for OpenAI
   const checkpointMessages = (checkpoints || [])
@@ -2202,6 +2202,7 @@ ${checkpointMessages || 'No checkpoints available'}
 Parse this and return the pickup location details as JSON.`;
 
   try {
+    // Step 1: Try to parse pickup location from checkpoint data
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -2215,47 +2216,97 @@ Parse this and return the pickup location details as JSON.`;
           { role: 'user', content: userPrompt },
         ],
         max_tokens: 300,
-        temperature: 0.1, // Low temperature for consistent structured output
+        temperature: 0.1,
       }),
     });
 
-    if (!response.ok) {
-      console.error('OpenAI API error:', response.status);
-      return Response.json({
-        success: false,
-        error: 'AI parsing failed',
-        // Fallback to basic parsing
-        pickupLocationName: null,
-        lastMileCarrier: lastMile?.carrier?.name || null,
-      }, { headers: corsHeaders });
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content || '';
-
-    // Parse JSON from response
-    let parsed;
-    try {
-      // Extract JSON from response (in case there's extra text)
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-    } catch (e) {
-      console.error('Failed to parse AI response:', content);
-      parsed = {};
+    let parsed = {};
+    if (response.ok) {
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content || '';
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+      } catch (e) {
+        console.error('Failed to parse AI response:', content);
+      }
     }
 
     // Check if main carrier is a China carrier
     const isMainCarrierChina = isChinaCarrier(carrier);
 
+    // Determine the carrier to use for lookup
+    const effectiveCarrier = parsed.lastMileCarrier || lastMile?.carrier?.name || carrier;
+
+    // Step 2: If no pickup location found in checkpoints, use web search
+    let pickupLocationName = parsed.pickupLocationName;
+    let pickupAddress = parsed.pickupAddress;
+    let webSearchUsed = false;
+
+    if (!pickupLocationName && shippingAddress && effectiveCarrier) {
+      // Build location context for web search
+      const city = shippingAddress.city || '';
+      const postcode = shippingAddress.zip || shippingAddress.postcode || '';
+      const country = shippingAddress.country || shippingAddress.country_code || '';
+
+      if (city || postcode) {
+        try {
+          // Use OpenAI Responses API with web search to find pickup location
+          const searchQuery = `${effectiveCarrier} parcel pickup point location near ${postcode} ${city} ${country}`.trim();
+
+          const webSearchResponse = await fetch('https://api.openai.com/v1/responses', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              tools: [{ type: 'web_search' }],
+              input: `Find the ${effectiveCarrier} parcel pickup point or service point near postcode ${postcode}, ${city}, ${country}.
+                      I need the specific pickup location name (like a store name, service point name, or parcel shop name) and its address.
+                      Return ONLY valid JSON in this format:
+                      {
+                        "pickupLocationName": "the specific pickup point name",
+                        "pickupAddress": "full street address",
+                        "source": "where you found this information"
+                      }`,
+            }),
+          });
+
+          if (webSearchResponse.ok) {
+            const webData = await webSearchResponse.json();
+            const webContent = webData.output_text || webData.output?.[0]?.content?.[0]?.text || '';
+
+            try {
+              const webJsonMatch = webContent.match(/\{[\s\S]*\}/);
+              if (webJsonMatch) {
+                const webParsed = JSON.parse(webJsonMatch[0]);
+                if (webParsed.pickupLocationName) {
+                  pickupLocationName = webParsed.pickupLocationName;
+                  pickupAddress = webParsed.pickupAddress || pickupAddress;
+                  webSearchUsed = true;
+                }
+              }
+            } catch (e) {
+              console.error('Failed to parse web search response:', webContent);
+            }
+          }
+        } catch (webError) {
+          console.error('Web search for pickup location failed:', webError);
+        }
+      }
+    }
+
     return Response.json({
       success: true,
-      pickupLocationName: parsed.pickupLocationName || null,
-      pickupAddress: parsed.pickupAddress || null,
+      pickupLocationName: pickupLocationName || null,
+      pickupAddress: pickupAddress || null,
       lastMileCarrier: parsed.lastMileCarrier || lastMile?.carrier?.name || null,
       lastMileTrackingNumber: parsed.lastMileTrackingNumber || lastMile?.tracking_number || null,
-      confidence: parsed.confidence || 'low',
+      confidence: pickupLocationName ? (webSearchUsed ? 'medium' : parsed.confidence || 'low') : 'low',
       isMainCarrierChina,
-      // If main carrier is China, use last-mile or parsed carrier for display
+      webSearchUsed,
       displayCarrier: isMainCarrierChina
         ? (parsed.lastMileCarrier || lastMile?.carrier?.name || 'Local carrier')
         : carrier,

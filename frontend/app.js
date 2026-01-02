@@ -3362,9 +3362,15 @@ async function handleMultipleFailedAttempts(tracking) {
 
 // Status: Pickup - ready for customer pickup
 async function handleStatusPickup(tracking) {
+  // Transitional message to set context
+  await addBotMessage("Good news! Your package has arrived and is ready for you.");
+
   // Show loading while we parse the pickup location with AI
-  await addBotMessage("Let me check where you can pick this up...");
+  await addBotMessage("Let me find the exact pickup location for you...");
   showProgress("Finding pickup location...");
+
+  // Get shipping address from selected order for web search fallback
+  const shippingAddress = state.selectedOrder?.shippingAddress || null;
 
   // Call API to parse pickup location from tracking data
   let pickupData = null;
@@ -3377,6 +3383,7 @@ async function handleStatusPickup(tracking) {
         carrier: tracking?.carrier,
         checkpoints: tracking?.checkpoints || [],
         lastMile: tracking?.lastMile || null,
+        shippingAddress: shippingAddress,
       }),
     });
     pickupData = await response.json();
