@@ -2037,22 +2037,20 @@ function renderDogInfoForm() {
           <div class="dog-entry-header">
             <span class="dog-entry-title">Dog 1</span>
           </div>
-          <div class="form-row">
-            <div class="form-group form-group-inline">
-              <label>Name *</label>
-              <input type="text" class="form-input dog-name" placeholder="e.g., Max">
-              <span class="field-error">Required</span>
-            </div>
-            <div class="form-group form-group-inline">
-              <label>Breed *</label>
-              <input type="text" class="form-input dog-breed" placeholder="e.g., Golden Retriever">
-              <span class="field-error">Required</span>
-            </div>
-            <div class="form-group form-group-inline">
-              <label>Age *</label>
-              <input type="text" class="form-input dog-age" placeholder="e.g., 2 years">
-              <span class="field-error">Required</span>
-            </div>
+          <div class="form-group">
+            <label>Dog's Name *</label>
+            <input type="text" class="form-input dog-name" placeholder="e.g., Max">
+            <span class="field-error">Required</span>
+          </div>
+          <div class="form-group">
+            <label>Breed *</label>
+            <input type="text" class="form-input dog-breed" placeholder="e.g., Golden Retriever">
+            <span class="field-error">Required</span>
+          </div>
+          <div class="form-group">
+            <label>Age *</label>
+            <input type="text" class="form-input dog-age" placeholder="e.g., 2 years">
+            <span class="field-error">Required</span>
           </div>
         </div>
       </div>
@@ -2084,22 +2082,20 @@ function addAnotherDog() {
         <span class="dog-entry-title">Dog ${dogFormCounter}</span>
         <button type="button" class="remove-dog-btn" onclick="removeDog(this)">✕</button>
       </div>
-      <div class="form-row">
-        <div class="form-group form-group-inline">
-          <label>Name *</label>
-          <input type="text" class="form-input dog-name" placeholder="e.g., Bella">
-          <span class="field-error">Required</span>
-        </div>
-        <div class="form-group form-group-inline">
-          <label>Breed *</label>
-          <input type="text" class="form-input dog-breed" placeholder="e.g., Labrador">
-          <span class="field-error">Required</span>
-        </div>
-        <div class="form-group form-group-inline">
-          <label>Age *</label>
-          <input type="text" class="form-input dog-age" placeholder="e.g., 3 years">
-          <span class="field-error">Required</span>
-        </div>
+      <div class="form-group">
+        <label>Dog's Name *</label>
+        <input type="text" class="form-input dog-name" placeholder="e.g., Bella">
+        <span class="field-error">Required</span>
+      </div>
+      <div class="form-group">
+        <label>Breed *</label>
+        <input type="text" class="form-input dog-breed" placeholder="e.g., Labrador">
+        <span class="field-error">Required</span>
+      </div>
+      <div class="form-group">
+        <label>Age *</label>
+        <input type="text" class="form-input dog-age" placeholder="e.g., 3 years">
+        <span class="field-error">Required</span>
       </div>
     </div>
   `;

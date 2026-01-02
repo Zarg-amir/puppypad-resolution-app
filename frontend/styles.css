@@ -1125,7 +1125,15 @@ select.form-input {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.dog-entry .form-group {
+  margin-bottom: 16px;
+}
+
+.dog-entry .form-group:last-of-type {
+  margin-bottom: 0;
 }
 
 .dog-entry-title {
