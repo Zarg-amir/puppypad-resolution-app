@@ -1132,71 +1132,70 @@ function getClickUpListId(caseType) {
   return listMap[caseType] || CLICKUP_CONFIG.lists.manualHelp;
 }
 
-// Format resolution code to human-readable text with clear instructions
+// Format resolution code to human-readable text (concise format)
 function formatResolution(resolution, caseData) {
   if (!resolution) return 'Pending Review';
 
   const refundAmount = caseData.refundAmount ? `$${parseFloat(caseData.refundAmount).toFixed(2)}` : 'TBD';
-  const refundPercent = caseData.refundPercent || '';
 
-  // Build clear resolution instructions
+  // Build concise resolution text
   const resolutionMap = {
     // Partial refunds (product issues)
-    'partial_20': `ACTION: Process 20% refund (${refundAmount}) in Shopify. Customer keeping product.`,
-    'partial_50': `ACTION: Process 50% refund (${refundAmount}) in Shopify. Customer keeping product.`,
-    'partial_75': `ACTION: Process 75% refund (${refundAmount}) in Shopify. Customer keeping product.`,
+    'partial_20': `Give 20% refund (${refundAmount})`,
+    'partial_50': `Give 50% refund (${refundAmount})`,
+    'partial_75': `Give 75% refund (${refundAmount})`,
 
     // Full refunds
     'full_refund': caseData.keepProduct
-      ? `ACTION: Process full refund (${refundAmount}) in Shopify. Customer keeping product - no return needed.`
-      : `ACTION: Process full refund (${refundAmount}) in Shopify. Return required - send return label first.`,
+      ? `Give full refund (${refundAmount})`
+      : `Give full refund (${refundAmount}) after return`,
     'full': caseData.keepProduct
-      ? `ACTION: Process full refund (${refundAmount}) in Shopify. Customer keeping product - no return needed.`
-      : `ACTION: Process full refund (${refundAmount}) in Shopify. Return required - send return label first.`,
+      ? `Give full refund (${refundAmount})`
+      : `Give full refund (${refundAmount}) after return`,
 
     // Returns
-    'return_refund': 'ACTION: Send return label. Process full refund once item is returned.',
-    'exchange': 'ACTION: Send return label and ship replacement product.',
+    'return_refund': `Send return label and refund (${refundAmount}) after return`,
+    'exchange': 'Send return label and ship replacement',
 
     // Shipping - Partial refund + reship combos
-    'partial_20_reship': `ACTION: 1) Process 20% refund (${refundAmount}) in Shopify. 2) Create new order for free reship. Check address in notes.`,
-    'partial_50_reship': `ACTION: 1) Process 50% refund (${refundAmount}) in Shopify. 2) Create new order for free reship. Check address in notes.`,
+    'partial_20_reship': `Give 20% refund (${refundAmount}) and reship order`,
+    'partial_50_reship': `Give 50% refund (${refundAmount}) and reship order`,
 
     // Shipping - Reship only
-    'reship': 'ACTION: Create new order for free reship to customer. Check address in notes - may have been updated.',
+    'reship': 'Reship order',
 
     // Shipping - Refunds for lost/damaged
-    'refund_lost': `ACTION: Process full refund (${refundAmount}) in Shopify. Package confirmed lost in transit.`,
-    'refund_damaged': `ACTION: Process full refund (${refundAmount}) in Shopify. Package damaged in transit.`,
+    'refund_lost': `Give full refund (${refundAmount}) - package lost`,
+    'refund_damaged': `Give full refund (${refundAmount}) - package damaged`,
 
     // Investigation flows
-    'investigation_delivered_not_received': 'ACTION: Contact carrier to investigate. Request GPS coordinates and delivery photos. If unresolved, offer reship or refund.',
-    'replacement_damaged': 'ACTION: Ship replacement product. Customer received damaged item.',
-    'reship_wrong_item': 'ACTION: Ship correct item. Customer received wrong item.',
-    'reship_missing_item': 'ACTION: Ship missing item. Customer order was incomplete.',
-    'partial_missing': `ACTION: Process partial refund (${refundAmount}) for missing item.`,
+    'investigation_delivered_not_received': 'Investigate with carrier',
+    'replacement_damaged': 'Ship replacement - damaged item',
+    'reship_wrong_item': 'Ship correct item',
+    'reship_missing_item': 'Ship missing item',
+    'partial_missing': `Give partial refund (${refundAmount}) for missing item`,
 
     // Subscription
-    'pause': 'ACTION: Pause subscription in Bold/Recharge.',
-    'cancel': 'ACTION: Cancel subscription in Bold/Recharge. Process any applicable refund.',
-    'change_schedule': 'ACTION: Update delivery schedule in Bold/Recharge.',
-    'change_address': 'ACTION: Update shipping address in Bold/Recharge.',
+    'pause': 'Pause subscription',
+    'cancel': 'Cancel subscription',
+    'change_schedule': 'Update delivery schedule',
+    'change_address': 'Update shipping address',
 
     // Shipping issues - general
-    'no_tracking': 'ACTION: Investigate order fulfillment. Check if shipped. Provide tracking or reship if needed.',
-    'stuck_out_for_delivery': 'ACTION: Contact carrier about stuck delivery. Reship if not resolved.',
-    'pending_too_long': 'ACTION: Check fulfillment status. Contact warehouse if not shipped. Update customer.',
-    'multiple_failed_attempts': 'ACTION: Contact carrier to arrange redelivery or pickup. Consider reship to alternate address.',
+    'no_tracking': 'Investigate and provide tracking or reship',
+    'stuck_out_for_delivery': 'Contact carrier or reship',
+    'pending_too_long': 'Check fulfillment status',
+    'multiple_failed_attempts': 'Arrange redelivery or reship',
   };
 
   // Check for dynamic partial_XX_reship patterns
   const partialReshipMatch = resolution.match(/^partial_(\d+)_reship$/);
   if (partialReshipMatch) {
     const percent = partialReshipMatch[1];
-    return `ACTION: 1) Process ${percent}% refund (${refundAmount}) in Shopify. 2) Create new order for free reship. Check address in notes.`;
+    return `Give ${percent}% refund (${refundAmount}) and reship order`;
   }
 
-  return resolutionMap[resolution] || `ACTION: Review case - ${resolution.replace(/_/g, ' ')}`;
+  return resolutionMap[resolution] || resolution.replace(/_/g, ' ');
 }
 
 // Format order issue from customer's reason
@@ -1317,86 +1316,139 @@ async function createClickUpTask(env, listId, caseData) {
 
   const task = await response.json();
 
-  // Build formatted comment with all case details
+  // Build formatted comment using ClickUp's rich text API
   const sopUrl = SOP_URLS[caseData.caseType] || SOP_URLS.manual;
   const orderDate = caseData.orderDate ? new Date(caseData.orderDate).toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric'
   }) : 'Unknown';
 
-  const commentLines = [
-    `📋 **CASE DETAILS**`,
-    ``,
-    `**Issue:** ${orderIssue}`,
-    `**Resolution:** ${formattedResolution}`,
-    ``,
-    `**Customer Email:** ${caseData.email || 'Not provided'}`,
-    `**Order Number:** ${caseData.orderNumber || 'N/A'}`,
-    `**Order Date:** ${orderDate}`,
-    `**Order Value:** ${caseData.refundAmount ? `$${parseFloat(caseData.refundAmount).toFixed(2)}` : 'N/A'}`,
-    ``,
-    `**SOP:** ${sopUrl}`,
-  ];
+  // Build ClickUp comment with proper JSON formatting
+  const comment = buildClickUpComment(caseData, orderIssue, formattedResolution, orderDate, sopUrl);
 
-  // Add selected items if available
+  await fetch(`https://api.clickup.com/api/v2/task/${task.id}/comment`, {
+    method: 'POST',
+    headers: {
+      'Authorization': env.CLICKUP_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ comment }),
+  });
+
+  return task;
+}
+
+// Build ClickUp comment with proper rich text formatting
+function buildClickUpComment(caseData, orderIssue, formattedResolution, orderDate, sopUrl) {
+  const comment = [];
+
+  // Helper to add bold label with value
+  const addBoldLine = (label, value) => {
+    comment.push({ text: label, attributes: { bold: true } });
+    comment.push({ text: ` ${value}` });
+    comment.push({ text: '\n', attributes: {} });
+  };
+
+  // Helper to add section header
+  const addHeader = (text) => {
+    comment.push({ text: '\n', attributes: {} });
+    comment.push({ text: text, attributes: { bold: true } });
+    comment.push({ text: '\n', attributes: {} });
+  };
+
+  // Header with emoji
+  comment.push({ text: 'U0001F4CB', type: 'emoticon', emoticon: { code: '1f4cb' } });
+  comment.push({ text: ' CASE DETAILS', attributes: { bold: true } });
+  comment.push({ text: '\n\n', attributes: {} });
+
+  // Core case info
+  addBoldLine('Issue:', orderIssue);
+  addBoldLine('Resolution:', formattedResolution);
+  comment.push({ text: '\n', attributes: {} });
+  addBoldLine('Customer Email:', caseData.email || 'Not provided');
+  addBoldLine('Order Number:', caseData.orderNumber || 'N/A');
+  addBoldLine('Order Date:', orderDate);
+  addBoldLine('Order Value:', caseData.refundAmount ? `$${parseFloat(caseData.refundAmount).toFixed(2)}` : 'N/A');
+  comment.push({ text: '\n', attributes: {} });
+
+  // SOP link
+  comment.push({ text: 'SOP:', attributes: { bold: true } });
+  comment.push({ text: ' ' });
+  comment.push({ text: sopUrl, attributes: { link: sopUrl } });
+  comment.push({ text: '\n', attributes: {} });
+
+  // Items list (bulleted)
   if (caseData.selectedItems && caseData.selectedItems.length > 0) {
-    commentLines.push(``, `**Items:**`);
+    addHeader('Items:');
     caseData.selectedItems.forEach(item => {
-      commentLines.push(`- ${item.title} (${item.sku || 'N/A'})`);
+      comment.push({ text: `${item.title} (${item.sku || 'N/A'})`, attributes: {} });
+      comment.push({ text: '\n', attributes: { list: { list: 'bullet' } } });
     });
   }
 
-  // Add Shopify order link if available
+  // Shopify order link
   if (caseData.orderUrl) {
-    commentLines.push(``, `**Shopify Order:** ${caseData.orderUrl}`);
+    comment.push({ text: '\n', attributes: {} });
+    comment.push({ text: 'Shopify Order:', attributes: { bold: true } });
+    comment.push({ text: ' ' });
+    comment.push({ text: caseData.orderUrl, attributes: { link: caseData.orderUrl } });
+    comment.push({ text: '\n', attributes: {} });
   }
 
-  // Add shipping-specific details for shipping cases
+  // Shipping-specific details
   if (caseData.caseType === 'shipping') {
-    commentLines.push(``, `**SHIPPING DETAILS**`);
+    addHeader('SHIPPING DETAILS');
 
-    if (caseData.trackingNumber) {
-      commentLines.push(`**Tracking Number:** ${caseData.trackingNumber}`);
-    }
-    if (caseData.carrierName) {
-      commentLines.push(`**Carrier:** ${caseData.carrierName}`);
-    }
-    if (caseData.trackingStatus) {
-      commentLines.push(`**Tracking Status:** ${caseData.trackingStatus}`);
-    }
-    if (caseData.daysInTransit) {
-      commentLines.push(`**Days in Transit:** ${caseData.daysInTransit}`);
-    }
+    if (caseData.trackingNumber) addBoldLine('Tracking Number:', caseData.trackingNumber);
+    if (caseData.carrierName) addBoldLine('Carrier:', caseData.carrierName);
+    if (caseData.trackingStatus) addBoldLine('Tracking Status:', caseData.trackingStatus);
+    if (caseData.daysInTransit) addBoldLine('Days in Transit:', caseData.daysInTransit);
 
-    // Add shipping address (important for reship)
+    // Shipping address (with warning if updated)
     if (caseData.shippingAddress) {
       const addr = caseData.shippingAddress;
-      const addressChanged = caseData.addressChanged ? '⚠️ UPDATED ADDRESS' : 'Original Address';
-      commentLines.push(``, `**${addressChanged}:**`);
-      if (addr.address1) commentLines.push(`${addr.address1}`);
-      if (addr.address2) commentLines.push(`${addr.address2}`);
+      comment.push({ text: '\n', attributes: {} });
+
+      if (caseData.addressChanged) {
+        comment.push({ text: 'U000026A0', type: 'emoticon', emoticon: { code: '26a0' } });
+        comment.push({ text: ' UPDATED ADDRESS:', attributes: { bold: true } });
+      } else {
+        comment.push({ text: 'Shipping Address:', attributes: { bold: true } });
+      }
+      comment.push({ text: '\n', attributes: {} });
+
+      if (addr.address1) {
+        comment.push({ text: addr.address1, attributes: {} });
+        comment.push({ text: '\n', attributes: {} });
+      }
+      if (addr.address2) {
+        comment.push({ text: addr.address2, attributes: {} });
+        comment.push({ text: '\n', attributes: {} });
+      }
       const cityLine = [addr.city, addr.province, addr.zip].filter(Boolean).join(', ');
-      if (cityLine) commentLines.push(`${cityLine}`);
-      if (addr.country) commentLines.push(`${addr.country}`);
+      if (cityLine) {
+        comment.push({ text: cityLine, attributes: {} });
+        comment.push({ text: '\n', attributes: {} });
+      }
+      if (addr.country) {
+        comment.push({ text: addr.country, attributes: {} });
+        comment.push({ text: '\n', attributes: {} });
+      }
     }
 
-    // Add pickup reason if customer couldn't pick up
     if (caseData.pickupReason) {
-      commentLines.push(``, `**Customer Reason (Can't Pickup):** ${caseData.pickupReason}`);
+      comment.push({ text: '\n', attributes: {} });
+      addBoldLine("Customer Reason (Can't Pickup):", caseData.pickupReason);
     }
   }
 
-  // Add subscription-specific details for subscription cases
+  // Subscription-specific details
   if (caseData.caseType === 'subscription') {
-    commentLines.push(``, `**SUBSCRIPTION DETAILS**`);
-    if (caseData.purchaseId) {
-      commentLines.push(`**Purchase ID:** ${caseData.purchaseId}`);
-    }
-    if (caseData.clientOrderId) {
-      commentLines.push(`**Client Order ID:** ${caseData.clientOrderId}`);
-    }
-    if (caseData.subscriptionProductName) {
-      commentLines.push(`**Product:** ${caseData.subscriptionProductName}`);
-    }
+    addHeader('SUBSCRIPTION DETAILS');
+
+    if (caseData.purchaseId) addBoldLine('Purchase ID:', caseData.purchaseId);
+    if (caseData.clientOrderId) addBoldLine('Client Order ID:', caseData.clientOrderId);
+    if (caseData.subscriptionProductName) addBoldLine('Product:', caseData.subscriptionProductName);
+
     if (caseData.actionType) {
       const actionLabels = {
         pause: 'Pause Subscription',
@@ -1404,11 +1456,9 @@ async function createClickUpTask(env, listId, caseData) {
         changeSchedule: 'Change Schedule',
         changeAddress: 'Change Address'
       };
-      commentLines.push(`**Action:** ${actionLabels[caseData.actionType] || caseData.actionType}`);
+      addBoldLine('Action:', actionLabels[caseData.actionType] || caseData.actionType);
     }
-    if (caseData.discountPercent) {
-      commentLines.push(`**Discount Applied:** ${caseData.discountPercent}%`);
-    }
+    if (caseData.discountPercent) addBoldLine('Discount Applied:', `${caseData.discountPercent}%`);
     if (caseData.cancelReason) {
       const reasonLabels = {
         expensive: 'Too expensive',
@@ -1417,25 +1467,12 @@ async function createClickUpTask(env, listId, caseData) {
         moving: 'Moving',
         other: 'Other reason'
       };
-      commentLines.push(`**Cancel Reason:** ${reasonLabels[caseData.cancelReason] || caseData.cancelReason}`);
+      addBoldLine('Cancel Reason:', reasonLabels[caseData.cancelReason] || caseData.cancelReason);
     }
-    if (caseData.subscriptionStatus) {
-      commentLines.push(`**Status:** ${caseData.subscriptionStatus}`);
-    }
+    if (caseData.subscriptionStatus) addBoldLine('Status:', caseData.subscriptionStatus);
   }
 
-  const commentText = commentLines.join('\n');
-
-  await fetch(`https://api.clickup.com/api/v2/task/${task.id}/comment`, {
-    method: 'POST',
-    headers: {
-      'Authorization': env.CLICKUP_API_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ comment_text: commentText }),
-  });
-
-  return task;
+  return comment;
 }
 
 // Update ClickUp task with Richpanel conversation URL
@@ -1521,9 +1558,10 @@ async function createRichpanelTicket(env, caseData, caseId) {
   const customerFirstName = caseData.customerFirstName || 'Customer';
   const customerLastName = caseData.customerLastName || '';
 
-  // Build subject line (with [TEST] prefix in test mode)
+  // Build subject line with Case ID and specific issue
   const testPrefix = testMode ? '[TEST] ' : '';
-  const subject = `${testPrefix}${getSubjectByType(caseData.caseType, caseData.resolution)} - Order ${caseData.orderNumber || 'N/A'}`;
+  const orderIssue = formatOrderIssue(caseData);
+  const subject = `${testPrefix}${caseId} - ${orderIssue} - Order ${caseData.orderNumber || 'N/A'}`;
 
   // Build customer message (simulated email from customer)
   const customerMessage = buildCustomerMessage(caseData, caseId, testMode);
@@ -1588,19 +1626,63 @@ async function createRichpanelTicket(env, caseData, caseId) {
 }
 
 function buildCustomerMessage(caseData, caseId, testMode = true) {
-  const items = caseData.selectedItems?.map(item =>
-    `- ${item.title}${item.sku ? ` (SKU: ${item.sku})` : ''}`
-  ).join('\n') || 'No items selected';
-
   const testNotice = testMode
-    ? '\n\n[TEST MODE - This is not a real customer request]\n'
+    ? '[TEST MODE - This is not a real customer request]\n\n'
     : '';
 
-  // Use formatted resolution for the email
+  const orderIssue = formatOrderIssue(caseData);
   const formattedResolution = formatResolution(caseData.resolution, caseData);
 
-  // Build subscription-specific details
-  let subscriptionDetails = '';
+  // Build items list if available
+  const itemsList = caseData.selectedItems?.map(item =>
+    `- ${item.title}${item.sku ? ` (SKU: ${item.sku})` : ''}`
+  ).join('\n') || '';
+
+  // Build address section if changed
+  let addressSection = '';
+  if (caseData.addressChanged && caseData.shippingAddress) {
+    const addr = caseData.shippingAddress;
+    const addressParts = [
+      addr.address1,
+      addr.address2,
+      [addr.city, addr.province, addr.zip].filter(Boolean).join(', '),
+      addr.country
+    ].filter(Boolean);
+    addressSection = `\nNEW ADDRESS: ${addressParts.join(', ')}`;
+  }
+
+  // Build message parts
+  const messageParts = [
+    testNotice,
+    'Hi,',
+    '',
+    `I have submitted my request through the Resolution App.`,
+    '',
+    `My issue: ${orderIssue}`,
+    '',
+    `Order Number: ${caseData.orderNumber || 'N/A'}`,
+    `Case ID: ${caseId}`,
+  ];
+
+  // Add items if available
+  if (itemsList) {
+    messageParts.push('', 'Items:', itemsList);
+  }
+
+  // Add resolution
+  messageParts.push('', `Resolution: ${formattedResolution}`);
+
+  // Add refund amount if applicable
+  if (caseData.refundAmount) {
+    messageParts.push(`Refund Amount: $${parseFloat(caseData.refundAmount).toFixed(2)}`);
+  }
+
+  // Add address if changed
+  if (addressSection) {
+    messageParts.push(addressSection);
+  }
+
+  // Add subscription details if applicable
   if (caseData.caseType === 'subscription') {
     const actionLabels = {
       pause: 'Pause Subscription',
@@ -1608,43 +1690,17 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
       changeSchedule: 'Change Schedule',
       changeAddress: 'Change Address'
     };
-    const reasonLabels = {
-      expensive: 'Too expensive',
-      too_many: 'Has too many',
-      not_working: 'Not working as described',
-      moving: 'Moving',
-      other: 'Other reason'
-    };
-    subscriptionDetails = `
-SUBSCRIPTION DETAILS:
-${caseData.purchaseId ? `Purchase ID: ${caseData.purchaseId}` : ''}
-${caseData.clientOrderId ? `Client Order ID: ${caseData.clientOrderId}` : ''}
-${caseData.subscriptionProductName ? `Product: ${caseData.subscriptionProductName}` : ''}
-${caseData.actionType ? `Action: ${actionLabels[caseData.actionType] || caseData.actionType}` : ''}
-${caseData.discountPercent ? `Discount Applied: ${caseData.discountPercent}%` : ''}
-${caseData.cancelReason ? `Cancel Reason: ${reasonLabels[caseData.cancelReason] || caseData.cancelReason}` : ''}
-`.trim();
+    messageParts.push('', 'SUBSCRIPTION DETAILS:');
+    if (caseData.purchaseId) messageParts.push(`Purchase ID: ${caseData.purchaseId}`);
+    if (caseData.clientOrderId) messageParts.push(`Client Order ID: ${caseData.clientOrderId}`);
+    if (caseData.subscriptionProductName) messageParts.push(`Product: ${caseData.subscriptionProductName}`);
+    if (caseData.actionType) messageParts.push(`Action: ${actionLabels[caseData.actionType] || caseData.actionType}`);
   }
 
-  return `${testNotice}
-Hi,
+  // Sign off
+  messageParts.push('', 'Thank you,', caseData.customerName || 'Customer');
 
-I would like to request the following resolution for my order:
-
-Resolution: ${formattedResolution}
-
-Order Number: ${caseData.orderNumber || 'N/A'}
-Case ID: ${caseId}
-
-${caseData.caseType !== 'subscription' ? `Items:\n${items}` : subscriptionDetails}
-
-${caseData.refundAmount ? `Refund Amount: $${parseFloat(caseData.refundAmount).toFixed(2)}` : ''}
-
-${caseData.intentDetails || caseData.notes ? `Reason: ${caseData.intentDetails || caseData.notes}` : ''}
-
-Thank you,
-${caseData.customerName || 'Customer'}
-`.trim();
+  return messageParts.join('\n').trim();
 }
 
 function getSubjectByType(caseType, resolution) {
