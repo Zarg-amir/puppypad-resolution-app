@@ -1175,6 +1175,18 @@ select.form-input {
   font-size: 14px;
 }
 
+/* Inline field errors - hidden by default, shown when input has .error */
+.field-error {
+  display: none;
+  font-size: 11px;
+  color: var(--accent-coral);
+  margin-top: 4px;
+}
+
+.form-input.error + .field-error {
+  display: block;
+}
+
 .add-dog-btn {
   width: 100%;
   padding: 12px;
