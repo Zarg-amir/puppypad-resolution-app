@@ -2303,8 +2303,10 @@ Return ONLY JSON: {"pickupAddress": "full address", "openingHours": "hours", "ph
 
         if (webSearchResponse.ok) {
           const webData = await webSearchResponse.json();
-          console.log('Web search RAW response:', JSON.stringify(webData, null, 2));
-          const webContent = webData.output_text || webData.output?.[0]?.content?.[0]?.text || '';
+
+          // Find the message in output array (not the web_search_call)
+          const messageOutput = webData.output?.find(item => item.type === 'message');
+          const webContent = messageOutput?.content?.[0]?.text || '';
           console.log('Web search extracted content:', webContent);
 
           try {
