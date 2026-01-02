@@ -677,7 +677,26 @@ async function handleTracking(request, env, corsHeaders) {
       };
 
       const statusCode = shipment.status;
-      const status = statusMap[statusCode] || shipment.status_label?.toLowerCase().replace(/\s+/g, '_') || 'unknown';
+      let status = statusMap[statusCode];
+
+      // If no numeric mapping, try to normalize string status
+      if (!status) {
+        const labelNormalized = (shipment.status_label || '').toLowerCase().replace(/\s+/g, '_');
+        // Map common string variations to our standard status codes
+        if (labelNormalized.includes('pickup') || labelNormalized.includes('ready_for')) {
+          status = 'pickup';
+        } else if (labelNormalized.includes('exception') || labelNormalized.includes('problem')) {
+          status = 'exception';
+        } else if (labelNormalized.includes('delivered')) {
+          status = 'delivered';
+        } else if (labelNormalized.includes('transit') || labelNormalized.includes('shipped')) {
+          status = 'in_transit';
+        } else if (labelNormalized.includes('out_for_delivery')) {
+          status = 'out_for_delivery';
+        } else {
+          status = labelNormalized || 'unknown';
+        }
+      }
 
       return {
         trackingNumber: shipment.tracking_number,
