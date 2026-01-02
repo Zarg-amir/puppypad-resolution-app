@@ -1718,6 +1718,7 @@ function formatOrderIssue(caseData) {
 
   // Map issue types to readable descriptions
   const issueMap = {
+    // Product issues
     'not_met_expectations': "Product didn't meet expectations",
     'changed_mind': 'Customer changed their mind',
     'ordered_mistake': 'Ordered by mistake',
@@ -1725,15 +1726,44 @@ function formatOrderIssue(caseData) {
     'wrong_item': 'Received wrong item',
     'damaged': 'Product arrived damaged',
     'missing_item': 'Item missing from order',
-    'late_delivery': 'Delivery took too long',
     'not_as_described': 'Product not as described',
-    'not_received': 'Order not received',
-    'charged_unexpectedly': 'Unexpected charge',
     'dog_not_using': 'Dog not using product',
     'quality_difference': 'Quality difference noticed',
+
+    // Shipping issues
+    'late_delivery': 'Delivery taking too long',
+    'not_received': 'Order not received',
+    'lost_package': 'Package lost in transit',
+    'stuck_in_transit': 'Package stuck in transit',
+    'delivery_exception': 'Delivery exception reported',
+    'address_issue': 'Address correction needed',
+    'failed_delivery': 'Delivery attempt failed',
+
+    // Subscription issues
+    'subscription_cancel': 'Cancel subscription',
+    'subscription_pause': 'Pause subscription',
+    'subscription_change': 'Change subscription',
+    'charged_unexpectedly': 'Unexpected subscription charge',
+
+    // General
+    'other': 'Other issue - see details',
   };
 
-  return issueMap[caseData.issueType] || caseData.issueType || 'Customer requested assistance';
+  // Check if we have a matching issue type
+  if (caseData.issueType && issueMap[caseData.issueType]) {
+    return issueMap[caseData.issueType];
+  }
+
+  // Fallback based on case type for better context
+  const caseTypeFallbacks = {
+    'refund': 'Refund request - product issue',
+    'return': 'Return request - product issue',
+    'shipping': 'Shipping issue - delivery problem',
+    'subscription': 'Subscription change request',
+    'manual': 'Customer support request',
+  };
+
+  return caseTypeFallbacks[caseData.caseType] || caseData.issueType?.replace(/_/g, ' ') || 'General inquiry';
 }
 
 async function createClickUpTask(env, listId, caseData) {
@@ -1741,17 +1771,14 @@ async function createClickUpTask(env, listId, caseData) {
   const formattedResolution = formatResolution(caseData.resolution, caseData);
   const orderIssue = formatOrderIssue(caseData);
 
-  // Build custom fields array
+  // Build custom fields array - ALWAYS include essential fields
   const customFields = [
     { id: CLICKUP_CONFIG.fields.caseId, value: caseData.caseId },
     { id: CLICKUP_CONFIG.fields.emailAddress, value: caseData.email || '' },
     { id: CLICKUP_CONFIG.fields.resolution, value: formattedResolution },
+    // ALWAYS populate order issue - uses smart fallback if not specified
+    { id: CLICKUP_CONFIG.fields.orderIssue, value: orderIssue },
   ];
-
-  // Order Issue field (reason for refund/return)
-  if (caseData.intentDetails || caseData.issueType) {
-    customFields.push({ id: CLICKUP_CONFIG.fields.orderIssue, value: orderIssue });
-  }
 
   if (caseData.orderNumber) {
     customFields.push({ id: CLICKUP_CONFIG.fields.orderNumber, value: caseData.orderNumber });

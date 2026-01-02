@@ -82,6 +82,13 @@ const MESSAGES = {
     guaranteeExpiredIntro: "I really wish I could help with a refund, but I need to be upfront with you. 💔",
     existingCase: "I see we already have an open case for this order! 📋",
   },
+  // Success/resolution messages - consistent wording for case processing
+  success: {
+    refundProcessing: "Our team will review your case within 1-2 business days. Once processed, you'll receive an email confirmation and the refund will appear in your account within 3-5 business days depending on your bank.",
+    refundProcessingShort: "Our team will process this within 1-2 business days. You'll receive an email confirmation, then 3-5 business days for the refund to appear in your account.",
+    reshipProcessing: "Our team will process your reship within 1-2 business days. You'll receive tracking information via email once it ships.",
+    returnProcessing: "Once we receive your return, our team will process your refund within 1-2 business days. You'll then receive an email confirmation.",
+  },
 };
 
 // Legacy CONFIG.AVATARS for backward compatibility
@@ -2523,7 +2530,7 @@ function showOfferCard(percent, amount) {
         <button class="offer-btn accept" onclick="acceptOffer(${percent}, ${amount})">Accept Offer</button>
         <button class="offer-btn decline" onclick="declineOffer()">No thanks</button>
       </div>
-      <div class="offer-note">Refund processed within 3-5 business days</div>
+      <div class="offer-note">Reviewed within 1-2 days, then 3-5 days to your account</div>
     </div>
   `;
   
@@ -2541,6 +2548,7 @@ async function acceptOffer(percent, amount) {
     refundAmount: amount,
     refundPercent: percent,
     keepProduct: true,
+    issueType: state.issueType || 'not_met_expectations',
   });
 
   hideProgress();
@@ -2549,7 +2557,7 @@ async function acceptOffer(percent, amount) {
 
   await showSuccess(
     "Refund Approved!",
-    `Your ${percent}% refund of ${formatCurrency(amount)} will be processed within 3-5 business days.<br><br>${getCaseIdHtml(state.caseId)}`
+    `Your ${percent}% refund of ${formatCurrency(amount)} has been submitted.<br><br>${MESSAGES.success.refundProcessingShort}<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
@@ -2729,6 +2737,9 @@ async function submitCase(caseType, resolution, options = {}) {
     addressChanged: options.addressChanged || false,
     pickupReason: options.pickupReason || '',
 
+    // Issue type for clear categorization
+    issueType: options.issueType || state.issueType || '',
+
     // Timestamps
     createdAt: new Date().toISOString(),
   };
@@ -2780,6 +2791,7 @@ async function createRefundCase(type, keepProduct) {
     refundAmount: totalAmount,
     refundPercent: 100,
     keepProduct: keepProduct,
+    issueType: state.issueType || 'not_met_expectations',
   });
 
   hideProgress();
@@ -2787,8 +2799,8 @@ async function createRefundCase(type, keepProduct) {
   state.caseId = result.caseId;
 
   const message = keepProduct
-    ? `Your refund will be processed within 3-5 business days.`
-    : `Once we receive your return, we'll process your refund within 3-5 business days. Don't forget to send us the tracking number!`;
+    ? MESSAGES.success.refundProcessingShort
+    : `${MESSAGES.success.returnProcessing} Don't forget to send us the tracking number!`;
 
   await showSuccess(
     "Case Created!",
@@ -3223,8 +3235,8 @@ async function handleMissingItemEvidence() {
       await submitCase();
 
       await showSuccess(
-        "Refund Processed!",
-        `We've issued a refund of ${formatCurrency(missingValue)} for the missing item. It will appear in your account within 3-5 business days.<br><br>${getCaseIdHtml(state.caseId)}`
+        "Case Created!",
+        `We've submitted a refund request of ${formatCurrency(missingValue)} for the missing item.<br><br>${MESSAGES.success.refundProcessingShort}<br><br>${getCaseIdHtml(state.caseId)}`
       );
     }}
   ]);
@@ -5088,6 +5100,7 @@ async function processSubscriptionCancel(isUsed) {
   const result = await submitCase('subscription', 'subscription_cancelled', {
     actionType: 'cancel',
     keepProduct: keepProduct,
+    issueType: 'subscription_cancel',
     notes: `Full cancellation. Reason: ${state.cancelReason || 'Not specified'}. Keep product: ${keepProduct ? 'Yes' : 'No (return required)'}`,
   });
 
@@ -5097,7 +5110,7 @@ async function processSubscriptionCancel(isUsed) {
 
   await showSuccess(
     "Subscription Cancelled",
-    `Your subscription has been cancelled and a full refund will be processed within 3-5 business days.<br><br>${getCaseIdHtml(state.caseId)}`
+    `Your subscription has been cancelled and your refund request has been submitted.<br><br>${MESSAGES.success.refundProcessingShort}<br><br>${getCaseIdHtml(state.caseId)}`
   );
 }
 
