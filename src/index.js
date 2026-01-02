@@ -2178,13 +2178,15 @@ async function handleParsePickupLocation(request, env, corsHeaders) {
 
   // ============================================
   // STEP 1: Get data from ParcelPanel (already provided)
-  // - Last-mile carrier from lastMile.carrier.name
+  // - Last-mile carrier from lastMile.carrier_name (flat structure)
   // - Last 3-4 checkpoints for context
   // ============================================
 
   // Get last-mile carrier from ParcelPanel data
-  const lastMileCarrier = lastMile?.carrier?.name || null;
+  // ParcelPanel uses flat structure: carrier_name, carrier_code, tracking_number
+  const lastMileCarrier = lastMile?.carrier_name || null;
   const lastMileTrackingNumber = lastMile?.tracking_number || null;
+  const lastMileCarrierUrl = lastMile?.carrier_url || null;
 
   // Get last 3-4 checkpoints for context
   const recentCheckpoints = (checkpoints || []).slice(0, 4);
@@ -2331,6 +2333,7 @@ YOU MUST RETURN ONLY VALID JSON IN THIS EXACT FORMAT - NO OTHER TEXT:
       // Carrier info from ParcelPanel
       lastMileCarrier: lastMileCarrier,
       lastMileTrackingNumber: lastMileTrackingNumber,
+      lastMileCarrierUrl: lastMileCarrierUrl,
       displayCarrier: displayCarrier,
       isMainCarrierChina,
     }, { headers: corsHeaders });
