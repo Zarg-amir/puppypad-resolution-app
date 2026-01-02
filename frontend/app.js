@@ -3362,22 +3362,72 @@ async function handleMultipleFailedAttempts(tracking) {
 
 // Status: Pickup - ready for customer pickup
 async function handleStatusPickup(tracking) {
-  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
-  const pickupLocation = getPickupLocationFromTracking(tracking);
+  // Show loading while we parse the pickup location with AI
+  await addBotMessage("Let me check where you can pick this up...");
+  showProgress("Finding pickup location...");
 
-  await addBotMessage(`Your package is <strong>ready for pickup</strong> at a ${carrierInfo.name} location.<br><br>Carrier: ${carrierInfo.name}<br>Tracking: ${tracking?.trackingNumber || 'N/A'}<br><br>Packages are usually held for 5-7 days before being returned to sender.`);
+  // Call API to parse pickup location from tracking data
+  let pickupData = null;
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/parse-pickup-location`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tracking: tracking,
+        carrier: tracking?.carrier,
+        checkpoints: tracking?.checkpoints || [],
+        lastMile: tracking?.lastMile || null,
+      }),
+    });
+    pickupData = await response.json();
+  } catch (error) {
+    console.error('Failed to parse pickup location:', error);
+  }
+
+  hideProgress();
+
+  // Use parsed data or fallback to basic info
+  const pickupLocationName = pickupData?.pickupLocationName;
+  const displayCarrier = pickupData?.displayCarrier || tracking?.carrier || 'the carrier';
+  const lastMileTracking = pickupData?.lastMileTrackingNumber;
+  const displayTracking = lastMileTracking || tracking?.trackingNumber;
+  const carrierInfo = getCarrierContactInfo(displayCarrier);
+
+  // Store parsed data for later use in investigation flow
+  state.pickupData = pickupData;
+
+  // Build the message with correct pickup info
+  let message = `Your package is <strong>ready for pickup</strong>`;
+
+  if (pickupLocationName) {
+    message += ` at <strong>${pickupLocationName}</strong>`;
+  }
+  message += `.<br><br>`;
+
+  message += `Carrier: ${carrierInfo.name}<br>`;
+  message += `Tracking: ${displayTracking || 'N/A'}<br><br>`;
+  message += `Packages are usually held for 5-7 days before being returned to sender.`;
+
+  await addBotMessage(message);
 
   addOptions([
     { text: "I'll go pick it up", action: async () => {
-      let pickupMessage = `Perfect! Here's how to find your pickup location:<br><br>`;
-      pickupMessage += `1. Check your email for a notification from ${carrierInfo.name}<br>`;
-      if (carrierInfo.website) {
-        pickupMessage += `2. Visit <strong>${carrierInfo.website}</strong> and enter your tracking number<br>`;
+      let pickupMessage = `Perfect! `;
+
+      if (pickupLocationName) {
+        pickupMessage += `Head to <strong>${pickupLocationName}</strong> with your ID to collect your package.<br><br>`;
+      } else {
+        pickupMessage += `Here's how to find your pickup location:<br><br>`;
+        pickupMessage += `1. Check your email for a notification from ${carrierInfo.name}<br>`;
+        if (carrierInfo.website) {
+          pickupMessage += `2. Visit <strong>${carrierInfo.website}</strong> and enter your tracking number<br>`;
+        }
       }
+
       if (carrierInfo.phone) {
-        pickupMessage += `3. Call ${carrierInfo.phone} if you need help locating it<br>`;
+        pickupMessage += `If you need help, call ${carrierInfo.phone}<br>`;
       }
-      pickupMessage += `<br>Your tracking number: <strong>${tracking?.trackingNumber || 'Check your email'}</strong>`;
+      pickupMessage += `<br>Your tracking number: <strong>${displayTracking || 'Check your email'}</strong>`;
 
       await addBotMessage(pickupMessage);
       await addBotMessage("Let me know if you have any trouble finding it!");
@@ -3403,12 +3453,16 @@ function getPickupLocationFromTracking(tracking) {
 
 // Handle when customer says package wasn't at pickup location
 async function handlePickupNotThere(tracking) {
-  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
-  const pickupLocation = getPickupLocationFromTracking(tracking);
+  // Use parsed pickup data from the initial flow
+  const pickupData = state.pickupData || {};
+  const pickupLocationName = pickupData.pickupLocationName || getPickupLocationFromTracking(tracking);
+  const displayCarrier = pickupData.displayCarrier || tracking?.carrier || 'the carrier';
+  const displayTracking = pickupData.lastMileTrackingNumber || tracking?.trackingNumber;
+  const carrierInfo = getCarrierContactInfo(displayCarrier);
 
   // First, validate they went to the right place
-  if (pickupLocation) {
-    await addBotMessage(`Just to make sure we're on the same page, the tracking shows your package should be at:<br><br><strong>${pickupLocation}</strong><br><br>Is this where you went?`);
+  if (pickupLocationName) {
+    await addBotMessage(`Just to make sure we're on the same page, the tracking shows your package should be at:<br><br><strong>${pickupLocationName}</strong><br><br>Is this where you went?`);
   } else {
     await addBotMessage(`Let me help figure this out. Can you tell me where you went to pick up the package?<br><br>You can find the pickup location by checking your email from ${carrierInfo.name} or visiting their website with your tracking number.`);
   }
@@ -3416,10 +3470,10 @@ async function handlePickupNotThere(tracking) {
   addOptions([
     { text: "Yes, that's where I went", action: () => handleConfirmedWrongLocation(tracking) },
     { text: "No, I went somewhere else", action: async () => {
-      if (pickupLocation) {
-        await addBotMessage(`Got it! Your package is actually at <strong>${pickupLocation}</strong>. Please try picking it up from there and let me know if you still have issues.`);
+      if (pickupLocationName) {
+        await addBotMessage(`Got it! Your package is actually at <strong>${pickupLocationName}</strong>. Please try picking it up from there and let me know if you still have issues.`);
       } else {
-        await addBotMessage(`No worries! Check your email from ${carrierInfo.name} for the exact pickup location, or visit their website with tracking number <strong>${tracking?.trackingNumber}</strong> to find it.`);
+        await addBotMessage(`No worries! Check your email from ${carrierInfo.name} for the exact pickup location, or visit their website with tracking number <strong>${displayTracking}</strong> to find it.`);
       }
       addOptions([
         { text: "Thanks, I'll go there", action: () => showSuccess("Good luck!", "Hope you get your package!") },
@@ -3491,10 +3545,12 @@ async function submitPickupAttempt() {
     notes: pickupNotes
   };
 
-  // Investigation warning to deter scammers - detailed with dynamic data
-  const carrierInfo = getCarrierContactInfo(state.tracking?.carrier);
-  const pickupLocation = getPickupLocationFromTracking(state.tracking);
-  const customerLocation = state.pickupAttemptDetails?.location || pickupLocation || 'the pickup location';
+  // Investigation warning to deter scammers - use parsed pickup data for correct carrier
+  const pickupData = state.pickupData || {};
+  const displayCarrier = pickupData.displayCarrier || state.tracking?.carrier || 'the carrier';
+  const carrierInfo = getCarrierContactInfo(displayCarrier);
+  const pickupLocationName = pickupData.pickupLocationName || getPickupLocationFromTracking(state.tracking);
+  const customerLocation = state.pickupAttemptDetails?.location || pickupLocationName || 'the pickup location';
 
   await addBotMessage(`Thanks for those details. This is quite rare so we'll need to open a formal investigation. Just so you know, PuppyPad and ${carrierInfo.name} are two separate companies. Our responsibility is to pack your order and hand it off to them safely, which we did. But we always go above and beyond to help when things go wrong on their end.`);
 
