@@ -1941,17 +1941,15 @@ async function confirmItemSelection() {
 // ============================================
 async function showIntentOptions() {
   await addBotMessage("Got it! What's going on with your order?");
-  
+
   // Build dynamic intent options based on selected items
-  const hasPuppyPad = state.selectedItems.some(i => i.isPuppyPad);
   const isFreeItem = state.selectedItems.every(i => i.isFree);
-  
+
   let options = [];
-  
-  if (hasPuppyPad) {
-    options.push({ icon: '🐕', text: "My dog isn't using it", action: () => handleIntent('dog_not_using') });
-  }
-  
+
+  // Always show "dog not using" - this is a PuppyPad store, all products are pee pads
+  options.push({ icon: '🐕', text: "My dog isn't using it", action: () => handleIntent('dog_not_using') });
+
   if (!isFreeItem) {
     options.push(
       { icon: '💭', text: "I changed my mind", action: () => handleIntent('changed_mind') },
@@ -1963,17 +1961,17 @@ async function showIntentOptions() {
       { icon: '💳', text: "I was charged unexpectedly", action: () => handleIntent('charged_unexpectedly') }
     );
   }
-  
+
   options.push(
     { icon: '🚚', text: "I haven't received my order", action: () => handleIntent('not_received') }
   );
-  
-  if (hasPuppyPad && !isFreeItem) {
+
+  if (!isFreeItem) {
     options.push({ icon: '🔍', text: "Quality difference in my products", action: () => handleIntent('quality_difference') });
   }
-  
+
   options.push({ icon: '❓', text: "Other reason", action: () => handleIntent('other') });
-  
+
   addOptions(options);
 }
 
@@ -2065,52 +2063,89 @@ async function submitDogInfo() {
   const dogBreed = document.getElementById('dogBreed')?.value.trim();
   const dogAge = document.getElementById('dogAge')?.value.trim();
   const methodsTried = document.getElementById('methodsTried')?.value.trim();
-  
+
   if (!dogName || !dogBreed || !dogAge) {
     await addBotMessage("Please fill in your dog's name, breed, and age so Claudia can help.");
     return;
   }
-  
+
   document.getElementById('dogInfoForm')?.closest('.interactive-content').remove();
-  
+
   const summaryHtml = `
     <div class="editable-summary">
       <div class="summary-row"><span class="summary-label">Dog:</span> ${dogName} (${dogBreed}, ${dogAge})</div>
       ${methodsTried ? `<div class="summary-row"><span class="summary-label">Tried:</span> ${methodsTried.substring(0, 50)}${methodsTried.length > 50 ? '...' : ''}</div>` : ''}
     </div>
   `;
-  
+
   addEditableUserMessage(summaryHtml, () => renderDogInfoForm(), 'Edit Info');
-  
-  await addBotMessage("Thanks for sharing! I'm connecting you with our in-house veterinarian, Claudia. She's amazing at this! 🩺❤️");
-  
+
+  await addBotMessage("Thanks for sharing! I'm connecting you with our in-house veterinarian, Dr. Claudia. She's amazing at this! 🩺❤️");
+
   setPersona('claudia');
-  
+
   await addBotMessage("Hi there! Thanks for the info about " + dogName + ". Let me review everything and give you some personalized tips...", 'claudia');
-  
-  // Simulate AI response
-  await delay(1500);
-  
-  await addBotMessage(`Great news! Based on ${dogName}'s profile (${dogBreed}, ${dogAge}), here are my top recommendations:
 
-<strong>1. Scent Association</strong> 🐾
-Place a small amount of ${dogName}'s urine on the PuppyPad. Dogs naturally want to go where they smell their scent.
+  // Get product name from order
+  const productName = state.selectedOrder?.lineItems?.[0]?.name || 'PuppyPad';
 
-<strong>2. Positive Reinforcement</strong> 🎉
-Every time ${dogName} even sniffs the pad, give praise and a small treat. Build positive associations!
+  // Call AI API for Dr. Claudia tips
+  showProgress("Dr. Claudia is preparing your tips...");
 
-<strong>3. Consistent Placement</strong> 📍
-Keep the pad in the same spot. Dogs thrive on routine, and moving it can confuse them.
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/ai-response`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scenarioType: 'dog_tips',
+        scenarioData: {
+          dogName,
+          dogBreed,
+          dogAge,
+          methodsTried,
+          productName,
+        },
+      }),
+    });
 
-<strong>4. Timing is Key</strong> ⏰
-Take ${dogName} to the pad right after meals, naps, and play sessions — these are peak potty times!
+    hideProgress();
 
-Give these a try for 5-7 days and you should see improvement! 🙂`, 'claudia');
-  
+    if (response.ok) {
+      const data = await response.json();
+      const messages = data.messages || [];
+
+      for (const msg of messages) {
+        await addBotMessage(msg, 'claudia');
+      }
+    } else {
+      // Fallback to static tips if API fails
+      await addBotMessage(`Great news! Based on ${dogName}'s profile (${dogBreed}, ${dogAge}), here are my top recommendations:
+
+1. Scent Association - Place a small amount of ${dogName}'s urine on the PuppyPad. Dogs naturally want to go where they smell their scent.
+
+2. Positive Reinforcement - Every time ${dogName} even sniffs the pad, give praise and a small treat. Build positive associations!
+
+3. Consistent Placement - Keep the pad in the same spot. Dogs thrive on routine, and moving it can confuse them.
+
+4. Timing is Key - Take ${dogName} to the pad right after meals, naps, and play sessions — these are peak potty times!
+
+Give these a try for 5-7 days and you should see improvement!`, 'claudia');
+    }
+  } catch (error) {
+    hideProgress();
+    console.error('AI response error:', error);
+    // Fallback
+    await addBotMessage(`I've helped many ${dogBreed}s with this exact challenge! Here are my top tips for ${dogName}:
+
+Try scent association by placing a small amount of urine on the pad. Use positive reinforcement every time ${dogName} approaches the pad. Keep the pad in the same spot always, and take ${dogName} there after meals and naps.
+
+Give it 5-7 days of consistency and you should see great progress!`, 'claudia');
+  }
+
   setPersona('amy');
-  
-  await addBotMessage("Did Claudia's tips help? Are you happy to give these a try?");
-  
+
+  await addBotMessage("Did Dr. Claudia's tips help? Are you happy to give these a try?");
+
   showSatisfactionButtons();
 }
 
@@ -2678,33 +2713,170 @@ async function createRefundCase(type, keepProduct) {
 // ============================================
 async function handleChangedMind() {
   await addBotMessage("No problem! Can you tell me a bit more about why you changed your mind? This helps me understand how to best help you.");
-  
+
   showTextInput("Tell me more...", async (text) => {
     hideTextInput();
     state.intentDetails = text;
-    
-    await addBotMessage("I appreciate you sharing that. Let me see what I can do for you...");
-    await delay(1000);
-    
-    state.ladderType = 'order_refund';
-    state.ladderStep = 0;
-    await startRefundLadder();
+
+    // Get order items for context
+    const orderItems = state.selectedOrder?.lineItems?.map(item =>
+      `${item.name} (${item.variant || ''}) × ${item.quantity}`
+    ).join('\n') || 'PuppyPad products';
+
+    showProgress("Let me look into this for you...");
+
+    try {
+      const response = await fetch(`${CONFIG.API_URL}/api/ai-response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scenarioType: 'changed_mind',
+          scenarioData: {
+            customerName: state.customerData?.firstName || 'there',
+            customerMessage: text,
+            orderItems: orderItems,
+          },
+        }),
+      });
+
+      hideProgress();
+
+      if (response.ok) {
+        const data = await response.json();
+        const messages = data.messages || [];
+
+        for (const msg of messages) {
+          await addBotMessage(msg);
+        }
+
+        // Ask if they're satisfied with the response
+        await addBotMessage("Does this help? Would you like to keep your order?");
+
+        addOptions([
+          { text: "Yes, I'll keep it!", action: async () => {
+            await handleSatisfiedThankYou('changed_mind', text);
+          }},
+          { text: "No, I still want a refund", action: async () => {
+            state.ladderType = 'order_refund';
+            state.ladderStep = 0;
+            await startRefundLadder();
+          }}
+        ]);
+      } else {
+        await addBotMessage("I appreciate you sharing that. Let me see what I can do for you...");
+        state.ladderType = 'order_refund';
+        state.ladderStep = 0;
+        await startRefundLadder();
+      }
+    } catch (error) {
+      hideProgress();
+      console.error('AI response error:', error);
+      await addBotMessage("I appreciate you sharing that. Let me see what I can do for you...");
+      state.ladderType = 'order_refund';
+      state.ladderStep = 0;
+      await startRefundLadder();
+    }
   });
 }
 
 async function handleNotMetExpectations() {
   await addBotMessage("I'm really sorry to hear that 😔 We always want our products to exceed expectations. Could you share what specifically didn't meet your expectations?");
-  
+
   showTextInput("What disappointed you?", async (text) => {
     hideTextInput();
     state.intentDetails = text;
-    
-    await addBotMessage("Thank you for that feedback — I've noted it down. This really helps us improve. Now let me make this right for you.");
-    
-    state.ladderType = 'order_refund';
-    state.ladderStep = 0;
-    await startRefundLadder();
+
+    // Get order items for context
+    const orderItems = state.selectedOrder?.lineItems?.map(item =>
+      `${item.name} (${item.variant || ''}) × ${item.quantity}`
+    ).join('\n') || 'PuppyPad products';
+
+    showProgress("Let me look into this for you...");
+
+    try {
+      const response = await fetch(`${CONFIG.API_URL}/api/ai-response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scenarioType: 'changed_mind',
+          scenarioData: {
+            customerName: state.customerData?.firstName || 'there',
+            customerMessage: text,
+            orderItems: orderItems,
+          },
+        }),
+      });
+
+      hideProgress();
+
+      if (response.ok) {
+        const data = await response.json();
+        const messages = data.messages || [];
+
+        for (const msg of messages) {
+          await addBotMessage(msg);
+        }
+
+        await addBotMessage("Does this help at all?");
+
+        addOptions([
+          { text: "Yes, I'll give it another try", action: async () => {
+            await handleSatisfiedThankYou('not_met_expectations', text);
+          }},
+          { text: "No, I'd like a refund", action: async () => {
+            state.ladderType = 'order_refund';
+            state.ladderStep = 0;
+            await startRefundLadder();
+          }}
+        ]);
+      } else {
+        await addBotMessage("Thank you for that feedback — I've noted it down. Let me make this right for you.");
+        state.ladderType = 'order_refund';
+        state.ladderStep = 0;
+        await startRefundLadder();
+      }
+    } catch (error) {
+      hideProgress();
+      console.error('AI response error:', error);
+      await addBotMessage("Thank you for that feedback. Let me make this right for you.");
+      state.ladderType = 'order_refund';
+      state.ladderStep = 0;
+      await startRefundLadder();
+    }
   });
+}
+
+// Handle satisfied customer thank you with AI
+async function handleSatisfiedThankYou(originalIntent, originalConcern) {
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/ai-response`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scenarioType: 'satisfied_thankyou',
+        scenarioData: {
+          customerName: state.customerData?.firstName || 'there',
+          originalConcern: originalConcern || 'had some concerns',
+        },
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const messages = data.messages || [];
+      for (const msg of messages) {
+        await addBotMessage(msg);
+      }
+    } else {
+      await addBotMessage("That makes me so happy to hear! I really think you're going to love it. If you ever have any questions, I'm always here to help. 😊");
+    }
+  } catch (error) {
+    await addBotMessage("That makes me so happy to hear! I really think you're going to love it. If you ever have any questions, I'm always here to help. 😊");
+  }
+
+  addOptions([
+    { text: "Back to Home", action: showHomeMenu }
+  ]);
 }
 
 async function handleOrderedMistake() {
