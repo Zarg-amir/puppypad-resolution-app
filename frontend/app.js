@@ -2144,6 +2144,9 @@ Give it 5-7 days of consistency and you should see great progress!`, 'claudia');
 
   setPersona('amy');
 
+  // Small delay before Amy responds - feels more natural
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
   await addBotMessage("Did Dr. Claudia's tips help? Are you happy to give these a try?");
 
   showSatisfactionButtons();

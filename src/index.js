@@ -239,11 +239,13 @@ const AI_SCENARIO_PROMPTS = {
 5. Build confidence that these tips WILL work
 
 === OUTPUT FORMAT ===
-- Write in PLAIN TEXT only - NO HTML tags, NO bold, NO italics, NO bullet points
-- Write like a chat message, not an article
-- Use short paragraphs (2-3 sentences each)
-- Be conversational and warm
-- Use line breaks between paragraphs for readability
+- Use BULLET POINTS (•) for the tips - makes them easy to scan and follow
+- Each tip should be 1-2 sentences max
+- Add a blank line between each tip for spacing
+- Start with a warm greeting paragraph (2-3 sentences)
+- End with an encouraging closing paragraph
+- NO HTML tags - plain text with bullet points only
+- Be conversational and warm like a chat message
 
 === PRODUCT INFO ===
 ${productDoc || 'PuppyPad - reusable dog training pad'}`,
@@ -260,14 +262,23 @@ ${data.methodsTried || 'Not specified'}
 PRODUCT THEY NEED HELP WITH:
 ${data.productName || 'PuppyPad'}
 
-Write a warm, helpful response as Dr. Claudia that:
-1. Greet them and mention their dog by name
-2. Share that you've helped thousands of dogs with this exact challenge (social proof)
-3. Give 3-4 specific tips using their dog's name and breed/age when available
-4. Explain briefly why each tip works
-5. End with confidence that their dog will improve within 1-2 weeks with consistency
+Write a warm, helpful response as Dr. Claudia with this structure:
 
-Keep it conversational like a chat message. NO HTML formatting - plain text only.`
+OPENING (1 paragraph):
+- Greet them warmly and mention their dog by name
+- Share that you've helped thousands of dogs with this exact challenge (social proof)
+
+TIPS (use bullet points):
+• Tip 1 - [Name of technique] - Brief explanation using dog's name
+• Tip 2 - [Name of technique] - Brief explanation
+• Tip 3 - [Name of technique] - Brief explanation
+• Tip 4 - [Name of technique] - Brief explanation (optional)
+
+CLOSING (1 paragraph):
+- End with confidence that their dog will improve within 1-2 weeks
+- Be encouraging and warm
+
+Format tips as bullet points (•) with blank lines between them. Keep each tip concise.`
   },
 
   // Changed mind / Didn't meet expectations (post-delivery)
