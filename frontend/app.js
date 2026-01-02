@@ -3393,8 +3393,13 @@ async function handleStatusPickup(tracking) {
 
   hideProgress();
 
-  // Use parsed data or fallback to basic info
+  // Extract all pickup details from response
   const pickupLocationName = pickupData?.pickupLocationName;
+  const pickupAddress = pickupData?.pickupAddress;
+  const openingHours = pickupData?.openingHours;
+  const phoneNumber = pickupData?.phoneNumber;
+  const googleMapsUrl = pickupData?.googleMapsUrl;
+  const directions = pickupData?.directions;
   const displayCarrier = pickupData?.displayCarrier || tracking?.carrier || 'the carrier';
   const lastMileTracking = pickupData?.lastMileTrackingNumber;
   const displayTracking = lastMileTracking || tracking?.trackingNumber;
@@ -3403,17 +3408,39 @@ async function handleStatusPickup(tracking) {
   // Store parsed data for later use in investigation flow
   state.pickupData = pickupData;
 
-  // Build the message with correct pickup info
+  // Build comprehensive pickup info message
   let message = `Your package is <strong>ready for pickup</strong>`;
 
   if (pickupLocationName) {
     message += ` at <strong>${pickupLocationName}</strong>`;
   }
-  message += `.<br><br>`;
+  message += `!<br><br>`;
 
-  message += `Carrier: ${carrierInfo.name}<br>`;
-  message += `Tracking: ${displayTracking || 'N/A'}<br><br>`;
-  message += `Packages are usually held for 5-7 days before being returned to sender.`;
+  // Add location details if we have them
+  if (pickupAddress) {
+    message += `<strong>Address:</strong> ${pickupAddress}<br>`;
+  }
+
+  if (openingHours) {
+    message += `<strong>Hours:</strong> ${openingHours}<br>`;
+  }
+
+  if (phoneNumber) {
+    message += `<strong>Phone:</strong> ${phoneNumber}<br>`;
+  }
+
+  if (directions) {
+    message += `<strong>How to find it:</strong> ${directions}<br>`;
+  }
+
+  // Add Google Maps link if available
+  if (googleMapsUrl) {
+    message += `<br><a href="${googleMapsUrl}" target="_blank" style="color: #4A90A4;">View on Google Maps</a><br>`;
+  }
+
+  message += `<br><strong>Carrier:</strong> ${carrierInfo.name}<br>`;
+  message += `<strong>Tracking:</strong> ${displayTracking || 'N/A'}<br><br>`;
+  message += `<em>Packages are usually held for 5-7 days before being returned to sender.</em>`;
 
   await addBotMessage(message);
 
@@ -3422,19 +3449,34 @@ async function handleStatusPickup(tracking) {
       let pickupMessage = `Perfect! `;
 
       if (pickupLocationName) {
-        pickupMessage += `Head to <strong>${pickupLocationName}</strong> with your ID to collect your package.<br><br>`;
+        pickupMessage += `Head to <strong>${pickupLocationName}</strong> with your ID to collect your package.`;
+
+        // Add address again for convenience
+        if (pickupAddress) {
+          pickupMessage += `<br><br><strong>Address:</strong> ${pickupAddress}`;
+        }
+
+        // Add opening hours reminder
+        if (openingHours) {
+          pickupMessage += `<br><strong>Hours:</strong> ${openingHours}`;
+        }
+
+        // Add Google Maps link
+        if (googleMapsUrl) {
+          pickupMessage += `<br><br><a href="${googleMapsUrl}" target="_blank" style="color: #4A90A4;">Get Directions</a>`;
+        }
       } else {
         pickupMessage += `Here's how to find your pickup location:<br><br>`;
         pickupMessage += `1. Check your email for a notification from ${carrierInfo.name}<br>`;
         if (carrierInfo.website) {
           pickupMessage += `2. Visit <strong>${carrierInfo.website}</strong> and enter your tracking number<br>`;
         }
+        if (carrierInfo.phone) {
+          pickupMessage += `3. Or call ${carrierInfo.phone} for assistance`;
+        }
       }
 
-      if (carrierInfo.phone) {
-        pickupMessage += `If you need help, call ${carrierInfo.phone}<br>`;
-      }
-      pickupMessage += `<br>Your tracking number: <strong>${displayTracking || 'Check your email'}</strong>`;
+      pickupMessage += `<br><br><strong>Your tracking number:</strong> ${displayTracking || 'Check your email'}`;
 
       await addBotMessage(pickupMessage);
       await addBotMessage("Let me know if you have any trouble finding it!");
