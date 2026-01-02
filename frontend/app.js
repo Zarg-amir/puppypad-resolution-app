@@ -412,6 +412,18 @@ function generateCaseId(type) {
   return `${prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 }
 
+function getSessionReplayUrl() {
+  // Get PostHog session replay URL if available
+  try {
+    if (typeof posthog !== 'undefined' && posthog.get_session_replay_url) {
+      return posthog.get_session_replay_url({ withTimestamp: true }) || '';
+    }
+  } catch (e) {
+    console.warn('Could not get PostHog session replay URL:', e);
+  }
+  return '';
+}
+
 function formatDate(dateString) {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -1716,7 +1728,8 @@ async function submitManualHelp() {
     issue,
     preferredContact,
     lookupAttempts: state.lookupAttempts || [],
-    sessionId: state.sessionId
+    sessionId: state.sessionId,
+    sessionReplayUrl: getSessionReplayUrl()
   };
 
   try {
@@ -2721,6 +2734,7 @@ async function submitCase(caseType, resolution, options = {}) {
   const caseData = {
     // Session info
     sessionId: Analytics.sessionId,
+    sessionReplayUrl: getSessionReplayUrl(),
 
     // Case type
     caseType: caseType,           // 'refund', 'return', 'shipping', 'subscription', 'manual'

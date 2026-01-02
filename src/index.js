@@ -1483,7 +1483,7 @@ async function handleCreateCase(request, env, corsHeaders) {
 // CREATE MANUAL HELP CASE (ORDER NOT FOUND)
 // ============================================
 async function handleCreateManualCase(request, env, corsHeaders) {
-  const { email, fullName, phone, orderNumber, issue, preferredContact, lookupAttempts, sessionId } = await request.json();
+  const { email, fullName, phone, orderNumber, issue, preferredContact, lookupAttempts, sessionId, sessionReplayUrl } = await request.json();
 
   // Generate case ID
   const now = new Date();
@@ -1550,10 +1550,12 @@ async function handleCreateManualCase(request, env, corsHeaders) {
       ``,
       `**SOP:** ${sopUrl}`,
       ``,
+      sessionReplayUrl ? `🎥 **Session Recording:** ${sessionReplayUrl}` : '',
+      ``,
       `---`,
       `Session ID: ${sessionId || 'N/A'}`,
       `Case ID: ${caseId}`,
-    ];
+    ].filter(Boolean);
 
     const commentText = commentLines.join('\n');
 
@@ -1861,7 +1863,7 @@ async function createClickUpTask(env, listId, caseData) {
   }) : 'Unknown';
 
   // Build ClickUp comment with proper JSON formatting
-  const comment = buildClickUpComment(caseData, orderIssue, formattedResolution, orderDate, sopUrl);
+  const comment = buildClickUpComment(caseData, orderIssue, formattedResolution, orderDate, sopUrl, caseData.sessionReplayUrl);
 
   await fetch(`https://api.clickup.com/api/v2/task/${task.id}/comment`, {
     method: 'POST',
@@ -1876,7 +1878,7 @@ async function createClickUpTask(env, listId, caseData) {
 }
 
 // Build ClickUp comment with proper rich text formatting
-function buildClickUpComment(caseData, orderIssue, formattedResolution, orderDate, sopUrl) {
+function buildClickUpComment(caseData, orderIssue, formattedResolution, orderDate, sopUrl, sessionReplayUrl) {
   const comment = [];
 
   // Helper to add bold label with value
@@ -2008,6 +2010,16 @@ function buildClickUpComment(caseData, orderIssue, formattedResolution, orderDat
       addBoldLine('Cancel Reason:', reasonLabels[caseData.cancelReason] || caseData.cancelReason);
     }
     if (caseData.subscriptionStatus) addBoldLine('Status:', caseData.subscriptionStatus);
+  }
+
+  // Session replay link (always include if available)
+  if (sessionReplayUrl) {
+    comment.push({ text: '\n', attributes: {} });
+    comment.push({ text: '🎥', type: 'emoticon', emoticon: { code: '1f3a5' } });
+    comment.push({ text: ' Session Recording:', attributes: { bold: true } });
+    comment.push({ text: ' ' });
+    comment.push({ text: sessionReplayUrl, attributes: { link: sessionReplayUrl } });
+    comment.push({ text: '\n', attributes: {} });
   }
 
   return comment;
@@ -2189,83 +2201,147 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
   }
 
   // Build message parts based on case type
-  const messageParts = [testNotice, 'Hi,', ''];
+  const messageParts = [testNotice];
+  const firstName = caseData.customerFirstName || caseData.customerName?.split(' ')[0] || 'Customer';
+  const refundAmountStr = caseData.refundAmount ? `$${parseFloat(caseData.refundAmount).toFixed(2)}` : '';
 
-  // RETURN CASE - Special messaging
+  // RETURN CASE - Natural customer email
   if (caseData.caseType === 'return') {
     messageParts.push(
-      'I am returning my products for a refund.',
+      'Hi there,',
       '',
-      '--- RETURN DETAILS ---',
+      `I'd like to return my order for a refund.`,
       '',
-      `Order Number: ${caseData.orderNumber || 'N/A'}`,
-      `Case ID: ${caseId}`,
+      `Here's what happened: ${orderIssue}`,
       '',
-      'Items I am returning:'
+      `I'm returning the following item(s):`,
+      ''
     );
     if (itemsList) {
       messageParts.push(itemsList);
     }
     messageParts.push(
       '',
-      `Reason for return: ${orderIssue}`,
+      `My order number is ${caseData.orderNumber || 'N/A'} and my case reference is ${caseId}.`,
       '',
-      '--- WHAT HAPPENS NEXT ---',
+      `I understand that once you receive and inspect my return, I'll get a full refund${refundAmountStr ? ` of ${refundAmountStr}` : ''}.`,
       '',
-      'Once my return is received and inspected, I expect to receive:',
-      `• ${formattedResolution}`,
-      caseData.refundAmount ? `• Refund Amount: $${parseFloat(caseData.refundAmount).toFixed(2)}` : '',
+      `I'll send over the tracking number as soon as I've shipped the package.`,
       '',
-      'I will reply to this email with my tracking number once I have shipped the return.'
+      'Thanks for your help!',
+      '',
+      firstName
     );
   }
-  // OTHER CASES - Standard messaging
+  // REFUND CASE - Natural customer email
+  else if (caseData.caseType === 'refund') {
+    messageParts.push(
+      'Hi there,',
+      '',
+      `I'm reaching out because I need some help with my order.`,
+      '',
+      `The issue: ${orderIssue}`,
+      '',
+      `This is regarding my order #${caseData.orderNumber || 'N/A'} (Case ID: ${caseId}).`,
+      ''
+    );
+    if (itemsList) {
+      messageParts.push('The item(s) affected:', '', itemsList, '');
+    }
+    messageParts.push(
+      `I've been offered a ${formattedResolution.toLowerCase()}${refundAmountStr ? ` of ${refundAmountStr}` : ''} which I've accepted.`,
+      '',
+      `Please let me know if you need anything else from me.`,
+      '',
+      'Thanks!',
+      '',
+      firstName
+    );
+  }
+  // SHIPPING CASE - Natural customer email
+  else if (caseData.caseType === 'shipping') {
+    messageParts.push(
+      'Hi there,',
+      '',
+      `I'm having an issue with the delivery of my order.`,
+      '',
+      `The problem: ${orderIssue}`,
+      '',
+      `My order number is ${caseData.orderNumber || 'N/A'} (Case ID: ${caseId}).`,
+      ''
+    );
+    if (itemsList) {
+      messageParts.push('Order contains:', '', itemsList, '');
+    }
+    messageParts.push(
+      `The resolution we agreed on: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}.`,
+      '',
+      `Please let me know once this has been processed.`,
+      '',
+      'Thanks for sorting this out!',
+      '',
+      firstName
+    );
+  }
+  // SUBSCRIPTION CASE - Natural customer email
+  else if (caseData.caseType === 'subscription') {
+    const actionLabels = {
+      pause: 'pause my subscription',
+      cancel: 'cancel my subscription',
+      changeSchedule: 'change my delivery schedule',
+      changeAddress: 'update my shipping address'
+    };
+    const actionText = actionLabels[caseData.actionType] || 'make changes to my subscription';
+
+    messageParts.push(
+      'Hi there,',
+      '',
+      `I'd like to ${actionText}.`,
+      '',
+      `Reason: ${orderIssue}`,
+      '',
+      `My details:`,
+      `• Order: ${caseData.orderNumber || 'N/A'}`,
+      `• Case ID: ${caseId}`
+    );
+    if (caseData.purchaseId) messageParts.push(`• Purchase ID: ${caseData.purchaseId}`);
+    if (caseData.subscriptionProductName) messageParts.push(`• Product: ${caseData.subscriptionProductName}`);
+    messageParts.push(
+      '',
+      `Resolution: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}.`,
+      '',
+      'Thanks!',
+      '',
+      firstName
+    );
+  }
+  // DEFAULT/MANUAL CASE
   else {
     messageParts.push(
-      `I have submitted my request through the Resolution App.`,
+      'Hi there,',
       '',
-      `My issue: ${orderIssue}`,
+      `I'm reaching out for help with my order.`,
+      '',
+      `Issue: ${orderIssue}`,
       '',
       `Order Number: ${caseData.orderNumber || 'N/A'}`,
-      `Case ID: ${caseId}`
+      `Case ID: ${caseId}`,
+      ''
     );
-
-    // Add items if available
     if (itemsList) {
-      messageParts.push('', 'Items:', itemsList);
+      messageParts.push('Items:', '', itemsList, '');
     }
-
-    // Add resolution
-    messageParts.push('', `Resolution requested: ${formattedResolution}`);
-
-    // Add refund amount if applicable
-    if (caseData.refundAmount) {
-      messageParts.push(`Refund Amount: $${parseFloat(caseData.refundAmount).toFixed(2)}`);
+    if (formattedResolution) {
+      messageParts.push(`Resolution requested: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}`, '');
     }
-
-    // Add address if changed
-    if (addressSection) {
-      messageParts.push(addressSection);
-    }
-
-    // Add subscription details if applicable
-    if (caseData.caseType === 'subscription') {
-      const actionLabels = {
-        pause: 'Pause Subscription',
-        cancel: 'Cancel Subscription',
-        changeSchedule: 'Change Schedule',
-        changeAddress: 'Change Address'
-      };
-      messageParts.push('', 'SUBSCRIPTION DETAILS:');
-      if (caseData.purchaseId) messageParts.push(`Purchase ID: ${caseData.purchaseId}`);
-      if (caseData.clientOrderId) messageParts.push(`Client Order ID: ${caseData.clientOrderId}`);
-      if (caseData.subscriptionProductName) messageParts.push(`Product: ${caseData.subscriptionProductName}`);
-      if (caseData.actionType) messageParts.push(`Action: ${actionLabels[caseData.actionType] || caseData.actionType}`);
-    }
+    messageParts.push(
+      'Please let me know if you need any more information.',
+      '',
+      'Thanks!',
+      '',
+      firstName
+    );
   }
-
-  // Sign off
-  messageParts.push('', 'Thank you,', caseData.customerName || 'Customer');
 
   return messageParts.filter(Boolean).join('\n').trim();
 }
