@@ -3369,8 +3369,16 @@ async function handleStatusPickup(tracking) {
   await addBotMessage("Let me find the exact pickup location for you...");
   showProgress("Finding pickup location...");
 
-  // Get shipping address from selected order for web search fallback
+  // Get shipping address from selected order for web search
   const shippingAddress = state.selectedOrder?.shippingAddress || null;
+
+  // Debug logging
+  console.log('Pickup location lookup - Data being sent:', {
+    carrier: tracking?.carrier,
+    lastMile: tracking?.lastMile,
+    checkpointsCount: tracking?.checkpoints?.length || 0,
+    shippingAddress: shippingAddress,
+  });
 
   // Call API to parse pickup location from tracking data
   let pickupData = null;
@@ -3387,6 +3395,7 @@ async function handleStatusPickup(tracking) {
       }),
     });
     pickupData = await response.json();
+    console.log('Pickup location lookup - Response:', pickupData);
   } catch (error) {
     console.error('Failed to parse pickup location:', error);
   }
@@ -3401,13 +3410,17 @@ async function handleStatusPickup(tracking) {
   const googleMapsUrl = pickupData?.googleMapsUrl;
   const directions = pickupData?.directions;
   const lastMileTracking = pickupData?.lastMileTrackingNumber;
-  const displayTracking = lastMileTracking || tracking?.trackingNumber;
+  const isMainCarrierChina = pickupData?.isMainCarrierChina || false;
 
-  // Get carrier info - prefer displayCarrier, but don't use invalid values
+  // Use last-mile tracking if available, otherwise use main tracking ONLY if not China carrier
+  const displayTracking = lastMileTracking || (!isMainCarrierChina ? tracking?.trackingNumber : null);
+
+  // Get carrier info - use displayCarrier from backend (already filtered for China carriers)
+  // NEVER fall back to tracking?.carrier as it might be a China carrier (YunExpress, 4PX, etc.)
   const rawCarrier = pickupData?.displayCarrier;
-  const displayCarrier = rawCarrier && !['unknown', 'null', 'undefined'].includes(rawCarrier.toLowerCase())
+  const displayCarrier = rawCarrier && !['unknown', 'null', 'undefined'].includes((rawCarrier || '').toLowerCase())
     ? rawCarrier
-    : tracking?.carrier;
+    : null; // Don't fall back - backend already handled China carrier filtering
   const carrierInfo = displayCarrier ? getCarrierContactInfo(displayCarrier) : null;
 
   // Store parsed data for later use in investigation flow
@@ -3447,7 +3460,12 @@ async function handleStatusPickup(tracking) {
   if (carrierInfo) {
     message += `<br><strong>Carrier:</strong> ${carrierInfo.name}<br>`;
   }
-  message += `<strong>Tracking:</strong> ${displayTracking || 'N/A'}<br><br>`;
+  // Only show tracking if we have a valid one (not China tracking)
+  if (displayTracking) {
+    message += `<strong>Tracking:</strong> ${displayTracking}<br><br>`;
+  } else {
+    message += `<br>`;
+  }
   message += `<em>Packages are usually held for 5-7 days before being returned to sender.</em>`;
 
   await addBotMessage(message);
