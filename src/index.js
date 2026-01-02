@@ -252,27 +252,27 @@ Age: ${data.dogAge || 'Unknown'}
 
 What they've tried: ${data.methodsTried || 'Not specified'}
 
-Write a response with this EXACT structure (copy this format):
+Write your response with these sections:
 
----
-Hi! Thanks for reaching out about [dog name]. [One sentence acknowledging their [breed] if provided].
+1) GREETING: One sentence thanking them for reaching out about their dog by name. If breed provided, add a nice comment about the breed.
 
-Here's the thing - our PuppyPads have pheromones built in that attract most dogs instantly. But every now and then, some pups need a little extra nudge. You're definitely not alone in this!
+2) PHEROMONE EXPLANATION: Explain that our PuppyPads have pheromones built in that attract most dogs instantly. But every now and then, some pups need a little extra help - and that's totally normal! Reassure them they're not alone.
 
-Here are a few simple things that usually do the trick:
+3) TIPS INTRO: Say "Here are a few simple things that usually do the trick:"
 
-• [Tip 1 - one short sentence using dog's name]
+4) TIPS: Give exactly 3 short tips. Format each tip like this:
 
-• [Tip 2 - one short sentence]
+• Tip text here
 
-• [Tip 3 - one short sentence]
+• Next tip here
 
-• [Tip 4 - optional, one short sentence]
+• Final tip here
 
-Give these a try for a few days. I'm confident [dog name] will get the hang of it!
----
+Each bullet MUST be on its own line with empty lines between them.
 
-IMPORTANT: Each bullet point MUST be on its own line with a blank line before it. NO markdown formatting.`
+5) CLOSING: One encouraging sentence that you're confident their dog will get it.
+
+NEVER use markdown (no ** or *). NEVER include --- dashes. Just plain text with • bullets.`
   },
 
   // Changed mind / Didn't meet expectations (post-delivery)
