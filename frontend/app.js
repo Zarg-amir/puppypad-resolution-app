@@ -3491,14 +3491,21 @@ async function submitPickupAttempt() {
     notes: pickupNotes
   };
 
-  // Investigation warning to deter scammers - detailed but concise
+  // Investigation warning to deter scammers - detailed with dynamic data
   const carrierInfo = getCarrierContactInfo(state.tracking?.carrier);
+  const pickupLocation = getPickupLocationFromTracking(state.tracking);
+  const customerLocation = state.pickupAttemptDetails?.location || pickupLocation || 'the pickup location';
 
-  await addBotMessage(`Thanks for those details. This is quite rare so we'll need to open a formal investigation. Just so you know, PuppyPad and the shipping carrier are separate companies. Our responsibility is to pack your order and hand it off to them safely, which we did. But we always go above and beyond to help when things go wrong on their end.`);
+  await addBotMessage(`Thanks for those details. This is quite rare so we'll need to open a formal investigation. Just so you know, PuppyPad and ${carrierInfo.name} are two separate companies. Our responsibility is to pack your order and hand it off to them safely, which we did. But we always go above and beyond to help when things go wrong on their end.`);
 
-  await addBotMessage(`Here's how the investigation works: We'll contact ${carrierInfo.name} and the specific pickup location you visited. They'll review the security camera footage from that day, pull scan records to see exactly when your package arrived and if anyone collected it, and check staff logs. ${carrierInfo.name} will also file a police report as part of their standard process for missing packages.`);
+  await addBotMessage(`Here's how the investigation works:<br><br>
+• We'll contact ${carrierInfo.name} and <strong>${customerLocation}</strong> directly<br>
+• They'll review the security camera footage from that day<br>
+• They'll pull scan records to see when your package arrived and if anyone collected it<br>
+• Staff logs and handover records will be checked<br>
+• ${carrierInfo.name} will file a police report as part of their missing package process`);
 
-  await addBotMessage(`Your local police may reach out to you for a statement since you were the intended recipient. This helps them if they need to review CCTV footage or follow up with the location. We want to make this right for you, so while all that's happening, we can go ahead and reship your order. Would you like us to proceed?`);
+  await addBotMessage(`Your local police may reach out to you for a statement since you're the intended recipient. This helps if they need to pull CCTV footage or follow up with ${customerLocation}. We want to make this right, so while that's happening, we can reship your order. Would you like us to proceed?`);
 
   addOptions([
     { text: "Yes, please investigate and reship", action: () => handleInvestigationReship() },
@@ -4076,12 +4083,21 @@ async function declineShippingOffer() {
 async function handleDeliveredNotReceived() {
   const tracking = state.tracking || state.trackingInfo || {};
   const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+  const shippingAddress = state.selectedOrder?.shippingAddress;
+  const deliveryLocation = shippingAddress
+    ? `${shippingAddress.city || ''}${shippingAddress.province ? ', ' + shippingAddress.province : ''}`.trim() || 'your address'
+    : 'your address';
 
-  await addBotMessage("I'm really sorry to hear that. This is frustrating and I want to help you. Just so you know, PuppyPad and the shipping carrier are separate companies. Our job is to pack your order and hand it to the carrier safely, which we did. But we always go above and beyond to help when things go wrong on their end.");
+  await addBotMessage(`I'm really sorry to hear that. This is frustrating and I want to help you. Just so you know, PuppyPad and ${carrierInfo.name} are two separate companies. Our job is to pack your order and hand it to them safely, which we did. But we always go above and beyond to help when things go wrong on their end.`);
 
-  await addBotMessage(`Here's how our investigation works: We'll contact ${carrierInfo.name} directly to verify the delivery. They'll pull the GPS coordinates from where the driver scanned the package, any delivery photos they took, and driver logs from that day. We'll also cross-reference everything with your shipping address and contact the local ${carrierInfo.name} facility.`);
+  await addBotMessage(`Here's how our investigation works:<br><br>
+• We'll contact ${carrierInfo.name} directly to verify the delivery<br>
+• They'll pull the GPS coordinates from where the driver scanned your package<br>
+• Any delivery photos taken will be reviewed<br>
+• Driver logs and route data from that day will be checked<br>
+• We'll contact the local ${carrierInfo.name} facility near ${deliveryLocation}`);
 
-  await addBotMessage(`${carrierInfo.name} will file a police report as part of their missing package process. Your local police may reach out to you for a statement since you're the intended recipient. This helps if they need to pull CCTV footage from cameras near your address. Would you like us to proceed with the investigation?`);
+  await addBotMessage(`${carrierInfo.name} will file a police report as part of their missing package process. Your local police may reach out to you for a statement since you're the intended recipient. This helps if they need to pull CCTV footage from cameras near your address. Would you like us to proceed?`);
 
   addOptions([
     { text: "Yes, please investigate", action: async () => {
