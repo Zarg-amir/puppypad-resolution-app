@@ -3363,76 +3363,163 @@ async function handleMultipleFailedAttempts(tracking) {
 // Status: Pickup - ready for customer pickup
 async function handleStatusPickup(tracking) {
   const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+  const pickupLocation = getPickupLocationFromTracking(tracking);
 
-  await addBotMessage(`Your package is <strong>ready for pickup</strong> at a local ${carrierInfo.name} facility or access point.<br><br>Carrier: ${carrierInfo.name}<br>Tracking: ${tracking?.trackingNumber || 'N/A'}<br><br>Most packages are held for 5-7 days before being returned.`);
+  await addBotMessage(`Your package is <strong>ready for pickup</strong> at a ${carrierInfo.name} location.<br><br>Carrier: ${carrierInfo.name}<br>Tracking: ${tracking?.trackingNumber || 'N/A'}<br><br>Packages are usually held for 5-7 days before being returned to sender.`);
 
   addOptions([
     { text: "I'll go pick it up", action: async () => {
-      let pickupMessage = `Great! You can find the pickup location by:<br><br>1. Checking your email for a carrier notification<br>`;
+      let pickupMessage = `Perfect! Here's how to find your pickup location:<br><br>`;
+      pickupMessage += `1. Check your email for a notification from ${carrierInfo.name}<br>`;
       if (carrierInfo.website) {
-        pickupMessage += `2. Visiting <strong>${carrierInfo.website}</strong> and entering your tracking number<br>`;
+        pickupMessage += `2. Visit <strong>${carrierInfo.website}</strong> and enter your tracking number<br>`;
       }
-      pickupMessage += `<br>Tracking: <strong>${tracking?.trackingNumber || 'Check your email'}</strong>`;
+      if (carrierInfo.phone) {
+        pickupMessage += `3. Call ${carrierInfo.phone} if you need help locating it<br>`;
+      }
+      pickupMessage += `<br>Your tracking number: <strong>${tracking?.trackingNumber || 'Check your email'}</strong>`;
 
       await addBotMessage(pickupMessage);
+      await addBotMessage("Let me know if you have any trouble finding it!");
       addOptions([{ text: "Back to Home", action: showHomeMenu }]);
     }},
-    { text: "I can't pick it up", action: () => handleCantPickup(tracking) }
+    { text: "It wasn't there when I tried", action: () => handlePickupNotThere(tracking) }
   ]);
 }
 
-// Handle customer who can't pick up their package
-async function handleCantPickup(tracking) {
-  await addBotMessage("No problem — I understand. Could you tell me a bit about why you can't pick it up? This helps us find the best solution for you.");
+// Get pickup location from tracking checkpoints if available
+function getPickupLocationFromTracking(tracking) {
+  if (!tracking?.checkpoints?.length) return null;
+
+  // Look for pickup-related checkpoint
+  const pickupCheckpoint = tracking.checkpoints.find(cp =>
+    cp.message?.toLowerCase().includes('pickup') ||
+    cp.message?.toLowerCase().includes('ready') ||
+    cp.message?.toLowerCase().includes('available')
+  );
+
+  return pickupCheckpoint?.location || tracking.checkpoints[0]?.location || null;
+}
+
+// Handle when customer says package wasn't at pickup location
+async function handlePickupNotThere(tracking) {
+  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+  const pickupLocation = getPickupLocationFromTracking(tracking);
+
+  // First, validate they went to the right place
+  if (pickupLocation) {
+    await addBotMessage(`Just to make sure we're on the same page, the tracking shows your package should be at:<br><br><strong>${pickupLocation}</strong><br><br>Is this where you went?`);
+  } else {
+    await addBotMessage(`Let me help figure this out. Can you tell me where you went to pick up the package?<br><br>You can find the pickup location by checking your email from ${carrierInfo.name} or visiting their website with your tracking number.`);
+  }
+
+  addOptions([
+    { text: "Yes, that's where I went", action: () => handleConfirmedWrongLocation(tracking) },
+    { text: "No, I went somewhere else", action: async () => {
+      if (pickupLocation) {
+        await addBotMessage(`Got it! Your package is actually at <strong>${pickupLocation}</strong>. Please try picking it up from there and let me know if you still have issues.`);
+      } else {
+        await addBotMessage(`No worries! Check your email from ${carrierInfo.name} for the exact pickup location, or visit their website with tracking number <strong>${tracking?.trackingNumber}</strong> to find it.`);
+      }
+      addOptions([
+        { text: "Thanks, I'll go there", action: () => showSuccess("Good luck!", "Hope you get your package!") },
+        { text: "I still need help", action: () => handleConfirmedWrongLocation(tracking) }
+      ]);
+    }}
+  ]);
+}
+
+// Customer confirmed they went to the right place but package wasn't there
+async function handleConfirmedWrongLocation(tracking) {
+  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+
+  // Collect details about their pickup attempt
+  await addBotMessage("I'm sorry to hear that. Could you share a few details about your pickup attempt? This will help us investigate.");
 
   const formHtml = `
-    <div class="form-container" id="pickupReasonForm">
+    <div class="form-container" id="pickupAttemptForm">
       <div class="form-group">
-        <label>Why can't you pick it up?</label>
-        <textarea class="form-input" id="pickupReason" rows="3" placeholder="e.g., I'm out of town, the facility is too far, I don't have transportation, etc."></textarea>
+        <label>When did you try to pick it up?</label>
+        <input type="date" class="form-input" id="pickupDate" max="${new Date().toISOString().split('T')[0]}">
       </div>
-      <button class="form-button" onclick="submitPickupReason()">Submit</button>
+      <div class="form-group">
+        <label>What location did you go to?</label>
+        <input type="text" class="form-input" id="pickupLocationInput" placeholder="e.g., USPS on Main Street, UPS Store downtown">
+      </div>
+      <div class="form-group">
+        <label>What did they tell you? (optional)</label>
+        <textarea class="form-input" id="pickupNotes" rows="2" placeholder="e.g., They said they couldn't find it, no record of the package, etc."></textarea>
+      </div>
+      <button class="form-button" onclick="submitPickupAttempt()">Submit</button>
     </div>
   `;
 
   addInteractiveContent(formHtml);
 }
 
-// Submit pickup reason and show options
-async function submitPickupReason() {
-  const reasonEl = document.getElementById('pickupReason');
-  const reason = reasonEl?.value?.trim() || '';
+// Submit pickup attempt details and show investigation warning
+async function submitPickupAttempt() {
+  const dateEl = document.getElementById('pickupDate');
+  const locationEl = document.getElementById('pickupLocationInput');
+  const notesEl = document.getElementById('pickupNotes');
 
-  if (!reason) {
-    showToast("Please tell us why you can't pick it up");
+  const pickupDate = dateEl?.value;
+  const pickupLocationInput = locationEl?.value?.trim();
+  const pickupNotes = notesEl?.value?.trim();
+
+  if (!pickupDate) {
+    showToast("Please enter when you tried to pick it up");
     return;
   }
 
-  document.getElementById('pickupReasonForm')?.closest('.interactive-content').remove();
-  addUserMessage(reason);
+  if (!pickupLocationInput) {
+    showToast("Please enter which location you went to");
+    return;
+  }
 
-  // Store reason for case creation
-  state.pickupReason = reason;
+  document.getElementById('pickupAttemptForm')?.closest('.interactive-content').remove();
 
-  await addBotMessage("Thanks for letting me know. Here's how I can help:");
+  const formattedDate = new Date(pickupDate).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric'
+  });
+  addUserMessage(`Went to ${pickupLocationInput} on ${formattedDate}${pickupNotes ? `. ${pickupNotes}` : ''}`);
+
+  // Store for case creation
+  state.pickupAttemptDetails = {
+    date: pickupDate,
+    location: pickupLocationInput,
+    notes: pickupNotes
+  };
+
+  // Investigation warning to deter scammers
+  await addBotMessage("Thanks for the details. I'm really sorry this happened. Missing packages at pickup locations are quite rare, so we need to look into this carefully.");
+
+  await addBotMessage("Here's what happens next: We'll open an investigation with the carrier. They'll review security footage, scan logs, and staff records from that day. In some cases, this involves filing a report with local authorities.");
+
+  await addBotMessage("We want to make sure you get your order, so while the investigation is ongoing, we can also reship your package. Would you like to proceed?");
 
   addOptions([
-    { text: "Reship to my address", action: async () => {
-      await handleReship();
-    }},
-    { text: "Reship to a different address", action: async () => {
-      await handleReship();
-    }},
-    { text: "I'd prefer a refund", action: async () => {
-      state.ladderType = 'shipping';
-      state.ladderStep = 0;
-      await startShippingLadder();
+    { text: "Yes, please investigate and reship", action: () => handleInvestigationReship() },
+    { text: "Actually, let me check again first", action: async () => {
+      await addBotMessage("No problem at all! Sometimes packages turn up in unexpected places. Take your time and reach out if you still need help.");
+      addOptions([{ text: "Back to Home", action: showHomeMenu }]);
     }}
   ]);
 }
 
-// Make submitPickupReason available globally
-window.submitPickupReason = submitPickupReason;
+// Handle investigation + reship flow
+async function handleInvestigationReship() {
+  await addBotMessage("Okay, I'll get that started for you. Our team will open the investigation with the carrier and we'll reship your order in the meantime.");
+
+  // Store that this is an investigation case
+  state.pickupReason = `Package not at pickup location. Attempted pickup on ${state.pickupAttemptDetails?.date} at ${state.pickupAttemptDetails?.location}. ${state.pickupAttemptDetails?.notes || ''}`.trim();
+  state.carrierIssue = 'pickup_investigation';
+
+  await handleReship();
+}
+
+// Make functions available globally
+window.submitPickupAttempt = submitPickupAttempt;
 
 // Status: Exception/Expired/Unknown - problem with delivery
 async function handleStatusException(tracking) {
