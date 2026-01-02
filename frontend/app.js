@@ -3491,17 +3491,25 @@ async function submitPickupAttempt() {
     notes: pickupNotes
   };
 
-  // Investigation warning to deter scammers
-  await addBotMessage("Thanks for the details. I'm really sorry this happened. Missing packages at pickup locations are quite rare, so we need to look into this carefully.");
+  // Investigation warning to deter scammers - broken into natural chat messages
+  await addBotMessage("Thanks for sharing those details. I'm really sorry you're dealing with this.");
 
-  await addBotMessage("Here's what happens next: We'll open an investigation with the carrier. They'll review security footage, scan logs, and staff records from that day. In some cases, this involves filing a report with local authorities.");
+  await addBotMessage("I have to be honest with you, this is quite a rare situation. Packages going missing from pickup locations doesn't happen often, so we do need to take it seriously and look into it properly.");
 
-  await addBotMessage("We want to make sure you get your order, so while the investigation is ongoing, we can also reship your package. Would you like to proceed?");
+  await addBotMessage("Just so you know, PuppyPad and the shipping carrier are two separate companies. Our job is to carefully pack your order and hand it off to the carrier. We always choose the most reliable carriers, but once it's in their hands, it's out of our direct control.");
+
+  await addBotMessage("That said, we always go above and beyond for our customers. So here's what we'll do:");
+
+  await addBotMessage("We'll open a formal investigation with the carrier. They'll pull the security camera footage from that location, check the scan records, and review staff logs from the day you went in. If the package was there and something happened to it, they'll find out.");
+
+  await addBotMessage("In cases like this, the carrier usually files a police report as part of their investigation. They might reach out to you for a statement or additional details down the line, just so you're aware.");
+
+  await addBotMessage("We really do want to make this right for you. While the investigation is happening, we can go ahead and reship your order so you're not waiting around. Would you like us to proceed with the investigation and get a new package out to you?");
 
   addOptions([
     { text: "Yes, please investigate and reship", action: () => handleInvestigationReship() },
     { text: "Actually, let me check again first", action: async () => {
-      await addBotMessage("No problem at all! Sometimes packages turn up in unexpected places. Take your time and reach out if you still need help.");
+      await addBotMessage("No worries at all! Sometimes packages show up in unexpected places. Take your time to have another look and just come back if you still need help.");
       addOptions([{ text: "Back to Home", action: showHomeMenu }]);
     }}
   ]);
