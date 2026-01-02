@@ -248,7 +248,11 @@ You know how different breeds and ages respond:
 You MUST output valid HTML. Use these tags:
 - <p> for paragraphs
 - <ul> and <li> for bullet point tips
-- Do NOT use markdown, asterisks, or plain text bullets
+
+CRITICAL:
+- Do NOT use markdown (no asterisks, no backticks)
+- Do NOT wrap in code blocks (no \`\`\`html)
+- Just output raw HTML directly
 
 === PRODUCT INFO ===
 ${productDoc || 'PuppyPad - reusable pee pad with pheromone attractant'}`,
@@ -281,7 +285,8 @@ Write your response in HTML with this structure:
 IMPORTANT:
 - Tips MUST be tailored to the breed (${data.dogBreed || 'their dog'}) and age (${data.dogAge || 'their age'})
 - If they mentioned trying something, suggest DIFFERENT approaches
-- Output valid HTML only - no markdown`
+- Output raw HTML only - NO markdown, NO code blocks, NO backticks
+- Just start with <p> and end with </p> - nothing else around it`
   },
 
   // Changed mind / Didn't meet expectations (post-delivery)
@@ -2817,17 +2822,24 @@ ${persona.instruction}`;
 }
 
 function splitMessage(message) {
+  // Don't split HTML content - keep as single message
+  if (message.includes('<p>') || message.includes('<ul>') || message.includes('<li>')) {
+    // Clean up any markdown code block wrappers GPT might add
+    let cleaned = message.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
+    return [cleaned];
+  }
+
   // If message is short, return as single message
-  if (message.length < 300) return [message];
+  if (message.length < 500) return [message];
 
   // Split into 2 messages at a natural break point
   const midPoint = Math.floor(message.length / 2);
   let splitIndex = message.lastIndexOf('. ', midPoint + 50);
-  
+
   if (splitIndex === -1 || splitIndex < midPoint - 100) {
     splitIndex = message.indexOf('. ', midPoint);
   }
-  
+
   if (splitIndex === -1) return [message];
 
   return [

@@ -710,6 +710,30 @@ h1, h2, h3, h4, h5, h6 {
   border-bottom-right-radius: 6px;
 }
 
+/* Message Bubble - HTML Content Styling */
+.message-bubble p {
+  margin: 0 0 12px 0;
+}
+
+.message-bubble p:last-child {
+  margin-bottom: 0;
+}
+
+.message-bubble ul {
+  margin: 12px 0;
+  padding-left: 20px;
+  list-style-type: disc;
+}
+
+.message-bubble li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.message-bubble li:last-child {
+  margin-bottom: 0;
+}
+
 /* ============================================
    TYPING INDICATOR
    ============================================ */
