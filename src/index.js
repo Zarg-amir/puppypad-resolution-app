@@ -896,25 +896,42 @@ export default {
         });
       }
 
-      // Proxy PostHog ingest (events, recordings, etc.)
+      // Proxy PostHog ingest (events, recordings, decide, etc.)
       if (pathname.startsWith('/ph/')) {
         const posthogPath = pathname.replace('/ph/', '');
         const posthogUrl = `https://us.i.posthog.com/${posthogPath}${url.search}`;
 
+        // Read body as arrayBuffer to preserve binary/compressed data
+        const requestBody = request.method !== 'GET' && request.method !== 'HEAD'
+          ? await request.arrayBuffer()
+          : undefined;
+
+        // Forward request with necessary headers for PostHog
+        const headers = new Headers();
+
+        // Copy all content-related headers
+        const contentType = request.headers.get('Content-Type');
+        if (contentType) headers.set('Content-Type', contentType);
+
+        // Critical: Forward Content-Encoding for gzip compressed data
+        const contentEncoding = request.headers.get('Content-Encoding');
+        if (contentEncoding) headers.set('Content-Encoding', contentEncoding);
+
         const response = await fetch(posthogUrl, {
           method: request.method,
-          headers: {
-            'Content-Type': request.headers.get('Content-Type') || 'application/json',
-          },
-          body: request.method !== 'GET' ? await request.text() : undefined,
+          headers: headers,
+          body: requestBody,
         });
+
+        // Forward the response with CORS headers
+        const responseHeaders = new Headers(response.headers);
+        responseHeaders.set('Access-Control-Allow-Origin', '*');
+        responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Content-Encoding');
 
         return new Response(response.body, {
           status: response.status,
-          headers: {
-            'Content-Type': response.headers.get('Content-Type') || 'application/json',
-            ...corsHeaders
-          }
+          headers: responseHeaders
         });
       }
 
