@@ -35,6 +35,41 @@ const RICHPANEL_CONFIG = {
   supportEmail: 'help@teampuppypad.com',       // Production support email
 };
 
+// ============================================
+// EASY CONFIG: CHINA/INTERNATIONAL CARRIERS
+// These carriers should be hidden from customers
+// Show "our international warehouse" instead
+// ============================================
+const CHINA_CARRIERS = [
+  'yunexpress', 'yun express',
+  'yanwen', 'yanwen express',
+  '4px', '4px express', '4px worldwide express',
+  'cne', 'cne express', 'cnexps',
+  'cainiao', 'cainiao super economy',
+  'china post', 'china ems', 'epacket',
+  'sf express', 'sf international',
+  'sto express', 'shentong',
+  'yto express', 'yuantong',
+  'zto express', 'zhongtong',
+  'best express', 'best inc',
+  'jd logistics', 'jingdong',
+  'sunyou', 'sun you',
+  'anjun', 'anjun logistics',
+  'winit', 'wan b',
+  'flyt express', 'flytexpress',
+  'equick', 'equick china',
+  'ubi logistics', 'ubi smart parcel',
+  'toll', 'toll priority', 'toll ipec',
+  'speedpak',
+];
+
+// Helper to check if a carrier is a China/international carrier
+function isChinaCarrier(carrierName) {
+  if (!carrierName) return false;
+  const lowerName = carrierName.toLowerCase();
+  return CHINA_CARRIERS.some(china => lowerName.includes(china));
+}
+
 // Helper to check if we're in test mode (reads from env)
 function isTestMode(env) {
   // Explicit RICHPANEL_TEST_MODE takes priority
@@ -323,6 +358,11 @@ export default {
       // AI response (Amy/Claudia)
       if (pathname === '/api/ai-response' && request.method === 'POST') {
         return await handleAIResponse(request, env, corsHeaders);
+      }
+
+      // Parse pickup location from tracking data using AI
+      if (pathname === '/api/parse-pickup-location' && request.method === 'POST') {
+        return await handleParsePickupLocation(request, env, corsHeaders);
       }
 
       // Upload evidence
@@ -2121,6 +2161,116 @@ async function handleAIResponse(request, env, corsHeaders) {
   const messages = splitMessage(message);
 
   return Response.json({ messages }, { headers: corsHeaders });
+}
+
+// ============================================
+// PARSE PICKUP LOCATION
+// Uses OpenAI to intelligently extract pickup info from tracking data
+// ============================================
+async function handleParsePickupLocation(request, env, corsHeaders) {
+  const { tracking, carrier, checkpoints, lastMile } = await request.json();
+
+  // Build context for OpenAI
+  const checkpointMessages = (checkpoints || [])
+    .map(cp => `${cp.checkpoint_time || ''}: ${cp.message || ''} ${cp.location ? `(${cp.location})` : ''}`)
+    .join('\n');
+
+  const systemPrompt = `You are a shipping data parser. Analyze the tracking checkpoints and carrier information to determine the ACTUAL pickup location for a customer.
+
+Important rules:
+1. The main carrier might be an international shipping company (like YunExpress, 4PX, etc.) but the LAST-MILE carrier is what matters for pickup
+2. Look for checkpoint messages that mention specific pickup locations like "daoSHOP", "PostNord", "Parcel Locker", store names, etc.
+3. Extract the most specific pickup location name and address if available
+4. Identify the last-mile carrier (the local carrier handling final delivery/pickup)
+
+Return ONLY valid JSON in this exact format:
+{
+  "pickupLocationName": "the specific pickup point name (e.g., daoSHOP, PostNord Service Point, UPS Store)",
+  "pickupAddress": "full address if mentioned in checkpoints, otherwise null",
+  "lastMileCarrier": "the local carrier name for pickup (e.g., DAO365, PostNord, UPS)",
+  "lastMileTrackingNumber": "the last-mile tracking number if different from main tracking",
+  "confidence": "high/medium/low"
+}`;
+
+  const userPrompt = `Main Carrier: ${carrier || 'Unknown'}
+Last Mile Data: ${JSON.stringify(lastMile) || 'None'}
+Tracking Number: ${tracking?.trackingNumber || 'Unknown'}
+
+Checkpoints:
+${checkpointMessages || 'No checkpoints available'}
+
+Parse this and return the pickup location details as JSON.`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        max_tokens: 300,
+        temperature: 0.1, // Low temperature for consistent structured output
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('OpenAI API error:', response.status);
+      return Response.json({
+        success: false,
+        error: 'AI parsing failed',
+        // Fallback to basic parsing
+        pickupLocationName: null,
+        lastMileCarrier: lastMile?.carrier?.name || null,
+      }, { headers: corsHeaders });
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content || '';
+
+    // Parse JSON from response
+    let parsed;
+    try {
+      // Extract JSON from response (in case there's extra text)
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    } catch (e) {
+      console.error('Failed to parse AI response:', content);
+      parsed = {};
+    }
+
+    // Check if main carrier is a China carrier
+    const isMainCarrierChina = isChinaCarrier(carrier);
+
+    return Response.json({
+      success: true,
+      pickupLocationName: parsed.pickupLocationName || null,
+      pickupAddress: parsed.pickupAddress || null,
+      lastMileCarrier: parsed.lastMileCarrier || lastMile?.carrier?.name || null,
+      lastMileTrackingNumber: parsed.lastMileTrackingNumber || lastMile?.tracking_number || null,
+      confidence: parsed.confidence || 'low',
+      isMainCarrierChina,
+      // If main carrier is China, use last-mile or parsed carrier for display
+      displayCarrier: isMainCarrierChina
+        ? (parsed.lastMileCarrier || lastMile?.carrier?.name || 'Local carrier')
+        : carrier,
+    }, { headers: corsHeaders });
+
+  } catch (error) {
+    console.error('Pickup location parse error:', error);
+    return Response.json({
+      success: false,
+      error: error.message,
+      pickupLocationName: null,
+      lastMileCarrier: lastMile?.carrier?.name || null,
+      isMainCarrierChina: isChinaCarrier(carrier),
+    }, { headers: corsHeaders });
+  }
 }
 
 // Gets the appropriate prompt pack for the given intent
