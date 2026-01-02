@@ -3145,13 +3145,20 @@ async function handleTrackingResult() {
       break;
 
     case 'pickup':
+    case 'ready_for_pickup':
+    case 'available_for_pickup':
       await handleStatusPickup(tracking);
       break;
 
     case 'exception':
     case 'expired':
     default:
-      await handleStatusException(tracking);
+      // Check if it's actually a pickup status that slipped through
+      if (tracking.status?.includes('pickup') || tracking.statusLabel?.toLowerCase().includes('pickup')) {
+        await handleStatusPickup(tracking);
+      } else {
+        await handleStatusException(tracking);
+      }
       break;
   }
 }
