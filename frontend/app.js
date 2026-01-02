@@ -2026,54 +2026,142 @@ async function handleDogNotUsing() {
   renderDogInfoForm();
 }
 
+let dogFormCounter = 1;
+
 function renderDogInfoForm() {
+  dogFormCounter = 1;
   const formHtml = `
     <div class="form-container" id="dogInfoForm">
-      <div class="form-group">
-        <label>Dog's Name *</label>
-        <input type="text" class="form-input" id="dogName" placeholder="e.g., Max">
+      <div id="dogsContainer">
+        <div class="dog-entry" data-dog-index="1">
+          <div class="dog-entry-header">
+            <span class="dog-entry-title">Dog 1</span>
+          </div>
+          <div class="form-row">
+            <div class="form-group form-group-inline">
+              <label>Name *</label>
+              <input type="text" class="form-input dog-name" placeholder="e.g., Max">
+            </div>
+            <div class="form-group form-group-inline">
+              <label>Breed *</label>
+              <input type="text" class="form-input dog-breed" placeholder="e.g., Golden Retriever">
+            </div>
+            <div class="form-group form-group-inline">
+              <label>Age *</label>
+              <input type="text" class="form-input dog-age" placeholder="e.g., 2 years">
+            </div>
+          </div>
+        </div>
       </div>
-      
-      <div class="form-group">
-        <label>Breed *</label>
-        <input type="text" class="form-input" id="dogBreed" placeholder="e.g., Golden Retriever">
-      </div>
-      
-      <div class="form-group">
-        <label>Age *</label>
-        <input type="text" class="form-input" id="dogAge" placeholder="e.g., 2 years">
-      </div>
-      
-      <div class="form-group">
+
+      <button type="button" class="add-dog-btn" onclick="addAnotherDog()">
+        + Add Another Dog
+      </button>
+
+      <div class="form-group" style="margin-top: 16px;">
         <label>What have you tried so far?</label>
         <textarea class="form-input" id="methodsTried" rows="3" placeholder="Tell us what methods you've already attempted..."></textarea>
       </div>
-      
+
+      <div id="formValidationError" class="validation-error" style="display: none;">
+        Please fill in all required fields (name, breed, and age) for each dog.
+      </div>
+
       <button class="option-btn primary" onclick="submitDogInfo()" style="margin-top: 8px; width: 100%;">
         Get Personalized Tips
       </button>
     </div>
   `;
-  
+
   addInteractiveContent(formHtml);
 }
 
-async function submitDogInfo() {
-  const dogName = document.getElementById('dogName')?.value.trim();
-  const dogBreed = document.getElementById('dogBreed')?.value.trim();
-  const dogAge = document.getElementById('dogAge')?.value.trim();
-  const methodsTried = document.getElementById('methodsTried')?.value.trim();
+function addAnotherDog() {
+  dogFormCounter++;
+  const container = document.getElementById('dogsContainer');
+  const newDogHtml = `
+    <div class="dog-entry" data-dog-index="${dogFormCounter}">
+      <div class="dog-entry-header">
+        <span class="dog-entry-title">Dog ${dogFormCounter}</span>
+        <button type="button" class="remove-dog-btn" onclick="removeDog(this)">✕</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group form-group-inline">
+          <label>Name *</label>
+          <input type="text" class="form-input dog-name" placeholder="e.g., Bella">
+        </div>
+        <div class="form-group form-group-inline">
+          <label>Breed *</label>
+          <input type="text" class="form-input dog-breed" placeholder="e.g., Labrador">
+        </div>
+        <div class="form-group form-group-inline">
+          <label>Age *</label>
+          <input type="text" class="form-input dog-age" placeholder="e.g., 3 years">
+        </div>
+      </div>
+    </div>
+  `;
+  container.insertAdjacentHTML('beforeend', newDogHtml);
+}
 
-  if (!dogName || !dogBreed || !dogAge) {
-    await addBotMessage("Please fill in your dog's name, breed, and age so Claudia can help.");
+function removeDog(btn) {
+  const dogEntry = btn.closest('.dog-entry');
+  dogEntry.remove();
+  // Renumber remaining dogs
+  const entries = document.querySelectorAll('.dog-entry');
+  entries.forEach((entry, idx) => {
+    entry.querySelector('.dog-entry-title').textContent = `Dog ${idx + 1}`;
+    entry.dataset.dogIndex = idx + 1;
+  });
+  dogFormCounter = entries.length;
+}
+
+async function submitDogInfo() {
+  // Collect all dogs from the form
+  const dogEntries = document.querySelectorAll('.dog-entry');
+  const dogs = [];
+  let hasValidationError = false;
+
+  // Clear previous error states
+  document.querySelectorAll('.form-input.error').forEach(el => el.classList.remove('error'));
+  const errorDiv = document.getElementById('formValidationError');
+  errorDiv.style.display = 'none';
+
+  dogEntries.forEach(entry => {
+    const nameInput = entry.querySelector('.dog-name');
+    const breedInput = entry.querySelector('.dog-breed');
+    const ageInput = entry.querySelector('.dog-age');
+
+    const name = nameInput?.value.trim();
+    const breed = breedInput?.value.trim();
+    const age = ageInput?.value.trim();
+
+    // Validate and mark errors
+    if (!name) { nameInput.classList.add('error'); hasValidationError = true; }
+    if (!breed) { breedInput.classList.add('error'); hasValidationError = true; }
+    if (!age) { ageInput.classList.add('error'); hasValidationError = true; }
+
+    if (name && breed && age) {
+      dogs.push({ name, breed, age });
+    }
+  });
+
+  if (hasValidationError || dogs.length === 0) {
+    errorDiv.style.display = 'block';
     return;
   }
 
+  const methodsTried = document.getElementById('methodsTried')?.value.trim();
+
   document.getElementById('dogInfoForm')?.closest('.interactive-content').remove();
+
+  // Build summary for multiple dogs
+  const dogsSummary = dogs.map(d => `${d.name} (${d.breed}, ${d.age})`).join(', ');
+  const dogNames = dogs.map(d => d.name).join(' and ');
 
   const summaryHtml = `
     <div class="editable-summary">
-      <div class="summary-row"><span class="summary-label">Dog:</span> ${dogName} (${dogBreed}, ${dogAge})</div>
+      <div class="summary-row"><span class="summary-label">Dog${dogs.length > 1 ? 's' : ''}:</span> ${dogsSummary}</div>
       ${methodsTried ? `<div class="summary-row"><span class="summary-label">Tried:</span> ${methodsTried.substring(0, 50)}${methodsTried.length > 50 ? '...' : ''}</div>` : ''}
     </div>
   `;
@@ -2084,7 +2172,7 @@ async function submitDogInfo() {
 
   setPersona('claudia');
 
-  await addBotMessage("Hi there! Thanks for the info about " + dogName + ". Let me review everything and give you some personalized tips...", 'claudia');
+  await addBotMessage(`Hi there! Thanks for the info about ${dogNames}. Let me review everything and give you some personalized tips...`, 'claudia');
 
   // Get product name from order
   const productName = state.selectedOrder?.lineItems?.[0]?.name || 'PuppyPad';
@@ -2099,9 +2187,10 @@ async function submitDogInfo() {
       body: JSON.stringify({
         scenarioType: 'dog_tips',
         scenarioData: {
-          dogName,
-          dogBreed,
-          dogAge,
+          dogs,
+          dogName: dogs[0]?.name,
+          dogBreed: dogs[0]?.breed,
+          dogAge: dogs[0]?.age,
           methodsTried,
           productName,
         },

@@ -238,11 +238,15 @@ You know how different breeds and ages respond:
 - Small breeds (Chihuahuas, Yorkies): May be intimidated by large pads, need encouragement
 
 === CRITICAL RULES ===
-1. ALWAYS use the dog's actual name throughout
+1. ALWAYS use each dog's actual name throughout
 2. Give BREED-SPECIFIC advice when breed is provided
 3. Give AGE-APPROPRIATE advice based on their dog's age
-4. If they mention what they've tried, acknowledge it and suggest DIFFERENT approaches
+4. If they mention what they've tried, you MUST:
+   - Acknowledge it explicitly ("I can see you've already tried X...")
+   - Explain why those methods might not have worked
+   - Suggest DIFFERENT approaches that build on or complement what they tried
 5. Emphasize these are simple tips, not intensive training (pheromones do most of the work)
+6. If multiple dogs, give tips that work for all of them or address each dog specifically
 
 === OUTPUT FORMAT ===
 You MUST output valid HTML. Use these tags:
@@ -256,37 +260,46 @@ CRITICAL:
 
 === PRODUCT INFO ===
 ${productDoc || 'PuppyPad - reusable pee pad with pheromone attractant'}`,
-    buildUserPrompt: (data) => `A customer's dog isn't using the PuppyPad yet. Give personalized advice.
+    buildUserPrompt: (data) => {
+      // Format dogs list
+      const dogs = data.dogs || [{ name: data.dogName, breed: data.dogBreed, age: data.dogAge }];
+      const dogsInfo = dogs.map((d, i) => `Dog ${i + 1}: ${d.name} (${d.breed}, ${d.age})`).join('\n');
+      const dogNames = dogs.map(d => d.name).join(' and ');
+      const isSingleDog = dogs.length === 1;
+
+      return `A customer needs help - their dog${isSingleDog ? " isn't" : "s aren't"} using the PuppyPad yet.
 
 DOG INFO:
-- Name: ${data.dogName || 'Unknown'}
-- Breed: ${data.dogBreed || 'Unknown breed'}
-- Age: ${data.dogAge || 'Unknown age'}
+${dogsInfo}
 
 WHAT THEY'VE ALREADY TRIED:
 ${data.methodsTried || 'Nothing specific mentioned'}
 
-Write your response in HTML with this structure:
+Write your response in HTML. ${isSingleDog ? '' : 'Address all dogs by name.'}
 
-<p>[Warm greeting using dog's name. If breed provided, mention something positive about that breed's traits.]</p>
+STRUCTURE:
 
-<p>[Explain that PuppyPads have pheromones that work instantly for most dogs, but some pups need a little extra help. Reassure them they're not alone - this happens sometimes!]</p>
+<p>[Warm greeting mentioning ${dogNames}. Say something positive about their breed${isSingleDog ? '' : 's'}.]</p>
 
-<p>Here are a few tips specifically for [dog name] that should help:</p>
+${data.methodsTried && data.methodsTried !== 'Nothing specific mentioned' ? `<p>[IMPORTANT: Acknowledge what they've tried: "${data.methodsTried}". Say something like "I can see you've already tried..." and briefly explain why it might not have worked yet. Show you've taken this into account.]</p>` : ''}
+
+<p>[Explain that PuppyPads have pheromones that work instantly for most dogs, but some pups need extra help. Reassure them - they're not alone!]</p>
+
+<p>Here are a few tips specifically for ${dogNames}:</p>
 
 <ul>
-<li>[Tip 1 - MUST be relevant to their breed/age. Use dog's name.]</li>
-<li>[Tip 2 - MUST be different from what they've already tried. Be specific.]</li>
-<li>[Tip 3 - Another practical tip suited to their situation.]</li>
+<li>[Tip 1 - Tailored to breed/age. Use dog name${isSingleDog ? '' : 's'}.]</li>
+<li>[Tip 2 - MUST be different from what they already tried. Explain why this approach is different.]</li>
+<li>[Tip 3 - Another practical tip for their situation.]</li>
 </ul>
 
-<p>[Encouraging closing - confident their dog will get it within days, not weeks. Use dog's name.]</p>
+<p>[Encouraging close - confident ${dogNames} will get it within days. Be warm!]</p>
 
-IMPORTANT:
-- Tips MUST be tailored to the breed (${data.dogBreed || 'their dog'}) and age (${data.dogAge || 'their age'})
-- If they mentioned trying something, suggest DIFFERENT approaches
-- Output raw HTML only - NO markdown, NO code blocks, NO backticks
-- Just start with <p> and end with </p> - nothing else around it`
+CRITICAL:
+- Output raw HTML only - NO markdown, NO code blocks
+- Start with <p>, end with </p>
+- If they mentioned trying something, ACKNOWLEDGE IT and explain why your tips are different`;
+    }
   },
 
   // Changed mind / Didn't meet expectations (post-delivery)
