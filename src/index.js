@@ -880,6 +880,44 @@ export default {
         return await handleAdminSetup(request, env, corsHeaders);
       }
 
+      // ============================================
+      // POSTHOG PROXY (bypass ad blockers)
+      // ============================================
+
+      // Proxy PostHog script
+      if (pathname === '/ph/array.js') {
+        const response = await fetch('https://us-assets.i.posthog.com/static/array.js');
+        return new Response(response.body, {
+          headers: {
+            'Content-Type': 'application/javascript',
+            'Cache-Control': 'public, max-age=3600',
+            ...corsHeaders
+          }
+        });
+      }
+
+      // Proxy PostHog ingest (events, recordings, etc.)
+      if (pathname.startsWith('/ph/')) {
+        const posthogPath = pathname.replace('/ph/', '');
+        const posthogUrl = `https://us.i.posthog.com/${posthogPath}${url.search}`;
+
+        const response = await fetch(posthogUrl, {
+          method: request.method,
+          headers: {
+            'Content-Type': request.headers.get('Content-Type') || 'application/json',
+          },
+          body: request.method !== 'GET' ? await request.text() : undefined,
+        });
+
+        return new Response(response.body, {
+          status: response.status,
+          headers: {
+            'Content-Type': response.headers.get('Content-Type') || 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
+
       // 404 for unknown routes
       return Response.json({ error: 'Not found' }, { status: 404, headers: corsHeaders });
 
