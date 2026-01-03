@@ -3484,7 +3484,10 @@ async function handleChargedUnexpectedlyConfirmed() {
 
   showProgress("Checking delivery status...", "Looking up your package");
 
-  // Check delivery status
+  // Check delivery status - only catch fetch errors, not handler errors
+  let isDelivered = false;
+  let trackingFetched = false;
+
   try {
     const orderNumber = state.selectedOrder?.orderNumber;
     const response = await fetch(`${CONFIG.API_URL}/api/tracking`, {
@@ -3493,28 +3496,24 @@ async function handleChargedUnexpectedlyConfirmed() {
       body: JSON.stringify({ orderNumber: orderNumber?.replace('#', '') })
     });
 
-    hideProgress();
-
     if (response.ok) {
       const data = await response.json();
       state.tracking = data.tracking;
-
       const status = data.tracking?.status?.toLowerCase() || '';
-      const isDelivered = status.includes('delivered');
-
-      if (isDelivered) {
-        await handleChargedUnexpectedlyDelivered();
-      } else {
-        await handleChargedUnexpectedlyNotDelivered();
-      }
-    } else {
-      // Couldn't get tracking, assume not delivered
-      state.tracking = null;
-      await handleChargedUnexpectedlyNotDelivered();
+      isDelivered = status.includes('delivered');
+      trackingFetched = true;
     }
   } catch (error) {
-    hideProgress();
-    state.tracking = null;
+    console.error('Tracking fetch error:', error);
+  }
+
+  hideProgress();
+
+  // Now call the appropriate handler OUTSIDE the try/catch
+  if (isDelivered) {
+    await handleChargedUnexpectedlyDelivered();
+  } else {
+    state.tracking = trackingFetched ? state.tracking : null;
     await handleChargedUnexpectedlyNotDelivered();
   }
 }
