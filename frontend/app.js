@@ -139,19 +139,29 @@ function getCarrierContactInfo(carrier) {
 // ANALYTICS MODULE
 // ============================================
 const Analytics = {
-  // Log session start
+  // Log session start or update
   async logSession(data) {
     try {
+      // Get customer name from various sources
+      const customerName = state.customerData?.firstName
+        ? `${state.customerData.firstName} ${state.customerData.lastName || ''}`.trim()
+        : state.selectedOrder
+          ? `${state.selectedOrder.customerFirstName || ''} ${state.selectedOrder.customerLastName || ''}`.trim()
+          : null;
+
       await fetch(`${CONFIG.API_URL}/api/analytics/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: state.sessionId,
           flowType: data.flowType || state.flowType,
-          customerEmail: state.customerData.email,
-          orderNumber: state.customerData.orderNumber,
+          customerEmail: state.customerData?.email || state.selectedOrder?.email,
+          customerName: customerName,
+          orderNumber: state.customerData?.orderNumber || state.selectedOrder?.orderNumber,
           persona: state.currentPersona,
           deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+          sessionReplayUrl: getSessionReplayUrl(),
+          issueType: state.issueType || null,
           ...data
         })
       });
