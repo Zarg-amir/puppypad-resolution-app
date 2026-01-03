@@ -1045,6 +1045,8 @@ async function addOptionsRow(options) {
     btn.style.opacity = '0';
     btn.style.transform = 'translateY(20px)';
     btn.onclick = () => {
+      // Prevent double-click by disabling all buttons immediately
+      innerRow.querySelectorAll('button').forEach(b => b.disabled = true);
       rowDiv.remove();
       if (option.showAsMessage !== false) {
         addUserMessage(option.text);
@@ -1328,7 +1330,9 @@ async function restartChat() {
     caseId: null,
     flowType: null,
     editHistory: [],
-    existingCaseInfo: null
+    existingCaseInfo: null,
+    chargedUnexpectedlyProcessing: false,
+    chargedUnexpectedlyDelivered: null
   });
 
   // Clear session
@@ -3471,6 +3475,10 @@ Is this the charge you're referring to?`);
 }
 
 async function handleChargedUnexpectedlyConfirmed() {
+  // Prevent double execution
+  if (state.chargedUnexpectedlyProcessing) return;
+  state.chargedUnexpectedlyProcessing = true;
+
   // They recognize the order but say they didn't place it
   await addBotMessage("Got it! So you see the order, but you're saying you didn't place it yourself?<br><br>No worries — like I mentioned, this could be a family member, a gift, or maybe even an accidental order. Let me check a few things...");
 
