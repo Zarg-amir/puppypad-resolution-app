@@ -823,26 +823,26 @@ export default {
       }
 
       // ============================================
-      // ANALYTICS ENDPOINTS
+      // DATA COLLECTION ENDPOINTS (renamed from analytics to avoid ad blockers)
       // ============================================
 
       // Log event
-      if (pathname === '/api/analytics/event' && request.method === 'POST') {
+      if ((pathname === '/api/a/event' || pathname === '/api/analytics/event') && request.method === 'POST') {
         return await handleLogEvent(request, env, corsHeaders);
       }
 
       // Log session
-      if (pathname === '/api/analytics/session' && request.method === 'POST') {
+      if ((pathname === '/api/a/session' || pathname === '/api/analytics/session') && request.method === 'POST') {
         return await handleLogSession(request, env, corsHeaders);
       }
 
       // Log survey response
-      if (pathname === '/api/analytics/survey' && request.method === 'POST') {
+      if ((pathname === '/api/a/survey' || pathname === '/api/analytics/survey') && request.method === 'POST') {
         return await handleLogSurvey(request, env, corsHeaders);
       }
 
       // Log policy block
-      if (pathname === '/api/analytics/policy-block' && request.method === 'POST') {
+      if ((pathname === '/api/a/policy-block' || pathname === '/api/analytics/policy-block') && request.method === 'POST') {
         return await handleLogPolicyBlock(request, env, corsHeaders);
       }
 

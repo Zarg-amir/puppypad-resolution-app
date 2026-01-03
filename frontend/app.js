@@ -149,7 +149,7 @@ const Analytics = {
           ? `${state.selectedOrder.customerFirstName || ''} ${state.selectedOrder.customerLastName || ''}`.trim()
           : null;
 
-      await fetch(`${CONFIG.API_URL}/api/analytics/session`, {
+      await fetch(`${CONFIG.API_URL}/api/a/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -173,7 +173,7 @@ const Analytics = {
   // Log user event
   async logEvent(eventType, eventName, eventData = {}) {
     try {
-      await fetch(`${CONFIG.API_URL}/api/analytics/event`, {
+      await fetch(`${CONFIG.API_URL}/api/a/event`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -191,7 +191,7 @@ const Analytics = {
   // Log survey response
   async logSurvey(rating) {
     try {
-      await fetch(`${CONFIG.API_URL}/api/analytics/survey`, {
+      await fetch(`${CONFIG.API_URL}/api/a/survey`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -208,7 +208,7 @@ const Analytics = {
   // Log policy block
   async logPolicyBlock(blockType, data = {}) {
     try {
-      await fetch(`${CONFIG.API_URL}/api/analytics/policy-block`, {
+      await fetch(`${CONFIG.API_URL}/api/a/policy-block`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
