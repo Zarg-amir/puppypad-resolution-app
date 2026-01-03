@@ -870,6 +870,16 @@ export default {
         return await handleEventsList(request, env, corsHeaders);
       }
 
+      // Sessions list (protected)
+      if (pathname === '/admin/api/sessions' && request.method === 'GET') {
+        return await handleSessionsList(request, env, corsHeaders);
+      }
+
+      // Analytics breakdowns (protected)
+      if (pathname === '/admin/api/analytics/issues' && request.method === 'GET') {
+        return await handleIssuesAnalytics(request, env, corsHeaders);
+      }
+
       // Serve dashboard HTML
       if (pathname === '/admin' || pathname === '/admin/') {
         return await serveDashboard(env, corsHeaders);
@@ -3136,20 +3146,47 @@ async function handleLogEvent(request, env, corsHeaders) {
 // Log or update session
 async function handleLogSession(request, env, corsHeaders) {
   try {
-    const { sessionId, flowType, customerEmail, orderNumber, persona, deviceType, completed, ended } = await request.json();
+    const {
+      sessionId, flowType, customerEmail, customerName, orderNumber,
+      persona, deviceType, completed, ended, sessionReplayUrl, issueType
+    } = await request.json();
 
     if (ended) {
-      // Update existing session
+      // Update existing session when it ends
       await env.ANALYTICS_DB.prepare(`
-        UPDATE sessions SET ended_at = CURRENT_TIMESTAMP, completed = ?, flow_type = COALESCE(?, flow_type)
+        UPDATE sessions SET
+          ended_at = CURRENT_TIMESTAMP,
+          completed = ?,
+          flow_type = COALESCE(?, flow_type),
+          session_replay_url = COALESCE(?, session_replay_url),
+          customer_email = COALESCE(?, customer_email),
+          customer_name = COALESCE(?, customer_name),
+          order_number = COALESCE(?, order_number),
+          issue_type = COALESCE(?, issue_type)
         WHERE session_id = ?
-      `).bind(completed ? 1 : 0, flowType, sessionId).run();
+      `).bind(
+        completed ? 1 : 0,
+        flowType,
+        sessionReplayUrl,
+        customerEmail,
+        customerName,
+        orderNumber,
+        issueType,
+        sessionId
+      ).run();
     } else {
-      // Insert new session
+      // Insert or update session (upsert)
       await env.ANALYTICS_DB.prepare(`
-        INSERT OR REPLACE INTO sessions (session_id, flow_type, customer_email, order_number, persona, device_type)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).bind(sessionId, flowType, customerEmail, orderNumber, persona, deviceType).run();
+        INSERT INTO sessions (session_id, flow_type, customer_email, customer_name, order_number, persona, device_type, session_replay_url, issue_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(session_id) DO UPDATE SET
+          flow_type = COALESCE(excluded.flow_type, flow_type),
+          customer_email = COALESCE(excluded.customer_email, customer_email),
+          customer_name = COALESCE(excluded.customer_name, customer_name),
+          order_number = COALESCE(excluded.order_number, order_number),
+          session_replay_url = COALESCE(excluded.session_replay_url, session_replay_url),
+          issue_type = COALESCE(excluded.issue_type, issue_type)
+      `).bind(sessionId, flowType, customerEmail, customerName, orderNumber, persona, deviceType, sessionReplayUrl, issueType).run();
     }
 
     return Response.json({ success: true }, { headers: corsHeaders });
@@ -3513,6 +3550,146 @@ async function handleEventsList(request, env, corsHeaders) {
   } catch (e) {
     console.error('Events list error:', e);
     return Response.json({ error: 'Failed to load events' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Get sessions list with pagination
+async function handleSessionsList(request, env, corsHeaders) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+  }
+
+  const token = authHeader.substring(7);
+  const payload = await verifyToken(token);
+  if (!payload) {
+    return Response.json({ error: 'Invalid or expired token' }, { status: 401, headers: corsHeaders });
+  }
+
+  const url = new URL(request.url);
+  const page = parseInt(url.searchParams.get('page') || '1');
+  const limit = parseInt(url.searchParams.get('limit') || '20');
+  const offset = (page - 1) * limit;
+  const filter = url.searchParams.get('filter') || 'all'; // 'all', 'complete', 'incomplete'
+  const range = url.searchParams.get('range') || '7d';
+
+  // Calculate start date based on range
+  const now = new Date();
+  let startDate;
+  switch (range) {
+    case '24h': startDate = new Date(now - 24 * 60 * 60 * 1000); break;
+    case '7d': startDate = new Date(now - 7 * 24 * 60 * 60 * 1000); break;
+    case '30d': startDate = new Date(now - 30 * 24 * 60 * 60 * 1000); break;
+    case '90d': startDate = new Date(now - 90 * 24 * 60 * 60 * 1000); break;
+    default: startDate = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  }
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  try {
+    let conditions = [`started_at >= '${startDateStr}'`];
+    if (filter === 'complete') {
+      conditions.push('completed = 1');
+    } else if (filter === 'incomplete') {
+      conditions.push('(completed = 0 OR completed IS NULL)');
+    }
+    const whereClause = 'WHERE ' + conditions.join(' AND ');
+
+    const sessions = await env.ANALYTICS_DB.prepare(`
+      SELECT
+        session_id, started_at, ended_at, flow_type,
+        customer_email, customer_name, order_number,
+        device_type, completed, session_replay_url, issue_type
+      FROM sessions ${whereClause}
+      ORDER BY started_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(limit, offset).all();
+
+    const countResult = await env.ANALYTICS_DB.prepare(`
+      SELECT COUNT(*) as total FROM sessions ${whereClause}
+    `).first();
+
+    return Response.json({
+      sessions: sessions?.results || [],
+      pagination: {
+        page,
+        limit,
+        total: countResult?.total || 0,
+        totalPages: Math.ceil((countResult?.total || 0) / limit)
+      }
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Sessions list error:', e);
+    return Response.json({ error: 'Failed to load sessions' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Get analytics for issues breakdown
+async function handleIssuesAnalytics(request, env, corsHeaders) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+  }
+
+  const token = authHeader.substring(7);
+  const payload = await verifyToken(token);
+  if (!payload) {
+    return Response.json({ error: 'Invalid or expired token' }, { status: 401, headers: corsHeaders });
+  }
+
+  const url = new URL(request.url);
+  const range = url.searchParams.get('range') || '30d';
+  const daysAgo = range === '7d' ? 7 : range === '90d' ? 90 : range === 'year' ? 365 : 30;
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - daysAgo);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  try {
+    // Top issue types from cases
+    const issueTypes = await env.ANALYTICS_DB.prepare(`
+      SELECT resolution, COUNT(*) as count
+      FROM cases
+      WHERE created_at >= ?
+      GROUP BY resolution
+      ORDER BY count DESC
+      LIMIT 10
+    `).bind(startDateStr).all();
+
+    // Case types breakdown
+    const caseTypes = await env.ANALYTICS_DB.prepare(`
+      SELECT case_type, COUNT(*) as count, SUM(refund_amount) as total_refund
+      FROM cases
+      WHERE created_at >= ?
+      GROUP BY case_type
+      ORDER BY count DESC
+    `).bind(startDateStr).all();
+
+    // Refund amounts by day
+    const refundsByDay = await env.ANALYTICS_DB.prepare(`
+      SELECT DATE(created_at) as date, SUM(refund_amount) as total, COUNT(*) as count
+      FROM cases
+      WHERE created_at >= ? AND refund_amount IS NOT NULL
+      GROUP BY DATE(created_at)
+      ORDER BY date
+    `).bind(startDateStr).all();
+
+    // Incomplete sessions with issues
+    const incompleteIssues = await env.ANALYTICS_DB.prepare(`
+      SELECT issue_type, COUNT(*) as count
+      FROM sessions
+      WHERE (completed = 0 OR completed IS NULL) AND issue_type IS NOT NULL AND started_at >= ?
+      GROUP BY issue_type
+      ORDER BY count DESC
+    `).bind(startDateStr).all();
+
+    return Response.json({
+      issueTypes: issueTypes?.results || [],
+      caseTypes: caseTypes?.results || [],
+      refundsByDay: refundsByDay?.results || [],
+      incompleteIssues: incompleteIssues?.results || []
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Issues analytics error:', e);
+    return Response.json({ error: 'Failed to load analytics' }, { status: 500, headers: corsHeaders });
   }
 }
 
@@ -3891,6 +4068,228 @@ function getDashboardHTML() {
       border-color: var(--brand-navy);
     }
 
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .filter-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      border: 1px solid var(--gray-200);
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--gray-600);
+    }
+
+    .filter-btn.active {
+      background: var(--accent-teal);
+      color: white;
+      border-color: var(--accent-teal);
+    }
+
+    .recording-link {
+      color: var(--accent-coral);
+      text-decoration: none;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .recording-link:hover {
+      text-decoration: underline;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .status-complete {
+      background: #D1FAE5;
+      color: #065F46;
+    }
+
+    .status-incomplete {
+      background: #FEE2E2;
+      color: #991B1B;
+    }
+
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      padding: 16px 0;
+    }
+
+    .analytics-section {
+      background: var(--gray-50);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .analytics-section h4 {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+      color: var(--gray-700);
+    }
+
+    .chart-container {
+      min-height: 200px;
+    }
+
+    .chart-bar {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .chart-label {
+      width: 140px;
+      font-size: 12px;
+      color: var(--gray-600);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chart-bar-bg {
+      flex: 1;
+      height: 20px;
+      background: var(--gray-200);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .chart-bar-fill {
+      height: 100%;
+      background: var(--accent-teal);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .chart-bar-fill.coral {
+      background: var(--accent-coral);
+    }
+
+    .chart-value {
+      width: 50px;
+      text-align: right;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--gray-700);
+    }
+
+    .no-data {
+      text-align: center;
+      color: var(--gray-500);
+      padding: 40px;
+      font-size: 14px;
+    }
+
+    .badge-complete {
+      background: #D1FAE5;
+      color: #065F46;
+    }
+
+    .badge-incomplete {
+      background: #FEE2E2;
+      color: #991B1B;
+    }
+
+    .no-recording {
+      color: var(--gray-400);
+      font-size: 12px;
+    }
+
+    .bar-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bar-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .bar-label {
+      font-size: 12px;
+      color: var(--gray-600);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bar-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bar {
+      height: 20px;
+      border-radius: 4px;
+      min-width: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .bar-value {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-700);
+      min-width: 30px;
+    }
+
+    .refunds-summary {
+      padding: 8px 0;
+    }
+
+    .refund-total {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--gray-800);
+      margin-bottom: 16px;
+    }
+
+    .refund-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .refund-day {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      padding: 8px;
+      background: white;
+      border-radius: 4px;
+    }
+
+    .refund-day span:first-child {
+      color: var(--gray-600);
+    }
+
+    .refund-day span:last-child {
+      font-weight: 500;
+      color: var(--gray-800);
+    }
+
     @media (max-width: 768px) {
       .dashboard-header {
         flex-direction: column;
@@ -3958,12 +4357,44 @@ function getDashboardHTML() {
 
       <!-- Tabs -->
       <div class="tabs">
-        <button class="tab active" data-tab="cases">Recent Cases</button>
+        <button class="tab active" data-tab="sessions">Sessions</button>
+        <button class="tab" data-tab="cases">Cases</button>
+        <button class="tab" data-tab="analytics">Analytics</button>
         <button class="tab" data-tab="events">Event Log</button>
       </div>
 
+      <!-- Sessions Table -->
+      <div class="card" id="sessionsCard">
+        <div class="card-header">
+          <h3 class="card-title">Session Recordings</h3>
+          <div class="filter-buttons">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="incomplete">Incomplete</button>
+            <button class="filter-btn" data-filter="complete">Completed</button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Started</th>
+                <th>Customer</th>
+                <th>Order</th>
+                <th>Flow</th>
+                <th>Status</th>
+                <th>Recording</th>
+              </tr>
+            </thead>
+            <tbody id="sessionsTableBody">
+              <tr><td colspan="6" class="loading">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="sessionsPagination"></div>
+      </div>
+
       <!-- Cases Table -->
-      <div class="card" id="casesCard">
+      <div class="card" id="casesCard" style="display: none;">
         <div class="card-header">
           <h3 class="card-title">Customer Submissions</h3>
         </div>
@@ -3985,6 +4416,31 @@ function getDashboardHTML() {
           </table>
         </div>
         <div class="pagination" id="casesPagination"></div>
+      </div>
+
+      <!-- Analytics -->
+      <div class="card" id="analyticsCard" style="display: none;">
+        <div class="card-header">
+          <h3 class="card-title">Issue Analytics</h3>
+        </div>
+        <div class="analytics-grid">
+          <div class="analytics-section">
+            <h4>Case Types Breakdown</h4>
+            <div id="caseTypesChart" class="chart-container"></div>
+          </div>
+          <div class="analytics-section">
+            <h4>Top Resolutions</h4>
+            <div id="resolutionsChart" class="chart-container"></div>
+          </div>
+          <div class="analytics-section">
+            <h4>Refunds Over Time</h4>
+            <div id="refundsChart" class="chart-container"></div>
+          </div>
+          <div class="analytics-section">
+            <h4>Incomplete Session Issues</h4>
+            <div id="incompleteChart" class="chart-container"></div>
+          </div>
+        </div>
       </div>
 
       <!-- Events Table -->
@@ -4018,6 +4474,8 @@ function getDashboardHTML() {
     let authToken = localStorage.getItem('adminToken');
     let currentCasesPage = 1;
     let currentEventsPage = 1;
+    let currentSessionsPage = 1;
+    let currentSessionsFilter = 'all';
 
     // Check if already logged in
     if (authToken) {
@@ -4058,18 +4516,39 @@ function getDashboardHTML() {
         tab.classList.add('active');
 
         const tabName = tab.dataset.tab;
+        document.getElementById('sessionsCard').style.display = tabName === 'sessions' ? 'block' : 'none';
         document.getElementById('casesCard').style.display = tabName === 'cases' ? 'block' : 'none';
+        document.getElementById('analyticsCard').style.display = tabName === 'analytics' ? 'block' : 'none';
         document.getElementById('eventsCard').style.display = tabName === 'events' ? 'block' : 'none';
+
+        // Load analytics when tab is selected
+        if (tabName === 'analytics') {
+          loadAnalytics();
+        }
+      });
+    });
+
+    // Session filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentSessionsFilter = btn.dataset.filter;
+        loadSessions(1);
       });
     });
 
     // Date range change
-    document.getElementById('dateRange').addEventListener('change', loadDashboardData);
+    document.getElementById('dateRange').addEventListener('change', () => {
+      loadDashboardData();
+      loadAnalytics();
+    });
 
     function showDashboard() {
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('dashboardScreen').classList.add('active');
       loadDashboardData();
+      loadSessions();
       loadCases();
       loadEvents();
     }
@@ -4227,6 +4706,147 @@ function getDashboardHTML() {
         html += \`<button class="\${i === pagination.page ? 'active' : ''}" onclick="\${loadFn.name}(\${i})">\${i}</button>\`;
       }
       container.innerHTML = html;
+    }
+
+    async function loadSessions(page = 1) {
+      currentSessionsPage = page;
+      const range = document.getElementById('dateRange').value;
+
+      try {
+        const response = await fetch(API_BASE + '/admin/api/sessions?page=' + page + '&filter=' + currentSessionsFilter + '&range=' + range, {
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+
+        if (response.status === 401) {
+          logout();
+          return;
+        }
+
+        const data = await response.json();
+        renderSessions(data);
+      } catch (err) {
+        console.error('Failed to load sessions:', err);
+        document.getElementById('sessionsTableBody').innerHTML = '<tr><td colspan="6" class="loading">Failed to load sessions</td></tr>';
+      }
+    }
+
+    function renderSessions(data) {
+      const tbody = document.getElementById('sessionsTableBody');
+
+      if (!data.sessions || data.sessions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">No sessions found</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.sessions.map(s => {
+        const customerDisplay = s.customer_name || s.customer_email || 'Anonymous';
+        const statusClass = s.completed ? 'badge-complete' : 'badge-incomplete';
+        const statusText = s.completed ? 'Completed' : (s.issue_type || 'Incomplete');
+        const recordingLink = s.session_replay_url
+          ? \`<a href="\${s.session_replay_url}" target="_blank" class="recording-link">▶ Watch</a>\`
+          : '<span class="no-recording">No recording</span>';
+
+        return \`
+          <tr>
+            <td>\${new Date(s.started_at).toLocaleString()}</td>
+            <td title="\${s.customer_email || ''}">\${customerDisplay}</td>
+            <td>\${s.order_number || 'N/A'}</td>
+            <td>\${s.flow_type || 'N/A'}</td>
+            <td><span class="badge \${statusClass}">\${statusText}</span></td>
+            <td>\${recordingLink}</td>
+          </tr>
+        \`;
+      }).join('');
+
+      renderPagination('sessionsPagination', data.pagination, loadSessions);
+    }
+
+    async function loadAnalytics() {
+      const range = document.getElementById('dateRange').value;
+
+      try {
+        const response = await fetch(API_BASE + '/admin/api/analytics/issues?range=' + range, {
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+
+        if (response.status === 401) {
+          logout();
+          return;
+        }
+
+        const data = await response.json();
+        renderAnalytics(data);
+      } catch (err) {
+        console.error('Failed to load analytics:', err);
+      }
+    }
+
+    function renderAnalytics(data) {
+      // Transform caseTypes: { case_type, count } -> { name, count }
+      const caseTypesData = (data.caseTypes || []).map(c => ({
+        name: c.case_type || 'Unknown',
+        count: c.count
+      }));
+      renderBarChart('caseTypesChart', caseTypesData, '#3B82F6');
+
+      // Transform issueTypes (resolutions): { resolution, count } -> { name, count }
+      const resolutionsData = (data.issueTypes || []).map(r => ({
+        name: r.resolution || 'Unknown',
+        count: r.count
+      }));
+      renderBarChart('resolutionsChart', resolutionsData, '#10B981');
+
+      // Transform incompleteIssues: { issue_type, count } -> { name, count }
+      const incompleteData = (data.incompleteIssues || []).map(i => ({
+        name: i.issue_type || 'Unknown',
+        count: i.count
+      }));
+      renderBarChart('incompleteChart', incompleteData, '#F59E0B');
+
+      // Render Refunds Over Time as a simple list
+      const refundsContainer = document.getElementById('refundsChart');
+      if (data.refundsByDay && data.refundsByDay.length > 0) {
+        refundsContainer.innerHTML = \`
+          <div class="refunds-summary">
+            <div class="refund-total">Total: $\${data.refundsByDay.reduce((sum, d) => sum + (d.total || 0), 0).toFixed(2)}</div>
+            <div class="refund-list">
+              \${data.refundsByDay.slice(-7).reverse().map(d => \`
+                <div class="refund-day">
+                  <span>\${d.date}</span>
+                  <span>$\${(d.total || 0).toFixed(2)} (\${d.count} refunds)</span>
+                </div>
+              \`).join('')}
+            </div>
+          </div>
+        \`;
+      } else {
+        refundsContainer.innerHTML = '<p class="no-data">No refund data available</p>';
+      }
+    }
+
+    function renderBarChart(containerId, items, color) {
+      const container = document.getElementById(containerId);
+
+      if (!items || items.length === 0) {
+        container.innerHTML = '<p class="no-data">No data available</p>';
+        return;
+      }
+
+      const maxCount = Math.max(...items.map(i => i.count));
+
+      container.innerHTML = \`
+        <div class="bar-chart">
+          \${items.slice(0, 8).map(item => \`
+            <div class="bar-item">
+              <div class="bar-label" title="\${item.name}">\${item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name}</div>
+              <div class="bar-wrapper">
+                <div class="bar" style="width: \${(item.count / maxCount * 100)}%; background: \${color};"></div>
+                <span class="bar-value">\${item.count}</span>
+              </div>
+            </div>
+          \`).join('')}
+        </div>
+      \`;
     }
   </script>
 </body>

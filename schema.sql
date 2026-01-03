@@ -9,12 +9,22 @@ CREATE TABLE IF NOT EXISTS sessions (
   ended_at DATETIME,
   flow_type TEXT, -- 'track', 'help', 'subscription'
   customer_email TEXT,
+  customer_name TEXT,
   order_number TEXT,
   persona TEXT DEFAULT 'amy',
   device_type TEXT, -- 'mobile', 'desktop'
   completed BOOLEAN DEFAULT FALSE,
+  session_replay_url TEXT, -- PostHog recording URL
+  issue_type TEXT, -- For incomplete sessions: what issue they selected
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Add columns if they don't exist (for existing databases)
+-- Run these ALTER TABLEs separately if needed:
+-- ALTER TABLE sessions ADD COLUMN session_replay_url TEXT;
+-- ALTER TABLE sessions ADD COLUMN customer_name TEXT;
+-- ALTER TABLE sessions ADD COLUMN issue_type TEXT;
+-- ALTER TABLE cases ADD COLUMN issue_type TEXT;
 
 -- Events table - Track all user actions
 CREATE TABLE IF NOT EXISTS events (
