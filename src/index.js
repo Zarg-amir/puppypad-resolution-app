@@ -855,6 +855,11 @@ export default {
         return await handleAdminLogin(request, env, corsHeaders);
       }
 
+      // Admin setup (one-time password reset)
+      if (pathname === '/admin/api/setup' && request.method === 'POST') {
+        return await handleAdminSetup(request, env, corsHeaders);
+      }
+
       // Dashboard data (protected)
       if (pathname === '/admin/api/dashboard' && request.method === 'GET') {
         return await handleDashboardData(request, env, corsHeaders);
