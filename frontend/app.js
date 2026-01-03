@@ -2626,6 +2626,43 @@ function showOfferCard(percent, amount) {
   addInteractiveContent(html);
 }
 
+// Partial refund card with custom callbacks (for charged unexpectedly flows)
+function showPartialRefundCard(percent, onAccept, onDecline) {
+  const totalPrice = parseFloat(state.selectedOrder?.totalPrice || 0);
+  const amount = (totalPrice * percent / 100).toFixed(2);
+
+  const cardId = `partial-card-${Date.now()}`;
+
+  const html = `
+    <div class="offer-card" id="${cardId}">
+      <div class="offer-icon">💰</div>
+      <div class="offer-amount">${percent}%</div>
+      <div class="offer-value">${formatCurrency(amount)} back to you</div>
+      <div class="offer-label">Partial refund — keep your products</div>
+      <div class="offer-buttons">
+        <button class="offer-btn accept" id="${cardId}-accept">Accept Offer</button>
+        <button class="offer-btn decline" id="${cardId}-decline">No thanks</button>
+      </div>
+      <div class="offer-note">Reviewed within 1-2 days, then 3-5 days to your account</div>
+    </div>
+  `;
+
+  addInteractiveContent(html);
+
+  // Attach custom event handlers
+  document.getElementById(`${cardId}-accept`).onclick = async () => {
+    document.getElementById(cardId)?.closest('.interactive-content').remove();
+    addUserMessage(`I'll accept the ${percent}% refund`);
+    await onAccept(percent, amount);
+  };
+
+  document.getElementById(`${cardId}-decline`).onclick = async () => {
+    document.getElementById(cardId)?.closest('.interactive-content').remove();
+    addUserMessage("No thanks, I need more help");
+    await onDecline();
+  };
+}
+
 async function acceptOffer(percent, amount) {
   document.querySelector('.offer-card')?.closest('.interactive-content').remove();
   addUserMessage(`I'll accept the ${percent}% refund`);
@@ -3499,27 +3536,23 @@ async function handleChargedUnexpectedlyNotDelivered() {
   const order = state.selectedOrder;
   const refundAmount20 = (parseFloat(order?.totalPrice) * 0.20).toFixed(2);
 
-  await addBotMessage(`I see this order hasn't been delivered yet! 📦<br><br>Would you like to:<br>• <strong>Keep the order</strong> when it arrives and get a <strong>20% refund (${formatCurrency(refundAmount20)})</strong> for the confusion, OR<br>• <strong>Cancel the order</strong> for a full refund before it ships?`);
+  // Vague message - don't mention cancel/full refund option upfront
+  await addBotMessage(`I see this order hasn't been delivered yet! 📦<br><br>Here's what I can do: I'll give you a <strong>20% refund (${formatCurrency(refundAmount20)})</strong> for all this confusion, and you can keep the order when it arrives. What do you think?`);
 
   state.chargedUnexpectedlyDelivered = false;
 
-  addOptionsRow([
-    { text: `Keep it + 20% back`, primary: true, action: async () => {
-      state.intentDetails = 'Customer did not place order - keeping with 20% refund (not yet delivered)';
-      await createRefundCase('partial_20', true);
-    }},
-    { text: "Cancel & full refund", action: async () => {
-      await addBotMessage("No problem! I'll cancel this order and process a full refund for you.");
-      state.intentDetails = 'Customer did not place order - cancelled before delivery';
-      await createRefundCase('full_refund', true);
-    }},
-    { text: "I want a bigger refund", action: async () => {
-      state.ladderType = 'order_refund';
-      state.ladderStep = 1; // Start at 30%
-      state.intentDetails = 'Customer did not place order - wants higher refund';
-      await startRefundLadder();
-    }}
-  ]);
+  // Use the same card UI as other refund flows
+  showPartialRefundCard(20, async () => {
+    // Accepted 20%
+    state.intentDetails = 'Customer did not place order - keeping with 20% refund (not yet delivered)';
+    await createRefundCase('partial_20', true);
+  }, async () => {
+    // Declined - go through refund ladder (30% → 40% → 50% → full refund)
+    state.ladderType = 'order_refund';
+    state.ladderStep = 1; // Start at 30% since we already offered 20%
+    state.intentDetails = 'Customer did not place order - wants higher refund';
+    await startRefundLadder();
+  });
 }
 
 async function handleChargedUnexpectedlyNotRecognized() {
