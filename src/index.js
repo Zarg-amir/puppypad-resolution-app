@@ -3151,10 +3151,20 @@ async function handleLogEvent(request, env, corsHeaders) {
 // Log or update session
 async function handleLogSession(request, env, corsHeaders) {
   try {
-    const {
-      sessionId, flowType, customerEmail, customerName, orderNumber,
-      persona, deviceType, completed, ended, sessionReplayUrl, issueType
-    } = await request.json();
+    const data = await request.json();
+
+    // Convert undefined to null (D1 doesn't support undefined)
+    const sessionId = data.sessionId ?? null;
+    const flowType = data.flowType ?? null;
+    const customerEmail = data.customerEmail ?? null;
+    const customerName = data.customerName ?? null;
+    const orderNumber = data.orderNumber ?? null;
+    const persona = data.persona ?? null;
+    const deviceType = data.deviceType ?? null;
+    const sessionReplayUrl = data.sessionReplayUrl ?? null;
+    const issueType = data.issueType ?? null;
+    const completed = data.completed;
+    const ended = data.ended;
 
     if (ended) {
       // Update existing session when it ends
