@@ -1558,6 +1558,13 @@ async function handleOrdersFound(flowType) {
     orderNumber: firstOrder.orderNumber
   });
 
+  // Update session with customer info
+  Analytics.logSession({
+    customerEmail: firstOrder.email,
+    customerName: `${firstOrder.customerFirstName || ''} ${firstOrder.customerLastName || ''}`.trim(),
+    orderNumber: firstOrder.orderNumber
+  });
+
   // Show "Found your order" message first
   const orderCount = state.orders.length;
   const foundMessage = orderCount === 1
@@ -1766,6 +1773,13 @@ async function submitManualHelp() {
     orderNumber: orderNumber
   });
 
+  // Update session with customer info
+  Analytics.logSession({
+    customerEmail: email,
+    customerName: fullName,
+    orderNumber: orderNumber
+  });
+
   document.getElementById('manualHelpForm')?.closest('.interactive-content').remove();
   addUserMessage("Request submitted");
 
@@ -1856,6 +1870,13 @@ async function selectOrder(index, flowType) {
 
   // Identify user in PostHog for session searchability
   identifyUserInPostHog();
+
+  // Update session with selected order info
+  Analytics.logSession({
+    customerEmail: state.selectedOrder.email,
+    customerName: `${state.selectedOrder.customerFirstName || ''} ${state.selectedOrder.customerLastName || ''}`.trim(),
+    orderNumber: state.selectedOrder.orderNumber
+  });
 
   // Remove order cards
   document.querySelector('.orders-list')?.closest('.interactive-content').remove();
