@@ -3406,51 +3406,221 @@ async function handleWrongItem() {
 
 async function handleChargedUnexpectedly() {
   const order = state.selectedOrder;
-  
-  await addBotMessage(`Let me confirm your order details:<br><br>
+  state.intent = 'charged_unexpectedly';
+
+  // Opening message - don't blame business, suggest other reasons
+  await addBotMessage(`I completely understand — unexpected charges can be confusing! 💳<br><br>This can happen for a few reasons: sometimes a family member places an order as a gift, it could be a subscription renewal you forgot about, or perhaps an order from a while back that slipped your mind.<br><br>Either way, I'm here to help sort this out for you! Let me pull up your order details.`);
+
+  await delay(800);
+
+  // Build items list excluding $0 items
+  const paidItems = order?.lineItems?.filter(item => parseFloat(item.price) > 0) || [];
+  const itemsList = paidItems.map(item =>
+    `• ${item.name}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — ${formatCurrency(item.price)}`
+  ).join('<br>');
+
+  // Show order confirmation card
+  await addBotMessage(`Here's what I found:<br><br>
 <strong>Order:</strong> ${order?.orderNumber}<br>
-<strong>Total Charged:</strong> ${formatCurrency(order?.totalPrice)}<br>
-<strong>Date:</strong> ${formatDate(order?.createdAt)}<br><br>
+<strong>Date:</strong> ${formatDate(order?.createdAt)}<br>
+<strong>Total Charged:</strong> ${formatCurrency(order?.totalPrice)}<br><br>
+<strong>Items:</strong><br>${itemsList || 'No items found'}<br><br>
 Is this the charge you're referring to?`);
-  
+
   addOptionsRow([
-    { text: "Yes, this one", action: async () => {
-      await addBotMessage("Was there something unexpected about this charge? Please tell me what you expected to pay:");
-      showTextInput("What did you expect?", async (text) => {
-        hideTextInput();
-        state.intentDetails = text;
-        
-        await addBotMessage("I understand. Let me create a case for our team to investigate this charge discrepancy.");
-        
-        showProgress("Creating investigation case...");
-        await delay(1500);
-        hideProgress();
-        
-        state.caseId = generateCaseId('refund');
-        
-        await showSuccess(
-          "Investigation Started",
-          `We'll review the charge and get back to you within 24 hours.<br><br>${getCaseIdHtml(state.caseId)}`
-        );
-      });
+    { text: "Yes, this is it", action: handleChargedUnexpectedlyConfirmed },
+    { text: "No, I don't recognize this", action: handleChargedUnexpectedlyNotRecognized }
+  ]);
+}
+
+async function handleChargedUnexpectedlyConfirmed() {
+  // They recognize the order but say they didn't place it
+  await addBotMessage("Got it! So you see the order, but you're saying you didn't place it yourself?<br><br>No worries — like I mentioned, this could be a family member, a gift, or maybe even an accidental order. Let me check a few things...");
+
+  showProgress("Checking delivery status...", "Looking up your package");
+
+  // Check delivery status
+  try {
+    const orderNumber = state.selectedOrder?.orderNumber;
+    const response = await fetch(`${CONFIG.API_URL}/api/tracking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderNumber: orderNumber?.replace('#', '') })
+    });
+
+    hideProgress();
+
+    if (response.ok) {
+      const data = await response.json();
+      state.tracking = data.tracking;
+
+      const status = data.tracking?.status?.toLowerCase() || '';
+      const isDelivered = status.includes('delivered');
+
+      if (isDelivered) {
+        await handleChargedUnexpectedlyDelivered();
+      } else {
+        await handleChargedUnexpectedlyNotDelivered();
+      }
+    } else {
+      // Couldn't get tracking, assume not delivered
+      state.tracking = null;
+      await handleChargedUnexpectedlyNotDelivered();
+    }
+  } catch (error) {
+    hideProgress();
+    state.tracking = null;
+    await handleChargedUnexpectedlyNotDelivered();
+  }
+}
+
+async function handleChargedUnexpectedlyDelivered() {
+  const order = state.selectedOrder;
+  const refundAmount20 = (parseFloat(order?.totalPrice) * 0.20).toFixed(2);
+
+  await addBotMessage(`I can see this order has been <strong>delivered</strong>! 📦<br><br>Here's what I can do: since you have the products, would you like to keep them and I'll give you a <strong>20% refund (${formatCurrency(refundAmount20)})</strong> for all this confusion?<br><br>That way you get some money back and can still enjoy the products!`);
+
+  state.chargedUnexpectedlyDelivered = true;
+
+  showPartialRefundCard(20, async () => {
+    // Accepted 20%
+    state.intentDetails = 'Customer did not place order but kept products with 20% refund';
+    await createRefundCase('partial_20', true);
+  }, async () => {
+    // Declined - go to refund ladder
+    state.ladderType = 'order_refund';
+    state.ladderStep = 1; // Start at 30% since we already offered 20%
+    state.intentDetails = 'Customer did not place order - wants higher refund';
+    await startRefundLadder();
+  });
+}
+
+async function handleChargedUnexpectedlyNotDelivered() {
+  const order = state.selectedOrder;
+  const refundAmount20 = (parseFloat(order?.totalPrice) * 0.20).toFixed(2);
+
+  await addBotMessage(`I see this order hasn't been delivered yet! 📦<br><br>Would you like to:<br>• <strong>Keep the order</strong> when it arrives and get a <strong>20% refund (${formatCurrency(refundAmount20)})</strong> for the confusion, OR<br>• <strong>Cancel the order</strong> for a full refund before it ships?`);
+
+  state.chargedUnexpectedlyDelivered = false;
+
+  addOptionsRow([
+    { text: `Keep it + 20% back`, primary: true, action: async () => {
+      state.intentDetails = 'Customer did not place order - keeping with 20% refund (not yet delivered)';
+      await createRefundCase('partial_20', true);
     }},
-    { text: "No, different charge", action: () => {
-      showTextInput("Tell me about the charge", async (text) => {
-        hideTextInput();
-        
-        showProgress("Creating investigation...");
-        await delay(1500);
-        hideProgress();
-        
-        state.caseId = generateCaseId('manual');
-        
-        await showSuccess(
-          "Investigation Started",
-          `We'll look into this and contact you soon.<br><br>${getCaseIdHtml(state.caseId)}`
-        );
-      });
+    { text: "Cancel & full refund", action: async () => {
+      await addBotMessage("No problem! I'll cancel this order and process a full refund for you.");
+      state.intentDetails = 'Customer did not place order - cancelled before delivery';
+      await createRefundCase('full_refund', true);
+    }},
+    { text: "I want a bigger refund", action: async () => {
+      state.ladderType = 'order_refund';
+      state.ladderStep = 1; // Start at 30%
+      state.intentDetails = 'Customer did not place order - wants higher refund';
+      await startRefundLadder();
     }}
   ]);
+}
+
+async function handleChargedUnexpectedlyNotRecognized() {
+  // They don't recognize the charge at all
+  await addBotMessage(`I understand — it can be confusing when you don't recognize a charge! 🤔<br><br>Here's the thing: our system doesn't store payment details or allow manual charges, so this order was definitely placed through our website. It could be:<br><br>• A family member or friend ordered for you as a surprise 🎁<br>• You might have ordered a while back and forgot<br>• Someone in your household made a purchase<br><br>But don't worry — I'm here to help either way! Let me tell you about what's actually in this order...`);
+
+  showProgress("Analyzing your products...", "Getting product information");
+
+  // Use AI to pitch the products
+  await generateProductBenefitsPitch();
+}
+
+async function generateProductBenefitsPitch() {
+  const order = state.selectedOrder;
+  const paidItems = order?.lineItems?.filter(item => parseFloat(item.price) > 0) || [];
+
+  // Get product names for the AI
+  const productNames = paidItems.map(item => item.name).join(', ');
+  const productSkus = paidItems.map(item => item.sku || item.variantId).filter(Boolean);
+
+  try {
+    // Call AI to generate product benefits pitch
+    const response = await fetch(`${CONFIG.API_URL}/api/ai-response`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scenarioType: 'product_benefits_pitch',
+        scenarioData: {
+          customerName: state.customerData?.firstName || 'there',
+          products: productNames,
+          productSkus: productSkus,
+          orderTotal: order?.totalPrice
+        }
+      })
+    });
+
+    hideProgress();
+
+    if (response.ok) {
+      const data = await response.json();
+      const pitchMessage = data.messages?.[0] || generateFallbackProductPitch(paidItems);
+      await addBotMessage(pitchMessage);
+    } else {
+      await addBotMessage(generateFallbackProductPitch(paidItems));
+    }
+  } catch (error) {
+    hideProgress();
+    await addBotMessage(generateFallbackProductPitch(paidItems));
+  }
+
+  // Now offer the partial refund
+  const refundAmount20 = (parseFloat(order?.totalPrice) * 0.20).toFixed(2);
+
+  await delay(500);
+  await addBotMessage(`For all this confusion, I'd love to offer you a <strong>20% refund (${formatCurrency(refundAmount20)})</strong> if you'd like to keep these products and give them a try! What do you think?`);
+
+  showPartialRefundCard(20, async () => {
+    // Accepted 20%
+    state.intentDetails = 'Customer did not recognize charge - kept products with 20% refund after product pitch';
+    await createRefundCase('partial_20', true);
+  }, async () => {
+    // Declined - check delivery status then go to ladder
+    showProgress("Checking delivery status...");
+
+    try {
+      const orderNumber = state.selectedOrder?.orderNumber;
+      const response = await fetch(`${CONFIG.API_URL}/api/tracking`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderNumber: orderNumber?.replace('#', '') })
+      });
+
+      hideProgress();
+
+      if (response.ok) {
+        const data = await response.json();
+        state.tracking = data.tracking;
+        const status = data.tracking?.status?.toLowerCase() || '';
+        state.chargedUnexpectedlyDelivered = status.includes('delivered');
+      } else {
+        state.chargedUnexpectedlyDelivered = false;
+      }
+    } catch (e) {
+      hideProgress();
+      state.chargedUnexpectedlyDelivered = false;
+    }
+
+    state.ladderType = 'order_refund';
+    state.ladderStep = 1; // Start at 30% since we offered 20%
+    state.intentDetails = 'Customer did not recognize charge - wants higher refund';
+    await startRefundLadder();
+  });
+}
+
+function generateFallbackProductPitch(items) {
+  if (!items || items.length === 0) {
+    return "Looking at your order, you've got some great products that many of our customers love!";
+  }
+
+  const itemNames = items.map(i => i.name).join(', ');
+  return `Looking at your order, you've got <strong>${itemNames}</strong>! 🐕<br><br>These are some of our most popular products — customers tell us they make a real difference for their pups. Whether it's training, comfort, or everyday use, these were designed with your dog's needs in mind.<br><br>Many pet parents who were initially unsure ended up loving them once they tried them!`;
 }
 
 async function handleQualityDifference() {
