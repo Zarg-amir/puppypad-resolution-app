@@ -2949,7 +2949,7 @@ async function handleChangedMind() {
 
     // Get order items for context
     const orderItems = state.selectedOrder?.lineItems?.map(item =>
-      `${item.name} (${item.variant || ''}) × ${item.quantity}`
+      `${item.title} (${item.variant || ''}) × ${item.quantity}`
     ).join('\n') || 'PuppyPad products';
 
     showProgress("Let me look into this for you...");
@@ -3017,7 +3017,7 @@ async function handleNotMetExpectations() {
 
     // Get order items for context
     const orderItems = state.selectedOrder?.lineItems?.map(item =>
-      `${item.name} (${item.variant || ''}) × ${item.quantity}`
+      `${item.title} (${item.variant || ''}) × ${item.quantity}`
     ).join('\n') || 'PuppyPad products';
 
     showProgress("Let me look into this for you...");
@@ -3416,7 +3416,7 @@ async function handleChargedUnexpectedly() {
   // Build items list excluding $0 items
   const paidItems = order?.lineItems?.filter(item => parseFloat(item.price) > 0) || [];
   const itemsList = paidItems.map(item =>
-    `• ${item.name}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — ${formatCurrency(item.price)}`
+    `• ${item.title}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — ${formatCurrency(item.price)}`
   ).join('<br>');
 
   // Show order confirmation card
@@ -3537,7 +3537,7 @@ async function generateProductBenefitsPitch() {
   const paidItems = order?.lineItems?.filter(item => parseFloat(item.price) > 0) || [];
 
   // Get product names for the AI
-  const productNames = paidItems.map(item => item.name).join(', ');
+  const productNames = paidItems.map(item => item.title).join(', ');
   const productSkus = paidItems.map(item => item.sku || item.variantId).filter(Boolean);
 
   try {
@@ -3619,7 +3619,7 @@ function generateFallbackProductPitch(items) {
     return "Looking at your order, you've got some great products that many of our customers love!";
   }
 
-  const itemNames = items.map(i => i.name).join(', ');
+  const itemNames = items.map(i => i.title).join(', ');
   return `Looking at your order, you've got <strong>${itemNames}</strong>! 🐕<br><br>These are some of our most popular products — customers tell us they make a real difference for their pups. Whether it's training, comfort, or everyday use, these were designed with your dog's needs in mind.<br><br>Many pet parents who were initially unsure ended up loving them once they tried them!`;
 }
 
