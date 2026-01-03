@@ -424,6 +424,33 @@ function getSessionReplayUrl() {
   return '';
 }
 
+// Identify user in PostHog for session recording searchability
+function identifyUserInPostHog(userData = {}) {
+  try {
+    if (typeof posthog !== 'undefined' && posthog.identify) {
+      const email = userData.email || state.customerData?.email || state.selectedOrder?.email;
+      const name = userData.name ||
+        `${state.customerData?.firstName || ''} ${state.customerData?.lastName || ''}`.trim() ||
+        `${state.selectedOrder?.customerFirstName || ''} ${state.selectedOrder?.customerLastName || ''}`.trim();
+      const orderNumber = userData.orderNumber || state.customerData?.orderNumber || state.selectedOrder?.orderNumber;
+
+      if (email) {
+        // Identify with email as the unique ID
+        posthog.identify(email, {
+          email: email,
+          name: name || undefined,
+          order_number: orderNumber || undefined,
+          first_name: state.customerData?.firstName || state.selectedOrder?.customerFirstName || undefined,
+          last_name: state.customerData?.lastName || state.selectedOrder?.customerLastName || undefined,
+        });
+        console.log('PostHog: Identified user', email);
+      }
+    }
+  } catch (e) {
+    console.warn('Could not identify user in PostHog:', e);
+  }
+}
+
 function formatDate(dateString) {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -1513,6 +1540,14 @@ async function handleOrdersFound(flowType) {
     return;
   }
 
+  // Identify user in PostHog as soon as we find their order
+  const firstOrder = state.orders[0];
+  identifyUserInPostHog({
+    email: firstOrder.email,
+    name: `${firstOrder.customerFirstName || ''} ${firstOrder.customerLastName || ''}`.trim(),
+    orderNumber: firstOrder.orderNumber
+  });
+
   // Show "Found your order" message first
   const orderCount = state.orders.length;
   const foundMessage = orderCount === 1
@@ -1714,6 +1749,13 @@ async function submitManualHelp() {
     return;
   }
 
+  // Identify user in PostHog even for manual help (no order found)
+  identifyUserInPostHog({
+    email: email,
+    name: fullName,
+    orderNumber: orderNumber
+  });
+
   document.getElementById('manualHelpForm')?.closest('.interactive-content').remove();
   addUserMessage("Request submitted");
 
@@ -1801,7 +1843,10 @@ function renderOrderCards(flowType) {
 
 async function selectOrder(index, flowType) {
   state.selectedOrder = state.orders[index];
-  
+
+  // Identify user in PostHog for session searchability
+  identifyUserInPostHog();
+
   // Remove order cards
   document.querySelector('.orders-list')?.closest('.interactive-content').remove();
   
