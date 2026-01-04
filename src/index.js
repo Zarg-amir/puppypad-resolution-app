@@ -2336,7 +2336,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     messageParts.push(
       'Hi there,',
       '',
-      `I'd like to return my order for a refund.`,
+      `I used your online resolution center and would like to return my order for a refund.`,
       '',
       `Here's what happened: ${orderIssue}`,
       '',
@@ -2350,7 +2350,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
       '',
       `My order number is ${caseData.orderNumber || 'N/A'} and my case reference is ${caseId}.`,
       '',
-      `I understand that once you receive and inspect my return, I'll get a full refund${refundAmountStr ? ` of ${refundAmountStr}` : ''}.`,
+      `Through the resolution center, I was told that once you receive and inspect my return, I'll get a full refund${refundAmountStr ? ` of ${refundAmountStr}` : ''}.`,
       '',
       `I'll send over the tracking number as soon as I've shipped the package.`,
       '',
@@ -2364,7 +2364,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     messageParts.push(
       'Hi there,',
       '',
-      `I'm reaching out because I need some help with my order.`,
+      `I used your online resolution center and wanted to follow up on my case.`,
       '',
       `The issue: ${orderIssue}`,
       '',
@@ -2375,7 +2375,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
       messageParts.push('The item(s) affected:', '', itemsList, '');
     }
     messageParts.push(
-      `I've been offered a ${formattedResolution.toLowerCase()}${refundAmountStr ? ` of ${refundAmountStr}` : ''} which I've accepted.`,
+      `Through the resolution center, I was offered a ${formattedResolution.toLowerCase()}${refundAmountStr ? ` of ${refundAmountStr}` : ''} which I've accepted.`,
       '',
       `Please let me know if you need anything else from me.`,
       '',
@@ -2389,7 +2389,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     messageParts.push(
       'Hi there,',
       '',
-      `I'm having an issue with the delivery of my order.`,
+      `I used your online resolution center regarding an issue with the delivery of my order.`,
       '',
       `The problem: ${orderIssue}`,
       '',
@@ -2400,7 +2400,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
       messageParts.push('Order contains:', '', itemsList, '');
     }
     messageParts.push(
-      `The resolution we agreed on: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}.`,
+      `Through the resolution center, we agreed on: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}.`,
       '',
       `Please let me know once this has been processed.`,
       '',
@@ -2422,7 +2422,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     messageParts.push(
       'Hi there,',
       '',
-      `I'd like to ${actionText}.`,
+      `I used your online resolution center and would like to ${actionText}.`,
       '',
       `Reason: ${orderIssue}`,
       '',
@@ -2434,7 +2434,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     if (caseData.subscriptionProductName) messageParts.push(`• Product: ${caseData.subscriptionProductName}`);
     messageParts.push(
       '',
-      `Resolution: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}.`,
+      `Through the resolution center, the agreed action is: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}.`,
       '',
       'Thanks!',
       '',
@@ -2446,7 +2446,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     messageParts.push(
       'Hi there,',
       '',
-      `I'm reaching out for help with my order.`,
+      `I used your online resolution center and need some help with my order.`,
       '',
       `Issue: ${orderIssue}`,
       '',
@@ -2458,7 +2458,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
       messageParts.push('Items:', '', itemsList, '');
     }
     if (formattedResolution) {
-      messageParts.push(`Resolution requested: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}`, '');
+      messageParts.push(`Through the resolution center, the agreed resolution is: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}`, '');
     }
     messageParts.push(
       'Please let me know if you need any more information.',
