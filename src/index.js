@@ -1643,10 +1643,14 @@ async function handleCreateCase(request, env, corsHeaders) {
     orderNumber: caseData.orderNumber,
     email: caseData.email,
     customerName: caseData.customerName,
+    customerFirstName: caseData.customerFirstName,
     refundAmount: caseData.refundAmount,
     selectedItems: caseData.selectedItems,
     clickupTaskId: clickupTask?.id,
-    clickupTaskUrl: clickupTask?.url
+    clickupTaskUrl: clickupTask?.url,
+    sessionReplayUrl: caseData.sessionReplayUrl,
+    orderUrl: caseData.orderUrl,
+    orderDate: caseData.orderDate
   });
 
   return Response.json({
@@ -1780,6 +1784,7 @@ async function handleCreateManualCase(request, env, corsHeaders) {
       customerName: fullName || '',
       clickupTaskId: task?.id,
       clickupTaskUrl: task?.url,
+      sessionReplayUrl: sessionReplayUrl || null,
       richpanelConversationNo: richpanelResult?.conversationNo,
     });
 
@@ -3417,20 +3422,40 @@ async function handleLogPolicyBlock(request, env, corsHeaders) {
 // Log case creation (called from handleCreateCase)
 async function logCaseToAnalytics(env, caseData) {
   try {
-    // Use only columns that exist in the database
+    // Build customer name from first/last name if not directly provided
+    let customerName = caseData.customerName;
+    if (!customerName && caseData.customerFirstName) {
+      customerName = caseData.customerFirstName;
+      if (caseData.customerLastName) {
+        customerName += ' ' + caseData.customerLastName;
+      }
+    }
+
     await env.ANALYTICS_DB.prepare(`
-      INSERT INTO cases (case_id, case_type, resolution, customer_email, order_number, refund_amount, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO cases (
+        case_id, case_type, resolution, customer_email, customer_name,
+        order_number, refund_amount, status, session_id,
+        clickup_task_id, clickup_task_url, session_replay_url,
+        order_url, order_date, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `).bind(
       caseData.caseId,
       caseData.caseType,
       caseData.resolution,
       caseData.email,
+      customerName || null,
       caseData.orderNumber,
       caseData.refundAmount || null,
-      'pending'
+      'pending',
+      caseData.sessionId || null,
+      caseData.clickupTaskId || null,
+      caseData.clickupTaskUrl || null,
+      caseData.sessionReplayUrl || null,
+      caseData.orderUrl || null,
+      caseData.orderDate || null
     ).run();
-    console.log('Case saved to database:', caseData.caseId);
+    console.log('Case saved to database:', caseData.caseId, 'Customer:', customerName);
   } catch (e) {
     console.error('Case analytics logging failed:', e.message);
   }
@@ -5229,6 +5254,13 @@ async function handleHubGetComments(caseId, env, corsHeaders) {
     return Response.json({ comments: comments.results || [] }, { headers: corsHeaders });
   } catch (error) {
     console.error('Hub get comments error:', error);
+    // Check if table doesn't exist
+    if (error.message?.includes('no such table')) {
+      return Response.json({
+        comments: [],
+        notice: 'Comments table not yet created. Run migrations to enable comments.'
+      }, { headers: corsHeaders });
+    }
     return Response.json({ comments: [] }, { headers: corsHeaders });
   }
 }
@@ -5275,6 +5307,12 @@ async function handleHubAddComment(request, caseId, env, corsHeaders) {
     }, { headers: corsHeaders });
   } catch (error) {
     console.error('Hub add comment error:', error);
+    // Check if table doesn't exist
+    if (error.message?.includes('no such table')) {
+      return Response.json({
+        error: 'Comments table not yet created. Please run: CREATE TABLE case_comments (id INTEGER PRIMARY KEY AUTOINCREMENT, case_id TEXT NOT NULL, content TEXT NOT NULL, author_name TEXT, author_email TEXT, source TEXT DEFAULT \'hub\', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);'
+      }, { status: 500, headers: corsHeaders });
+    }
     return Response.json({ error: 'Failed to add comment' }, { status: 500, headers: corsHeaders });
   }
 }
@@ -5674,44 +5712,79 @@ function getResolutionHubHTML() {
     .empty-state { text-align: center; padding: 60px 20px; color: var(--gray-500); }
     @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .main-content { margin-left: 0; } }
-    /* Modal Styles */
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: flex-start; padding: 40px; overflow-y: auto; }
+    /* Modal Styles - Redesigned */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: flex-start; padding: 32px; overflow-y: auto; }
     .modal-overlay.active { display: flex; }
-    .modal { background: white; border-radius: 16px; width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0,0,0,0.25); }
-    .modal-header { padding: 24px; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: flex-start; position: sticky; top: 0; background: white; z-index: 10; }
-    .modal-title { font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 600; }
-    .modal-subtitle { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
-    .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray-400); padding: 4px; line-height: 1; }
-    .modal-close:hover { color: var(--gray-600); }
-    .modal-body { padding: 24px; }
-    .modal-section { margin-bottom: 24px; }
-    .modal-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--gray-500); margin-bottom: 12px; letter-spacing: 0.5px; }
-    .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-    .info-item { }
-    .info-label { font-size: 12px; color: var(--gray-500); margin-bottom: 4px; }
-    .info-value { font-size: 14px; font-weight: 500; color: var(--gray-800); }
-    .info-value a { color: var(--brand-navy); text-decoration: none; }
-    .info-value a:hover { text-decoration: underline; }
-    .status-actions { display: flex; gap: 12px; flex-wrap: wrap; }
-    .status-btn { padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
-    .status-btn.pending { background: #fef3c7; color: #d97706; border-color: #fcd34d; }
-    .status-btn.in-progress { background: #dbeafe; color: #2563eb; border-color: #93c5fd; }
-    .status-btn.completed { background: #d1fae5; color: #059669; border-color: #6ee7b7; }
-    .status-btn.active { box-shadow: 0 0 0 3px rgba(30,58,95,0.3); }
-    .status-btn:hover { transform: translateY(-1px); }
-    .comments-list { display: flex; flex-direction: column; gap: 12px; }
-    .comment-item { background: var(--gray-50); padding: 12px 16px; border-radius: 8px; }
-    .comment-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
-    .comment-author { font-size: 13px; font-weight: 500; }
-    .comment-time { font-size: 12px; color: var(--gray-500); }
-    .comment-text { font-size: 14px; color: var(--gray-700); }
-    .comment-form { display: flex; gap: 12px; margin-top: 16px; }
-    .comment-input { flex: 1; padding: 12px 16px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; resize: none; }
-    .comment-input:focus { outline: none; border-color: var(--brand-navy); }
-    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; background: var(--gray-50); }
-    .external-links { display: flex; gap: 12px; }
-    .external-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: white; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 13px; color: var(--gray-700); text-decoration: none; }
-    .external-link:hover { background: var(--gray-50); }
+    .modal { background: white; border-radius: 20px; width: 100%; max-width: 960px; max-height: 90vh; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.3); display: flex; flex-direction: column; }
+    .modal-header { padding: 28px 32px; background: linear-gradient(135deg, var(--brand-navy) 0%, #2d4a6f 100%); color: white; display: flex; justify-content: space-between; align-items: flex-start; }
+    .modal-header-content { flex: 1; }
+    .modal-case-id { font-family: monospace; font-size: 13px; background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 6px; display: inline-block; margin-bottom: 8px; }
+    .modal-title { font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+    .modal-meta { display: flex; align-items: center; gap: 16px; font-size: 14px; opacity: 0.9; }
+    .modal-meta-item { display: flex; align-items: center; gap: 6px; }
+    .modal-close { background: rgba(255,255,255,0.1); border: none; width: 40px; height: 40px; border-radius: 10px; font-size: 24px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; margin-left: 16px; flex-shrink: 0; }
+    .modal-close:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
+    .modal-body { flex: 1; overflow-y: auto; padding: 0; }
+    .modal-grid { display: grid; grid-template-columns: 2fr 1fr; min-height: 100%; }
+    .modal-main { padding: 28px 32px; border-right: 1px solid var(--gray-100); }
+    .modal-sidebar { padding: 28px 24px; background: var(--gray-50); }
+    .modal-section { margin-bottom: 28px; }
+    .modal-section:last-child { margin-bottom: 0; }
+    .modal-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--gray-400); margin-bottom: 16px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
+    .modal-section-title svg { width: 16px; height: 16px; }
+    .detail-card { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 20px; }
+    .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gray-100); }
+    .detail-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .detail-row:first-child { padding-top: 0; }
+    .detail-label { font-size: 13px; color: var(--gray-500); }
+    .detail-value { font-size: 14px; font-weight: 600; color: var(--gray-800); text-align: right; max-width: 60%; word-break: break-word; }
+    .detail-value.highlight { color: var(--brand-navy); }
+    .detail-value.money { color: #059669; font-size: 16px; }
+    .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .info-card { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 16px 20px; }
+    .info-card-label { font-size: 11px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .info-card-value { font-size: 15px; font-weight: 600; color: var(--gray-800); }
+    .info-card-value.email { font-size: 13px; word-break: break-all; }
+    .status-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .status-btn { padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; flex: 1; text-align: center; min-width: 120px; }
+    .status-btn.pending { background: #fffbeb; color: #b45309; border-color: #fcd34d; }
+    .status-btn.in-progress { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
+    .status-btn.completed { background: #ecfdf5; color: #047857; border-color: #6ee7b7; }
+    .status-btn.active { box-shadow: 0 0 0 3px rgba(30,58,95,0.25); transform: scale(1.02); }
+    .status-btn:hover:not(.active) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .quick-actions { display: flex; flex-direction: column; gap: 10px; }
+    .quick-action-btn { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: white; border: 1px solid var(--gray-200); border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--gray-700); text-decoration: none; cursor: pointer; transition: all 0.2s; }
+    .quick-action-btn:hover { background: white; border-color: var(--brand-navy); color: var(--brand-navy); transform: translateX(4px); }
+    .quick-action-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .quick-action-btn.primary { background: var(--brand-navy); color: white; border-color: var(--brand-navy); }
+    .quick-action-btn.primary:hover { background: #3d5a80; }
+    .quick-action-btn.replay { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; border: none; }
+    .quick-action-btn.replay:hover { transform: translateX(4px); box-shadow: 0 4px 15px rgba(124,58,237,0.3); }
+    .comments-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; overflow: hidden; }
+    .comments-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+    .comments-title { font-size: 14px; font-weight: 600; }
+    .comments-count { font-size: 12px; color: var(--gray-500); }
+    .comments-list { max-height: 250px; overflow-y: auto; padding: 16px 20px; }
+    .comments-list:empty::after { content: 'No comments yet'; color: var(--gray-400); font-size: 14px; display: block; text-align: center; padding: 20px; }
+    .comment-item { background: var(--gray-50); padding: 14px 16px; border-radius: 10px; margin-bottom: 12px; }
+    .comment-item:last-child { margin-bottom: 0; }
+    .comment-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .comment-author { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+    .comment-time { font-size: 11px; color: var(--gray-400); }
+    .comment-text { font-size: 14px; color: var(--gray-600); line-height: 1.5; }
+    .comment-form { padding: 16px 20px; border-top: 1px solid var(--gray-100); background: var(--gray-50); }
+    .comment-input-wrap { display: flex; gap: 12px; }
+    .comment-input { flex: 1; padding: 12px 16px; border: 1px solid var(--gray-200); border-radius: 10px; font-size: 14px; resize: none; background: white; font-family: inherit; }
+    .comment-input:focus { outline: none; border-color: var(--brand-navy); box-shadow: 0 0 0 3px rgba(30,58,95,0.1); }
+    .comment-submit { padding: 12px 20px; background: var(--brand-navy); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .comment-submit:hover { background: #3d5a80; }
+    .timeline-item { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--gray-100); }
+    .timeline-item:last-child { border-bottom: none; }
+    .timeline-dot { width: 10px; height: 10px; background: var(--brand-navy); border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    .timeline-content { flex: 1; }
+    .timeline-label { font-size: 12px; color: var(--gray-500); margin-bottom: 2px; }
+    .timeline-value { font-size: 13px; font-weight: 500; }
+    @media (max-width: 900px) { .modal-grid { grid-template-columns: 1fr; } .modal-sidebar { border-top: 1px solid var(--gray-100); } }
   </style>
 </head>
 <body>
@@ -5741,72 +5814,175 @@ function getResolutionHubHTML() {
     </main>
   </div>
 
-  <!-- Case Detail Modal -->
+  <!-- Case Detail Modal - Redesigned -->
   <div class="modal-overlay" id="caseModal">
     <div class="modal">
       <div class="modal-header">
-        <div>
-          <div class="modal-title" id="modalCaseId">Case Details</div>
-          <div class="modal-subtitle" id="modalCaseType">Loading...</div>
+        <div class="modal-header-content">
+          <div class="modal-case-id" id="modalCaseId">Loading...</div>
+          <div class="modal-title" id="modalCustomerName">Customer Name</div>
+          <div class="modal-meta">
+            <div class="modal-meta-item" id="modalCaseType">
+              <span class="type-badge">-</span>
+            </div>
+            <div class="modal-meta-item" id="modalStatusBadge">
+              <span class="status-badge">-</span>
+            </div>
+            <div class="modal-meta-item" id="modalTimeAgo">-</div>
+          </div>
         </div>
         <button class="modal-close" onclick="closeModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="modal-section">
-          <div class="modal-section-title">Status</div>
-          <div class="status-actions" id="statusActions">
-            <button class="status-btn pending" onclick="updateStatus('pending')">Pending</button>
-            <button class="status-btn in-progress" onclick="updateStatus('in_progress')">In Progress</button>
-            <button class="status-btn completed" onclick="updateStatus('completed')">Completed</button>
+        <div class="modal-grid">
+          <div class="modal-main">
+            <!-- Status Section -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Update Status
+              </div>
+              <div class="status-actions" id="statusActions">
+                <button class="status-btn pending" onclick="updateStatus('pending')">Pending</button>
+                <button class="status-btn in-progress" onclick="updateStatus('in_progress')">In Progress</button>
+                <button class="status-btn completed" onclick="updateStatus('completed')">Completed</button>
+              </div>
+            </div>
+
+            <!-- Customer & Order Info -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                Customer & Order
+              </div>
+              <div class="info-grid">
+                <div class="info-card">
+                  <div class="info-card-label">Customer Email</div>
+                  <div class="info-card-value email" id="modalCustomerEmail">-</div>
+                </div>
+                <div class="info-card">
+                  <div class="info-card-label">Order Number</div>
+                  <div class="info-card-value" id="modalOrderNumber">-</div>
+                </div>
+                <div class="info-card">
+                  <div class="info-card-label">Order Date</div>
+                  <div class="info-card-value" id="modalOrderDate">-</div>
+                </div>
+                <div class="info-card">
+                  <div class="info-card-label">Session ID</div>
+                  <div class="info-card-value" id="modalSessionId" style="font-size:11px;font-family:monospace;">-</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resolution Details -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                Resolution Details
+              </div>
+              <div class="detail-card">
+                <div class="detail-row">
+                  <span class="detail-label">Resolution Type</span>
+                  <span class="detail-value" id="modalResolution">-</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Refund Amount</span>
+                  <span class="detail-value money" id="modalRefundAmount">-</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Created</span>
+                  <span class="detail-value" id="modalCreatedAt">-</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Last Updated</span>
+                  <span class="detail-value" id="modalUpdatedAt">-</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Comments Section -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                Team Comments
+              </div>
+              <div class="comments-section">
+                <div class="comments-header">
+                  <span class="comments-title">Internal Notes</span>
+                  <span class="comments-count" id="commentsCount">0 comments</span>
+                </div>
+                <div class="comments-list" id="commentsList"></div>
+                <div class="comment-form">
+                  <div class="comment-input-wrap">
+                    <textarea class="comment-input" id="commentInput" placeholder="Add a note or comment..." rows="2"></textarea>
+                    <button class="comment-submit" onclick="addComment()">Post</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sidebar -->
+          <div class="modal-sidebar">
+            <!-- Quick Actions -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                Quick Actions
+              </div>
+              <div class="quick-actions">
+                <a class="quick-action-btn replay" id="replayLink" href="#" target="_blank" style="display:none;">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+                  Watch Session Recording
+                </a>
+                <a class="quick-action-btn" id="clickupLink" href="#" target="_blank" style="display:none;">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                  View in ClickUp
+                </a>
+                <a class="quick-action-btn" id="shopifyLink" href="#" target="_blank" style="display:none;">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                  View Shopify Order
+                </a>
+                <button class="quick-action-btn" onclick="closeModal()">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  Close Case View
+                </button>
+              </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Timeline
+              </div>
+              <div class="detail-card" style="padding:16px;">
+                <div class="timeline-item">
+                  <div class="timeline-dot"></div>
+                  <div class="timeline-content">
+                    <div class="timeline-label">Case Created</div>
+                    <div class="timeline-value" id="timelineCreated">-</div>
+                  </div>
+                </div>
+                <div class="timeline-item" id="timelineFirstResponseRow" style="display:none;">
+                  <div class="timeline-dot" style="background:#059669;"></div>
+                  <div class="timeline-content">
+                    <div class="timeline-label">First Response</div>
+                    <div class="timeline-value" id="timelineFirstResponse">-</div>
+                  </div>
+                </div>
+                <div class="timeline-item" id="timelineResolvedRow" style="display:none;">
+                  <div class="timeline-dot" style="background:#10b981;"></div>
+                  <div class="timeline-content">
+                    <div class="timeline-label">Resolved</div>
+                    <div class="timeline-value" id="timelineResolved">-</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="modal-section">
-          <div class="modal-section-title">Customer Information</div>
-          <div class="info-grid">
-            <div class="info-item"><div class="info-label">Name</div><div class="info-value" id="modalCustomerName">-</div></div>
-            <div class="info-item"><div class="info-label">Email</div><div class="info-value" id="modalCustomerEmail">-</div></div>
-            <div class="info-item"><div class="info-label">Order Number</div><div class="info-value" id="modalOrderNumber">-</div></div>
-            <div class="info-item"><div class="info-label">Order Date</div><div class="info-value" id="modalOrderDate">-</div></div>
-          </div>
-        </div>
-        <div class="modal-section">
-          <div class="modal-section-title">Resolution Details</div>
-          <div class="info-grid">
-            <div class="info-item"><div class="info-label">Resolution</div><div class="info-value" id="modalResolution">-</div></div>
-            <div class="info-item"><div class="info-label">Refund Amount</div><div class="info-value" id="modalRefundAmount">-</div></div>
-            <div class="info-item"><div class="info-label">Created</div><div class="info-value" id="modalCreatedAt">-</div></div>
-            <div class="info-item"><div class="info-label">Last Updated</div><div class="info-value" id="modalUpdatedAt">-</div></div>
-          </div>
-        </div>
-        <div class="modal-section" id="modalItemsSection" style="display:none;">
-          <div class="modal-section-title">Items</div>
-          <div id="modalItems"></div>
-        </div>
-        <div class="modal-section">
-          <div class="modal-section-title">Comments</div>
-          <div class="comments-list" id="commentsList"><div class="empty-state">No comments yet</div></div>
-          <div class="comment-form">
-            <textarea class="comment-input" id="commentInput" placeholder="Add a comment..." rows="2"></textarea>
-            <button class="btn btn-primary" onclick="addComment()">Add</button>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <div class="external-links">
-          <a class="external-link" id="clickupLink" href="#" target="_blank" style="display:none;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.5L19 8l-7 3.5L5 8l7-3.5zM4 9.5l7 3.5v7l-7-3.5v-7zm16 0v7l-7 3.5v-7l7-3.5z"/></svg>
-            ClickUp
-          </a>
-          <a class="external-link" id="shopifyLink" href="#" target="_blank" style="display:none;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 2.5c-.5 0-1 .2-1.4.6l-1.3 1.3c-.4.4-.6.9-.6 1.4v2.4l-6.4 6.4c-.8.8-.8 2 0 2.8l2.8 2.8c.8.8 2 .8 2.8 0l6.4-6.4h2.4c.5 0 1-.2 1.4-.6l1.3-1.3c.4-.4.6-.9.6-1.4V7c0-2.5-2-4.5-4.5-4.5h-3.5z"/></svg>
-            Order
-          </a>
-          <a class="external-link" id="replayLink" href="#" target="_blank" style="display:none;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Session Replay
-          </a>
-        </div>
-        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
       </div>
     </div>
   </div>
@@ -5896,33 +6072,79 @@ function getResolutionHubHTML() {
     async function openCase(caseId) {
       document.getElementById('caseModal').classList.add('active');
       document.getElementById('modalCaseId').textContent = caseId;
-      document.getElementById('modalCaseType').textContent = 'Loading...';
+      document.getElementById('modalCustomerName').textContent = 'Loading...';
       try {
         const r = await fetch(API+'/hub/api/case/'+caseId);
         const data = await r.json();
         const c = data.case;
         currentCase = c;
+
+        // Header section
         document.getElementById('modalCaseId').textContent = c.case_id;
-        document.getElementById('modalCaseType').innerHTML = '<span class="type-badge '+c.case_type+'">'+c.case_type+'</span> &bull; '+(c.resolution||'No resolution set');
-        document.getElementById('modalCustomerName').textContent = c.customer_name||c.customer_email?.split('@')[0]||'-';
+        const customerName = c.customer_name || c.customer_email?.split('@')[0] || 'Customer';
+        document.getElementById('modalCustomerName').textContent = customerName;
+        document.getElementById('modalCaseType').innerHTML = '<span class="type-badge '+c.case_type+'">'+c.case_type+'</span>';
+        const statusClass = (c.status||'pending').replace('_','-');
+        document.getElementById('modalStatusBadge').innerHTML = '<span class="status-badge '+statusClass+'">'+(c.status||'pending').replace('_',' ')+'</span>';
+        document.getElementById('modalTimeAgo').textContent = timeAgo(c.created_at);
+
+        // Customer & Order info
         document.getElementById('modalCustomerEmail').textContent = c.customer_email||'-';
         document.getElementById('modalOrderNumber').textContent = c.order_number||'-';
         document.getElementById('modalOrderDate').textContent = formatDate(c.order_date||c.created_at);
+        document.getElementById('modalSessionId').textContent = c.session_id ? c.session_id.substring(0,20)+'...' : '-';
+
+        // Resolution details
         document.getElementById('modalResolution').textContent = c.resolution||'-';
         document.getElementById('modalRefundAmount').textContent = c.refund_amount ? '$'+parseFloat(c.refund_amount).toFixed(2) : '-';
         document.getElementById('modalCreatedAt').textContent = formatDate(c.created_at);
         document.getElementById('modalUpdatedAt').textContent = formatDate(c.updated_at||c.created_at);
+
+        // Status buttons
         document.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
-        const statusClass = (c.status||'pending').replace('_','-');
         document.querySelector('.status-btn.'+statusClass)?.classList.add('active');
-        if(c.clickup_task_url) { document.getElementById('clickupLink').href = c.clickup_task_url; document.getElementById('clickupLink').style.display = 'inline-flex'; }
-        else { document.getElementById('clickupLink').style.display = 'none'; }
-        if(c.order_url) { document.getElementById('shopifyLink').href = c.order_url; document.getElementById('shopifyLink').style.display = 'inline-flex'; }
-        else { document.getElementById('shopifyLink').style.display = 'none'; }
-        if(c.session_replay_url) { document.getElementById('replayLink').href = c.session_replay_url; document.getElementById('replayLink').style.display = 'inline-flex'; }
-        else { document.getElementById('replayLink').style.display = 'none'; }
+
+        // Quick action links
+        if(c.session_replay_url) {
+          document.getElementById('replayLink').href = c.session_replay_url;
+          document.getElementById('replayLink').style.display = 'flex';
+        } else {
+          document.getElementById('replayLink').style.display = 'none';
+        }
+        if(c.clickup_task_url) {
+          document.getElementById('clickupLink').href = c.clickup_task_url;
+          document.getElementById('clickupLink').style.display = 'flex';
+        } else {
+          document.getElementById('clickupLink').style.display = 'none';
+        }
+        if(c.order_url) {
+          document.getElementById('shopifyLink').href = c.order_url;
+          document.getElementById('shopifyLink').style.display = 'flex';
+        } else {
+          document.getElementById('shopifyLink').style.display = 'none';
+        }
+
+        // Timeline
+        document.getElementById('timelineCreated').textContent = formatDate(c.created_at);
+        if(c.first_response_at) {
+          document.getElementById('timelineFirstResponseRow').style.display = 'flex';
+          document.getElementById('timelineFirstResponse').textContent = formatDate(c.first_response_at);
+        } else {
+          document.getElementById('timelineFirstResponseRow').style.display = 'none';
+        }
+        if(c.resolved_at) {
+          document.getElementById('timelineResolvedRow').style.display = 'flex';
+          document.getElementById('timelineResolved').textContent = formatDate(c.resolved_at);
+        } else {
+          document.getElementById('timelineResolvedRow').style.display = 'none';
+        }
+
+        // Load comments
         loadComments(caseId);
-      } catch(e) { console.error(e); document.getElementById('modalCaseType').textContent = 'Error loading case'; }
+      } catch(e) {
+        console.error(e);
+        document.getElementById('modalCustomerName').textContent = 'Error loading case';
+      }
     }
 
     function closeModal() { document.getElementById('caseModal').classList.remove('active'); currentCase = null; }
@@ -5937,8 +6159,12 @@ function getResolutionHubHTML() {
         });
         if(r.ok) {
           currentCase.status = newStatus;
+          // Update status buttons
           document.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
-          document.querySelector('.status-btn.'+newStatus.replace('_','-'))?.classList.add('active');
+          const statusClass = newStatus.replace('_','-');
+          document.querySelector('.status-btn.'+statusClass)?.classList.add('active');
+          // Update header badge
+          document.getElementById('modalStatusBadge').innerHTML = '<span class="status-badge '+statusClass+'">'+newStatus.replace('_',' ')+'</span>';
           loadDashboard();
         }
       } catch(e) { console.error(e); alert('Failed to update status'); }
@@ -5949,9 +6175,21 @@ function getResolutionHubHTML() {
         const r = await fetch(API+'/hub/api/case/'+caseId+'/comments');
         const d = await r.json();
         const list = document.getElementById('commentsList');
-        if(!d.comments?.length) { list.innerHTML = '<div class="empty-state">No comments yet</div>'; return; }
-        list.innerHTML = d.comments.map(c => '<div class="comment-item"><div class="comment-header"><span class="comment-author">'+(c.author_name||'Team')+'</span><span class="comment-time">'+timeAgo(c.created_at)+'</span></div><div class="comment-text">'+c.content+'</div></div>').join('');
+        const countEl = document.getElementById('commentsCount');
+        const count = d.comments?.length || 0;
+        countEl.textContent = count + ' comment' + (count !== 1 ? 's' : '');
+        if(!count) {
+          list.innerHTML = '';
+          return;
+        }
+        list.innerHTML = d.comments.map(c => '<div class="comment-item"><div class="comment-header"><span class="comment-author">'+(c.author_name||'Team')+'</span><span class="comment-time">'+timeAgo(c.created_at)+'</span></div><div class="comment-text">'+escapeHtml(c.content)+'</div></div>').join('');
       } catch(e) { console.error(e); }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     async function addComment() {
