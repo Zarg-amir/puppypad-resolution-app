@@ -2469,7 +2469,15 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     );
   }
 
-  return messageParts.filter(Boolean).join('\n').trim();
+  // Join message parts, converting to HTML for proper Richpanel rendering
+  // Empty strings become blank lines (<br><br> for paragraph spacing)
+  const plainText = messageParts
+    .filter(part => part !== null && part !== undefined)
+    .join('\n')
+    .trim();
+
+  // Convert newlines to HTML breaks for Richpanel
+  return plainText.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
 }
 
 function getSubjectByType(caseType, resolution) {
