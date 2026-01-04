@@ -1770,10 +1770,12 @@ function formatResolution(resolution, caseData) {
 
   // Build concise resolution text
   const resolutionMap = {
-    // Partial refunds (product issues)
-    'partial_20': `Give 20% refund (${refundAmount})`,
-    'partial_50': `Give 50% refund (${refundAmount})`,
-    'partial_75': `Give 75% refund (${refundAmount})`,
+    // Partial refunds (product issues) - all ladder steps
+    'partial_20': `Give 20% partial refund (${refundAmount}) - customer keeps product`,
+    'partial_30': `Give 30% partial refund (${refundAmount}) - customer keeps product`,
+    'partial_40': `Give 40% partial refund (${refundAmount}) - customer keeps product`,
+    'partial_50': `Give 50% partial refund (${refundAmount}) - customer keeps product`,
+    'partial_75': `Give 75% partial refund (${refundAmount}) - customer keeps product`,
 
     // Full refunds
     'full_refund': caseData.keepProduct
@@ -1822,50 +1824,57 @@ function formatResolution(resolution, caseData) {
   const partialReshipMatch = resolution.match(/^partial_(\d+)_reship$/);
   if (partialReshipMatch) {
     const percent = partialReshipMatch[1];
-    return `Give ${percent}% refund (${refundAmount}) and reship order`;
+    return `Give ${percent}% partial refund (${refundAmount}) and reship order`;
+  }
+
+  // Check for dynamic partial_XX patterns (catches any percentage not explicitly mapped)
+  const partialMatch = resolution.match(/^partial_(\d+)$/);
+  if (partialMatch) {
+    const percent = partialMatch[1];
+    return `Give ${percent}% partial refund (${refundAmount}) - customer keeps product`;
   }
 
   return resolutionMap[resolution] || resolution.replace(/_/g, ' ');
 }
 
-// Format order issue from customer's reason
+// Format order issue from customer's reason (customer perspective - used in emails)
 function formatOrderIssue(caseData) {
-  // If there's detailed intent from the customer
+  // If there's detailed intent from the customer, use it directly
   if (caseData.intentDetails) {
     return caseData.intentDetails;
   }
 
-  // Map issue types to readable descriptions
+  // Map issue types to customer-perspective descriptions (sounds like the customer is saying this)
   const issueMap = {
     // Product issues
-    'not_met_expectations': "Product didn't meet expectations",
-    'changed_mind': 'Customer changed their mind',
-    'ordered_mistake': 'Ordered by mistake',
-    'defective': 'Product is defective',
-    'wrong_item': 'Received wrong item',
-    'damaged': 'Product arrived damaged',
-    'missing_item': 'Item missing from order',
-    'not_as_described': 'Product not as described',
-    'dog_not_using': 'Dog not using product',
-    'quality_difference': 'Quality difference noticed',
+    'not_met_expectations': "The product didn't meet my expectations",
+    'changed_mind': "I changed my mind about this order",
+    'ordered_mistake': "I ordered this by mistake",
+    'defective': "The product I received is defective",
+    'wrong_item': "I received the wrong item",
+    'damaged': "My product arrived damaged",
+    'missing_item': "There's an item missing from my order",
+    'not_as_described': "The product isn't as described",
+    'dog_not_using': "My dog isn't using the product",
+    'quality_difference': "I noticed a quality difference",
 
     // Shipping issues
-    'late_delivery': 'Delivery taking too long',
-    'not_received': 'Order not received',
-    'lost_package': 'Package lost in transit',
-    'stuck_in_transit': 'Package stuck in transit',
-    'delivery_exception': 'Delivery exception reported',
-    'address_issue': 'Address correction needed',
-    'failed_delivery': 'Delivery attempt failed',
+    'late_delivery': "My delivery is taking too long",
+    'not_received': "I haven't received my order",
+    'lost_package': "My package appears to be lost",
+    'stuck_in_transit': "My package is stuck in transit",
+    'delivery_exception': "There's a delivery exception on my package",
+    'address_issue': "I need to correct my shipping address",
+    'failed_delivery': "The delivery attempt failed",
 
     // Subscription issues
-    'subscription_cancel': 'Cancel subscription',
-    'subscription_pause': 'Pause subscription',
-    'subscription_change': 'Change subscription',
-    'charged_unexpectedly': 'Unexpected subscription charge',
+    'subscription_cancel': "I'd like to cancel my subscription",
+    'subscription_pause': "I'd like to pause my subscription",
+    'subscription_change': "I'd like to change my subscription",
+    'charged_unexpectedly': "I was charged unexpectedly",
 
     // General
-    'other': 'Other issue - see details',
+    'other': "I have an issue with my order",
   };
 
   // Check if we have a matching issue type
@@ -1873,16 +1882,16 @@ function formatOrderIssue(caseData) {
     return issueMap[caseData.issueType];
   }
 
-  // Fallback based on case type for better context
+  // Fallback based on case type for better context (customer perspective)
   const caseTypeFallbacks = {
-    'refund': 'Refund request - product issue',
-    'return': 'Return request - product issue',
-    'shipping': 'Shipping issue - delivery problem',
-    'subscription': 'Subscription change request',
-    'manual': 'Customer support request',
+    'refund': "I'd like a refund for my order",
+    'return': "I'd like to return my order",
+    'shipping': "I'm having an issue with my delivery",
+    'subscription': "I need help with my subscription",
+    'manual': "I need help with my order",
   };
 
-  return caseTypeFallbacks[caseData.caseType] || caseData.issueType?.replace(/_/g, ' ') || 'General inquiry';
+  return caseTypeFallbacks[caseData.caseType] || caseData.issueType?.replace(/_/g, ' ') || "I need help with my order";
 }
 
 async function createClickUpTask(env, listId, caseData) {
@@ -2327,7 +2336,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     messageParts.push(
       'Hi there,',
       '',
-      `I'd like to return my order for a refund.`,
+      `I used your online resolution center and would like to return my order for a refund.`,
       '',
       `Here's what happened: ${orderIssue}`,
       '',
@@ -2341,7 +2350,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
       '',
       `My order number is ${caseData.orderNumber || 'N/A'} and my case reference is ${caseId}.`,
       '',
-      `I understand that once you receive and inspect my return, I'll get a full refund${refundAmountStr ? ` of ${refundAmountStr}` : ''}.`,
+      `Through the resolution center, I was told that once you receive and inspect my return, I'll get a full refund${refundAmountStr ? ` of ${refundAmountStr}` : ''}.`,
       '',
       `I'll send over the tracking number as soon as I've shipped the package.`,
       '',
@@ -2355,7 +2364,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     messageParts.push(
       'Hi there,',
       '',
-      `I'm reaching out because I need some help with my order.`,
+      `I used your online resolution center and wanted to follow up on my case.`,
       '',
       `The issue: ${orderIssue}`,
       '',
@@ -2366,7 +2375,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
       messageParts.push('The item(s) affected:', '', itemsList, '');
     }
     messageParts.push(
-      `I've been offered a ${formattedResolution.toLowerCase()}${refundAmountStr ? ` of ${refundAmountStr}` : ''} which I've accepted.`,
+      `Through the resolution center, I was offered a ${formattedResolution.toLowerCase()}${refundAmountStr ? ` of ${refundAmountStr}` : ''} which I've accepted.`,
       '',
       `Please let me know if you need anything else from me.`,
       '',
@@ -2380,7 +2389,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     messageParts.push(
       'Hi there,',
       '',
-      `I'm having an issue with the delivery of my order.`,
+      `I used your online resolution center regarding an issue with the delivery of my order.`,
       '',
       `The problem: ${orderIssue}`,
       '',
@@ -2391,7 +2400,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
       messageParts.push('Order contains:', '', itemsList, '');
     }
     messageParts.push(
-      `The resolution we agreed on: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}.`,
+      `Through the resolution center, we agreed on: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}.`,
       '',
       `Please let me know once this has been processed.`,
       '',
@@ -2413,7 +2422,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     messageParts.push(
       'Hi there,',
       '',
-      `I'd like to ${actionText}.`,
+      `I used your online resolution center and would like to ${actionText}.`,
       '',
       `Reason: ${orderIssue}`,
       '',
@@ -2425,7 +2434,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     if (caseData.subscriptionProductName) messageParts.push(`• Product: ${caseData.subscriptionProductName}`);
     messageParts.push(
       '',
-      `Resolution: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}.`,
+      `Through the resolution center, the agreed action is: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}.`,
       '',
       'Thanks!',
       '',
@@ -2437,7 +2446,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
     messageParts.push(
       'Hi there,',
       '',
-      `I'm reaching out for help with my order.`,
+      `I used your online resolution center and need some help with my order.`,
       '',
       `Issue: ${orderIssue}`,
       '',
@@ -2449,7 +2458,7 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
       messageParts.push('Items:', '', itemsList, '');
     }
     if (formattedResolution) {
-      messageParts.push(`Resolution requested: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}`, '');
+      messageParts.push(`Through the resolution center, the agreed resolution is: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}`, '');
     }
     messageParts.push(
       'Please let me know if you need any more information.',

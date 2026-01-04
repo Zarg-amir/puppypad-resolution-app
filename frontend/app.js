@@ -3529,13 +3529,13 @@ async function handleChargedUnexpectedlyDelivered() {
 
   await showPartialRefundCard(20, async () => {
     // Accepted 20%
-    state.intentDetails = 'Customer did not place order but kept products with 20% refund';
+    state.intentDetails = "I don't remember placing this order, but I'll keep the products with a partial refund";
     await createRefundCase('partial_20', true);
   }, async () => {
     // Declined - go to refund ladder
     state.ladderType = 'order_refund';
     state.ladderStep = 1; // Start at 30% since we already offered 20%
-    state.intentDetails = 'Customer did not place order - wants higher refund';
+    state.intentDetails = "I didn't place this order and I'd like a higher refund";
     await startRefundLadder();
   });
 }
@@ -3552,13 +3552,13 @@ async function handleChargedUnexpectedlyNotDelivered() {
   // Use the same card UI as other refund flows
   await showPartialRefundCard(20, async () => {
     // Accepted 20%
-    state.intentDetails = 'Customer did not place order - keeping with 20% refund (not yet delivered)';
+    state.intentDetails = "I don't remember placing this order, but I'll keep it when it arrives with a partial refund";
     await createRefundCase('partial_20', true);
   }, async () => {
     // Declined - go through refund ladder (30% → 40% → 50% → full refund)
     state.ladderType = 'order_refund';
     state.ladderStep = 1; // Start at 30% since we already offered 20%
-    state.intentDetails = 'Customer did not place order - wants higher refund';
+    state.intentDetails = "I didn't place this order and I'd like a higher refund";
     await startRefundLadder();
   });
 }
@@ -3619,7 +3619,7 @@ async function generateProductBenefitsPitch() {
 
   await showPartialRefundCard(20, async () => {
     // Accepted 20%
-    state.intentDetails = 'Customer did not recognize charge - kept products with 20% refund after product pitch';
+    state.intentDetails = "I didn't recognize this charge, but I'll keep the products with a partial refund";
     await createRefundCase('partial_20', true);
   }, async () => {
     // Declined - check delivery status then go to ladder
@@ -3650,7 +3650,7 @@ async function generateProductBenefitsPitch() {
 
     state.ladderType = 'order_refund';
     state.ladderStep = 1; // Start at 30% since we offered 20%
-    state.intentDetails = 'Customer did not recognize charge - wants higher refund';
+    state.intentDetails = "I didn't recognize this charge and I'd like a higher refund";
     await startRefundLadder();
   });
 }
