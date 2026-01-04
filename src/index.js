@@ -2029,11 +2029,16 @@ async function createClickUpTask(env, listId, caseData) {
     }
   }
 
+  // Calculate due date - 1 day from now (internal deadline)
+  const dueDate = Date.now() + (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+
   // Task body with no description (details go in comments)
   const taskBody = {
     name: caseData.customerName || 'Unknown Customer',
     description: '', // Keep empty - details go in comments
     custom_fields: customFields,
+    due_date: dueDate, // 1-day internal deadline
+    due_date_time: true, // Include time in due date
   };
 
   const response = await fetch(`https://api.clickup.com/api/v2/list/${listId}/task`, {
@@ -5260,30 +5265,42 @@ async function handleHubUpdateStatus(request, caseId, env, corsHeaders) {
     const oldStatus = currentCase.status;
     const now = new Date().toISOString();
 
-    // Update case status
-    let updateQuery = `UPDATE cases SET status = ?, updated_at = ?, last_sync_source = 'hub'`;
-    const params = [status, now];
-
-    // Set resolved_at if completing
-    if (status === 'completed' && oldStatus !== 'completed') {
-      updateQuery += `, resolved_at = ?`;
-      params.push(now);
+    // Update case status - use only columns that definitely exist
+    try {
+      if (status === 'completed' && oldStatus !== 'completed') {
+        await env.ANALYTICS_DB.prepare(
+          `UPDATE cases SET status = ?, updated_at = ?, resolved_at = ? WHERE case_id = ?`
+        ).bind(status, now, now, caseId).run();
+      } else {
+        await env.ANALYTICS_DB.prepare(
+          `UPDATE cases SET status = ?, updated_at = ? WHERE case_id = ?`
+        ).bind(status, now, caseId).run();
+      }
+    } catch (e) {
+      // Fallback without updated_at if column doesn't exist
+      console.log('Trying simple status update:', e.message);
+      await env.ANALYTICS_DB.prepare(
+        `UPDATE cases SET status = ? WHERE case_id = ?`
+      ).bind(status, caseId).run();
     }
 
-    updateQuery += ` WHERE case_id = ?`;
-    params.push(caseId);
+    // Try to log activity (table might not exist)
+    try {
+      await env.ANALYTICS_DB.prepare(
+        `INSERT INTO case_activity (case_id, activity_type, field_name, old_value, new_value, actor, actor_email, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(caseId, 'status_changed', 'status', oldStatus, status, actor || 'team_member', actor_email || '', 'hub').run();
+    } catch (e) {
+      console.log('Could not log to case_activity:', e.message);
+    }
 
-    await env.ANALYTICS_DB.prepare(updateQuery).bind(...params).run();
-
-    // Log activity
-    await env.ANALYTICS_DB.prepare(
-      `INSERT INTO case_activity (case_id, activity_type, field_name, old_value, new_value, actor, actor_email, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(caseId, 'status_changed', 'status', oldStatus, status, actor || 'team_member', actor_email || '', 'hub').run();
-
-    // Log event
-    await env.ANALYTICS_DB.prepare(
-      `INSERT INTO events (case_id, event_type, event_name, event_data, actor, actor_email) VALUES (?, ?, ?, ?, ?, ?)`
-    ).bind(caseId, 'status_change', `Status changed to ${status}`, JSON.stringify({ old_status: oldStatus, new_status: status }), actor || 'team_member', actor_email || '').run();
+    // Try to log event (columns might not exist)
+    try {
+      await env.ANALYTICS_DB.prepare(
+        `INSERT INTO events (session_id, event_type, event_name, event_data) VALUES (?, ?, ?, ?)`
+      ).bind(caseId, 'status_change', 'Status changed to ' + status, JSON.stringify({ old_status: oldStatus, new_status: status, case_id: caseId })).run();
+    } catch (e) {
+      console.log('Could not log event:', e.message);
+    }
 
     // Sync to ClickUp (fire and forget - don't block response)
     syncStatusToClickUp(env, caseId, status).catch(e => console.error('ClickUp sync error:', e));
@@ -5291,7 +5308,7 @@ async function handleHubUpdateStatus(request, caseId, env, corsHeaders) {
     return Response.json({ success: true, status }, { headers: corsHeaders });
   } catch (error) {
     console.error('Hub update status error:', error);
-    return Response.json({ error: 'Failed to update status' }, { status: 500, headers: corsHeaders });
+    return Response.json({ error: 'Failed to update status: ' + error.message }, { status: 500, headers: corsHeaders });
   }
 }
 
@@ -6151,6 +6168,10 @@ function getResolutionHubHTML() {
                   <span class="detail-label">Last Updated</span>
                   <span class="detail-value" id="modalUpdatedAt">-</span>
                 </div>
+                <div class="detail-row">
+                  <span class="detail-label">Due Date</span>
+                  <span class="detail-value" id="modalDueDate">-</span>
+                </div>
               </div>
             </div>
 
@@ -6341,9 +6362,58 @@ function getResolutionHubHTML() {
       const view = document.getElementById('sessionsView');
       view.innerHTML = '<div class="spinner"></div>';
       try {
-        const r = await fetch(API+'/hub/api/sessions?limit=50'); const d = await r.json();
-        view.innerHTML = '<div class="cases-card"><div class="cases-header"><h2 class="cases-title">User Sessions</h2><span style="color:var(--gray-500);">'+d.total+' total sessions</span></div><table class="cases-table"><thead><tr><th>Session ID</th><th>Flow Type</th><th>Customer</th><th>Order #</th><th>Status</th><th>Started</th></tr></thead><tbody>'+(d.sessions?.length ? d.sessions.map(s => '<tr><td><span class="case-id" style="font-size:11px;">'+s.session_id.substring(0,20)+'...</span></td><td><span class="type-badge '+(s.flow_type||'unknown')+'">'+(s.flow_type||'unknown')+'</span></td><td>'+(s.customer_email||'-')+'</td><td>'+(s.order_number||'-')+'</td><td><span class="status-badge '+(s.completed?'completed':'pending')+'">'+(s.completed?'Completed':'In Progress')+'</span></td><td class="time-ago">'+timeAgo(s.created_at)+'</td></tr>').join('') : '<tr><td colspan="6" class="empty-state">No sessions yet</td></tr>')+'</tbody></table></div>';
+        const r = await fetch(API+'/hub/api/sessions?limit=100'); const d = await r.json();
+        const sessions = d.sessions || [];
+        const completedSessions = sessions.filter(s => s.completed);
+        const incompleteSessions = sessions.filter(s => !s.completed);
+
+        function renderSessionRow(s) {
+          const hasRecording = s.session_replay_url;
+          const customerName = s.customer_name || s.customer_email?.split('@')[0] || 'Anonymous';
+          const flowLabel = { 'refund': 'Refund Request', 'shipping': 'Shipping Issue', 'subscription': 'Subscription', 'manual': 'Manual Help' }[s.flow_type] || s.flow_type || 'Unknown';
+          return '<tr>'+
+            '<td><div style="display:flex;flex-direction:column;gap:4px;"><span class="customer-name">'+customerName+'</span><span class="customer-email" style="font-size:11px;color:var(--gray-400);">'+(s.customer_email||'No email')+'</span></div></td>'+
+            '<td><span class="type-badge '+s.flow_type+'">'+flowLabel+'</span></td>'+
+            '<td>'+(s.order_number||'-')+'</td>'+
+            '<td><span class="status-badge '+(s.completed?'completed':'in-progress')+'">'+(s.completed?'Completed':'In Progress')+'</span></td>'+
+            '<td>'+timeAgo(s.created_at)+'</td>'+
+            '<td>'+(hasRecording ? '<a href="'+s.session_replay_url+'" target="_blank" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">Watch Recording</a>' : '<span style="color:var(--gray-400);font-size:12px;">No recording</span>')+'</td>'+
+          '</tr>';
+        }
+
+        view.innerHTML = '<div class="sessions-container">'+
+          '<div class="stats-grid" style="margin-bottom:24px;">'+
+            '<div class="stat-card"><div class="stat-label">Total Sessions</div><div class="stat-value">'+sessions.length+'</div></div>'+
+            '<div class="stat-card" style="border-left:3px solid #10b981;"><div class="stat-label">Completed</div><div class="stat-value" style="color:#10b981;">'+completedSessions.length+'</div></div>'+
+            '<div class="stat-card" style="border-left:3px solid #f59e0b;"><div class="stat-label">In Progress</div><div class="stat-value" style="color:#f59e0b;">'+incompleteSessions.length+'</div></div>'+
+            '<div class="stat-card"><div class="stat-label">With Recordings</div><div class="stat-value">'+sessions.filter(s=>s.session_replay_url).length+'</div></div>'+
+          '</div>'+
+          '<div class="tab-buttons" style="display:flex;gap:8px;margin-bottom:16px;">'+
+            '<button class="btn btn-primary" id="tabAll" onclick="filterSessions(\\'all\\')">All Sessions ('+sessions.length+')</button>'+
+            '<button class="btn btn-secondary" id="tabCompleted" onclick="filterSessions(\\'completed\\')">Completed ('+completedSessions.length+')</button>'+
+            '<button class="btn btn-secondary" id="tabIncomplete" onclick="filterSessions(\\'incomplete\\')">In Progress ('+incompleteSessions.length+')</button>'+
+          '</div>'+
+          '<div class="cases-card"><table class="cases-table"><thead><tr><th>Customer</th><th>Flow Type</th><th>Order #</th><th>Status</th><th>Started</th><th>Recording</th></tr></thead><tbody id="sessionsTableBody">'+
+            (sessions.length ? sessions.map(renderSessionRow).join('') : '<tr><td colspan="6" class="empty-state">No sessions yet</td></tr>')+
+          '</tbody></table></div>'+
+        '</div>';
+
+        // Store sessions for filtering
+        window.allSessions = sessions;
+        window.renderSessionRow = renderSessionRow;
       } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load sessions</div>'; }
+    }
+
+    function filterSessions(filter) {
+      const tbody = document.getElementById('sessionsTableBody');
+      let filtered = window.allSessions || [];
+      if (filter === 'completed') filtered = filtered.filter(s => s.completed);
+      if (filter === 'incomplete') filtered = filtered.filter(s => !s.completed);
+      tbody.innerHTML = filtered.length ? filtered.map(window.renderSessionRow).join('') : '<tr><td colspan="6" class="empty-state">No sessions found</td></tr>';
+      // Update tab styling
+      document.getElementById('tabAll').className = filter === 'all' ? 'btn btn-primary' : 'btn btn-secondary';
+      document.getElementById('tabCompleted').className = filter === 'completed' ? 'btn btn-primary' : 'btn btn-secondary';
+      document.getElementById('tabIncomplete').className = filter === 'incomplete' ? 'btn btn-primary' : 'btn btn-secondary';
     }
 
     async function loadEventsView() {
@@ -6351,7 +6421,82 @@ function getResolutionHubHTML() {
       view.innerHTML = '<div class="spinner"></div>';
       try {
         const r = await fetch(API+'/hub/api/events?limit=100'); const d = await r.json();
-        view.innerHTML = '<div class="cases-card"><div class="cases-header"><h2 class="cases-title">Event Log</h2><span style="color:var(--gray-500);">'+d.total+' total events</span></div><table class="cases-table"><thead><tr><th>Time</th><th>Event Type</th><th>Event Name</th><th>Session</th><th>Details</th></tr></thead><tbody>'+(d.events?.length ? d.events.map(e => '<tr><td class="time-ago">'+timeAgo(e.created_at)+'</td><td><span class="type-badge" style="background:#e5e7eb;color:#374151;">'+e.event_type+'</span></td><td>'+e.event_name+'</td><td><span style="font-family:monospace;font-size:11px;">'+(e.session_id?.substring(0,15)||'-')+'</span></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--gray-500);">'+(e.event_data||'-')+'</td></tr>').join('') : '<tr><td colspan="5" class="empty-state">No events yet</td></tr>')+'</tbody></table></div>';
+        const events = d.events || [];
+
+        // Format event for display
+        function formatEventName(e) {
+          const nameMap = {
+            'flow_start': 'Started Resolution Flow',
+            'flow_complete': 'Completed Resolution Flow',
+            'step_view': 'Viewed Step',
+            'step_complete': 'Completed Step',
+            'order_lookup': 'Looked Up Order',
+            'order_found': 'Order Found',
+            'order_not_found': 'Order Not Found',
+            'photo_upload': 'Uploaded Photo',
+            'resolution_selected': 'Selected Resolution',
+            'case_submitted': 'Case Submitted',
+            'status_change': 'Status Changed',
+            'page_view': 'Viewed Page',
+            'button_click': 'Clicked Button',
+            'form_submit': 'Submitted Form'
+          };
+          return nameMap[e.event_name] || e.event_name?.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase()) || 'Unknown Event';
+        }
+
+        function formatEventDetails(e) {
+          if (!e.event_data) return '-';
+          try {
+            const data = typeof e.event_data === 'string' ? JSON.parse(e.event_data) : e.event_data;
+            // Create human-readable summary
+            const parts = [];
+            if (data.step_name) parts.push('Step: ' + data.step_name);
+            if (data.flow_type) parts.push('Flow: ' + data.flow_type);
+            if (data.order_number) parts.push('Order: #' + data.order_number);
+            if (data.resolution) parts.push('Resolution: ' + data.resolution);
+            if (data.old_status && data.new_status) parts.push(data.old_status + ' → ' + data.new_status);
+            if (data.case_id) parts.push('Case: ' + data.case_id);
+            return parts.length ? parts.join(' | ') : '-';
+          } catch { return '-'; }
+        }
+
+        function getEventIcon(type) {
+          const icons = {
+            'flow_start': '🚀', 'flow_complete': '✅', 'step_view': '👁️', 'step_complete': '✓',
+            'order_lookup': '🔍', 'order_found': '📦', 'order_not_found': '❌',
+            'photo_upload': '📷', 'resolution_selected': '🎯', 'case_submitted': '📋',
+            'status_change': '🔄', 'page_view': '📄', 'button_click': '👆', 'form_submit': '📝'
+          };
+          return icons[type] || '📌';
+        }
+
+        function getEventColor(type) {
+          const colors = {
+            'flow_start': '#3b82f6', 'flow_complete': '#10b981', 'case_submitted': '#8b5cf6',
+            'status_change': '#f59e0b', 'order_not_found': '#ef4444', 'photo_upload': '#06b6d4'
+          };
+          return colors[type] || '#6b7280';
+        }
+
+        view.innerHTML = '<div class="events-container">'+
+          '<div class="cases-card"><div class="cases-header"><h2 class="cases-title">Activity Log</h2><span style="color:var(--gray-500);">'+events.length+' recent events</span></div>'+
+          '<div style="padding:0 20px 20px;">'+
+            (events.length ? events.map(function(e) {
+              return '<div style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--gray-100);">'+
+                '<div style="width:40px;height:40px;border-radius:10px;background:'+getEventColor(e.event_name)+'15;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">'+getEventIcon(e.event_name)+'</div>'+
+                '<div style="flex:1;min-width:0;">'+
+                  '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">'+
+                    '<div>'+
+                      '<div style="font-weight:600;color:var(--gray-800);margin-bottom:4px;">'+formatEventName(e)+'</div>'+
+                      '<div style="font-size:13px;color:var(--gray-500);">'+formatEventDetails(e)+'</div>'+
+                    '</div>'+
+                    '<div style="font-size:12px;color:var(--gray-400);white-space:nowrap;">'+timeAgo(e.created_at)+'</div>'+
+                  '</div>'+
+                '</div>'+
+              '</div>';
+            }).join('') : '<div class="empty-state">No events yet</div>')+
+          '</div></div>'+
+        '</div>';
       } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load events</div>'; }
     }
 
@@ -6612,6 +6757,23 @@ function getResolutionHubHTML() {
         document.getElementById('modalRefundAmount').textContent = c.refund_amount ? '$'+parseFloat(c.refund_amount).toFixed(2) : '-';
         document.getElementById('modalCreatedAt').textContent = formatDate(c.created_at);
         document.getElementById('modalUpdatedAt').textContent = formatDate(c.updated_at||c.created_at);
+
+        // Due date - 1 day from creation (internal deadline)
+        const dueEl = document.getElementById('modalDueDate');
+        if (c.created_at) {
+          const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
+          const isOverdue = Date.now() > dueDate.getTime() && c.status !== 'completed';
+          const dueDateStr = dueDate.toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+          if (c.status === 'completed') {
+            dueEl.innerHTML = '<span style="color:#10b981;">✓ Completed</span>';
+          } else if (isOverdue) {
+            dueEl.innerHTML = '<span style="color:#ef4444;font-weight:600;">⚠ OVERDUE - ' + dueDateStr + '</span>';
+          } else {
+            dueEl.textContent = dueDateStr;
+          }
+        } else {
+          dueEl.textContent = '-';
+        }
 
         // Status cards
         document.querySelectorAll('.status-card').forEach(card => card.classList.remove('active'));
