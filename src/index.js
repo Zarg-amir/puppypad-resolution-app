@@ -1650,7 +1650,8 @@ async function handleCreateCase(request, env, corsHeaders) {
     clickupTaskUrl: clickupTask?.url,
     sessionReplayUrl: caseData.sessionReplayUrl,
     orderUrl: caseData.orderUrl,
-    orderDate: caseData.orderDate
+    orderDate: caseData.orderDate,
+    richpanelConversationNo: richpanelResult?.conversationNo
   });
 
   return Response.json({
@@ -3437,9 +3438,9 @@ async function logCaseToAnalytics(env, caseData) {
         case_id, case_type, resolution, customer_email, customer_name,
         order_number, refund_amount, status, session_id,
         clickup_task_id, clickup_task_url, session_replay_url,
-        order_url, order_date, created_at
+        order_url, order_date, richpanel_conversation_no, created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `).bind(
       caseData.caseId,
       caseData.caseType,
@@ -3454,7 +3455,8 @@ async function logCaseToAnalytics(env, caseData) {
       caseData.clickupTaskUrl || null,
       caseData.sessionReplayUrl || null,
       caseData.orderUrl || null,
-      caseData.orderDate || null
+      caseData.orderDate || null,
+      caseData.richpanelConversationNo || null
     ).run();
     console.log('Case saved to database (full):', caseData.caseId);
     return;
@@ -5430,6 +5432,36 @@ async function handleHubAnalytics(request, env, corsHeaders) {
       `SELECT COUNT(*) as count FROM cases`
     ).first();
 
+    // Cases today
+    const casesToday = await env.ANALYTICS_DB.prepare(
+      `SELECT COUNT(*) as count FROM cases WHERE DATE(created_at) = DATE('now')`
+    ).first();
+
+    // Cases this week
+    const casesThisWeek = await env.ANALYTICS_DB.prepare(
+      `SELECT COUNT(*) as count FROM cases WHERE created_at > datetime('now', '-7 days')`
+    ).first();
+
+    // Cases this month
+    const casesThisMonth = await env.ANALYTICS_DB.prepare(
+      `SELECT COUNT(*) as count FROM cases WHERE created_at > datetime('now', '-30 days')`
+    ).first();
+
+    // Pending cases
+    const pendingCases = await env.ANALYTICS_DB.prepare(
+      `SELECT COUNT(*) as count FROM cases WHERE status = 'pending'`
+    ).first();
+
+    // In progress cases
+    const inProgressCases = await env.ANALYTICS_DB.prepare(
+      `SELECT COUNT(*) as count FROM cases WHERE status = 'in_progress'`
+    ).first();
+
+    // Completed cases
+    const completedCases = await env.ANALYTICS_DB.prepare(
+      `SELECT COUNT(*) as count FROM cases WHERE status = 'completed'`
+    ).first();
+
     // Cases by type
     const casesByType = await env.ANALYTICS_DB.prepare(
       `SELECT case_type, COUNT(*) as count FROM cases GROUP BY case_type`
@@ -5440,31 +5472,79 @@ async function handleHubAnalytics(request, env, corsHeaders) {
       `SELECT status, COUNT(*) as count FROM cases GROUP BY status`
     ).all();
 
+    // Resolution types breakdown
+    const resolutionTypes = await env.ANALYTICS_DB.prepare(
+      `SELECT resolution, COUNT(*) as count, SUM(refund_amount) as total_refund FROM cases GROUP BY resolution ORDER BY count DESC LIMIT 10`
+    ).all();
+
     // Total refunds
     const totalRefunds = await env.ANALYTICS_DB.prepare(
       `SELECT SUM(refund_amount) as total FROM cases WHERE refund_amount IS NOT NULL`
     ).first();
 
-    // Sessions by day (last 7 days)
+    // Refunds this month
+    const refundsThisMonth = await env.ANALYTICS_DB.prepare(
+      `SELECT SUM(refund_amount) as total FROM cases WHERE refund_amount IS NOT NULL AND created_at > datetime('now', '-30 days')`
+    ).first();
+
+    // Average refund amount
+    const avgRefund = await env.ANALYTICS_DB.prepare(
+      `SELECT AVG(refund_amount) as avg FROM cases WHERE refund_amount IS NOT NULL AND refund_amount > 0`
+    ).first();
+
+    // Sessions by day (last 14 days)
     const sessionsByDay = await env.ANALYTICS_DB.prepare(
-      `SELECT DATE(created_at) as date, COUNT(*) as count FROM sessions WHERE created_at > datetime('now', '-7 days') GROUP BY DATE(created_at) ORDER BY date`
+      `SELECT DATE(created_at) as date, COUNT(*) as count FROM sessions WHERE created_at > datetime('now', '-14 days') GROUP BY DATE(created_at) ORDER BY date`
     ).all();
 
-    // Cases by day (last 7 days)
+    // Cases by day (last 14 days)
     const casesByDay = await env.ANALYTICS_DB.prepare(
-      `SELECT DATE(created_at) as date, COUNT(*) as count FROM cases WHERE created_at > datetime('now', '-7 days') GROUP BY DATE(created_at) ORDER BY date`
+      `SELECT DATE(created_at) as date, COUNT(*) as count FROM cases WHERE created_at > datetime('now', '-14 days') GROUP BY DATE(created_at) ORDER BY date`
     ).all();
+
+    // Refunds by day (last 14 days)
+    const refundsByDay = await env.ANALYTICS_DB.prepare(
+      `SELECT DATE(created_at) as date, SUM(refund_amount) as total FROM cases WHERE refund_amount IS NOT NULL AND created_at > datetime('now', '-14 days') GROUP BY DATE(created_at) ORDER BY date`
+    ).all();
+
+    // Flow types breakdown (from sessions)
+    const flowTypes = await env.ANALYTICS_DB.prepare(
+      `SELECT flow_type, COUNT(*) as count FROM sessions WHERE flow_type IS NOT NULL GROUP BY flow_type ORDER BY count DESC`
+    ).all();
+
+    // Recent high-value refunds
+    const highValueRefunds = await env.ANALYTICS_DB.prepare(
+      `SELECT case_id, customer_email, refund_amount, resolution, created_at FROM cases WHERE refund_amount > 50 ORDER BY created_at DESC LIMIT 5`
+    ).all();
+
+    // Cases needing attention (pending for more than 24 hours)
+    const staleCases = await env.ANALYTICS_DB.prepare(
+      `SELECT COUNT(*) as count FROM cases WHERE status = 'pending' AND created_at < datetime('now', '-24 hours')`
+    ).first();
 
     return Response.json({
       totalSessions: totalSessions?.count || 0,
       completedSessions: completedSessions?.count || 0,
       completionRate: totalSessions?.count ? Math.round((completedSessions?.count || 0) / totalSessions.count * 100) : 0,
       totalCases: totalCases?.count || 0,
+      casesToday: casesToday?.count || 0,
+      casesThisWeek: casesThisWeek?.count || 0,
+      casesThisMonth: casesThisMonth?.count || 0,
+      pendingCases: pendingCases?.count || 0,
+      inProgressCases: inProgressCases?.count || 0,
+      completedCases: completedCases?.count || 0,
+      staleCases: staleCases?.count || 0,
       casesByType: casesByType.results || [],
       casesByStatus: casesByStatus.results || [],
+      resolutionTypes: resolutionTypes.results || [],
       totalRefunds: totalRefunds?.total || 0,
+      refundsThisMonth: refundsThisMonth?.total || 0,
+      avgRefund: avgRefund?.avg || 0,
       sessionsByDay: sessionsByDay.results || [],
-      casesByDay: casesByDay.results || []
+      casesByDay: casesByDay.results || [],
+      refundsByDay: refundsByDay.results || [],
+      flowTypes: flowTypes.results || [],
+      highValueRefunds: highValueRefunds.results || []
     }, { headers: corsHeaders });
   } catch (error) {
     console.error('Hub analytics error:', error);
@@ -5793,13 +5873,43 @@ function getResolutionHubHTML() {
     .info-card-label { font-size: 11px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
     .info-card-value { font-size: 15px; font-weight: 600; color: var(--gray-800); }
     .info-card-value.email { font-size: 13px; word-break: break-all; }
-    .status-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    .status-btn { padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; flex: 1; text-align: center; min-width: 120px; }
-    .status-btn.pending { background: #fffbeb; color: #b45309; border-color: #fcd34d; }
-    .status-btn.in-progress { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
-    .status-btn.completed { background: #ecfdf5; color: #047857; border-color: #6ee7b7; }
-    .status-btn.active { box-shadow: 0 0 0 3px rgba(30,58,95,0.25); transform: scale(1.02); }
-    .status-btn:hover:not(.active) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    /* Status Cards - New Design */
+    .status-cards { display: flex; gap: 12px; }
+    .status-card { flex: 1; display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 12px; border: 2px solid var(--gray-200); background: white; cursor: pointer; transition: all 0.2s; position: relative; }
+    .status-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .status-card-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .status-card-icon svg { width: 20px; height: 20px; }
+    .status-card-content { flex: 1; text-align: left; }
+    .status-card-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .status-card-desc { font-size: 11px; opacity: 0.7; }
+    .status-card-check { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%; display: none; align-items: center; justify-content: center; }
+    .status-card-check svg { width: 12px; height: 12px; }
+    .status-card.pending { border-color: #fcd34d; }
+    .status-card.pending .status-card-icon { background: #fffbeb; color: #b45309; }
+    .status-card.pending .status-card-title { color: #b45309; }
+    .status-card.pending .status-card-check { background: #f59e0b; color: white; }
+    .status-card.in-progress { border-color: #93c5fd; }
+    .status-card.in-progress .status-card-icon { background: #eff6ff; color: #1d4ed8; }
+    .status-card.in-progress .status-card-title { color: #1d4ed8; }
+    .status-card.in-progress .status-card-check { background: #3b82f6; color: white; }
+    .status-card.completed { border-color: #6ee7b7; }
+    .status-card.completed .status-card-icon { background: #ecfdf5; color: #047857; }
+    .status-card.completed .status-card-title { color: #047857; }
+    .status-card.completed .status-card-check { background: #10b981; color: white; }
+    .status-card.active { box-shadow: 0 0 0 3px rgba(30,58,95,0.15); transform: scale(1.02); }
+    .status-card.active .status-card-check { display: flex; }
+    /* Modal Navigation */
+    .modal-nav { display: flex; align-items: center; gap: 8px; margin-left: 16px; }
+    .nav-arrow { background: rgba(255,255,255,0.1); border: none; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; position: relative; }
+    .nav-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.2); }
+    .nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
+    .nav-arrow svg { width: 18px; height: 18px; }
+    .nav-preview { display: none; position: absolute; top: 100%; padding: 8px 12px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 11px; color: var(--gray-700); white-space: nowrap; z-index: 10; }
+    .nav-arrow.prev .nav-preview { right: 0; margin-top: 8px; }
+    .nav-arrow.next .nav-preview { left: 0; margin-top: 8px; }
+    .nav-arrow:hover .nav-preview { display: block; }
+    .modal-close { background: rgba(255,255,255,0.1); border: none; width: 40px; height: 40px; border-radius: 10px; font-size: 24px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .modal-close:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
     .quick-actions { display: flex; flex-direction: column; gap: 10px; }
     .quick-action-btn { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: white; border: 1px solid var(--gray-200); border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--gray-700); text-decoration: none; cursor: pointer; transition: all 0.2s; }
     .quick-action-btn:hover { background: white; border-color: var(--brand-navy); color: var(--brand-navy); transform: translateX(4px); }
@@ -5808,6 +5918,8 @@ function getResolutionHubHTML() {
     .quick-action-btn.primary:hover { background: #3d5a80; }
     .quick-action-btn.replay { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; border: none; }
     .quick-action-btn.replay:hover { transform: translateX(4px); box-shadow: 0 4px 15px rgba(124,58,237,0.3); }
+    .quick-action-btn.richpanel { background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); color: white; border: none; }
+    .quick-action-btn.richpanel:hover { transform: translateX(4px); box-shadow: 0 4px 15px rgba(14,165,233,0.3); }
     .comments-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; overflow: hidden; }
     .comments-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
     .comments-title { font-size: 14px; font-weight: 600; }
@@ -5833,6 +5945,62 @@ function getResolutionHubHTML() {
     .timeline-label { font-size: 12px; color: var(--gray-500); margin-bottom: 2px; }
     .timeline-value { font-size: 13px; font-weight: 500; }
     @media (max-width: 900px) { .modal-grid { grid-template-columns: 1fr; } .modal-sidebar { border-top: 1px solid var(--gray-100); } }
+
+    /* Performance Dashboard Styles */
+    .analytics-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .analytics-title-section h2 { font-size: 24px; font-weight: 700; color: var(--gray-900); margin: 0 0 4px 0; }
+    .analytics-title-section p { font-size: 14px; color: var(--gray-500); margin: 0; }
+    .analytics-actions { display: flex; gap: 12px; align-items: center; }
+
+    /* KPI Cards Grid */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    @media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+    .kpi-card { background: white; border-radius: 16px; padding: 20px; display: flex; gap: 16px; align-items: flex-start; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--gray-100); transition: all 0.2s; }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+    .kpi-card.highlight { background: linear-gradient(135deg, var(--brand-navy) 0%, #2d4a6f 100%); border: none; }
+    .kpi-card.highlight .kpi-value, .kpi-card.highlight .kpi-label, .kpi-card.highlight .kpi-sub { color: white; }
+    .kpi-card.highlight .kpi-sub { opacity: 0.8; }
+    .kpi-card.success { border-left: 4px solid #10b981; }
+
+    .kpi-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .kpi-icon svg { width: 24px; height: 24px; }
+
+    .kpi-content { flex: 1; min-width: 0; }
+    .kpi-value { font-size: 28px; font-weight: 700; color: var(--gray-900); line-height: 1.2; }
+    .kpi-label { font-size: 13px; font-weight: 500; color: var(--gray-600); margin-top: 2px; }
+    .kpi-sub { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+    .kpi-sub.alert { color: #ef4444; font-weight: 500; }
+
+    /* Charts Grid */
+    .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 24px; }
+    @media (max-width: 1000px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .chart-card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--gray-100); overflow: hidden; }
+    .chart-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+    .chart-header h3 { font-size: 16px; font-weight: 600; color: var(--gray-800); margin: 0; }
+    .chart-period { font-size: 12px; color: var(--gray-400); background: var(--gray-50); padding: 4px 10px; border-radius: 20px; }
+    .chart-body { padding: 20px 24px 24px; }
+
+    /* Breakdown Cards Grid */
+    .breakdown-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 24px; }
+    @media (max-width: 900px) { .breakdown-grid { grid-template-columns: 1fr; } }
+
+    .breakdown-card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--gray-100); overflow: hidden; }
+    .breakdown-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+    .breakdown-header h3 { font-size: 15px; font-weight: 600; color: var(--gray-800); margin: 0; }
+    .breakdown-count { font-size: 12px; color: var(--gray-400); background: var(--gray-50); padding: 4px 10px; border-radius: 20px; }
+
+    .breakdown-list { padding: 8px 0; max-height: 300px; overflow-y: auto; }
+    .breakdown-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; transition: background 0.15s; }
+    .breakdown-item:hover { background: var(--gray-50); }
+    .breakdown-item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+    .breakdown-item-name { font-size: 14px; font-weight: 500; color: var(--gray-700); }
+    .breakdown-item-meta { font-size: 12px; color: var(--gray-400); }
+    .breakdown-item-count { font-size: 16px; font-weight: 700; color: var(--brand-navy); background: var(--gray-50); padding: 4px 12px; border-radius: 8px; flex-shrink: 0; }
+
+    .empty-state { text-align: center; padding: 30px 20px; color: var(--gray-400); font-size: 14px; }
   </style>
 </head>
 <body>
@@ -5879,7 +6047,17 @@ function getResolutionHubHTML() {
             <div class="modal-meta-item" id="modalTimeAgo">-</div>
           </div>
         </div>
-        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <div class="modal-nav">
+          <button class="nav-arrow prev" id="prevCaseBtn" onclick="navigateCase('prev')" title="Previous case">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            <span class="nav-preview" id="prevCasePreview"></span>
+          </button>
+          <button class="nav-arrow next" id="nextCaseBtn" onclick="navigateCase('next')" title="Next case">
+            <span class="nav-preview" id="nextCasePreview"></span>
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+          <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
       </div>
       <div class="modal-body">
         <div class="modal-grid">
@@ -5890,10 +6068,37 @@ function getResolutionHubHTML() {
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Update Status
               </div>
-              <div class="status-actions" id="statusActions">
-                <button class="status-btn pending" onclick="updateStatus('pending')">Pending</button>
-                <button class="status-btn in-progress" onclick="updateStatus('in_progress')">In Progress</button>
-                <button class="status-btn completed" onclick="updateStatus('completed')">Completed</button>
+              <div class="status-cards">
+                <button class="status-card pending" onclick="updateStatus('pending')">
+                  <div class="status-card-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <div class="status-card-content">
+                    <div class="status-card-title">Pending</div>
+                    <div class="status-card-desc">Awaiting review</div>
+                  </div>
+                  <div class="status-card-check"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+                </button>
+                <button class="status-card in-progress" onclick="updateStatus('in_progress')">
+                  <div class="status-card-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  </div>
+                  <div class="status-card-content">
+                    <div class="status-card-title">In Progress</div>
+                    <div class="status-card-desc">Being worked on</div>
+                  </div>
+                  <div class="status-card-check"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+                </button>
+                <button class="status-card completed" onclick="updateStatus('completed')">
+                  <div class="status-card-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <div class="status-card-content">
+                    <div class="status-card-title">Completed</div>
+                    <div class="status-card-desc">Case resolved</div>
+                  </div>
+                  <div class="status-card-check"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+                </button>
               </div>
             </div>
 
@@ -5984,6 +6189,10 @@ function getResolutionHubHTML() {
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
                   Watch Session Recording
                 </a>
+                <a class="quick-action-btn richpanel" id="richpanelLink" href="#" target="_blank" style="display:none;">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  View Conversation
+                </a>
                 <a class="quick-action-btn" id="clickupLink" href="#" target="_blank" style="display:none;">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                   View in ClickUp
@@ -6035,10 +6244,50 @@ function getResolutionHubHTML() {
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     const API = '';
     let currentCase = null;
     let currentFilter = 'all';
+    let casesList = [];
+    let currentCaseIndex = -1;
+
+    // Resolution code to human-readable text
+    function formatResolution(code, amount) {
+      if (!code) return '-';
+      const amountStr = amount ? '$' + parseFloat(amount).toFixed(2) : '';
+      const map = {
+        'full_refund': 'Full Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
+        'partial_20': '20% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
+        'partial_30': '30% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
+        'partial_40': '40% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
+        'partial_50': '50% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
+        'partial_75': '75% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
+        'store_credit': 'Store Credit Issued',
+        'replacement': 'Replacement Sent',
+        'exchange': 'Exchange Processed',
+        'reship': 'Order Reshipped',
+        'partial_20_reship': '20% Refund + Reship',
+        'partial_50_reship': '50% Refund + Reship',
+        'refund_missing_item': 'Missing Item Refunded',
+        'reship_missing_item': 'Missing Item Reshipped',
+        'reship_missing_item_bonus': 'Missing Item + Bonus Reshipped',
+        'replacement_damaged': 'Damaged Item Replaced',
+        'partial_missing': 'Partial Refund (Missing Item)',
+        'apology_note': 'Apology Sent',
+        'training_tips': 'Training Tips Provided',
+        'manual_assistance': 'Manual Assistance Required',
+        'manual_order_not_found': 'Manual Review - Order Not Found',
+        'escalate': 'Escalated to Team',
+        'no_action': 'No Action Required'
+      };
+      // Check for dynamic patterns
+      const partialMatch = code.match(/^partial_(\\d+)$/);
+      if (partialMatch) return partialMatch[1] + '% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : '');
+      const partialReshipMatch = code.match(/^partial_(\\d+)_reship$/);
+      if (partialReshipMatch) return partialReshipMatch[1] + '% Refund + Reship';
+      return map[code] || code.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());
+    }
 
     document.querySelectorAll('.nav-item').forEach(i => i.addEventListener('click', () => navigateTo(i.dataset.page, i.dataset.filter)));
     document.getElementById('caseModal').addEventListener('click', e => { if(e.target.id === 'caseModal') closeModal(); });
@@ -6082,7 +6331,8 @@ function getResolutionHubHTML() {
       try {
         const url = currentFilter==='all' ? API+'/hub/api/cases?limit=50' : API+'/hub/api/cases?limit=50&filter='+currentFilter;
         const r = await fetch(url); const d = await r.json();
-        view.innerHTML = '<div class="cases-card"><table class="cases-table"><thead><tr><th>Case ID</th><th>Customer</th><th>Type</th><th>Status</th><th>Resolution</th><th>Created</th></tr></thead><tbody>'+(d.cases?.length ? d.cases.map(c => '<tr onclick="openCase(\\''+c.case_id+'\\')"><td><span class="case-id">'+c.case_id+'</span></td><td><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td><td><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td><td><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.resolution||'-')+'</td><td class="time-ago">'+timeAgo(c.created_at)+'</td></tr>').join('') : '<tr><td colspan="6" class="empty-state">No cases found</td></tr>')+'</tbody></table></div>';
+        casesList = d.cases || [];
+        view.innerHTML = '<div class="cases-card"><table class="cases-table"><thead><tr><th>Case ID</th><th>Customer</th><th>Type</th><th>Status</th><th>Resolution</th><th>Created</th></tr></thead><tbody>'+(casesList.length ? casesList.map(c => '<tr onclick="openCase(\\''+c.case_id+'\\')"><td><span class="case-id">'+c.case_id+'</span></td><td><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td><td><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td><td><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+formatResolution(c.resolution, c.refund_amount)+'</td><td class="time-ago">'+timeAgo(c.created_at)+'</td></tr>').join('') : '<tr><td colspan="6" class="empty-state">No cases found</td></tr>')+'</tbody></table></div>';
       } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load cases</div>'; }
     }
 
@@ -6104,14 +6354,349 @@ function getResolutionHubHTML() {
       } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load events</div>'; }
     }
 
+    let analyticsCharts = {};
+
     async function loadAnalyticsView() {
       const view = document.getElementById('analyticsView');
       view.innerHTML = '<div class="spinner"></div>';
       try {
         const r = await fetch(API+'/hub/api/analytics'); const d = await r.json();
         const typeData = d.casesByType||[]; const statusData = d.casesByStatus||[];
-        view.innerHTML = '<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;"><div class="stat-card"><div class="stat-label">Total Sessions</div><div class="stat-value">'+d.totalSessions+'</div></div><div class="stat-card"><div class="stat-label">Completion Rate</div><div class="stat-value">'+d.completionRate+'%</div></div><div class="stat-card"><div class="stat-label">Total Cases</div><div class="stat-value">'+d.totalCases+'</div></div><div class="stat-card highlight"><div class="stat-label">Total Refunds</div><div class="stat-value">$'+(d.totalRefunds||0).toFixed(2)+'</div></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;"><div class="cases-card" style="padding:24px;"><h3 style="margin-bottom:16px;font-size:16px;font-weight:600;">Cases by Type</h3>'+(typeData.length ? typeData.map(t => '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);"><span><span class="type-badge '+t.case_type+'">'+t.case_type+'</span></span><span style="font-weight:600;">'+t.count+'</span></div>').join('') : '<div class="empty-state">No data</div>')+'</div><div class="cases-card" style="padding:24px;"><h3 style="margin-bottom:16px;font-size:16px;font-weight:600;">Cases by Status</h3>'+(statusData.length ? statusData.map(s => '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);"><span><span class="status-badge '+(s.status||'').replace('_','-')+'">'+(s.status||'unknown')+'</span></span><span style="font-weight:600;">'+s.count+'</span></div>').join('') : '<div class="empty-state">No data</div>')+'</div></div>';
+
+        view.innerHTML = `
+          <div class="analytics-header">
+            <div class="analytics-title-section">
+              <h2>Performance Dashboard</h2>
+              <p>Track your resolution metrics and KPIs</p>
+            </div>
+            <div class="analytics-actions">
+              <select id="reportPeriod" onchange="loadAnalyticsView()" style="padding:10px 16px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;cursor:pointer;">
+                <option value="14">Last 14 Days</option>
+                <option value="30">Last 30 Days</option>
+                <option value="90">Last 90 Days</option>
+              </select>
+              <button onclick="downloadReport()" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Export Report
+              </button>
+            </div>
+          </div>
+
+          <!-- KPI Cards Row 1 -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-icon" style="background:#eff6ff;color:#2563eb;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
+              <div class="kpi-content">
+                <div class="kpi-value">${d.totalCases || 0}</div>
+                <div class="kpi-label">Total Cases</div>
+                <div class="kpi-sub">${d.casesToday || 0} today</div>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon" style="background:#fef3c7;color:#d97706;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+              <div class="kpi-content">
+                <div class="kpi-value">${d.pendingCases || 0}</div>
+                <div class="kpi-label">Pending Cases</div>
+                <div class="kpi-sub ${(d.staleCases||0) > 0 ? 'alert' : ''}">${d.staleCases || 0} overdue (24h+)</div>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div>
+              <div class="kpi-content">
+                <div class="kpi-value">${d.inProgressCases || 0}</div>
+                <div class="kpi-label">In Progress</div>
+                <div class="kpi-sub">Being worked on</div>
+              </div>
+            </div>
+            <div class="kpi-card success">
+              <div class="kpi-icon" style="background:#d1fae5;color:#059669;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+              <div class="kpi-content">
+                <div class="kpi-value">${d.completedCases || 0}</div>
+                <div class="kpi-label">Completed</div>
+                <div class="kpi-sub">${d.completionRate || 0}% resolution rate</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI Cards Row 2 - Financial -->
+          <div class="kpi-grid" style="margin-top:16px;">
+            <div class="kpi-card highlight">
+              <div class="kpi-icon" style="background:rgba(255,255,255,0.2);color:white;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+              <div class="kpi-content">
+                <div class="kpi-value">$${(d.totalRefunds || 0).toFixed(2)}</div>
+                <div class="kpi-label">Total Refunds</div>
+                <div class="kpi-sub">All time</div>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon" style="background:#fce7f3;color:#db2777;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div>
+              <div class="kpi-content">
+                <div class="kpi-value">$${(d.refundsThisMonth || 0).toFixed(2)}</div>
+                <div class="kpi-label">Refunds (30d)</div>
+                <div class="kpi-sub">This month</div>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon" style="background:#e0e7ff;color:#4f46e5;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg></div>
+              <div class="kpi-content">
+                <div class="kpi-value">$${(d.avgRefund || 0).toFixed(2)}</div>
+                <div class="kpi-label">Avg. Refund</div>
+                <div class="kpi-sub">Per case</div>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon" style="background:#ecfdf5;color:#059669;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></div>
+              <div class="kpi-content">
+                <div class="kpi-value">${d.totalSessions || 0}</div>
+                <div class="kpi-label">Total Sessions</div>
+                <div class="kpi-sub">${d.completionRate || 0}% completion</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="charts-grid">
+            <div class="chart-card">
+              <div class="chart-header">
+                <h3>Cases & Sessions Trend</h3>
+                <span class="chart-period">Last 14 days</span>
+              </div>
+              <div class="chart-body">
+                <canvas id="trendChart" height="250"></canvas>
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-header">
+                <h3>Cases by Type</h3>
+              </div>
+              <div class="chart-body">
+                <canvas id="typeChart" height="250"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resolution & Status Breakdown -->
+          <div class="breakdown-grid">
+            <div class="breakdown-card">
+              <div class="breakdown-header">
+                <h3>Resolution Types</h3>
+                <span class="breakdown-count">${(d.resolutionTypes||[]).length} types</span>
+              </div>
+              <div class="breakdown-list">
+                ${(d.resolutionTypes||[]).map(r => `
+                  <div class="breakdown-item">
+                    <div class="breakdown-item-info">
+                      <span class="breakdown-item-name">${formatResolution(r.resolution)}</span>
+                      <span class="breakdown-item-meta">${r.total_refund ? '$' + parseFloat(r.total_refund).toFixed(2) + ' total' : ''}</span>
+                    </div>
+                    <span class="breakdown-item-count">${r.count}</span>
+                  </div>
+                `).join('') || '<div class="empty-state">No data</div>'}
+              </div>
+            </div>
+            <div class="breakdown-card">
+              <div class="breakdown-header">
+                <h3>Status Distribution</h3>
+              </div>
+              <div class="breakdown-list">
+                ${statusData.map(s => `
+                  <div class="breakdown-item">
+                    <div class="breakdown-item-info">
+                      <span class="status-badge ${(s.status||'').replace('_','-')}">${(s.status||'unknown').replace('_',' ')}</span>
+                    </div>
+                    <span class="breakdown-item-count">${s.count}</span>
+                  </div>
+                `).join('') || '<div class="empty-state">No data</div>'}
+              </div>
+            </div>
+            <div class="breakdown-card">
+              <div class="breakdown-header">
+                <h3>Flow Types</h3>
+              </div>
+              <div class="breakdown-list">
+                ${(d.flowTypes||[]).map(f => `
+                  <div class="breakdown-item">
+                    <div class="breakdown-item-info">
+                      <span class="type-badge ${f.flow_type}">${f.flow_type || 'unknown'}</span>
+                    </div>
+                    <span class="breakdown-item-count">${f.count}</span>
+                  </div>
+                `).join('') || '<div class="empty-state">No data</div>'}
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Initialize charts
+        renderTrendChart(d);
+        renderTypeChart(typeData);
+
       } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load analytics</div>'; }
+    }
+
+    function renderTrendChart(data) {
+      const ctx = document.getElementById('trendChart');
+      if (!ctx) return;
+
+      // Destroy existing chart
+      if (analyticsCharts.trend) analyticsCharts.trend.destroy();
+
+      const labels = (data.casesByDay || []).map(d => {
+        const date = new Date(d.date);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      });
+
+      analyticsCharts.trend = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Cases',
+              data: (data.casesByDay || []).map(d => d.count),
+              borderColor: '#1e3a5f',
+              backgroundColor: 'rgba(30,58,95,0.1)',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 4,
+              pointBackgroundColor: '#1e3a5f'
+            },
+            {
+              label: 'Sessions',
+              data: (data.sessionsByDay || []).map(d => d.count),
+              borderColor: '#4ecdc4',
+              backgroundColor: 'rgba(78,205,196,0.1)',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 4,
+              pointBackgroundColor: '#4ecdc4'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function renderTypeChart(typeData) {
+      const ctx = document.getElementById('typeChart');
+      if (!ctx) return;
+
+      if (analyticsCharts.type) analyticsCharts.type.destroy();
+
+      const colors = {
+        'refund': '#ef4444',
+        'shipping': '#3b82f6',
+        'subscription': '#10b981',
+        'return': '#f59e0b',
+        'manual': '#6b7280'
+      };
+
+      analyticsCharts.type = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: typeData.map(t => t.case_type),
+          datasets: [{
+            data: typeData.map(t => t.count),
+            backgroundColor: typeData.map(t => colors[t.case_type] || '#6b7280'),
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right' }
+          },
+          cutout: '60%'
+        }
+      });
+    }
+
+    async function downloadReport() {
+      try {
+        // Fetch latest analytics data
+        const r = await fetch(API+'/hub/api/analytics');
+        const d = await r.json();
+
+        // Generate comprehensive CSV report
+        const rows = [
+          ['PuppyPad Resolution Hub Report'],
+          ['Generated:', new Date().toLocaleString()],
+          [''],
+          ['=== OVERVIEW ==='],
+          ['Total Cases', d.totalCases || 0],
+          ['Cases Today', d.casesToday || 0],
+          ['Cases This Week', d.casesThisWeek || 0],
+          ['Cases This Month', d.casesThisMonth || 0],
+          [''],
+          ['=== STATUS BREAKDOWN ==='],
+          ['Pending Cases', d.pendingCases || 0],
+          ['In Progress Cases', d.inProgressCases || 0],
+          ['Completed Cases', d.completedCases || 0],
+          ['Stale Cases (24h+)', d.staleCases || 0],
+          [''],
+          ['=== SESSIONS ==='],
+          ['Total Sessions', d.totalSessions || 0],
+          ['Completed Sessions', d.completedSessions || 0],
+          ['Completion Rate', (d.completionRate || 0) + '%'],
+          [''],
+          ['=== FINANCIAL ==='],
+          ['Total Refunds', '$' + (d.totalRefunds || 0).toFixed(2)],
+          ['Refunds (Last 30 Days)', '$' + (d.refundsThisMonth || 0).toFixed(2)],
+          ['Average Refund', '$' + (d.avgRefund || 0).toFixed(2)],
+          [''],
+          ['=== CASES BY TYPE ==='],
+        ];
+
+        (d.casesByType || []).forEach(t => {
+          rows.push([t.case_type || 'unknown', t.count || 0]);
+        });
+
+        rows.push(['']);
+        rows.push(['=== RESOLUTION TYPES ===']);
+        rows.push(['Resolution', 'Count', 'Total Refund']);
+        (d.resolutionTypes || []).forEach(r => {
+          rows.push([formatResolution(r.resolution), r.count || 0, '$' + (parseFloat(r.total_refund) || 0).toFixed(2)]);
+        });
+
+        rows.push(['']);
+        rows.push(['=== FLOW TYPES ===']);
+        (d.flowTypes || []).forEach(f => {
+          rows.push([f.flow_type || 'unknown', f.count || 0]);
+        });
+
+        rows.push(['']);
+        rows.push(['=== DAILY TRENDS (Last 14 Days) ===']);
+        rows.push(['Date', 'Cases', 'Sessions']);
+        const dates = new Set([...(d.casesByDay||[]).map(x=>x.date), ...(d.sessionsByDay||[]).map(x=>x.date)]);
+        [...dates].sort().forEach(date => {
+          const caseCount = (d.casesByDay||[]).find(x=>x.date===date)?.count || 0;
+          const sessionCount = (d.sessionsByDay||[]).find(x=>x.date===date)?.count || 0;
+          rows.push([date, caseCount, sessionCount]);
+        });
+
+        const csvContent = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'resolution-hub-report-' + new Date().toISOString().split('T')[0] + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch(e) {
+        console.error('Report download error:', e);
+        alert('Failed to generate report. Please try again.');
+      }
     }
 
     function timeAgo(d) { if(!d)return'-'; const s=Math.floor((Date.now()-new Date(d))/1000); if(s<60)return'Just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
@@ -6121,6 +6706,11 @@ function getResolutionHubHTML() {
       document.getElementById('caseModal').classList.add('active');
       document.getElementById('modalCaseId').textContent = caseId;
       document.getElementById('modalCustomerName').textContent = 'Loading...';
+
+      // Set current case index for navigation
+      currentCaseIndex = casesList.findIndex(c => c.case_id === caseId);
+      updateNavigationButtons();
+
       try {
         const r = await fetch(API+'/hub/api/case/'+caseId);
         const data = await r.json();
@@ -6142,15 +6732,15 @@ function getResolutionHubHTML() {
         document.getElementById('modalOrderDate').textContent = formatDate(c.order_date||c.created_at);
         document.getElementById('modalSessionId').textContent = c.session_id ? c.session_id.substring(0,20)+'...' : '-';
 
-        // Resolution details
-        document.getElementById('modalResolution').textContent = c.resolution||'-';
+        // Resolution details - use formatted resolution
+        document.getElementById('modalResolution').textContent = formatResolution(c.resolution, c.refund_amount);
         document.getElementById('modalRefundAmount').textContent = c.refund_amount ? '$'+parseFloat(c.refund_amount).toFixed(2) : '-';
         document.getElementById('modalCreatedAt').textContent = formatDate(c.created_at);
         document.getElementById('modalUpdatedAt').textContent = formatDate(c.updated_at||c.created_at);
 
-        // Status buttons
-        document.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector('.status-btn.'+statusClass)?.classList.add('active');
+        // Status cards
+        document.querySelectorAll('.status-card').forEach(card => card.classList.remove('active'));
+        document.querySelector('.status-card.'+statusClass)?.classList.add('active');
 
         // Quick action links
         if(c.session_replay_url) {
@@ -6159,6 +6749,15 @@ function getResolutionHubHTML() {
         } else {
           document.getElementById('replayLink').style.display = 'none';
         }
+
+        // Richpanel conversation link
+        if(c.richpanel_conversation_no) {
+          document.getElementById('richpanelLink').href = 'https://app.richpanel.com/conversations?viewId=search&conversationNo=' + c.richpanel_conversation_no;
+          document.getElementById('richpanelLink').style.display = 'flex';
+        } else {
+          document.getElementById('richpanelLink').style.display = 'none';
+        }
+
         if(c.clickup_task_url) {
           document.getElementById('clickupLink').href = c.clickup_task_url;
           document.getElementById('clickupLink').style.display = 'flex';
@@ -6195,7 +6794,41 @@ function getResolutionHubHTML() {
       }
     }
 
-    function closeModal() { document.getElementById('caseModal').classList.remove('active'); currentCase = null; }
+    function closeModal() { document.getElementById('caseModal').classList.remove('active'); currentCase = null; currentCaseIndex = -1; }
+
+    // Case navigation functions
+    function updateNavigationButtons() {
+      const prevBtn = document.getElementById('prevCaseBtn');
+      const nextBtn = document.getElementById('nextCaseBtn');
+      const prevPreview = document.getElementById('prevCasePreview');
+      const nextPreview = document.getElementById('nextCasePreview');
+
+      if (currentCaseIndex > 0 && casesList.length > 0) {
+        prevBtn.disabled = false;
+        const prevCase = casesList[currentCaseIndex - 1];
+        prevPreview.textContent = (prevCase.customer_name || prevCase.customer_email?.split('@')[0] || 'Case') + ' - ' + prevCase.case_type;
+      } else {
+        prevBtn.disabled = true;
+        prevPreview.textContent = '';
+      }
+
+      if (currentCaseIndex < casesList.length - 1 && casesList.length > 0) {
+        nextBtn.disabled = false;
+        const nextCase = casesList[currentCaseIndex + 1];
+        nextPreview.textContent = (nextCase.customer_name || nextCase.customer_email?.split('@')[0] || 'Case') + ' - ' + nextCase.case_type;
+      } else {
+        nextBtn.disabled = true;
+        nextPreview.textContent = '';
+      }
+    }
+
+    function navigateCase(direction) {
+      if (direction === 'prev' && currentCaseIndex > 0) {
+        openCase(casesList[currentCaseIndex - 1].case_id);
+      } else if (direction === 'next' && currentCaseIndex < casesList.length - 1) {
+        openCase(casesList[currentCaseIndex + 1].case_id);
+      }
+    }
 
     async function updateStatus(newStatus) {
       if(!currentCase) return;
@@ -6207,10 +6840,10 @@ function getResolutionHubHTML() {
         });
         if(r.ok) {
           currentCase.status = newStatus;
-          // Update status buttons
-          document.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
+          // Update status cards
+          document.querySelectorAll('.status-card').forEach(card => card.classList.remove('active'));
           const statusClass = newStatus.replace('_','-');
-          document.querySelector('.status-btn.'+statusClass)?.classList.add('active');
+          document.querySelector('.status-card.'+statusClass)?.classList.add('active');
           // Update header badge
           document.getElementById('modalStatusBadge').innerHTML = '<span class="status-badge '+statusClass+'">'+newStatus.replace('_',' ')+'</span>';
           loadDashboard();
