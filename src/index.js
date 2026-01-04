@@ -3421,16 +3421,17 @@ async function handleLogPolicyBlock(request, env, corsHeaders) {
 
 // Log case creation (called from handleCreateCase)
 async function logCaseToAnalytics(env, caseData) {
-  try {
-    // Build customer name from first/last name if not directly provided
-    let customerName = caseData.customerName;
-    if (!customerName && caseData.customerFirstName) {
-      customerName = caseData.customerFirstName;
-      if (caseData.customerLastName) {
-        customerName += ' ' + caseData.customerLastName;
-      }
+  // Build customer name from first/last name if not directly provided
+  let customerName = caseData.customerName;
+  if (!customerName && caseData.customerFirstName) {
+    customerName = caseData.customerFirstName;
+    if (caseData.customerLastName) {
+      customerName += ' ' + caseData.customerLastName;
     }
+  }
 
+  // Try full insert first, fall back to basic insert if columns don't exist
+  try {
     await env.ANALYTICS_DB.prepare(`
       INSERT INTO cases (
         case_id, case_type, resolution, customer_email, customer_name,
@@ -3455,9 +3456,56 @@ async function logCaseToAnalytics(env, caseData) {
       caseData.orderUrl || null,
       caseData.orderDate || null
     ).run();
-    console.log('Case saved to database:', caseData.caseId, 'Customer:', customerName);
+    console.log('Case saved to database (full):', caseData.caseId);
+    return;
   } catch (e) {
-    console.error('Case analytics logging failed:', e.message);
+    console.log('Full insert failed, trying basic insert:', e.message);
+  }
+
+  // Fallback: basic insert with only core columns
+  try {
+    await env.ANALYTICS_DB.prepare(`
+      INSERT INTO cases (
+        case_id, case_type, resolution, customer_email, customer_name,
+        order_number, refund_amount, status, session_id,
+        clickup_task_id, clickup_task_url, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).bind(
+      caseData.caseId,
+      caseData.caseType,
+      caseData.resolution,
+      caseData.email,
+      customerName || null,
+      caseData.orderNumber,
+      caseData.refundAmount || null,
+      'pending',
+      caseData.sessionId || null,
+      caseData.clickupTaskId || null,
+      caseData.clickupTaskUrl || null
+    ).run();
+    console.log('Case saved to database (basic):', caseData.caseId);
+    return;
+  } catch (e2) {
+    console.log('Basic insert failed, trying minimal insert:', e2.message);
+  }
+
+  // Final fallback: minimal columns only
+  try {
+    await env.ANALYTICS_DB.prepare(`
+      INSERT INTO cases (case_id, case_type, resolution, customer_email, order_number, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    `).bind(
+      caseData.caseId,
+      caseData.caseType,
+      caseData.resolution,
+      caseData.email,
+      caseData.orderNumber,
+      'pending'
+    ).run();
+    console.log('Case saved to database (minimal):', caseData.caseId);
+  } catch (e3) {
+    console.error('All case insert attempts failed:', e3.message);
   }
 }
 
