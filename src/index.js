@@ -5845,6 +5845,13 @@ function getResolutionHubHTML() {
     .status-badge.pending { background: #fef3c7; color: #d97706; }
     .status-badge.in-progress { background: #dbeafe; color: #2563eb; }
     .status-badge.completed { background: #d1fae5; color: #059669; }
+    .status-badge.abandoned { background: #fee2e2; color: #dc2626; }
+    .due-badge { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .due-badge.due-done { background: #d1fae5; color: #059669; }
+    .due-badge.due-overdue { background: #fee2e2; color: #dc2626; }
+    .due-badge.due-urgent { background: #fef3c7; color: #d97706; }
+    .due-badge.due-warning { background: #fed7aa; color: #c2410c; }
+    .due-badge.due-ok { background: #e0e7ff; color: #4f46e5; }
     .type-badge { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
     .type-badge.refund { background: #fee2e2; color: #dc2626; }
     .type-badge.shipping { background: #dbeafe; color: #2563eb; }
@@ -6354,8 +6361,102 @@ function getResolutionHubHTML() {
         const url = currentFilter==='all' ? API+'/hub/api/cases?limit=50' : API+'/hub/api/cases?limit=50&filter='+currentFilter;
         const r = await fetch(url); const d = await r.json();
         casesList = d.cases || [];
-        view.innerHTML = '<div class="cases-card"><table class="cases-table"><thead><tr><th>Case ID</th><th>Customer</th><th>Type</th><th>Status</th><th>Resolution</th><th>Created</th></tr></thead><tbody>'+(casesList.length ? casesList.map(c => '<tr onclick="openCase(\\''+c.case_id+'\\')"><td><span class="case-id">'+c.case_id+'</span></td><td><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td><td><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td><td><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+formatResolution(c.resolution, c.refund_amount)+'</td><td class="time-ago">'+timeAgo(c.created_at)+'</td></tr>').join('') : '<tr><td colspan="6" class="empty-state">No cases found</td></tr>')+'</tbody></table></div>';
+
+        // Calculate due date status
+        function getDueStatus(c) {
+          if (!c.created_at) return { text: '-', class: '' };
+          const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
+          const now = Date.now();
+          const timeLeft = dueDate.getTime() - now;
+          if (c.status === 'completed') return { text: '✓ Done', class: 'due-done' };
+          if (timeLeft < 0) return { text: 'Overdue', class: 'due-overdue' };
+          const hoursLeft = Math.floor(timeLeft / (60*60*1000));
+          if (hoursLeft < 1) return { text: '<1h left', class: 'due-urgent' };
+          if (hoursLeft < 6) return { text: hoursLeft + 'h left', class: 'due-warning' };
+          return { text: hoursLeft + 'h left', class: 'due-ok' };
+        }
+
+        function renderCaseRow(c) {
+          const due = getDueStatus(c);
+          return '<tr onclick="openCase(\\''+c.case_id+'\\')">'+
+            '<td><span class="case-id">'+c.case_id+'</span></td>'+
+            '<td><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td>'+
+            '<td><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td>'+
+            '<td><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td>'+
+            '<td><span class="due-badge '+due.class+'">'+due.text+'</span></td>'+
+            '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+formatResolution(c.resolution, c.refund_amount)+'</td>'+
+            '<td class="time-ago">'+timeAgo(c.created_at)+'</td>'+
+          '</tr>';
+        }
+
+        view.innerHTML = '<div class="cases-filters" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">'+
+          '<select id="caseStatusFilter" onchange="applyCaseFilters()" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;">'+
+            '<option value="all">All Statuses</option>'+
+            '<option value="pending">Pending</option>'+
+            '<option value="in_progress">In Progress</option>'+
+            '<option value="completed">Completed</option>'+
+          '</select>'+
+          '<select id="caseDueFilter" onchange="applyCaseFilters()" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;">'+
+            '<option value="all">All Due Dates</option>'+
+            '<option value="overdue">Overdue Only</option>'+
+            '<option value="urgent">Due in < 6 hours</option>'+
+            '<option value="today">Due Today</option>'+
+          '</select>'+
+          '<select id="caseSortBy" onchange="applyCaseFilters()" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;">'+
+            '<option value="newest">Newest First</option>'+
+            '<option value="oldest">Oldest First</option>'+
+            '<option value="due_soonest">Due Soonest</option>'+
+            '<option value="amount_high">Highest Amount</option>'+
+          '</select>'+
+        '</div>'+
+        '<div class="cases-card"><table class="cases-table"><thead><tr><th>Case ID</th><th>Customer</th><th>Type</th><th>Status</th><th>Due</th><th>Resolution</th><th>Created</th></tr></thead><tbody id="casesTableBody">'+
+          (casesList.length ? casesList.map(renderCaseRow).join('') : '<tr><td colspan="7" class="empty-state">No cases found</td></tr>')+
+        '</tbody></table></div>';
+
+        window.allCases = casesList;
+        window.renderCaseRow = renderCaseRow;
+        window.getDueStatus = getDueStatus;
       } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load cases</div>'; }
+    }
+
+    function applyCaseFilters() {
+      const statusFilter = document.getElementById('caseStatusFilter').value;
+      const dueFilter = document.getElementById('caseDueFilter').value;
+      const sortBy = document.getElementById('caseSortBy').value;
+      let filtered = [...(window.allCases || [])];
+
+      // Status filter
+      if (statusFilter !== 'all') filtered = filtered.filter(c => c.status === statusFilter);
+
+      // Due date filter
+      if (dueFilter !== 'all') {
+        filtered = filtered.filter(c => {
+          if (!c.created_at || c.status === 'completed') return false;
+          const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
+          const now = Date.now();
+          const hoursLeft = (dueDate.getTime() - now) / (60*60*1000);
+          if (dueFilter === 'overdue') return hoursLeft < 0;
+          if (dueFilter === 'urgent') return hoursLeft >= 0 && hoursLeft < 6;
+          if (dueFilter === 'today') return hoursLeft >= 0 && hoursLeft < 24;
+          return true;
+        });
+      }
+
+      // Sort
+      filtered.sort((a, b) => {
+        if (sortBy === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+        if (sortBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+        if (sortBy === 'due_soonest') {
+          const dueA = new Date(a.created_at).getTime() + 24*60*60*1000;
+          const dueB = new Date(b.created_at).getTime() + 24*60*60*1000;
+          return dueA - dueB;
+        }
+        if (sortBy === 'amount_high') return (parseFloat(b.refund_amount)||0) - (parseFloat(a.refund_amount)||0);
+        return 0;
+      });
+
+      const tbody = document.getElementById('casesTableBody');
+      tbody.innerHTML = filtered.length ? filtered.map(window.renderCaseRow).join('') : '<tr><td colspan="7" class="empty-state">No cases match filters</td></tr>';
     }
 
     async function loadSessionsView() {
@@ -6367,53 +6468,90 @@ function getResolutionHubHTML() {
         const completedSessions = sessions.filter(s => s.completed);
         const incompleteSessions = sessions.filter(s => !s.completed);
 
+        // Calculate time status for sessions (sessions have 30 min typical duration)
+        function getSessionTimeStatus(s) {
+          if (s.completed) return { text: 'Completed', class: 'completed' };
+          const created = new Date(s.created_at).getTime();
+          const elapsed = Date.now() - created;
+          const elapsedMins = Math.floor(elapsed / 60000);
+          if (elapsedMins < 30) return { text: elapsedMins + 'm active', class: 'in-progress' };
+          if (elapsedMins < 60) return { text: 'Idle ' + elapsedMins + 'm', class: 'pending' };
+          const hours = Math.floor(elapsedMins / 60);
+          return { text: 'Abandoned ' + hours + 'h ago', class: 'abandoned' };
+        }
+
         function renderSessionRow(s) {
           const hasRecording = s.session_replay_url;
           const customerName = s.customer_name || s.customer_email?.split('@')[0] || 'Anonymous';
-          const flowLabel = { 'refund': 'Refund Request', 'shipping': 'Shipping Issue', 'subscription': 'Subscription', 'manual': 'Manual Help' }[s.flow_type] || s.flow_type || 'Unknown';
+          const flowLabel = { 'refund': 'Refund Request', 'shipping': 'Shipping Issue', 'subscription': 'Subscription', 'manual': 'Manual Help', 'help': 'Help Request', 'track': 'Order Tracking' }[s.flow_type] || s.flow_type || 'Unknown';
+          const timeStatus = getSessionTimeStatus(s);
           return '<tr>'+
             '<td><div style="display:flex;flex-direction:column;gap:4px;"><span class="customer-name">'+customerName+'</span><span class="customer-email" style="font-size:11px;color:var(--gray-400);">'+(s.customer_email||'No email')+'</span></div></td>'+
             '<td><span class="type-badge '+s.flow_type+'">'+flowLabel+'</span></td>'+
             '<td>'+(s.order_number||'-')+'</td>'+
-            '<td><span class="status-badge '+(s.completed?'completed':'in-progress')+'">'+(s.completed?'Completed':'In Progress')+'</span></td>'+
+            '<td><span class="status-badge '+timeStatus.class+'">'+timeStatus.text+'</span></td>'+
             '<td>'+timeAgo(s.created_at)+'</td>'+
             '<td>'+(hasRecording ? '<a href="'+s.session_replay_url+'" target="_blank" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">Watch Recording</a>' : '<span style="color:var(--gray-400);font-size:12px;">No recording</span>')+'</td>'+
           '</tr>';
         }
 
+        // Count abandoned sessions
+        const abandonedSessions = sessions.filter(s => !s.completed && (Date.now() - new Date(s.created_at).getTime()) > 60*60*1000);
+
         view.innerHTML = '<div class="sessions-container">'+
           '<div class="stats-grid" style="margin-bottom:24px;">'+
             '<div class="stat-card"><div class="stat-label">Total Sessions</div><div class="stat-value">'+sessions.length+'</div></div>'+
             '<div class="stat-card" style="border-left:3px solid #10b981;"><div class="stat-label">Completed</div><div class="stat-value" style="color:#10b981;">'+completedSessions.length+'</div></div>'+
-            '<div class="stat-card" style="border-left:3px solid #f59e0b;"><div class="stat-label">In Progress</div><div class="stat-value" style="color:#f59e0b;">'+incompleteSessions.length+'</div></div>'+
-            '<div class="stat-card"><div class="stat-label">With Recordings</div><div class="stat-value">'+sessions.filter(s=>s.session_replay_url).length+'</div></div>'+
+            '<div class="stat-card" style="border-left:3px solid #f59e0b;"><div class="stat-label">In Progress</div><div class="stat-value" style="color:#f59e0b;">'+(incompleteSessions.length - abandonedSessions.length)+'</div></div>'+
+            '<div class="stat-card" style="border-left:3px solid #ef4444;"><div class="stat-label">Abandoned</div><div class="stat-value" style="color:#ef4444;">'+abandonedSessions.length+'</div></div>'+
           '</div>'+
-          '<div class="tab-buttons" style="display:flex;gap:8px;margin-bottom:16px;">'+
-            '<button class="btn btn-primary" id="tabAll" onclick="filterSessions(\\'all\\')">All Sessions ('+sessions.length+')</button>'+
-            '<button class="btn btn-secondary" id="tabCompleted" onclick="filterSessions(\\'completed\\')">Completed ('+completedSessions.length+')</button>'+
-            '<button class="btn btn-secondary" id="tabIncomplete" onclick="filterSessions(\\'incomplete\\')">In Progress ('+incompleteSessions.length+')</button>'+
+          '<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">'+
+            '<div class="tab-buttons" style="display:flex;gap:8px;">'+
+              '<button class="btn btn-primary" id="tabAll" onclick="filterSessions(\\'all\\')">All ('+sessions.length+')</button>'+
+              '<button class="btn btn-secondary" id="tabCompleted" onclick="filterSessions(\\'completed\\')">Completed ('+completedSessions.length+')</button>'+
+              '<button class="btn btn-secondary" id="tabIncomplete" onclick="filterSessions(\\'incomplete\\')">In Progress ('+(incompleteSessions.length - abandonedSessions.length)+')</button>'+
+              '<button class="btn btn-secondary" id="tabAbandoned" onclick="filterSessions(\\'abandoned\\')">Abandoned ('+abandonedSessions.length+')</button>'+
+            '</div>'+
+            '<select id="sessionSortBy" onchange="filterSessions(window.currentSessionFilter||\\'\\'all\\'\\'')" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;">'+
+              '<option value="newest">Newest First</option>'+
+              '<option value="oldest">Oldest First</option>'+
+            '</select>'+
           '</div>'+
           '<div class="cases-card"><table class="cases-table"><thead><tr><th>Customer</th><th>Flow Type</th><th>Order #</th><th>Status</th><th>Started</th><th>Recording</th></tr></thead><tbody id="sessionsTableBody">'+
             (sessions.length ? sessions.map(renderSessionRow).join('') : '<tr><td colspan="6" class="empty-state">No sessions yet</td></tr>')+
           '</tbody></table></div>'+
         '</div>';
 
-        // Store sessions for filtering
         window.allSessions = sessions;
         window.renderSessionRow = renderSessionRow;
+        window.currentSessionFilter = 'all';
       } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load sessions</div>'; }
     }
 
     function filterSessions(filter) {
-      const tbody = document.getElementById('sessionsTableBody');
-      let filtered = window.allSessions || [];
+      window.currentSessionFilter = filter;
+      const sortBy = document.getElementById('sessionSortBy')?.value || 'newest';
+      let filtered = [...(window.allSessions || [])];
+
       if (filter === 'completed') filtered = filtered.filter(s => s.completed);
-      if (filter === 'incomplete') filtered = filtered.filter(s => !s.completed);
+      if (filter === 'incomplete') filtered = filtered.filter(s => !s.completed && (Date.now() - new Date(s.created_at).getTime()) <= 60*60*1000);
+      if (filter === 'abandoned') filtered = filtered.filter(s => !s.completed && (Date.now() - new Date(s.created_at).getTime()) > 60*60*1000);
+
+      // Sort
+      filtered.sort((a, b) => {
+        if (sortBy === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+        if (sortBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+        return 0;
+      });
+
+      const tbody = document.getElementById('sessionsTableBody');
       tbody.innerHTML = filtered.length ? filtered.map(window.renderSessionRow).join('') : '<tr><td colspan="6" class="empty-state">No sessions found</td></tr>';
+
       // Update tab styling
       document.getElementById('tabAll').className = filter === 'all' ? 'btn btn-primary' : 'btn btn-secondary';
       document.getElementById('tabCompleted').className = filter === 'completed' ? 'btn btn-primary' : 'btn btn-secondary';
       document.getElementById('tabIncomplete').className = filter === 'incomplete' ? 'btn btn-primary' : 'btn btn-secondary';
+      document.getElementById('tabAbandoned').className = filter === 'abandoned' ? 'btn btn-primary' : 'btn btn-secondary';
     }
 
     async function loadEventsView() {
