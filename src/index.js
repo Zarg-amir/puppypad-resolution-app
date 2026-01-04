@@ -3403,8 +3403,8 @@ async function handleLogPolicyBlock(request, env, corsHeaders) {
 async function logCaseToAnalytics(env, caseData) {
   try {
     await env.ANALYTICS_DB.prepare(`
-      INSERT INTO cases (case_id, session_id, case_type, resolution, order_number, customer_email, customer_name, refund_amount, selected_items, clickup_task_id, clickup_task_url, status, order_url, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO cases (case_id, session_id, case_type, resolution, order_number, customer_email, customer_name, refund_amount, selected_items, clickup_task_id, clickup_task_url, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       caseData.caseId,
       caseData.sessionId,
@@ -3415,14 +3415,14 @@ async function logCaseToAnalytics(env, caseData) {
       caseData.customerName,
       caseData.refundAmount || null,
       JSON.stringify(caseData.selectedItems || []),
-      caseData.clickupTaskId,
-      caseData.clickupTaskUrl,
-      'pending', // Default status for new cases
-      caseData.orderUrl || null,
+      caseData.clickupTaskId || null,
+      caseData.clickupTaskUrl || null,
+      'pending',
       new Date().toISOString()
     ).run();
+    console.log('Case saved to database:', caseData.caseId);
   } catch (e) {
-    console.error('Case analytics logging failed:', e);
+    console.error('Case analytics logging failed:', e.message);
   }
 }
 
