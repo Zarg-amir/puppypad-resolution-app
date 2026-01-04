@@ -952,6 +952,37 @@ export default {
         return await handleHubCases(request, env, corsHeaders);
       }
 
+      // Hub API - Single case
+      if (pathname.startsWith('/hub/api/case/') && request.method === 'GET' && !pathname.includes('/comments') && !pathname.includes('/status')) {
+        const caseId = pathname.split('/hub/api/case/')[1];
+        return await handleHubGetCase(caseId, env, corsHeaders);
+      }
+
+      // Hub API - Update case status
+      if (pathname.startsWith('/hub/api/case/') && pathname.endsWith('/status') && request.method === 'PUT') {
+        const caseId = pathname.split('/hub/api/case/')[1].replace('/status', '');
+        return await handleHubUpdateStatus(request, caseId, env, corsHeaders);
+      }
+
+      // Hub API - Get case comments
+      if (pathname.startsWith('/hub/api/case/') && pathname.endsWith('/comments') && request.method === 'GET') {
+        const caseId = pathname.split('/hub/api/case/')[1].replace('/comments', '');
+        return await handleHubGetComments(caseId, env, corsHeaders);
+      }
+
+      // Hub API - Add case comment
+      if (pathname.startsWith('/hub/api/case/') && pathname.endsWith('/comments') && request.method === 'POST') {
+        const caseId = pathname.split('/hub/api/case/')[1].replace('/comments', '');
+        return await handleHubAddComment(request, caseId, env, corsHeaders);
+      }
+
+      // ============================================
+      // CLICKUP WEBHOOK (Two-way Sync)
+      // ============================================
+      if (pathname === '/api/clickup/webhook' && request.method === 'POST') {
+        return await handleClickUpWebhook(request, env, corsHeaders);
+      }
+
       // Admin setup endpoint (one-time use to create admin user)
       if (pathname === '/admin/setup' && request.method === 'POST') {
         return await handleAdminSetup(request, env, corsHeaders);
@@ -5097,6 +5128,352 @@ async function handleHubCases(request, env, corsHeaders) {
   }
 }
 
+async function handleHubGetCase(caseId, env, corsHeaders) {
+  try {
+    const caseData = await env.DB.prepare(
+      `SELECT * FROM cases WHERE case_id = ?`
+    ).bind(caseId).first();
+
+    if (!caseData) {
+      return Response.json({ error: 'Case not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    // Parse JSON fields
+    if (caseData.selected_items) {
+      try { caseData.selected_items = JSON.parse(caseData.selected_items); } catch (e) {}
+    }
+    if (caseData.photo_urls) {
+      try { caseData.photo_urls = JSON.parse(caseData.photo_urls); } catch (e) {}
+    }
+    if (caseData.shipping_address) {
+      try { caseData.shipping_address = JSON.parse(caseData.shipping_address); } catch (e) {}
+    }
+
+    return Response.json({ case: caseData }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub get case error:', error);
+    return Response.json({ error: 'Failed to load case' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+async function handleHubUpdateStatus(request, caseId, env, corsHeaders) {
+  try {
+    const { status, actor, actor_email } = await request.json();
+
+    // Get current case to record old status
+    const currentCase = await env.DB.prepare(
+      `SELECT status FROM cases WHERE case_id = ?`
+    ).bind(caseId).first();
+
+    if (!currentCase) {
+      return Response.json({ error: 'Case not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    const oldStatus = currentCase.status;
+    const now = new Date().toISOString();
+
+    // Update case status
+    let updateQuery = `UPDATE cases SET status = ?, updated_at = ?, last_sync_source = 'hub'`;
+    const params = [status, now];
+
+    // Set resolved_at if completing
+    if (status === 'completed' && oldStatus !== 'completed') {
+      updateQuery += `, resolved_at = ?`;
+      params.push(now);
+    }
+
+    updateQuery += ` WHERE case_id = ?`;
+    params.push(caseId);
+
+    await env.DB.prepare(updateQuery).bind(...params).run();
+
+    // Log activity
+    await env.DB.prepare(
+      `INSERT INTO case_activity (case_id, activity_type, field_name, old_value, new_value, actor, actor_email, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(caseId, 'status_changed', 'status', oldStatus, status, actor || 'team_member', actor_email || '', 'hub').run();
+
+    // Log event
+    await env.DB.prepare(
+      `INSERT INTO events (case_id, event_type, event_name, event_data, actor, actor_email) VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(caseId, 'status_change', `Status changed to ${status}`, JSON.stringify({ old_status: oldStatus, new_status: status }), actor || 'team_member', actor_email || '').run();
+
+    // Sync to ClickUp (fire and forget - don't block response)
+    syncStatusToClickUp(env, caseId, status).catch(e => console.error('ClickUp sync error:', e));
+
+    return Response.json({ success: true, status }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub update status error:', error);
+    return Response.json({ error: 'Failed to update status' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+async function handleHubGetComments(caseId, env, corsHeaders) {
+  try {
+    const comments = await env.DB.prepare(
+      `SELECT * FROM case_comments WHERE case_id = ? ORDER BY created_at ASC`
+    ).bind(caseId).all();
+
+    return Response.json({ comments: comments.results || [] }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub get comments error:', error);
+    return Response.json({ comments: [] }, { headers: corsHeaders });
+  }
+}
+
+async function handleHubAddComment(request, caseId, env, corsHeaders) {
+  try {
+    const { content, author_name, author_email } = await request.json();
+
+    if (!content || !content.trim()) {
+      return Response.json({ error: 'Comment content is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    const now = new Date().toISOString();
+
+    // Insert comment
+    const result = await env.DB.prepare(
+      `INSERT INTO case_comments (case_id, content, author_name, author_email, source, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(caseId, content.trim(), author_name || 'Team Member', author_email || '', 'hub', now).run();
+
+    // Log activity
+    await env.DB.prepare(
+      `INSERT INTO case_activity (case_id, activity_type, new_value, actor, actor_email, source) VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(caseId, 'comment_added', content.trim().substring(0, 100), author_name || 'team_member', author_email || '', 'hub').run();
+
+    // Update case updated_at
+    await env.DB.prepare(
+      `UPDATE cases SET updated_at = ? WHERE case_id = ?`
+    ).bind(now, caseId).run();
+
+    // Sync comment to ClickUp (fire and forget)
+    syncCommentToClickUp(env, caseId, content.trim(), author_name || 'Team Member').catch(e => console.error('ClickUp comment sync error:', e));
+
+    return Response.json({
+      success: true,
+      comment: {
+        id: result.meta?.last_row_id,
+        case_id: caseId,
+        content: content.trim(),
+        author_name: author_name || 'Team Member',
+        author_email: author_email || '',
+        source: 'hub',
+        created_at: now
+      }
+    }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub add comment error:', error);
+    return Response.json({ error: 'Failed to add comment' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// CLICKUP TWO-WAY SYNC
+// ============================================
+
+// Map ClickUp status names to Hub status
+const CLICKUP_STATUS_MAP = {
+  'to do': 'pending',
+  'in progress': 'in_progress',
+  'in-progress': 'in_progress',
+  'review': 'in_progress',
+  'complete': 'completed',
+  'completed': 'completed',
+  'closed': 'completed'
+};
+
+// Map Hub status to ClickUp status names
+const HUB_TO_CLICKUP_STATUS = {
+  'pending': 'to do',
+  'in_progress': 'in progress',
+  'completed': 'complete'
+};
+
+// Handle incoming ClickUp webhooks
+async function handleClickUpWebhook(request, env, corsHeaders) {
+  try {
+    const payload = await request.json();
+    console.log('ClickUp webhook received:', JSON.stringify(payload));
+
+    // ClickUp sends task_status_updated when status changes
+    if (payload.event === 'taskStatusUpdated' || payload.event === 'task_status_updated') {
+      const taskId = payload.task_id;
+      const newStatus = payload.history_items?.[0]?.after?.status || payload.status?.status;
+
+      if (!taskId || !newStatus) {
+        console.log('Missing task_id or status in webhook payload');
+        return Response.json({ success: true, message: 'Ignored - missing data' }, { headers: corsHeaders });
+      }
+
+      // Find case by clickup_task_id
+      const caseData = await env.DB.prepare(
+        `SELECT case_id, status, last_sync_source FROM cases WHERE clickup_task_id = ?`
+      ).bind(taskId).first();
+
+      if (!caseData) {
+        console.log('No matching case found for ClickUp task:', taskId);
+        return Response.json({ success: true, message: 'No matching case' }, { headers: corsHeaders });
+      }
+
+      // Prevent sync loops - if last sync was from Hub, skip this update
+      const timeSinceSync = caseData.last_sync_at
+        ? (Date.now() - new Date(caseData.last_sync_at).getTime()) / 1000
+        : 999999;
+
+      if (caseData.last_sync_source === 'hub' && timeSinceSync < 30) {
+        console.log('Skipping ClickUp webhook - recent Hub sync detected');
+        return Response.json({ success: true, message: 'Skipped - recent Hub sync' }, { headers: corsHeaders });
+      }
+
+      // Map ClickUp status to Hub status
+      const hubStatus = CLICKUP_STATUS_MAP[newStatus.toLowerCase()] || 'pending';
+
+      // Only update if status actually changed
+      if (caseData.status === hubStatus) {
+        return Response.json({ success: true, message: 'Status unchanged' }, { headers: corsHeaders });
+      }
+
+      const now = new Date().toISOString();
+      const oldStatus = caseData.status;
+
+      // Update case status
+      let updateQuery = `UPDATE cases SET status = ?, updated_at = ?, last_sync_at = ?, last_sync_source = 'clickup'`;
+      const params = [hubStatus, now, now];
+
+      if (hubStatus === 'completed' && oldStatus !== 'completed') {
+        updateQuery += `, resolved_at = ?`;
+        params.push(now);
+      }
+
+      updateQuery += ` WHERE case_id = ?`;
+      params.push(caseData.case_id);
+
+      await env.DB.prepare(updateQuery).bind(...params).run();
+
+      // Log activity
+      await env.DB.prepare(
+        `INSERT INTO case_activity (case_id, activity_type, field_name, old_value, new_value, actor, source) VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).bind(caseData.case_id, 'status_changed', 'status', oldStatus, hubStatus, 'clickup_webhook', 'clickup').run();
+
+      console.log(`Case ${caseData.case_id} status synced from ClickUp: ${oldStatus} -> ${hubStatus}`);
+      return Response.json({ success: true, message: 'Status synced from ClickUp' }, { headers: corsHeaders });
+    }
+
+    // Handle comment added in ClickUp
+    if (payload.event === 'taskCommentPosted' || payload.event === 'task_comment_posted') {
+      const taskId = payload.task_id;
+      const comment = payload.history_items?.[0]?.comment || payload.comment;
+
+      if (!taskId || !comment) {
+        return Response.json({ success: true, message: 'Ignored - missing comment data' }, { headers: corsHeaders });
+      }
+
+      const caseData = await env.DB.prepare(
+        `SELECT case_id FROM cases WHERE clickup_task_id = ?`
+      ).bind(taskId).first();
+
+      if (!caseData) {
+        return Response.json({ success: true, message: 'No matching case' }, { headers: corsHeaders });
+      }
+
+      // Check if comment already exists (by clickup_comment_id)
+      const existingComment = await env.DB.prepare(
+        `SELECT id FROM case_comments WHERE clickup_comment_id = ?`
+      ).bind(comment.id).first();
+
+      if (existingComment) {
+        return Response.json({ success: true, message: 'Comment already synced' }, { headers: corsHeaders });
+      }
+
+      // Insert comment
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        `INSERT INTO case_comments (case_id, content, author_name, source, clickup_comment_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(caseData.case_id, comment.comment_text || comment.text_content || '', comment.user?.username || 'ClickUp User', 'clickup', comment.id, now).run();
+
+      console.log(`Comment synced from ClickUp to case ${caseData.case_id}`);
+      return Response.json({ success: true, message: 'Comment synced from ClickUp' }, { headers: corsHeaders });
+    }
+
+    return Response.json({ success: true, message: 'Event type not handled' }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('ClickUp webhook error:', error);
+    return Response.json({ error: 'Webhook processing failed' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Sync Hub status change TO ClickUp
+async function syncStatusToClickUp(env, caseId, newStatus) {
+  try {
+    // Get case with ClickUp task ID
+    const caseData = await env.DB.prepare(
+      `SELECT clickup_task_id FROM cases WHERE case_id = ?`
+    ).bind(caseId).first();
+
+    if (!caseData?.clickup_task_id) {
+      console.log('No ClickUp task linked to case:', caseId);
+      return { success: false, reason: 'No ClickUp task' };
+    }
+
+    const clickupStatus = HUB_TO_CLICKUP_STATUS[newStatus] || 'to do';
+
+    // Update ClickUp task status
+    const response = await fetch(`https://api.clickup.com/api/v2/task/${caseData.clickup_task_id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': env.CLICKUP_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: clickupStatus }),
+    });
+
+    if (response.ok) {
+      console.log(`ClickUp task ${caseData.clickup_task_id} status updated to: ${clickupStatus}`);
+      return { success: true };
+    } else {
+      console.error('Failed to update ClickUp status:', response.status);
+      return { success: false, reason: 'ClickUp API error' };
+    }
+  } catch (error) {
+    console.error('Error syncing to ClickUp:', error);
+    return { success: false, reason: error.message };
+  }
+}
+
+// Sync Hub comment TO ClickUp
+async function syncCommentToClickUp(env, caseId, content, authorName) {
+  try {
+    const caseData = await env.DB.prepare(
+      `SELECT clickup_task_id FROM cases WHERE case_id = ?`
+    ).bind(caseId).first();
+
+    if (!caseData?.clickup_task_id) {
+      return { success: false, reason: 'No ClickUp task' };
+    }
+
+    const response = await fetch(`https://api.clickup.com/api/v2/task/${caseData.clickup_task_id}/comment`, {
+      method: 'POST',
+      headers: {
+        'Authorization': env.CLICKUP_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        comment_text: `[${authorName || 'Hub'}] ${content}`,
+      }),
+    });
+
+    if (response.ok) {
+      console.log('Comment synced to ClickUp');
+      return { success: true };
+    } else {
+      console.error('Failed to sync comment to ClickUp:', response.status);
+      return { success: false };
+    }
+  } catch (error) {
+    console.error('Error syncing comment to ClickUp:', error);
+    return { success: false };
+  }
+}
+
 // ============================================
 // RESOLUTION HUB HTML
 // ============================================
@@ -5177,6 +5554,44 @@ function getResolutionHubHTML() {
     .empty-state { text-align: center; padding: 60px 20px; color: var(--gray-500); }
     @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .main-content { margin-left: 0; } }
+    /* Modal Styles */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; justify-content: center; align-items: flex-start; padding: 40px; overflow-y: auto; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: white; border-radius: 16px; width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0,0,0,0.25); }
+    .modal-header { padding: 24px; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: flex-start; position: sticky; top: 0; background: white; z-index: 10; }
+    .modal-title { font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 600; }
+    .modal-subtitle { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
+    .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray-400); padding: 4px; line-height: 1; }
+    .modal-close:hover { color: var(--gray-600); }
+    .modal-body { padding: 24px; }
+    .modal-section { margin-bottom: 24px; }
+    .modal-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--gray-500); margin-bottom: 12px; letter-spacing: 0.5px; }
+    .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .info-item { }
+    .info-label { font-size: 12px; color: var(--gray-500); margin-bottom: 4px; }
+    .info-value { font-size: 14px; font-weight: 500; color: var(--gray-800); }
+    .info-value a { color: var(--brand-navy); text-decoration: none; }
+    .info-value a:hover { text-decoration: underline; }
+    .status-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .status-btn { padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+    .status-btn.pending { background: #fef3c7; color: #d97706; border-color: #fcd34d; }
+    .status-btn.in-progress { background: #dbeafe; color: #2563eb; border-color: #93c5fd; }
+    .status-btn.completed { background: #d1fae5; color: #059669; border-color: #6ee7b7; }
+    .status-btn.active { box-shadow: 0 0 0 3px rgba(30,58,95,0.3); }
+    .status-btn:hover { transform: translateY(-1px); }
+    .comments-list { display: flex; flex-direction: column; gap: 12px; }
+    .comment-item { background: var(--gray-50); padding: 12px 16px; border-radius: 8px; }
+    .comment-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .comment-author { font-size: 13px; font-weight: 500; }
+    .comment-time { font-size: 12px; color: var(--gray-500); }
+    .comment-text { font-size: 14px; color: var(--gray-700); }
+    .comment-form { display: flex; gap: 12px; margin-top: 16px; }
+    .comment-input { flex: 1; padding: 12px 16px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; resize: none; }
+    .comment-input:focus { outline: none; border-color: var(--brand-navy); }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; background: var(--gray-50); }
+    .external-links { display: flex; gap: 12px; }
+    .external-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: white; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 13px; color: var(--gray-700); text-decoration: none; }
+    .external-link:hover { background: var(--gray-50); }
   </style>
 </head>
 <body>
@@ -5205,9 +5620,80 @@ function getResolutionHubHTML() {
       </div>
     </main>
   </div>
+
+  <!-- Case Detail Modal -->
+  <div class="modal-overlay" id="caseModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="modalCaseId">Case Details</div>
+          <div class="modal-subtitle" id="modalCaseType">Loading...</div>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">
+          <div class="modal-section-title">Status</div>
+          <div class="status-actions" id="statusActions">
+            <button class="status-btn pending" onclick="updateStatus('pending')">Pending</button>
+            <button class="status-btn in-progress" onclick="updateStatus('in_progress')">In Progress</button>
+            <button class="status-btn completed" onclick="updateStatus('completed')">Completed</button>
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Customer Information</div>
+          <div class="info-grid">
+            <div class="info-item"><div class="info-label">Name</div><div class="info-value" id="modalCustomerName">-</div></div>
+            <div class="info-item"><div class="info-label">Email</div><div class="info-value" id="modalCustomerEmail">-</div></div>
+            <div class="info-item"><div class="info-label">Order Number</div><div class="info-value" id="modalOrderNumber">-</div></div>
+            <div class="info-item"><div class="info-label">Order Date</div><div class="info-value" id="modalOrderDate">-</div></div>
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Resolution Details</div>
+          <div class="info-grid">
+            <div class="info-item"><div class="info-label">Resolution</div><div class="info-value" id="modalResolution">-</div></div>
+            <div class="info-item"><div class="info-label">Refund Amount</div><div class="info-value" id="modalRefundAmount">-</div></div>
+            <div class="info-item"><div class="info-label">Created</div><div class="info-value" id="modalCreatedAt">-</div></div>
+            <div class="info-item"><div class="info-label">Last Updated</div><div class="info-value" id="modalUpdatedAt">-</div></div>
+          </div>
+        </div>
+        <div class="modal-section" id="modalItemsSection" style="display:none;">
+          <div class="modal-section-title">Items</div>
+          <div id="modalItems"></div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Comments</div>
+          <div class="comments-list" id="commentsList"><div class="empty-state">No comments yet</div></div>
+          <div class="comment-form">
+            <textarea class="comment-input" id="commentInput" placeholder="Add a comment..." rows="2"></textarea>
+            <button class="btn btn-primary" onclick="addComment()">Add</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="external-links">
+          <a class="external-link" id="clickupLink" href="#" target="_blank" style="display:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.5L19 8l-7 3.5L5 8l7-3.5zM4 9.5l7 3.5v7l-7-3.5v-7zm16 0v7l-7 3.5v-7l7-3.5z"/></svg>
+            View in ClickUp
+          </a>
+          <a class="external-link" id="shopifyLink" href="#" target="_blank" style="display:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 2.5c-.5 0-1 .2-1.4.6l-1.3 1.3c-.4.4-.6.9-.6 1.4v2.4l-6.4 6.4c-.8.8-.8 2 0 2.8l2.8 2.8c.8.8 2 .8 2.8 0l6.4-6.4h2.4c.5 0 1-.2 1.4-.6l1.3-1.3c.4-.4.6-.9.6-1.4V7c0-2.5-2-4.5-4.5-4.5h-3.5z"/></svg>
+            View Order
+          </a>
+        </div>
+        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const API = '';
+    let currentCase = null;
+
     document.querySelectorAll('.nav-item').forEach(i => i.addEventListener('click', () => navigateTo(i.dataset.page, i.dataset.filter)));
+    document.getElementById('caseModal').addEventListener('click', e => { if(e.target.id === 'caseModal') closeModal(); });
+
     function navigateTo(page, filter) {
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       const sel = filter ? '.nav-item[data-page="'+page+'"][data-filter="'+filter+'"]' : '.nav-item[data-page="'+page+'"]';
@@ -5215,6 +5701,7 @@ function getResolutionHubHTML() {
       document.getElementById('pageTitle').textContent = {dashboard:'Dashboard',cases:'Cases',sessions:'Sessions',events:'Event Log',analytics:'Performance'}[page]||'Dashboard';
       ['dashboard','cases','sessions','events','analytics'].forEach(v => document.getElementById(v+'View').style.display = v===page?'block':'none');
     }
+
     async function loadDashboard() {
       try {
         const r = await fetch(API+'/hub/api/stats'); const d = await r.json();
@@ -5226,6 +5713,7 @@ function getResolutionHubHTML() {
         loadRecentCases();
       } catch(e) { console.error(e); }
     }
+
     async function loadRecentCases() {
       try {
         const r = await fetch(API+'/hub/api/cases?limit=10'); const d = await r.json();
@@ -5234,8 +5722,88 @@ function getResolutionHubHTML() {
         tbody.innerHTML = d.cases.map(c => '<tr onclick="openCase(\\''+c.case_id+'\\')"><td><span class="case-id">'+c.case_id+'</span></td><td><div class="customer-info"><span class="customer-name">'+(c.customer_name||'Unknown')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td><td><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td><td><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td><td class="time-ago">'+timeAgo(c.created_at)+'</td></tr>').join('');
       } catch(e) { console.error(e); }
     }
+
     function timeAgo(d) { if(!d)return'-'; const s=Math.floor((Date.now()-new Date(d))/1000); if(s<60)return'Just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
-    function openCase(id) { alert('Case: '+id); }
+    function formatDate(d) { if(!d)return'-'; return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+
+    async function openCase(caseId) {
+      document.getElementById('caseModal').classList.add('active');
+      document.getElementById('modalCaseId').textContent = caseId;
+      document.getElementById('modalCaseType').textContent = 'Loading...';
+      try {
+        const r = await fetch(API+'/hub/api/case/'+caseId);
+        const data = await r.json();
+        const c = data.case;
+        currentCase = c;
+        document.getElementById('modalCaseId').textContent = c.case_id;
+        document.getElementById('modalCaseType').innerHTML = '<span class="type-badge '+c.case_type+'">'+c.case_type+'</span> &bull; '+(c.resolution||'No resolution set');
+        document.getElementById('modalCustomerName').textContent = c.customer_name||'-';
+        document.getElementById('modalCustomerEmail').textContent = c.customer_email||'-';
+        document.getElementById('modalOrderNumber').textContent = c.order_number||'-';
+        document.getElementById('modalOrderDate').textContent = formatDate(c.order_date||c.created_at);
+        document.getElementById('modalResolution').textContent = c.resolution||'-';
+        document.getElementById('modalRefundAmount').textContent = c.refund_amount ? '$'+parseFloat(c.refund_amount).toFixed(2) : '-';
+        document.getElementById('modalCreatedAt').textContent = formatDate(c.created_at);
+        document.getElementById('modalUpdatedAt').textContent = formatDate(c.updated_at||c.created_at);
+        // Update status buttons
+        document.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
+        const statusClass = (c.status||'pending').replace('_','-');
+        document.querySelector('.status-btn.'+statusClass)?.classList.add('active');
+        // Show ClickUp link if available
+        if(c.clickup_task_url) { document.getElementById('clickupLink').href = c.clickup_task_url; document.getElementById('clickupLink').style.display = 'inline-flex'; }
+        else { document.getElementById('clickupLink').style.display = 'none'; }
+        // Show Shopify link if available
+        if(c.order_url) { document.getElementById('shopifyLink').href = c.order_url; document.getElementById('shopifyLink').style.display = 'inline-flex'; }
+        else { document.getElementById('shopifyLink').style.display = 'none'; }
+        // Load comments
+        loadComments(caseId);
+      } catch(e) { console.error(e); document.getElementById('modalCaseType').textContent = 'Error loading case'; }
+    }
+
+    function closeModal() { document.getElementById('caseModal').classList.remove('active'); currentCase = null; }
+
+    async function updateStatus(newStatus) {
+      if(!currentCase) return;
+      try {
+        const r = await fetch(API+'/hub/api/case/'+currentCase.case_id+'/status', {
+          method: 'PUT',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({status: newStatus})
+        });
+        if(r.ok) {
+          currentCase.status = newStatus;
+          document.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
+          document.querySelector('.status-btn.'+newStatus.replace('_','-'))?.classList.add('active');
+          loadDashboard(); // Refresh dashboard stats
+        }
+      } catch(e) { console.error(e); alert('Failed to update status'); }
+    }
+
+    async function loadComments(caseId) {
+      try {
+        const r = await fetch(API+'/hub/api/case/'+caseId+'/comments');
+        const d = await r.json();
+        const list = document.getElementById('commentsList');
+        if(!d.comments?.length) { list.innerHTML = '<div class="empty-state">No comments yet</div>'; return; }
+        list.innerHTML = d.comments.map(c => '<div class="comment-item"><div class="comment-header"><span class="comment-author">'+(c.author_name||'Team')+'</span><span class="comment-time">'+timeAgo(c.created_at)+'</span></div><div class="comment-text">'+c.content+'</div></div>').join('');
+      } catch(e) { console.error(e); }
+    }
+
+    async function addComment() {
+      if(!currentCase) return;
+      const input = document.getElementById('commentInput');
+      const content = input.value.trim();
+      if(!content) return;
+      try {
+        const r = await fetch(API+'/hub/api/case/'+currentCase.case_id+'/comments', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({content: content, author_name: 'Admin'})
+        });
+        if(r.ok) { input.value = ''; loadComments(currentCase.case_id); }
+      } catch(e) { console.error(e); alert('Failed to add comment'); }
+    }
+
     function refreshData() { loadDashboard(); }
     loadDashboard();
   </script>
