@@ -1805,6 +1805,8 @@ function formatResolution(resolution, caseData) {
     'replacement_damaged': 'Ship replacement - damaged item',
     'reship_wrong_item': 'Ship correct item',
     'reship_missing_item': 'Ship missing item',
+    'reship_missing_item_bonus': 'Ship missing items + bonus item for inconvenience',
+    'refund_missing_item': 'Calculate and refund for missing items (check bundle pricing)',
     'partial_missing': `Give partial refund (${refundAmount}) for missing item`,
 
     // Subscription
@@ -1854,6 +1856,7 @@ function formatOrderIssue(caseData) {
     'wrong_item': "I received the wrong item",
     'damaged': "My product arrived damaged",
     'missing_item': "There's an item missing from my order",
+    'something_missing': "Something was missing from my order",
     'not_as_described': "The product isn't as described",
     'dog_not_using': "My dog isn't using the product",
     'quality_difference': "I noticed a quality difference",
@@ -2567,6 +2570,20 @@ ${caseData.notes ? `<b>Notes:</b> ${caseData.notes}<br>` : ''}
 `;
   }
 
+  // Build missing item-specific details HTML
+  let missingItemDetailsHtml = '';
+  if (caseData.missingItemOrderList || caseData.missingItemDescription) {
+    missingItemDetailsHtml = `
+<br>
+<b>─────────────────────</b><br>
+<br>
+<b>📦 MISSING ITEM DETAILS</b><br>
+<br>
+${caseData.missingItemOrderList ? `<b>What Customer Should Have Received:</b><br>${caseData.missingItemOrderList}<br><br>` : ''}
+${caseData.missingItemDescription ? `<b>What Customer Says Is Missing:</b><br>${caseData.missingItemDescription}<br>` : ''}
+`;
+  }
+
   // Build HTML formatted note content with <br> and <b> tags (no italics)
   const noteContent = `
 <b>🎯 ACTION REQUIRED</b><br>
@@ -2586,6 +2603,7 @@ ${caseData.refundAmount ? `<b>Refund Amount:</b> $${parseFloat(caseData.refundAm
 ${actionSteps}<br>
 ${shippingDetailsHtml}
 ${subscriptionDetailsHtml}
+${missingItemDetailsHtml}
 <br>
 <b>─────────────────────</b><br>
 <br>
@@ -2631,6 +2649,10 @@ function getActionStepsHtml(caseData) {
     if (resolution === 'full_refund' || resolution === 'Full Refund') {
       return `1. ✅ Verify order in Shopify<br>2. ✅ Process full refund in Shopify<br>3. ✅ Send refund confirmation email<br>4. ✅ Close ticket`;
     }
+    // Check if it's a missing item refund
+    if (resolution === 'refund_missing_item') {
+      return `1. ✅ Review customer's photos and description below<br>2. ✅ Calculate refund based on missing items (check bundle pricing)<br>3. ✅ Process partial refund in Shopify<br>4. ✅ Send refund confirmation email<br>5. ✅ Close ticket`;
+    }
     return `1. ✅ Verify order in Shopify<br>2. ✅ Process partial refund: $${caseData.refundAmount || 'TBD'}<br>3. ✅ Send refund confirmation email<br>4. ✅ Close ticket`;
   }
 
@@ -2639,6 +2661,10 @@ function getActionStepsHtml(caseData) {
   }
 
   if (type === 'shipping') {
+    // Check if it's a missing item case
+    if (resolution === 'reship_missing_item_bonus') {
+      return `1. ✅ Review customer's photos and description below<br>2. ✅ Verify what items are missing<br>3. ✅ Create reship order with missing items + bonus item<br>4. ✅ Send tracking to customer<br>5. ✅ Close ticket`;
+    }
     return `1. ✅ Check tracking status in ParcelPanel<br>2. ✅ Contact carrier if needed<br>3. ✅ Update customer on status<br>4. ✅ Close ticket when resolved`;
   }
 
@@ -2661,6 +2687,15 @@ function getActionSteps(caseData) {
 3. ✅ Send refund confirmation email
 4. ✅ Close ticket`;
     }
+    // Check if it's a missing item refund
+    if (resolution === 'refund_missing_item') {
+      return `
+1. ✅ Review customer's photos and description below
+2. ✅ Calculate refund based on missing items (check bundle pricing)
+3. ✅ Process partial refund in Shopify
+4. ✅ Send refund confirmation email
+5. ✅ Close ticket`;
+    }
     return `
 1. ✅ Verify order in Shopify
 2. ✅ Process partial refund: $${caseData.refundAmount || 'TBD'}
@@ -2678,6 +2713,15 @@ function getActionSteps(caseData) {
   }
 
   if (type === 'shipping') {
+    // Check if it's a missing item case
+    if (resolution === 'reship_missing_item_bonus') {
+      return `
+1. ✅ Review customer's photos and description below
+2. ✅ Verify what items are missing
+3. ✅ Create reship order with missing items + bonus item
+4. ✅ Send tracking to customer
+5. ✅ Close ticket`;
+    }
     return `
 1. ✅ Check tracking status in ParcelPanel
 2. ✅ Contact carrier if needed

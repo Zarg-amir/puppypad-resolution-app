@@ -2908,6 +2908,10 @@ async function submitCase(caseType, resolution, options = {}) {
     addressChanged: options.addressChanged || false,
     pickupReason: options.pickupReason || '',
 
+    // Missing item-specific fields
+    missingItemOrderList: options.missingItemOrderList || '',
+    missingItemDescription: options.missingItemDescription || '',
+
     // Issue type for clear categorization
     issueType: options.issueType || state.issueType || '',
 
@@ -3212,9 +3216,101 @@ async function handleOrderSwap(isUsed) {
 }
 
 async function handleMissingItem() {
-  await addBotMessage("Oh no! I'm really sorry something was missing. To help investigate, could you please upload a photo of what you received (including any packaging)?");
+  const order = state.selectedOrder;
+
+  // Build list of all items they should have received
+  const allItems = order?.lineItems?.map(item => {
+    let itemText = `• ${item.title}`;
+    if (item.quantity > 1) {
+      itemText += ` × ${item.quantity}`;
+    }
+    // Check if it's a bundle (contains keywords like "get", "free", "pack", "bundle")
+    const lowerTitle = item.title.toLowerCase();
+    if (lowerTitle.includes('get') && lowerTitle.includes('free')) {
+      // Try to extract the bundle quantity from title like "Buy 3 Get 3 Free"
+      const match = item.title.match(/(\d+).*get.*(\d+)/i);
+      if (match) {
+        const totalInBundle = parseInt(match[1]) + parseInt(match[2]);
+        itemText += ` (${totalInBundle} items included)`;
+      }
+    }
+    return itemText;
+  }).join('<br>') || 'Your order items';
+
+  state.missingItemOrderList = allItems; // Store for later use in case creation
+
+  await addBotMessage(`I'm so sorry to hear something was missing from your order!<br><br>Let me help sort this out for you. Here's what should have been in your package:<br><br>${allItems}<br><br>First, could you upload a photo of everything you actually received? Please include the packaging too... this helps our team investigate what happened.`);
 
   showUploadArea('missing_item');
+}
+
+// After photos uploaded for missing item, ask for description
+async function handleMissingItemEvidence() {
+  await addBotMessage("Thanks for those photos!<br><br>Now, please describe exactly what was missing from your order. Include as much detail as possible... for example, how many items were missing, which specific products, any damage to the packaging, etc.");
+
+  showTextInput("e.g., I only received 4 pads instead of 6, the Beige PuppyPad was completely missing...", async (description) => {
+    hideTextInput();
+    state.missingItemDescription = description; // Store for case creation
+
+    await addBotMessage(`Thank you for letting us know. I've noted everything down and our team will look into this.<br><br>To make things right, we'd love to reship the missing items to you... and as an apology for the trouble, we'll include an extra item on us!<br><br>Our team will review your case within 1-2 days and get your missing items shipped out.<br><br>Would you like us to go ahead with this?`);
+
+    addOptions([
+      { text: "Yes, send my missing items", action: handleMissingItemReship },
+      { text: "No, I'd like a different solution", action: handleMissingItemAlternative }
+    ]);
+  });
+}
+
+// Reship missing items + bonus
+async function handleMissingItemReship() {
+  showProgress("Creating your case...");
+  await delay(1500);
+  hideProgress();
+
+  const result = await submitCase('shipping', 'reship_missing_item_bonus', {
+    missingItemOrderList: state.missingItemOrderList,
+    missingItemDescription: state.missingItemDescription,
+    notes: state.missingItemDescription,
+    issueType: 'something_missing'
+  });
+
+  state.caseId = result.caseId;
+
+  await showSuccess(
+    "Missing Items Case Created!",
+    `Our team will review your case within 1-2 days and ship your missing items plus a bonus item for the inconvenience.<br><br>You'll receive an email with tracking details once it ships!<br><br>${getCaseIdHtml(state.caseId)}`
+  );
+}
+
+// Alternative option - reveal refund
+async function handleMissingItemAlternative() {
+  await addBotMessage(`No problem at all, I understand.<br><br>We can also provide a refund for the missing items. Here's how it works... our team will review your case and calculate the refund amount based on what was missing.<br><br>Just a heads up... if your missing item was part of a bundle deal, the refund will be calculated based on the bundle pricing rather than individual item prices.<br><br>Our team typically reviews cases within 1-2 days. During this time, they'll also investigate what went wrong so we can prevent this from happening again.<br><br>Would you like to proceed with the refund?`);
+
+  addOptions([
+    { text: "Yes, request a refund", action: handleMissingItemRefund },
+    { text: "Actually, just send the items", action: handleMissingItemReship }
+  ]);
+}
+
+// Refund for missing items
+async function handleMissingItemRefund() {
+  showProgress("Submitting your refund request...");
+  await delay(1500);
+  hideProgress();
+
+  const result = await submitCase('refund', 'refund_missing_item', {
+    missingItemOrderList: state.missingItemOrderList,
+    missingItemDescription: state.missingItemDescription,
+    notes: `Missing items reported. Customer wants refund (team to calculate based on bundle pricing if applicable). Details: ${state.missingItemDescription}`,
+    issueType: 'something_missing'
+  });
+
+  state.caseId = result.caseId;
+
+  await showSuccess(
+    "Refund Request Submitted!",
+    `Our team will review your case and calculate the refund for your missing items within 1-2 days.<br><br>Once approved, expect 3-5 business days for the refund to appear in your account.<br><br>${getCaseIdHtml(state.caseId)}`
+  );
 }
 
 function showUploadArea(evidenceType = 'general') {
@@ -3367,48 +3463,6 @@ async function handleWrongItemEvidence() {
       state.resolution = 'full_refund';
       state.keepProduct = true;
       await createRefundCase('full', true);
-    }}
-  ]);
-}
-
-// Missing item evidence flow
-async function handleMissingItemEvidence() {
-  await addBotMessage("Thank you for the photos. I've noted the missing item and we'll investigate with our fulfillment center.<br><br>Would you like us to ship the missing item, or would you prefer a refund for it?");
-
-  addOptions([
-    { text: "Ship the missing item", action: async () => {
-      showProgress("Creating shipment for missing item...");
-      await delay(1500);
-      hideProgress();
-
-      state.caseId = generateCaseId('shipping');
-      state.resolution = 'reship_missing_item';
-
-      await submitCase();
-
-      await showSuccess(
-        "Missing Item Shipping!",
-        `The missing item will ship within 1-2 business days. We'll email you the tracking info.<br><br>${getCaseIdHtml(state.caseId)}`
-      );
-    }},
-    { text: "Refund for missing item", action: async () => {
-      // Partial refund for just the missing item
-      const missingValue = state.selectedItems?.[0]?.price || state.selectedOrder?.totalPrice || 0;
-      state.refundAmount = missingValue;
-      state.resolution = 'partial_missing';
-
-      showProgress("Processing refund for missing item...");
-      await delay(1500);
-      hideProgress();
-
-      state.caseId = generateCaseId('refund');
-
-      await submitCase();
-
-      await showSuccess(
-        "Case Created!",
-        `We've submitted a refund request of ${formatCurrency(missingValue)} for the missing item.<br><br>${MESSAGES.success.refundProcessingShort}<br><br>${getCaseIdHtml(state.caseId)}`
-      );
     }}
   ]);
 }
