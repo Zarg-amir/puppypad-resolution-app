@@ -976,6 +976,21 @@ export default {
         return await handleHubAddComment(request, caseId, env, corsHeaders);
       }
 
+      // Hub API - Sessions list
+      if (pathname === '/hub/api/sessions' && request.method === 'GET') {
+        return await handleHubSessions(request, env, corsHeaders);
+      }
+
+      // Hub API - Events list
+      if (pathname === '/hub/api/events' && request.method === 'GET') {
+        return await handleHubEvents(request, env, corsHeaders);
+      }
+
+      // Hub API - Analytics
+      if (pathname === '/hub/api/analytics' && request.method === 'GET') {
+        return await handleHubAnalytics(request, env, corsHeaders);
+      }
+
       // ============================================
       // CLICKUP WEBHOOK (Two-way Sync)
       // ============================================
@@ -5264,6 +5279,113 @@ async function handleHubAddComment(request, caseId, env, corsHeaders) {
   }
 }
 
+async function handleHubSessions(request, env, corsHeaders) {
+  try {
+    const url = new URL(request.url);
+    const limit = parseInt(url.searchParams.get('limit')) || 50;
+    const offset = parseInt(url.searchParams.get('offset')) || 0;
+
+    const sessions = await env.ANALYTICS_DB.prepare(
+      `SELECT * FROM sessions ORDER BY created_at DESC LIMIT ? OFFSET ?`
+    ).bind(limit, offset).all();
+
+    const countResult = await env.ANALYTICS_DB.prepare(
+      `SELECT COUNT(*) as count FROM sessions`
+    ).first();
+
+    return Response.json({
+      sessions: sessions.results || [],
+      total: countResult?.count || 0
+    }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub sessions error:', error);
+    return Response.json({ sessions: [], total: 0 }, { headers: corsHeaders });
+  }
+}
+
+async function handleHubEvents(request, env, corsHeaders) {
+  try {
+    const url = new URL(request.url);
+    const limit = parseInt(url.searchParams.get('limit')) || 100;
+    const offset = parseInt(url.searchParams.get('offset')) || 0;
+
+    const events = await env.ANALYTICS_DB.prepare(
+      `SELECT * FROM events ORDER BY created_at DESC LIMIT ? OFFSET ?`
+    ).bind(limit, offset).all();
+
+    const countResult = await env.ANALYTICS_DB.prepare(
+      `SELECT COUNT(*) as count FROM events`
+    ).first();
+
+    return Response.json({
+      events: events.results || [],
+      total: countResult?.count || 0
+    }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub events error:', error);
+    return Response.json({ events: [], total: 0 }, { headers: corsHeaders });
+  }
+}
+
+async function handleHubAnalytics(request, env, corsHeaders) {
+  try {
+    // Total sessions
+    const totalSessions = await env.ANALYTICS_DB.prepare(
+      `SELECT COUNT(*) as count FROM sessions`
+    ).first();
+
+    // Completed sessions
+    const completedSessions = await env.ANALYTICS_DB.prepare(
+      `SELECT COUNT(*) as count FROM sessions WHERE completed = 1`
+    ).first();
+
+    // Total cases
+    const totalCases = await env.ANALYTICS_DB.prepare(
+      `SELECT COUNT(*) as count FROM cases`
+    ).first();
+
+    // Cases by type
+    const casesByType = await env.ANALYTICS_DB.prepare(
+      `SELECT case_type, COUNT(*) as count FROM cases GROUP BY case_type`
+    ).all();
+
+    // Cases by status
+    const casesByStatus = await env.ANALYTICS_DB.prepare(
+      `SELECT status, COUNT(*) as count FROM cases GROUP BY status`
+    ).all();
+
+    // Total refunds
+    const totalRefunds = await env.ANALYTICS_DB.prepare(
+      `SELECT SUM(refund_amount) as total FROM cases WHERE refund_amount IS NOT NULL`
+    ).first();
+
+    // Sessions by day (last 7 days)
+    const sessionsByDay = await env.ANALYTICS_DB.prepare(
+      `SELECT DATE(created_at) as date, COUNT(*) as count FROM sessions WHERE created_at > datetime('now', '-7 days') GROUP BY DATE(created_at) ORDER BY date`
+    ).all();
+
+    // Cases by day (last 7 days)
+    const casesByDay = await env.ANALYTICS_DB.prepare(
+      `SELECT DATE(created_at) as date, COUNT(*) as count FROM cases WHERE created_at > datetime('now', '-7 days') GROUP BY DATE(created_at) ORDER BY date`
+    ).all();
+
+    return Response.json({
+      totalSessions: totalSessions?.count || 0,
+      completedSessions: completedSessions?.count || 0,
+      completionRate: totalSessions?.count ? Math.round((completedSessions?.count || 0) / totalSessions.count * 100) : 0,
+      totalCases: totalCases?.count || 0,
+      casesByType: casesByType.results || [],
+      casesByStatus: casesByStatus.results || [],
+      totalRefunds: totalRefunds?.total || 0,
+      sessionsByDay: sessionsByDay.results || [],
+      casesByDay: casesByDay.results || []
+    }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub analytics error:', error);
+    return Response.json({ totalSessions: 0, completedSessions: 0, totalCases: 0 }, { headers: corsHeaders });
+  }
+}
+
 // ============================================
 // CLICKUP TWO-WAY SYNC
 // ============================================
@@ -5598,7 +5720,7 @@ function getResolutionHubHTML() {
       <div class="sidebar-header"><div class="sidebar-logo"><img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad"><span>Resolution Hub</span></div></div>
       <nav class="sidebar-nav">
         <div class="nav-section"><div class="nav-section-title">Overview</div><a class="nav-item active" data-page="dashboard"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a></div>
-        <div class="nav-section"><div class="nav-section-title">Cases</div><a class="nav-item" data-page="cases" data-filter="all"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>All Cases<span class="badge" id="allCasesCount">0</span></a><a class="nav-item" data-page="cases" data-filter="shipping"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>Shipping<span class="badge" id="shippingCount">0</span></a><a class="nav-item" data-page="cases" data-filter="refund"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>Refunds<span class="badge" id="refundsCount">0</span></a><a class="nav-item" data-page="cases" data-filter="subscription"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Subscriptions<span class="badge" id="subscriptionsCount">0</span></a><a class="nav-item" data-page="cases" data-filter="manual"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>Manual Review<span class="badge" id="manualCount">0</span></a></div>
+        <div class="nav-section"><div class="nav-section-title">Cases</div><a class="nav-item" data-page="cases" data-filter="all"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>All Cases<span class="badge" id="allCasesCount">0</span></a><a class="nav-item" data-page="cases" data-filter="shipping"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>Shipping<span class="badge" id="shippingCount">0</span></a><a class="nav-item" data-page="cases" data-filter="refund"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>Refunds<span class="badge" id="refundCount">0</span></a><a class="nav-item" data-page="cases" data-filter="subscription"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Subscriptions<span class="badge" id="subscriptionsCount">0</span></a><a class="nav-item" data-page="cases" data-filter="manual"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>Manual Review<span class="badge" id="manualCount">0</span></a></div>
         <div class="nav-section"><div class="nav-section-title">Activity</div><a class="nav-item" data-page="sessions"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>Sessions</a><a class="nav-item" data-page="events"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>Event Log</a></div>
         <div class="nav-section"><div class="nav-section-title">Analytics</div><a class="nav-item" data-page="analytics"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Performance</a></div>
       </nav>
@@ -5673,11 +5795,15 @@ function getResolutionHubHTML() {
         <div class="external-links">
           <a class="external-link" id="clickupLink" href="#" target="_blank" style="display:none;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.5L19 8l-7 3.5L5 8l7-3.5zM4 9.5l7 3.5v7l-7-3.5v-7zm16 0v7l-7 3.5v-7l7-3.5z"/></svg>
-            View in ClickUp
+            ClickUp
           </a>
           <a class="external-link" id="shopifyLink" href="#" target="_blank" style="display:none;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 2.5c-.5 0-1 .2-1.4.6l-1.3 1.3c-.4.4-.6.9-.6 1.4v2.4l-6.4 6.4c-.8.8-.8 2 0 2.8l2.8 2.8c.8.8 2 .8 2.8 0l6.4-6.4h2.4c.5 0 1-.2 1.4-.6l1.3-1.3c.4-.4.6-.9.6-1.4V7c0-2.5-2-4.5-4.5-4.5h-3.5z"/></svg>
-            View Order
+            Order
+          </a>
+          <a class="external-link" id="replayLink" href="#" target="_blank" style="display:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Session Replay
           </a>
         </div>
         <button class="btn btn-secondary" onclick="closeModal()">Close</button>
@@ -5688,6 +5814,7 @@ function getResolutionHubHTML() {
   <script>
     const API = '';
     let currentCase = null;
+    let currentFilter = 'all';
 
     document.querySelectorAll('.nav-item').forEach(i => i.addEventListener('click', () => navigateTo(i.dataset.page, i.dataset.filter)));
     document.getElementById('caseModal').addEventListener('click', e => { if(e.target.id === 'caseModal') closeModal(); });
@@ -5698,6 +5825,10 @@ function getResolutionHubHTML() {
       document.querySelector(sel)?.classList.add('active');
       document.getElementById('pageTitle').textContent = {dashboard:'Dashboard',cases:'Cases',sessions:'Sessions',events:'Event Log',analytics:'Performance'}[page]||'Dashboard';
       ['dashboard','cases','sessions','events','analytics'].forEach(v => document.getElementById(v+'View').style.display = v===page?'block':'none');
+      if(page==='cases') { currentFilter = filter||'all'; loadCasesView(); }
+      if(page==='sessions') loadSessionsView();
+      if(page==='events') loadEventsView();
+      if(page==='analytics') loadAnalyticsView();
     }
 
     async function loadDashboard() {
@@ -5717,8 +5848,46 @@ function getResolutionHubHTML() {
         const r = await fetch(API+'/hub/api/cases?limit=10'); const d = await r.json();
         const tbody = document.getElementById('recentCasesBody');
         if (!d.cases?.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No cases yet</td></tr>'; return; }
-        tbody.innerHTML = d.cases.map(c => '<tr onclick="openCase(\\''+c.case_id+'\\')"><td><span class="case-id">'+c.case_id+'</span></td><td><div class="customer-info"><span class="customer-name">'+(c.customer_name||'Unknown')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td><td><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td><td><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td><td class="time-ago">'+timeAgo(c.created_at)+'</td></tr>').join('');
+        tbody.innerHTML = d.cases.map(c => '<tr onclick="openCase(\\''+c.case_id+'\\')"><td><span class="case-id">'+c.case_id+'</span></td><td><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td><td><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td><td><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td><td class="time-ago">'+timeAgo(c.created_at)+'</td></tr>').join('');
       } catch(e) { console.error(e); }
+    }
+
+    async function loadCasesView() {
+      const view = document.getElementById('casesView');
+      view.innerHTML = '<div class="spinner"></div>';
+      try {
+        const url = currentFilter==='all' ? API+'/hub/api/cases?limit=50' : API+'/hub/api/cases?limit=50&filter='+currentFilter;
+        const r = await fetch(url); const d = await r.json();
+        view.innerHTML = '<div class="cases-card"><table class="cases-table"><thead><tr><th>Case ID</th><th>Customer</th><th>Type</th><th>Status</th><th>Resolution</th><th>Created</th></tr></thead><tbody>'+(d.cases?.length ? d.cases.map(c => '<tr onclick="openCase(\\''+c.case_id+'\\')"><td><span class="case-id">'+c.case_id+'</span></td><td><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td><td><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td><td><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.resolution||'-')+'</td><td class="time-ago">'+timeAgo(c.created_at)+'</td></tr>').join('') : '<tr><td colspan="6" class="empty-state">No cases found</td></tr>')+'</tbody></table></div>';
+      } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load cases</div>'; }
+    }
+
+    async function loadSessionsView() {
+      const view = document.getElementById('sessionsView');
+      view.innerHTML = '<div class="spinner"></div>';
+      try {
+        const r = await fetch(API+'/hub/api/sessions?limit=50'); const d = await r.json();
+        view.innerHTML = '<div class="cases-card"><div class="cases-header"><h2 class="cases-title">User Sessions</h2><span style="color:var(--gray-500);">'+d.total+' total sessions</span></div><table class="cases-table"><thead><tr><th>Session ID</th><th>Flow Type</th><th>Customer</th><th>Order #</th><th>Status</th><th>Started</th></tr></thead><tbody>'+(d.sessions?.length ? d.sessions.map(s => '<tr><td><span class="case-id" style="font-size:11px;">'+s.session_id.substring(0,20)+'...</span></td><td><span class="type-badge '+(s.flow_type||'unknown')+'">'+(s.flow_type||'unknown')+'</span></td><td>'+(s.customer_email||'-')+'</td><td>'+(s.order_number||'-')+'</td><td><span class="status-badge '+(s.completed?'completed':'pending')+'">'+(s.completed?'Completed':'In Progress')+'</span></td><td class="time-ago">'+timeAgo(s.created_at)+'</td></tr>').join('') : '<tr><td colspan="6" class="empty-state">No sessions yet</td></tr>')+'</tbody></table></div>';
+      } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load sessions</div>'; }
+    }
+
+    async function loadEventsView() {
+      const view = document.getElementById('eventsView');
+      view.innerHTML = '<div class="spinner"></div>';
+      try {
+        const r = await fetch(API+'/hub/api/events?limit=100'); const d = await r.json();
+        view.innerHTML = '<div class="cases-card"><div class="cases-header"><h2 class="cases-title">Event Log</h2><span style="color:var(--gray-500);">'+d.total+' total events</span></div><table class="cases-table"><thead><tr><th>Time</th><th>Event Type</th><th>Event Name</th><th>Session</th><th>Details</th></tr></thead><tbody>'+(d.events?.length ? d.events.map(e => '<tr><td class="time-ago">'+timeAgo(e.created_at)+'</td><td><span class="type-badge" style="background:#e5e7eb;color:#374151;">'+e.event_type+'</span></td><td>'+e.event_name+'</td><td><span style="font-family:monospace;font-size:11px;">'+(e.session_id?.substring(0,15)||'-')+'</span></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--gray-500);">'+(e.event_data||'-')+'</td></tr>').join('') : '<tr><td colspan="5" class="empty-state">No events yet</td></tr>')+'</tbody></table></div>';
+      } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load events</div>'; }
+    }
+
+    async function loadAnalyticsView() {
+      const view = document.getElementById('analyticsView');
+      view.innerHTML = '<div class="spinner"></div>';
+      try {
+        const r = await fetch(API+'/hub/api/analytics'); const d = await r.json();
+        const typeData = d.casesByType||[]; const statusData = d.casesByStatus||[];
+        view.innerHTML = '<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;"><div class="stat-card"><div class="stat-label">Total Sessions</div><div class="stat-value">'+d.totalSessions+'</div></div><div class="stat-card"><div class="stat-label">Completion Rate</div><div class="stat-value">'+d.completionRate+'%</div></div><div class="stat-card"><div class="stat-label">Total Cases</div><div class="stat-value">'+d.totalCases+'</div></div><div class="stat-card highlight"><div class="stat-label">Total Refunds</div><div class="stat-value">$'+(d.totalRefunds||0).toFixed(2)+'</div></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;"><div class="cases-card" style="padding:24px;"><h3 style="margin-bottom:16px;font-size:16px;font-weight:600;">Cases by Type</h3>'+(typeData.length ? typeData.map(t => '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);"><span><span class="type-badge '+t.case_type+'">'+t.case_type+'</span></span><span style="font-weight:600;">'+t.count+'</span></div>').join('') : '<div class="empty-state">No data</div>')+'</div><div class="cases-card" style="padding:24px;"><h3 style="margin-bottom:16px;font-size:16px;font-weight:600;">Cases by Status</h3>'+(statusData.length ? statusData.map(s => '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);"><span><span class="status-badge '+(s.status||'').replace('_','-')+'">'+(s.status||'unknown')+'</span></span><span style="font-weight:600;">'+s.count+'</span></div>').join('') : '<div class="empty-state">No data</div>')+'</div></div>';
+      } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load analytics</div>'; }
     }
 
     function timeAgo(d) { if(!d)return'-'; const s=Math.floor((Date.now()-new Date(d))/1000); if(s<60)return'Just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
@@ -5735,7 +5904,7 @@ function getResolutionHubHTML() {
         currentCase = c;
         document.getElementById('modalCaseId').textContent = c.case_id;
         document.getElementById('modalCaseType').innerHTML = '<span class="type-badge '+c.case_type+'">'+c.case_type+'</span> &bull; '+(c.resolution||'No resolution set');
-        document.getElementById('modalCustomerName').textContent = c.customer_name||'-';
+        document.getElementById('modalCustomerName').textContent = c.customer_name||c.customer_email?.split('@')[0]||'-';
         document.getElementById('modalCustomerEmail').textContent = c.customer_email||'-';
         document.getElementById('modalOrderNumber').textContent = c.order_number||'-';
         document.getElementById('modalOrderDate').textContent = formatDate(c.order_date||c.created_at);
@@ -5743,17 +5912,15 @@ function getResolutionHubHTML() {
         document.getElementById('modalRefundAmount').textContent = c.refund_amount ? '$'+parseFloat(c.refund_amount).toFixed(2) : '-';
         document.getElementById('modalCreatedAt').textContent = formatDate(c.created_at);
         document.getElementById('modalUpdatedAt').textContent = formatDate(c.updated_at||c.created_at);
-        // Update status buttons
         document.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
         const statusClass = (c.status||'pending').replace('_','-');
         document.querySelector('.status-btn.'+statusClass)?.classList.add('active');
-        // Show ClickUp link if available
         if(c.clickup_task_url) { document.getElementById('clickupLink').href = c.clickup_task_url; document.getElementById('clickupLink').style.display = 'inline-flex'; }
         else { document.getElementById('clickupLink').style.display = 'none'; }
-        // Show Shopify link if available
         if(c.order_url) { document.getElementById('shopifyLink').href = c.order_url; document.getElementById('shopifyLink').style.display = 'inline-flex'; }
         else { document.getElementById('shopifyLink').style.display = 'none'; }
-        // Load comments
+        if(c.session_replay_url) { document.getElementById('replayLink').href = c.session_replay_url; document.getElementById('replayLink').style.display = 'inline-flex'; }
+        else { document.getElementById('replayLink').style.display = 'none'; }
         loadComments(caseId);
       } catch(e) { console.error(e); document.getElementById('modalCaseType').textContent = 'Error loading case'; }
     }
@@ -5772,7 +5939,7 @@ function getResolutionHubHTML() {
           currentCase.status = newStatus;
           document.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
           document.querySelector('.status-btn.'+newStatus.replace('_','-'))?.classList.add('active');
-          loadDashboard(); // Refresh dashboard stats
+          loadDashboard();
         }
       } catch(e) { console.error(e); alert('Failed to update status'); }
     }
