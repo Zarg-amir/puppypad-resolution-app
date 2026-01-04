@@ -6512,7 +6512,7 @@ function getResolutionHubHTML() {
               '<button class="btn btn-secondary" id="tabIncomplete" onclick="filterSessions(\\'incomplete\\')">In Progress ('+(incompleteSessions.length - abandonedSessions.length)+')</button>'+
               '<button class="btn btn-secondary" id="tabAbandoned" onclick="filterSessions(\\'abandoned\\')">Abandoned ('+abandonedSessions.length+')</button>'+
             '</div>'+
-            '<select id="sessionSortBy" onchange="filterSessions(window.currentSessionFilter||\\'\\'all\\'\\'')" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;">'+
+            '<select id="sessionSortBy" onchange="filterSessions(window.currentSessionFilter||\\'all\\')" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;">'+
               '<option value="newest">Newest First</option>'+
               '<option value="oldest">Oldest First</option>'+
             '</select>'+
