@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS clickup_webhooks (
 -- ============================================
 
 -- Cases table new columns
+ALTER TABLE cases ADD COLUMN status TEXT DEFAULT 'pending';
 ALTER TABLE cases ADD COLUMN category TEXT;
 ALTER TABLE cases ADD COLUMN priority TEXT DEFAULT 'normal';
 ALTER TABLE cases ADD COLUMN customer_phone TEXT;
@@ -88,6 +89,7 @@ ALTER TABLE cases ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE cases ADD COLUMN first_response_at DATETIME;
 ALTER TABLE cases ADD COLUMN resolved_at DATETIME;
 ALTER TABLE cases ADD COLUMN internal_notes TEXT;
+ALTER TABLE cases ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
 
 -- Sessions table new columns
 ALTER TABLE sessions ADD COLUMN last_activity_at DATETIME;
