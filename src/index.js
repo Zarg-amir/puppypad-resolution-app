@@ -937,6 +937,21 @@ export default {
         return await serveDashboard(env, corsHeaders);
       }
 
+      // Serve Resolution Hub
+      if (pathname === '/hub' || pathname === '/hub/') {
+        return await serveResolutionHub(env, corsHeaders);
+      }
+
+      // Hub API - Stats
+      if (pathname === '/hub/api/stats' && request.method === 'GET') {
+        return await handleHubStats(request, env, corsHeaders);
+      }
+
+      // Hub API - Cases list
+      if (pathname === '/hub/api/cases' && request.method === 'GET') {
+        return await handleHubCases(request, env, corsHeaders);
+      }
+
       // Admin setup endpoint (one-time use to create admin user)
       if (pathname === '/admin/setup' && request.method === 'POST') {
         return await handleAdminSetup(request, env, corsHeaders);
@@ -3829,6 +3844,16 @@ async function serveDashboard(env, corsHeaders) {
   });
 }
 
+async function serveResolutionHub(env, corsHeaders) {
+  const html = getResolutionHubHTML();
+  return new Response(html, {
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'text/html; charset=utf-8'
+    }
+  });
+}
+
 function getDashboardHTML() {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -4971,6 +4996,248 @@ function getDashboardHTML() {
         </div>
       \`;
     }
+  </script>
+</body>
+</html>`;
+}
+
+// ============================================
+// RESOLUTION HUB API HANDLERS
+// ============================================
+
+async function handleHubStats(request, env, corsHeaders) {
+  try {
+    // Get case counts by status
+    const pendingResult = await env.DB.prepare(
+      `SELECT COUNT(*) as count FROM cases WHERE status = 'pending' OR status = 'open'`
+    ).first();
+
+    const inProgressResult = await env.DB.prepare(
+      `SELECT COUNT(*) as count FROM cases WHERE status = 'in_progress'`
+    ).first();
+
+    // Get completed today
+    const today = new Date().toISOString().split('T')[0];
+    const completedTodayResult = await env.DB.prepare(
+      `SELECT COUNT(*) as count FROM cases WHERE status = 'completed' AND DATE(resolved_at) = ?`
+    ).bind(today).first();
+
+    // Get counts by type
+    const typeCountsResult = await env.DB.prepare(
+      `SELECT case_type, COUNT(*) as count FROM cases WHERE status != 'completed' GROUP BY case_type`
+    ).all();
+
+    const typeCounts = {};
+    let total = 0;
+    for (const row of typeCountsResult.results || []) {
+      typeCounts[row.case_type] = row.count;
+      total += row.count;
+    }
+
+    return Response.json({
+      pending: pendingResult?.count || 0,
+      inProgress: inProgressResult?.count || 0,
+      completedToday: completedTodayResult?.count || 0,
+      avgTime: '-', // TODO: Calculate average resolution time
+      all: total,
+      shipping: typeCounts.shipping || 0,
+      refund: typeCounts.refund || 0,
+      return: typeCounts.return || 0,
+      subscription: typeCounts.subscription || 0,
+      manual: typeCounts.manual || 0
+    }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub stats error:', error);
+    return Response.json({
+      pending: 0, inProgress: 0, completedToday: 0, avgTime: '-',
+      all: 0, shipping: 0, refund: 0, return: 0, subscription: 0, manual: 0
+    }, { headers: corsHeaders });
+  }
+}
+
+async function handleHubCases(request, env, corsHeaders) {
+  try {
+    const url = new URL(request.url);
+    const limit = parseInt(url.searchParams.get('limit')) || 50;
+    const offset = parseInt(url.searchParams.get('offset')) || 0;
+    const filter = url.searchParams.get('filter') || 'all';
+    const status = url.searchParams.get('status');
+
+    let query = `SELECT * FROM cases`;
+    const conditions = [];
+    const params = [];
+
+    if (filter && filter !== 'all') {
+      conditions.push(`case_type = ?`);
+      params.push(filter);
+    }
+
+    if (status) {
+      conditions.push(`status = ?`);
+      params.push(status);
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ` + conditions.join(' AND ');
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const stmt = env.DB.prepare(query);
+    const result = await stmt.bind(...params).all();
+
+    return Response.json({
+      cases: result.results || [],
+      total: result.results?.length || 0
+    }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub cases error:', error);
+    return Response.json({ cases: [], total: 0 }, { headers: corsHeaders });
+  }
+}
+
+// ============================================
+// RESOLUTION HUB HTML
+// ============================================
+function getResolutionHubHTML() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resolution Hub | PuppyPad</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --brand-navy: #1e3a5f; --brand-navy-light: #2d4a6f; --accent-teal: #4fd1c5; --accent-coral: #f56565; --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb; --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280; --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937; --gray-900: #111827; --success: #10b981; --warning: #f59e0b; --error: #ef4444; --sidebar-width: 260px; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--gray-50); color: var(--gray-800); min-height: 100vh; }
+    .app-container { display: flex; min-height: 100vh; }
+    .sidebar { width: var(--sidebar-width); background: var(--brand-navy); color: white; position: fixed; top: 0; left: 0; height: 100vh; display: flex; flex-direction: column; z-index: 100; }
+    .sidebar-header { padding: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .sidebar-logo { display: flex; align-items: center; gap: 12px; }
+    .sidebar-logo img { height: 32px; filter: brightness(0) invert(1); }
+    .sidebar-logo span { font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 600; }
+    .sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
+    .nav-section { margin-bottom: 24px; }
+    .nav-section-title { padding: 8px 24px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.5); }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 24px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent; }
+    .nav-item:hover { background: rgba(255,255,255,0.1); color: white; }
+    .nav-item.active { background: rgba(255,255,255,0.1); color: white; border-left-color: var(--accent-teal); }
+    .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .nav-item .badge { margin-left: auto; background: var(--accent-coral); color: white; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; min-width: 20px; text-align: center; }
+    .sidebar-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.1); }
+    .user-info { display: flex; align-items: center; gap: 12px; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--accent-teal); display: flex; align-items: center; justify-content: center; font-weight: 600; }
+    .user-name { font-size: 14px; font-weight: 500; }
+    .user-role { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .main-content { flex: 1; margin-left: var(--sidebar-width); display: flex; flex-direction: column; }
+    .top-header { background: white; padding: 16px 32px; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50; }
+    .page-title { font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 600; color: var(--gray-900); }
+    .header-actions { display: flex; align-items: center; gap: 16px; }
+    .search-box { display: flex; align-items: center; background: var(--gray-100); border-radius: 8px; padding: 8px 16px; gap: 8px; width: 300px; }
+    .search-box input { border: none; background: none; outline: none; font-size: 14px; width: 100%; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; border: none; }
+    .btn-primary { background: var(--brand-navy); color: white; }
+    .btn-secondary { background: white; color: var(--gray-700); border: 1px solid var(--gray-200); }
+    .btn-secondary:hover { background: var(--gray-50); }
+    .page-content { flex: 1; padding: 32px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 32px; }
+    .stat-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .stat-card.highlight { background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-light) 100%); color: white; }
+    .stat-label { font-size: 13px; color: var(--gray-500); margin-bottom: 8px; }
+    .stat-card.highlight .stat-label { color: rgba(255,255,255,0.7); }
+    .stat-value { font-family: 'Poppins', sans-serif; font-size: 32px; font-weight: 700; }
+    .stat-change { display: inline-flex; font-size: 12px; margin-top: 8px; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    .cases-card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+    .cases-header { padding: 20px 24px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+    .cases-title { font-size: 16px; font-weight: 600; }
+    .cases-table { width: 100%; border-collapse: collapse; }
+    .cases-table th, .cases-table td { padding: 14px 20px; text-align: left; border-bottom: 1px solid var(--gray-100); }
+    .cases-table th { background: var(--gray-50); font-size: 12px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; }
+    .cases-table tbody tr { cursor: pointer; transition: background 0.2s; }
+    .cases-table tbody tr:hover { background: var(--gray-50); }
+    .case-id { font-family: monospace; font-size: 13px; color: var(--brand-navy); font-weight: 500; }
+    .customer-info { display: flex; flex-direction: column; gap: 2px; }
+    .customer-name { font-weight: 500; }
+    .customer-email { font-size: 12px; color: var(--gray-500); }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .status-badge.pending { background: #fef3c7; color: #d97706; }
+    .status-badge.in-progress { background: #dbeafe; color: #2563eb; }
+    .status-badge.completed { background: #d1fae5; color: #059669; }
+    .type-badge { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+    .type-badge.refund { background: #fee2e2; color: #dc2626; }
+    .type-badge.shipping { background: #dbeafe; color: #2563eb; }
+    .type-badge.subscription { background: #d1fae5; color: #059669; }
+    .type-badge.return { background: #fef3c7; color: #d97706; }
+    .type-badge.manual { background: #e5e7eb; color: #374151; }
+    .time-ago { font-size: 13px; color: var(--gray-500); }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--gray-200); border-top-color: var(--brand-navy); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 40px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--gray-500); }
+    @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .main-content { margin-left: 0; } }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header"><div class="sidebar-logo"><img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad"><span>Resolution Hub</span></div></div>
+      <nav class="sidebar-nav">
+        <div class="nav-section"><div class="nav-section-title">Overview</div><a class="nav-item active" data-page="dashboard"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a></div>
+        <div class="nav-section"><div class="nav-section-title">Cases</div><a class="nav-item" data-page="cases" data-filter="all"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>All Cases<span class="badge" id="allCasesCount">0</span></a><a class="nav-item" data-page="cases" data-filter="shipping"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>Shipping<span class="badge" id="shippingCount">0</span></a><a class="nav-item" data-page="cases" data-filter="refund"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>Refunds<span class="badge" id="refundsCount">0</span></a><a class="nav-item" data-page="cases" data-filter="subscription"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Subscriptions<span class="badge" id="subscriptionsCount">0</span></a><a class="nav-item" data-page="cases" data-filter="manual"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>Manual Review<span class="badge" id="manualCount">0</span></a></div>
+        <div class="nav-section"><div class="nav-section-title">Activity</div><a class="nav-item" data-page="sessions"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>Sessions</a><a class="nav-item" data-page="events"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>Event Log</a></div>
+        <div class="nav-section"><div class="nav-section-title">Analytics</div><a class="nav-item" data-page="analytics"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Performance</a></div>
+      </nav>
+      <div class="sidebar-footer"><div class="user-info"><div class="user-avatar">A</div><div><div class="user-name">Admin</div><div class="user-role">Administrator</div></div></div></div>
+    </aside>
+    <main class="main-content">
+      <header class="top-header"><h1 class="page-title" id="pageTitle">Dashboard</h1><div class="header-actions"><div class="search-box"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Search cases, orders..." id="searchInput"></div><button class="btn btn-secondary" onclick="refreshData()">Refresh</button></div></header>
+      <div class="page-content">
+        <div id="dashboardView">
+          <div class="stats-grid"><div class="stat-card highlight"><div class="stat-label">Pending Cases</div><div class="stat-value" id="statPending">-</div><div class="stat-change">Needs attention</div></div><div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value" id="statInProgress">-</div></div><div class="stat-card"><div class="stat-label">Completed Today</div><div class="stat-value" id="statCompletedToday">-</div></div><div class="stat-card"><div class="stat-label">Avg. Resolution Time</div><div class="stat-value" id="statAvgTime">-</div></div></div>
+          <div class="cases-card"><div class="cases-header"><h2 class="cases-title">Recent Cases</h2><button class="btn btn-secondary" onclick="navigateTo('cases','all')">View All</button></div><table class="cases-table"><thead><tr><th>Case ID</th><th>Customer</th><th>Type</th><th>Status</th><th>Created</th></tr></thead><tbody id="recentCasesBody"><tr><td colspan="5"><div class="spinner"></div></td></tr></tbody></table></div>
+        </div>
+        <div id="casesView" style="display:none"></div>
+        <div id="sessionsView" style="display:none"></div>
+        <div id="eventsView" style="display:none"></div>
+        <div id="analyticsView" style="display:none"></div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const API = '';
+    document.querySelectorAll('.nav-item').forEach(i => i.addEventListener('click', () => navigateTo(i.dataset.page, i.dataset.filter)));
+    function navigateTo(page, filter) {
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      const sel = filter ? '.nav-item[data-page="'+page+'"][data-filter="'+filter+'"]' : '.nav-item[data-page="'+page+'"]';
+      document.querySelector(sel)?.classList.add('active');
+      document.getElementById('pageTitle').textContent = {dashboard:'Dashboard',cases:'Cases',sessions:'Sessions',events:'Event Log',analytics:'Performance'}[page]||'Dashboard';
+      ['dashboard','cases','sessions','events','analytics'].forEach(v => document.getElementById(v+'View').style.display = v===page?'block':'none');
+    }
+    async function loadDashboard() {
+      try {
+        const r = await fetch(API+'/hub/api/stats'); const d = await r.json();
+        document.getElementById('statPending').textContent = d.pending||0;
+        document.getElementById('statInProgress').textContent = d.inProgress||0;
+        document.getElementById('statCompletedToday').textContent = d.completedToday||0;
+        document.getElementById('statAvgTime').textContent = d.avgTime||'-';
+        ['all','shipping','refund','subscription','manual'].forEach(t => { const el = document.getElementById((t==='all'?'allCases':t)+'Count'); if(el) el.textContent = d[t]||0; });
+        loadRecentCases();
+      } catch(e) { console.error(e); }
+    }
+    async function loadRecentCases() {
+      try {
+        const r = await fetch(API+'/hub/api/cases?limit=10'); const d = await r.json();
+        const tbody = document.getElementById('recentCasesBody');
+        if (!d.cases?.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No cases yet</td></tr>'; return; }
+        tbody.innerHTML = d.cases.map(c => '<tr onclick="openCase(\\''+c.case_id+'\\')"><td><span class="case-id">'+c.case_id+'</span></td><td><div class="customer-info"><span class="customer-name">'+(c.customer_name||'Unknown')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td><td><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td><td><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td><td class="time-ago">'+timeAgo(c.created_at)+'</td></tr>').join('');
+      } catch(e) { console.error(e); }
+    }
+    function timeAgo(d) { if(!d)return'-'; const s=Math.floor((Date.now()-new Date(d))/1000); if(s<60)return'Just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
+    function openCase(id) { alert('Case: '+id); }
+    function refreshData() { loadDashboard(); }
+    loadDashboard();
   </script>
 </body>
 </html>`;
