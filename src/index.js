@@ -6185,11 +6185,11 @@ function getResolutionHubHTML() {
                 Quick Actions
               </div>
               <div class="quick-actions">
-                <a class="quick-action-btn replay" id="replayLink" href="#" target="_blank" style="display:none;">
+                <a class="quick-action-btn" id="replayLink" href="#" target="_blank" style="display:none;">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
                   Watch Session Recording
                 </a>
-                <a class="quick-action-btn richpanel" id="richpanelLink" href="#" target="_blank" style="display:none;">
+                <a class="quick-action-btn" id="richpanelLink" href="#" target="_blank" style="display:none;">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                   View Conversation
                 </a>
@@ -6201,10 +6201,10 @@ function getResolutionHubHTML() {
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
                   View Shopify Order
                 </a>
-                <button class="quick-action-btn" onclick="closeModal()">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                  Close Case View
-                </button>
+                <a class="quick-action-btn" id="sopLink" href="#" target="_blank">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                  View SOP Guide
+                </a>
               </div>
             </div>
 
@@ -6321,6 +6321,7 @@ function getResolutionHubHTML() {
         const r = await fetch(API+'/hub/api/cases?limit=10'); const d = await r.json();
         const tbody = document.getElementById('recentCasesBody');
         if (!d.cases?.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No cases yet</td></tr>'; return; }
+        casesList = d.cases || []; // Populate casesList for navigation
         tbody.innerHTML = d.cases.map(c => '<tr onclick="openCase(\\''+c.case_id+'\\')"><td><span class="case-id">'+c.case_id+'</span></td><td><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td><td><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td><td><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td><td class="time-ago">'+timeAgo(c.created_at)+'</td></tr>').join('');
       } catch(e) { console.error(e); }
     }
@@ -6645,6 +6646,16 @@ function getResolutionHubHTML() {
           document.getElementById('shopifyLink').style.display = 'none';
         }
 
+        // SOP link - based on case type
+        const sopUrls = {
+          'refund': 'https://docs.google.com/document/d/YOUR_REFUND_SOP_DOC_ID/edit',
+          'shipping': 'https://docs.google.com/document/d/YOUR_SHIPPING_SOP_DOC_ID/edit',
+          'subscription': 'https://docs.google.com/document/d/YOUR_SUBSCRIPTION_SOP_DOC_ID/edit',
+          'manual': 'https://docs.google.com/document/d/YOUR_MANUAL_SOP_DOC_ID/edit',
+          'default': 'https://docs.google.com/document/d/YOUR_DEFAULT_SOP_DOC_ID/edit'
+        };
+        document.getElementById('sopLink').href = sopUrls[c.case_type] || sopUrls['default'];
+
         // Timeline
         document.getElementById('timelineCreated').textContent = formatDate(c.created_at);
         if(c.first_response_at) {
@@ -6705,8 +6716,17 @@ function getResolutionHubHTML() {
     }
 
     async function updateStatus(newStatus) {
-      if(!currentCase) return;
+      if(!currentCase) {
+        console.error('No current case to update');
+        return;
+      }
       try {
+        // Optimistically update UI first
+        document.querySelectorAll('.status-card').forEach(card => card.classList.remove('active'));
+        const statusClass = newStatus.replace('_','-');
+        document.querySelector('.status-card.'+statusClass)?.classList.add('active');
+        document.getElementById('modalStatusBadge').innerHTML = '<span class="status-badge '+statusClass+'">'+newStatus.replace('_',' ')+'</span>';
+
         const r = await fetch(API+'/hub/api/case/'+currentCase.case_id+'/status', {
           method: 'PUT',
           headers: {'Content-Type':'application/json'},
@@ -6714,15 +6734,23 @@ function getResolutionHubHTML() {
         });
         if(r.ok) {
           currentCase.status = newStatus;
-          // Update status cards
-          document.querySelectorAll('.status-card').forEach(card => card.classList.remove('active'));
-          const statusClass = newStatus.replace('_','-');
-          document.querySelector('.status-card.'+statusClass)?.classList.add('active');
-          // Update header badge
-          document.getElementById('modalStatusBadge').innerHTML = '<span class="status-badge '+statusClass+'">'+newStatus.replace('_',' ')+'</span>';
+          // Update casesList too
+          const idx = casesList.findIndex(c => c.case_id === currentCase.case_id);
+          if(idx >= 0) casesList[idx].status = newStatus;
           loadDashboard();
+        } else {
+          // Revert on failure
+          const oldStatus = currentCase.status || 'pending';
+          const oldClass = oldStatus.replace('_','-');
+          document.querySelectorAll('.status-card').forEach(card => card.classList.remove('active'));
+          document.querySelector('.status-card.'+oldClass)?.classList.add('active');
+          document.getElementById('modalStatusBadge').innerHTML = '<span class="status-badge '+oldClass+'">'+oldStatus.replace('_',' ')+'</span>';
+          alert('Failed to update status');
         }
-      } catch(e) { console.error(e); alert('Failed to update status'); }
+      } catch(e) {
+        console.error('Status update error:', e);
+        alert('Failed to update status: ' + e.message);
+      }
     }
 
     async function loadComments(caseId) {
