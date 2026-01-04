@@ -3402,23 +3402,18 @@ async function handleLogPolicyBlock(request, env, corsHeaders) {
 // Log case creation (called from handleCreateCase)
 async function logCaseToAnalytics(env, caseData) {
   try {
+    // Use only columns that exist in the database
     await env.ANALYTICS_DB.prepare(`
-      INSERT INTO cases (case_id, session_id, case_type, resolution, order_number, customer_email, customer_name, refund_amount, selected_items, clickup_task_id, clickup_task_url, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO cases (case_id, case_type, resolution, customer_email, order_number, refund_amount, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `).bind(
       caseData.caseId,
-      caseData.sessionId,
       caseData.caseType,
       caseData.resolution,
-      caseData.orderNumber,
       caseData.email,
-      caseData.customerName,
+      caseData.orderNumber,
       caseData.refundAmount || null,
-      JSON.stringify(caseData.selectedItems || []),
-      caseData.clickupTaskId || null,
-      caseData.clickupTaskUrl || null,
-      'pending',
-      new Date().toISOString()
+      'pending'
     ).run();
     console.log('Case saved to database:', caseData.caseId);
   } catch (e) {
