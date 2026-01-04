@@ -2631,7 +2631,7 @@ function showOfferCard(percent, amount) {
 }
 
 // Partial refund card with custom callbacks (for charged unexpectedly flows)
-function showPartialRefundCard(percent, onAccept, onDecline) {
+async function showPartialRefundCard(percent, onAccept, onDecline) {
   const totalPrice = parseFloat(state.selectedOrder?.totalPrice || 0);
   const amount = (totalPrice * percent / 100).toFixed(2);
 
@@ -2651,9 +2651,10 @@ function showPartialRefundCard(percent, onAccept, onDecline) {
     </div>
   `;
 
-  addInteractiveContent(html);
+  // Wait for content to be added to DOM
+  await addInteractiveContent(html);
 
-  // Attach custom event handlers
+  // Now attach custom event handlers (elements exist now)
   document.getElementById(`${cardId}-accept`).onclick = async () => {
     document.getElementById(cardId)?.closest('.interactive-content').remove();
     addUserMessage(`I'll accept the ${percent}% refund`);
@@ -3526,7 +3527,7 @@ async function handleChargedUnexpectedlyDelivered() {
 
   state.chargedUnexpectedlyDelivered = true;
 
-  showPartialRefundCard(20, async () => {
+  await showPartialRefundCard(20, async () => {
     // Accepted 20%
     state.intentDetails = 'Customer did not place order but kept products with 20% refund';
     await createRefundCase('partial_20', true);
@@ -3549,7 +3550,7 @@ async function handleChargedUnexpectedlyNotDelivered() {
   state.chargedUnexpectedlyDelivered = false;
 
   // Use the same card UI as other refund flows
-  showPartialRefundCard(20, async () => {
+  await showPartialRefundCard(20, async () => {
     // Accepted 20%
     state.intentDetails = 'Customer did not place order - keeping with 20% refund (not yet delivered)';
     await createRefundCase('partial_20', true);
@@ -3616,7 +3617,7 @@ async function generateProductBenefitsPitch() {
   await delay(500);
   await addBotMessage(`For all this confusion, I'd love to offer you a <strong>20% refund (${formatCurrency(refundAmount20)})</strong> if you'd like to keep these products and give them a try! What do you think?`);
 
-  showPartialRefundCard(20, async () => {
+  await showPartialRefundCard(20, async () => {
     // Accepted 20%
     state.intentDetails = 'Customer did not recognize charge - kept products with 20% refund after product pitch';
     await createRefundCase('partial_20', true);
