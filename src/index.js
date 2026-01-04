@@ -6363,169 +6363,43 @@ function getResolutionHubHTML() {
         const r = await fetch(API+'/hub/api/analytics'); const d = await r.json();
         const typeData = d.casesByType||[]; const statusData = d.casesByStatus||[];
 
-        view.innerHTML = `
-          <div class="analytics-header">
-            <div class="analytics-title-section">
-              <h2>Performance Dashboard</h2>
-              <p>Track your resolution metrics and KPIs</p>
-            </div>
-            <div class="analytics-actions">
-              <select id="reportPeriod" onchange="loadAnalyticsView()" style="padding:10px 16px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;cursor:pointer;">
-                <option value="14">Last 14 Days</option>
-                <option value="30">Last 30 Days</option>
-                <option value="90">Last 90 Days</option>
-              </select>
-              <button onclick="downloadReport()" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                Export Report
-              </button>
-            </div>
-          </div>
+        // Build resolution types list
+        const resolutionList = (d.resolutionTypes||[]).map(function(r) {
+          return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="breakdown-item-name">'+formatResolution(r.resolution)+'</span><span class="breakdown-item-meta">'+(r.total_refund ? '$'+parseFloat(r.total_refund).toFixed(2)+' total' : '')+'</span></div><span class="breakdown-item-count">'+r.count+'</span></div>';
+        }).join('') || '<div class="empty-state">No data</div>';
 
-          <!-- KPI Cards Row 1 -->
-          <div class="kpi-grid">
-            <div class="kpi-card">
-              <div class="kpi-icon" style="background:#eff6ff;color:#2563eb;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
-              <div class="kpi-content">
-                <div class="kpi-value">${d.totalCases || 0}</div>
-                <div class="kpi-label">Total Cases</div>
-                <div class="kpi-sub">${d.casesToday || 0} today</div>
-              </div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-icon" style="background:#fef3c7;color:#d97706;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-              <div class="kpi-content">
-                <div class="kpi-value">${d.pendingCases || 0}</div>
-                <div class="kpi-label">Pending Cases</div>
-                <div class="kpi-sub ${(d.staleCases||0) > 0 ? 'alert' : ''}">${d.staleCases || 0} overdue (24h+)</div>
-              </div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div>
-              <div class="kpi-content">
-                <div class="kpi-value">${d.inProgressCases || 0}</div>
-                <div class="kpi-label">In Progress</div>
-                <div class="kpi-sub">Being worked on</div>
-              </div>
-            </div>
-            <div class="kpi-card success">
-              <div class="kpi-icon" style="background:#d1fae5;color:#059669;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-              <div class="kpi-content">
-                <div class="kpi-value">${d.completedCases || 0}</div>
-                <div class="kpi-label">Completed</div>
-                <div class="kpi-sub">${d.completionRate || 0}% resolution rate</div>
-              </div>
-            </div>
-          </div>
+        // Build status list
+        const statusList = statusData.map(function(s) {
+          return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="status-badge '+(s.status||'').replace('_','-')+'">'+(s.status||'unknown').replace('_',' ')+'</span></div><span class="breakdown-item-count">'+s.count+'</span></div>';
+        }).join('') || '<div class="empty-state">No data</div>';
 
-          <!-- KPI Cards Row 2 - Financial -->
-          <div class="kpi-grid" style="margin-top:16px;">
-            <div class="kpi-card highlight">
-              <div class="kpi-icon" style="background:rgba(255,255,255,0.2);color:white;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-              <div class="kpi-content">
-                <div class="kpi-value">$${(d.totalRefunds || 0).toFixed(2)}</div>
-                <div class="kpi-label">Total Refunds</div>
-                <div class="kpi-sub">All time</div>
-              </div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-icon" style="background:#fce7f3;color:#db2777;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div>
-              <div class="kpi-content">
-                <div class="kpi-value">$${(d.refundsThisMonth || 0).toFixed(2)}</div>
-                <div class="kpi-label">Refunds (30d)</div>
-                <div class="kpi-sub">This month</div>
-              </div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-icon" style="background:#e0e7ff;color:#4f46e5;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg></div>
-              <div class="kpi-content">
-                <div class="kpi-value">$${(d.avgRefund || 0).toFixed(2)}</div>
-                <div class="kpi-label">Avg. Refund</div>
-                <div class="kpi-sub">Per case</div>
-              </div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-icon" style="background:#ecfdf5;color:#059669;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></div>
-              <div class="kpi-content">
-                <div class="kpi-value">${d.totalSessions || 0}</div>
-                <div class="kpi-label">Total Sessions</div>
-                <div class="kpi-sub">${d.completionRate || 0}% completion</div>
-              </div>
-            </div>
-          </div>
+        // Build flow types list
+        const flowList = (d.flowTypes||[]).map(function(f) {
+          return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="type-badge '+f.flow_type+'">'+(f.flow_type || 'unknown')+'</span></div><span class="breakdown-item-count">'+f.count+'</span></div>';
+        }).join('') || '<div class="empty-state">No data</div>';
 
-          <!-- Charts Row -->
-          <div class="charts-grid">
-            <div class="chart-card">
-              <div class="chart-header">
-                <h3>Cases & Sessions Trend</h3>
-                <span class="chart-period">Last 14 days</span>
-              </div>
-              <div class="chart-body">
-                <canvas id="trendChart" height="250"></canvas>
-              </div>
-            </div>
-            <div class="chart-card">
-              <div class="chart-header">
-                <h3>Cases by Type</h3>
-              </div>
-              <div class="chart-body">
-                <canvas id="typeChart" height="250"></canvas>
-              </div>
-            </div>
-          </div>
-
-          <!-- Resolution & Status Breakdown -->
-          <div class="breakdown-grid">
-            <div class="breakdown-card">
-              <div class="breakdown-header">
-                <h3>Resolution Types</h3>
-                <span class="breakdown-count">${(d.resolutionTypes||[]).length} types</span>
-              </div>
-              <div class="breakdown-list">
-                ${(d.resolutionTypes||[]).map(r => `
-                  <div class="breakdown-item">
-                    <div class="breakdown-item-info">
-                      <span class="breakdown-item-name">${formatResolution(r.resolution)}</span>
-                      <span class="breakdown-item-meta">${r.total_refund ? '$' + parseFloat(r.total_refund).toFixed(2) + ' total' : ''}</span>
-                    </div>
-                    <span class="breakdown-item-count">${r.count}</span>
-                  </div>
-                `).join('') || '<div class="empty-state">No data</div>'}
-              </div>
-            </div>
-            <div class="breakdown-card">
-              <div class="breakdown-header">
-                <h3>Status Distribution</h3>
-              </div>
-              <div class="breakdown-list">
-                ${statusData.map(s => `
-                  <div class="breakdown-item">
-                    <div class="breakdown-item-info">
-                      <span class="status-badge ${(s.status||'').replace('_','-')}">${(s.status||'unknown').replace('_',' ')}</span>
-                    </div>
-                    <span class="breakdown-item-count">${s.count}</span>
-                  </div>
-                `).join('') || '<div class="empty-state">No data</div>'}
-              </div>
-            </div>
-            <div class="breakdown-card">
-              <div class="breakdown-header">
-                <h3>Flow Types</h3>
-              </div>
-              <div class="breakdown-list">
-                ${(d.flowTypes||[]).map(f => `
-                  <div class="breakdown-item">
-                    <div class="breakdown-item-info">
-                      <span class="type-badge ${f.flow_type}">${f.flow_type || 'unknown'}</span>
-                    </div>
-                    <span class="breakdown-item-count">${f.count}</span>
-                  </div>
-                `).join('') || '<div class="empty-state">No data</div>'}
-              </div>
-            </div>
-          </div>
-        `;
+        view.innerHTML = '<div class="analytics-header"><div class="analytics-title-section"><h2>Performance Dashboard</h2><p>Track your resolution metrics and KPIs</p></div><div class="analytics-actions"><select id="reportPeriod" onchange="loadAnalyticsView()" style="padding:10px 16px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;cursor:pointer;"><option value="14">Last 14 Days</option><option value="30">Last 30 Days</option><option value="90">Last 90 Days</option></select><button onclick="downloadReport()" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Export Report</button></div></div>'+
+          '<div class="kpi-grid">'+
+            '<div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff;color:#2563eb;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.totalCases||0)+'</div><div class="kpi-label">Total Cases</div><div class="kpi-sub">'+(d.casesToday||0)+' today</div></div></div>'+
+            '<div class="kpi-card"><div class="kpi-icon" style="background:#fef3c7;color:#d97706;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.pendingCases||0)+'</div><div class="kpi-label">Pending Cases</div><div class="kpi-sub'+((d.staleCases||0)>0?' alert':'')+'">'+(d.staleCases||0)+' overdue (24h+)</div></div></div>'+
+            '<div class="kpi-card"><div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.inProgressCases||0)+'</div><div class="kpi-label">In Progress</div><div class="kpi-sub">Being worked on</div></div></div>'+
+            '<div class="kpi-card success"><div class="kpi-icon" style="background:#d1fae5;color:#059669;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.completedCases||0)+'</div><div class="kpi-label">Completed</div><div class="kpi-sub">'+(d.completionRate||0)+'% resolution rate</div></div></div>'+
+          '</div>'+
+          '<div class="kpi-grid" style="margin-top:16px;">'+
+            '<div class="kpi-card highlight"><div class="kpi-icon" style="background:rgba(255,255,255,0.2);color:white;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="kpi-content"><div class="kpi-value">$'+(d.totalRefunds||0).toFixed(2)+'</div><div class="kpi-label">Total Refunds</div><div class="kpi-sub">All time</div></div></div>'+
+            '<div class="kpi-card"><div class="kpi-icon" style="background:#fce7f3;color:#db2777;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div><div class="kpi-content"><div class="kpi-value">$'+(d.refundsThisMonth||0).toFixed(2)+'</div><div class="kpi-label">Refunds (30d)</div><div class="kpi-sub">This month</div></div></div>'+
+            '<div class="kpi-card"><div class="kpi-icon" style="background:#e0e7ff;color:#4f46e5;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg></div><div class="kpi-content"><div class="kpi-value">$'+(d.avgRefund||0).toFixed(2)+'</div><div class="kpi-label">Avg. Refund</div><div class="kpi-sub">Per case</div></div></div>'+
+            '<div class="kpi-card"><div class="kpi-icon" style="background:#ecfdf5;color:#059669;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.totalSessions||0)+'</div><div class="kpi-label">Total Sessions</div><div class="kpi-sub">'+(d.completionRate||0)+'% completion</div></div></div>'+
+          '</div>'+
+          '<div class="charts-grid">'+
+            '<div class="chart-card"><div class="chart-header"><h3>Cases & Sessions Trend</h3><span class="chart-period">Last 14 days</span></div><div class="chart-body"><canvas id="trendChart" height="250"></canvas></div></div>'+
+            '<div class="chart-card"><div class="chart-header"><h3>Cases by Type</h3></div><div class="chart-body"><canvas id="typeChart" height="250"></canvas></div></div>'+
+          '</div>'+
+          '<div class="breakdown-grid">'+
+            '<div class="breakdown-card"><div class="breakdown-header"><h3>Resolution Types</h3><span class="breakdown-count">'+(d.resolutionTypes||[]).length+' types</span></div><div class="breakdown-list">'+resolutionList+'</div></div>'+
+            '<div class="breakdown-card"><div class="breakdown-header"><h3>Status Distribution</h3></div><div class="breakdown-list">'+statusList+'</div></div>'+
+            '<div class="breakdown-card"><div class="breakdown-header"><h3>Flow Types</h3></div><div class="breakdown-list">'+flowList+'</div></div>'+
+          '</div>';
 
         // Initialize charts
         renderTrendChart(d);
