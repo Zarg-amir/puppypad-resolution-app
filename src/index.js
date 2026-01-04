@@ -6168,6 +6168,10 @@ function getResolutionHubHTML() {
                   <span class="detail-label">Last Updated</span>
                   <span class="detail-value" id="modalUpdatedAt">-</span>
                 </div>
+                <div class="detail-row">
+                  <span class="detail-label">Due Date</span>
+                  <span class="detail-value" id="modalDueDate">-</span>
+                </div>
               </div>
             </div>
 
@@ -6753,6 +6757,23 @@ function getResolutionHubHTML() {
         document.getElementById('modalRefundAmount').textContent = c.refund_amount ? '$'+parseFloat(c.refund_amount).toFixed(2) : '-';
         document.getElementById('modalCreatedAt').textContent = formatDate(c.created_at);
         document.getElementById('modalUpdatedAt').textContent = formatDate(c.updated_at||c.created_at);
+
+        // Due date - 1 day from creation (internal deadline)
+        const dueEl = document.getElementById('modalDueDate');
+        if (c.created_at) {
+          const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
+          const isOverdue = Date.now() > dueDate.getTime() && c.status !== 'completed';
+          const dueDateStr = dueDate.toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+          if (c.status === 'completed') {
+            dueEl.innerHTML = '<span style="color:#10b981;">✓ Completed</span>';
+          } else if (isOverdue) {
+            dueEl.innerHTML = '<span style="color:#ef4444;font-weight:600;">⚠ OVERDUE - ' + dueDateStr + '</span>';
+          } else {
+            dueEl.textContent = dueDateStr;
+          }
+        } else {
+          dueEl.textContent = '-';
+        }
 
         // Status cards
         document.querySelectorAll('.status-card').forEach(card => card.classList.remove('active'));
