@@ -3403,8 +3403,8 @@ async function handleLogPolicyBlock(request, env, corsHeaders) {
 async function logCaseToAnalytics(env, caseData) {
   try {
     await env.ANALYTICS_DB.prepare(`
-      INSERT INTO cases (case_id, session_id, case_type, resolution, order_number, customer_email, customer_name, refund_amount, selected_items, clickup_task_id, clickup_task_url)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO cases (case_id, session_id, case_type, resolution, order_number, customer_email, customer_name, refund_amount, selected_items, clickup_task_id, clickup_task_url, status, order_url, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       caseData.caseId,
       caseData.sessionId,
@@ -3416,7 +3416,10 @@ async function logCaseToAnalytics(env, caseData) {
       caseData.refundAmount || null,
       JSON.stringify(caseData.selectedItems || []),
       caseData.clickupTaskId,
-      caseData.clickupTaskUrl
+      caseData.clickupTaskUrl,
+      'pending', // Default status for new cases
+      caseData.orderUrl || null,
+      new Date().toISOString()
     ).run();
   } catch (e) {
     console.error('Case analytics logging failed:', e);
@@ -5039,22 +5042,22 @@ function getDashboardHTML() {
 async function handleHubStats(request, env, corsHeaders) {
   try {
     // Get case counts by status
-    const pendingResult = await env.DB.prepare(
+    const pendingResult = await env.ANALYTICS_DB.prepare(
       `SELECT COUNT(*) as count FROM cases WHERE status = 'pending' OR status = 'open'`
     ).first();
 
-    const inProgressResult = await env.DB.prepare(
+    const inProgressResult = await env.ANALYTICS_DB.prepare(
       `SELECT COUNT(*) as count FROM cases WHERE status = 'in_progress'`
     ).first();
 
     // Get completed today
     const today = new Date().toISOString().split('T')[0];
-    const completedTodayResult = await env.DB.prepare(
+    const completedTodayResult = await env.ANALYTICS_DB.prepare(
       `SELECT COUNT(*) as count FROM cases WHERE status = 'completed' AND DATE(resolved_at) = ?`
     ).bind(today).first();
 
     // Get counts by type
-    const typeCountsResult = await env.DB.prepare(
+    const typeCountsResult = await env.ANALYTICS_DB.prepare(
       `SELECT case_type, COUNT(*) as count FROM cases WHERE status != 'completed' GROUP BY case_type`
     ).all();
 
@@ -5115,7 +5118,7 @@ async function handleHubCases(request, env, corsHeaders) {
     query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
-    const stmt = env.DB.prepare(query);
+    const stmt = env.ANALYTICS_DB.prepare(query);
     const result = await stmt.bind(...params).all();
 
     return Response.json({
@@ -5130,7 +5133,7 @@ async function handleHubCases(request, env, corsHeaders) {
 
 async function handleHubGetCase(caseId, env, corsHeaders) {
   try {
-    const caseData = await env.DB.prepare(
+    const caseData = await env.ANALYTICS_DB.prepare(
       `SELECT * FROM cases WHERE case_id = ?`
     ).bind(caseId).first();
 
@@ -5161,7 +5164,7 @@ async function handleHubUpdateStatus(request, caseId, env, corsHeaders) {
     const { status, actor, actor_email } = await request.json();
 
     // Get current case to record old status
-    const currentCase = await env.DB.prepare(
+    const currentCase = await env.ANALYTICS_DB.prepare(
       `SELECT status FROM cases WHERE case_id = ?`
     ).bind(caseId).first();
 
@@ -5185,15 +5188,15 @@ async function handleHubUpdateStatus(request, caseId, env, corsHeaders) {
     updateQuery += ` WHERE case_id = ?`;
     params.push(caseId);
 
-    await env.DB.prepare(updateQuery).bind(...params).run();
+    await env.ANALYTICS_DB.prepare(updateQuery).bind(...params).run();
 
     // Log activity
-    await env.DB.prepare(
+    await env.ANALYTICS_DB.prepare(
       `INSERT INTO case_activity (case_id, activity_type, field_name, old_value, new_value, actor, actor_email, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(caseId, 'status_changed', 'status', oldStatus, status, actor || 'team_member', actor_email || '', 'hub').run();
 
     // Log event
-    await env.DB.prepare(
+    await env.ANALYTICS_DB.prepare(
       `INSERT INTO events (case_id, event_type, event_name, event_data, actor, actor_email) VALUES (?, ?, ?, ?, ?, ?)`
     ).bind(caseId, 'status_change', `Status changed to ${status}`, JSON.stringify({ old_status: oldStatus, new_status: status }), actor || 'team_member', actor_email || '').run();
 
@@ -5209,7 +5212,7 @@ async function handleHubUpdateStatus(request, caseId, env, corsHeaders) {
 
 async function handleHubGetComments(caseId, env, corsHeaders) {
   try {
-    const comments = await env.DB.prepare(
+    const comments = await env.ANALYTICS_DB.prepare(
       `SELECT * FROM case_comments WHERE case_id = ? ORDER BY created_at ASC`
     ).bind(caseId).all();
 
@@ -5231,17 +5234,17 @@ async function handleHubAddComment(request, caseId, env, corsHeaders) {
     const now = new Date().toISOString();
 
     // Insert comment
-    const result = await env.DB.prepare(
+    const result = await env.ANALYTICS_DB.prepare(
       `INSERT INTO case_comments (case_id, content, author_name, author_email, source, created_at) VALUES (?, ?, ?, ?, ?, ?)`
     ).bind(caseId, content.trim(), author_name || 'Team Member', author_email || '', 'hub', now).run();
 
     // Log activity
-    await env.DB.prepare(
+    await env.ANALYTICS_DB.prepare(
       `INSERT INTO case_activity (case_id, activity_type, new_value, actor, actor_email, source) VALUES (?, ?, ?, ?, ?, ?)`
     ).bind(caseId, 'comment_added', content.trim().substring(0, 100), author_name || 'team_member', author_email || '', 'hub').run();
 
     // Update case updated_at
-    await env.DB.prepare(
+    await env.ANALYTICS_DB.prepare(
       `UPDATE cases SET updated_at = ? WHERE case_id = ?`
     ).bind(now, caseId).run();
 
@@ -5305,7 +5308,7 @@ async function handleClickUpWebhook(request, env, corsHeaders) {
       }
 
       // Find case by clickup_task_id
-      const caseData = await env.DB.prepare(
+      const caseData = await env.ANALYTICS_DB.prepare(
         `SELECT case_id, status, last_sync_source FROM cases WHERE clickup_task_id = ?`
       ).bind(taskId).first();
 
@@ -5347,10 +5350,10 @@ async function handleClickUpWebhook(request, env, corsHeaders) {
       updateQuery += ` WHERE case_id = ?`;
       params.push(caseData.case_id);
 
-      await env.DB.prepare(updateQuery).bind(...params).run();
+      await env.ANALYTICS_DB.prepare(updateQuery).bind(...params).run();
 
       // Log activity
-      await env.DB.prepare(
+      await env.ANALYTICS_DB.prepare(
         `INSERT INTO case_activity (case_id, activity_type, field_name, old_value, new_value, actor, source) VALUES (?, ?, ?, ?, ?, ?, ?)`
       ).bind(caseData.case_id, 'status_changed', 'status', oldStatus, hubStatus, 'clickup_webhook', 'clickup').run();
 
@@ -5367,7 +5370,7 @@ async function handleClickUpWebhook(request, env, corsHeaders) {
         return Response.json({ success: true, message: 'Ignored - missing comment data' }, { headers: corsHeaders });
       }
 
-      const caseData = await env.DB.prepare(
+      const caseData = await env.ANALYTICS_DB.prepare(
         `SELECT case_id FROM cases WHERE clickup_task_id = ?`
       ).bind(taskId).first();
 
@@ -5376,7 +5379,7 @@ async function handleClickUpWebhook(request, env, corsHeaders) {
       }
 
       // Check if comment already exists (by clickup_comment_id)
-      const existingComment = await env.DB.prepare(
+      const existingComment = await env.ANALYTICS_DB.prepare(
         `SELECT id FROM case_comments WHERE clickup_comment_id = ?`
       ).bind(comment.id).first();
 
@@ -5386,7 +5389,7 @@ async function handleClickUpWebhook(request, env, corsHeaders) {
 
       // Insert comment
       const now = new Date().toISOString();
-      await env.DB.prepare(
+      await env.ANALYTICS_DB.prepare(
         `INSERT INTO case_comments (case_id, content, author_name, source, clickup_comment_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`
       ).bind(caseData.case_id, comment.comment_text || comment.text_content || '', comment.user?.username || 'ClickUp User', 'clickup', comment.id, now).run();
 
@@ -5405,7 +5408,7 @@ async function handleClickUpWebhook(request, env, corsHeaders) {
 async function syncStatusToClickUp(env, caseId, newStatus) {
   try {
     // Get case with ClickUp task ID
-    const caseData = await env.DB.prepare(
+    const caseData = await env.ANALYTICS_DB.prepare(
       `SELECT clickup_task_id FROM cases WHERE case_id = ?`
     ).bind(caseId).first();
 
@@ -5442,7 +5445,7 @@ async function syncStatusToClickUp(env, caseId, newStatus) {
 // Sync Hub comment TO ClickUp
 async function syncCommentToClickUp(env, caseId, content, authorName) {
   try {
-    const caseData = await env.DB.prepare(
+    const caseData = await env.ANALYTICS_DB.prepare(
       `SELECT clickup_task_id FROM cases WHERE case_id = ?`
     ).bind(caseId).first();
 
