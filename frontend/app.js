@@ -818,55 +818,22 @@ function setTyping(isTyping) {
 // MESSAGE RENDERING
 // ============================================
 
-// Character-by-character typing animation
-async function typeText(element, text, speed = 55, isBot = true) {
-  // Create a stable structure: text container + cursor
-  const textSpan = document.createElement('span');
-  textSpan.className = 'typing-text';
-  const cursorSpan = document.createElement('span');
-  cursorSpan.className = 'typing-cursor';
-  cursorSpan.textContent = '|';
+// Calculate realistic typing delay based on message length
+function getTypingDelay(text) {
+  // Strip HTML tags to get actual text length
+  const plainText = text.replace(/<[^>]+>/g, '');
+  const charCount = plainText.length;
 
-  element.innerHTML = '';
-  element.appendChild(textSpan);
-  element.appendChild(cursorSpan);
-
-  // Split by HTML tags vs plain text
-  const parts = text.split(/(<[^>]+>)/);
-  let displayText = '';
-  let charCount = 0;
-
-  for (const part of parts) {
-    if (part.startsWith('<')) {
-      // It's an HTML tag, add it immediately
-      displayText += part;
-      textSpan.innerHTML = displayText;
-    } else {
-      // It's plain text, type character by character
-      for (const char of part) {
-        displayText += char;
-        textSpan.innerHTML = displayText;
-        charCount++;
-        // Only scroll every 15 characters to reduce jumpiness
-        if (charCount % 15 === 0) {
-          scrollToBottom();
-        }
-        // Add slight variation to typing speed for realism
-        const variance = Math.random() * 15 - 7;
-        await delay(Math.max(speed + variance, 20));
-      }
-    }
-  }
-
-  // Final scroll to ensure message is visible
-  scrollToBottom();
-
-  // Remove cursor when done
-  cursorSpan.remove();
-
-  // Only update typing status for bot messages
-  if (isBot) {
-    setTyping(false);
+  // Base delay + variable delay based on length
+  // Short messages (< 50 chars): 800-1200ms
+  // Medium messages (50-150 chars): 1200-2000ms
+  // Long messages (150+ chars): 2000-3000ms
+  if (charCount < 50) {
+    return 800 + Math.random() * 400;
+  } else if (charCount < 150) {
+    return 1200 + Math.min(charCount * 5, 800) + Math.random() * 300;
+  } else {
+    return 2000 + Math.min(charCount * 2, 1000) + Math.random() * 400;
   }
 }
 
@@ -875,7 +842,7 @@ async function addBotMessage(text, persona = state.currentPersona) {
 
   setTyping(true);
 
-  // Create message container that will hold both typing indicator and final message
+  // Create message container with typing indicator
   const messageDiv = document.createElement('div');
   messageDiv.className = `message bot ${persona}`;
   messageDiv.innerHTML = `
@@ -891,24 +858,39 @@ async function addBotMessage(text, persona = state.currentPersona) {
   elements.chatArea.appendChild(messageDiv);
   scrollToBottom();
 
-  // Wait for "thinking" delay (shorter, between 400-800ms)
-  const thinkingDelay = Math.min(400 + text.length * 3, 800);
-  await delay(thinkingDelay);
+  // Wait for realistic "typing" delay based on message length
+  const typingDelay = getTypingDelay(text);
+  await delay(typingDelay);
 
-  // Replace typing indicator with message bubble (no removal/re-add, smooth transition)
+  // Replace typing indicator with full message (no character-by-character)
   const contentDiv = messageDiv.querySelector('.message-content');
   const typingIndicator = messageDiv.querySelector('.typing-indicator');
 
-  // Create the bubble
+  // Create the bubble with full message
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
+  bubble.innerHTML = text;
 
-  // Remove typing indicator and add bubble
+  // Smooth transition: fade out typing indicator, fade in message
+  typingIndicator.style.transition = 'opacity 0.15s ease';
+  typingIndicator.style.opacity = '0';
+
+  await delay(150);
+
   typingIndicator.remove();
+  bubble.style.opacity = '0';
+  bubble.style.transform = 'translateY(5px)';
   contentDiv.appendChild(bubble);
 
-  // Type out the message character by character
-  await typeText(bubble, text);
+  // Animate message in
+  requestAnimationFrame(() => {
+    bubble.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    bubble.style.opacity = '1';
+    bubble.style.transform = 'translateY(0)';
+  });
+
+  setTyping(false);
+  scrollToBottom();
 
   return messageDiv;
 }
@@ -921,15 +903,11 @@ async function addUserMessage(text) {
       <div class="message-sender">
         <span class="sender-name">You</span>
       </div>
-      <div class="message-bubble"></div>
+      <div class="message-bubble">${text}</div>
     </div>
   `;
   elements.chatArea.appendChild(messageDiv);
   scrollToBottom();
-
-  // Type out user message quickly (faster than bot, no typing indicator change)
-  const bubble = messageDiv.querySelector('.message-bubble');
-  await typeText(bubble, text, 15, false);
 
   return messageDiv;
 }
@@ -979,10 +957,10 @@ function addEditableUserMessage(summaryHtml, editCallback, editLabel = 'Edit') {
 // Configuration for staggered animations
 // These values control how long users have to read before seeing options
 const ANIMATION_CONFIG = {
-  delayBeforeOptions: 1500,   // Wait 1.5s after Amy's message before showing options
-  staggerDelay: 400,          // 400ms between each option appearing (clearly one-by-one)
-  delayBeforeCards: 1200,     // Wait 1.2s before showing interactive cards
-  cardStaggerDelay: 350       // 350ms between each card appearing
+  delayBeforeOptions: 800,    // Wait 0.8s after Amy's message before showing options
+  staggerDelay: 250,          // 250ms between each option appearing
+  delayBeforeCards: 600,      // Wait 0.6s before showing interactive cards
+  cardStaggerDelay: 200       // 200ms between each card appearing
 };
 
 async function addOptions(options) {
@@ -3856,7 +3834,7 @@ async function handleQualityUsedItems() {
   await addBotMessage("Okay got it... let me just check with my manager quickly to see what we can do here.<br><br>Obviously we can't accept returns on used items for hygiene reasons... but let me see if there's another way we can sort this out for you.<br><br>One moment 💙");
 
   showProgress("Checking with manager...");
-  await delay(2500);
+  await delay(5000);
   hideProgress();
 
   await addBotMessage("Great news! I spoke with my manager and here's what we can do...<br><br>You can keep the Original PuppyPads you already have. No need to return them.<br><br>We'll generate a custom checkout link for you where you'd only pay the difference between Original and PuppyPad 2.0.<br><br>So instead of paying $70 per pad for the new ones... you'd just pay the <strong>$20 difference per pad</strong>.<br><br>I'll be honest with you... this means we're losing out on our product costs here because you're keeping the Originals AND getting PuppyPad 2.0 at a reduced rate. But that's okay. We'd rather you be happy than worry about the numbers.");
@@ -3928,7 +3906,7 @@ async function handleQualityRefund() {
   await addBotMessage("Totally understand. Let me just check with my manager quickly to see if there's something else we can do for you here...<br><br>One moment 💙");
 
   showProgress("Checking with manager...");
-  await delay(2500);
+  await delay(5000);
   hideProgress();
 
   await addBotMessage("Okay I'm back!<br><br>So I spoke with my manager and here's what we'd like to do...<br><br>We really value our customers and we want to make sure you're fully satisfied. So instead of a refund, what we can do is ship out our new PuppyPad 2.0 to you... <strong>completely free of charge</strong>.<br><br>No extra cost to you at all.<br><br>I'll be honest... this means we're covering the product cost AND the shipping cost on our end. We're losing out on this one. But that's okay. Your satisfaction matters more to us than the money.");
@@ -4223,13 +4201,17 @@ async function handleQualityStillWantRefund() {
   };
 }
 
-// Ask if pads have been used (don't reveal outcome)
+// Ask if pads have been used - explain what "used" means FIRST (consistent with other flows)
 async function handleQualityRefundUsageCheck(quantity) {
-  await addBotMessage(`Got it — ${quantity} Original pad${quantity > 1 ? 's' : ''}. I've noted that down.<br><br>Just one more quick question before I send this to the team...<br><br>Have these pads been used at all?`);
+  await addBotMessage(`Got it — ${quantity} Original pad${quantity > 1 ? 's' : ''}. I've noted that down.<br><br>Just one more quick question before I send this to the team...`);
+
+  await delay(300);
+
+  await addBotMessage("Have the Original material pads been used at all?<br><br>Just so we're on the same page... by \"used\" I mean:<br><br>• Your dog has stepped on them, peed on them, or slept on them<br>• There's any fur, dirt, stains, or marks on the pad<br>• The pad has been washed<br>• The packaging is damaged and can't be resealed<br><br>If you've just opened the package to take a look and can put everything back like it was before... that's totally fine. That counts as unused.");
 
   addOptions([
-    { icon: '✓', text: "Yes, they've been used", action: () => handleQualityRefundUsed(quantity) },
-    { icon: '✕', text: "No, they're still unused", action: () => handleQualityRefundUnused(quantity) }
+    { text: "Yes, they've been used", action: () => handleQualityRefundUsed(quantity) },
+    { text: "No, they're unused / can be repackaged", action: () => handleQualityRefundUnused(quantity) }
   ]);
 }
 
@@ -4237,7 +4219,7 @@ async function handleQualityRefundUsageCheck(quantity) {
 async function handleQualityRefundUsed(quantity) {
   await addBotMessage("Understood. Thank you for being honest with me — I really appreciate that. 💙<br><br>Since the pads have been used, we obviously can't accept them back for hygiene reasons. That's totally fine though.<br><br>Here's what happens next:<br><br>I'll submit your refund request to our team now. They'll review your order details and calculate the fair refund amount based on the Original pads you received. This review usually takes <strong>1-2 business days</strong>.<br><br>Once approved, the refund will be processed and you should see it back in your account within <strong>3-5 business days</strong> after that, depending on your bank.<br><br>You're welcome to keep or donate the pads you have... no need to ship anything back.");
 
-  await delay(500);
+  await delay(300);
 
   await addBotMessage("Rest assured, we'll refund you fairly based on what you actually paid for the Original material pads. Our team will verify everything against your order records.");
 
@@ -4245,17 +4227,13 @@ async function handleQualityRefundUsed(quantity) {
   await processQualityRefundCase(quantity, true);
 }
 
-// If pads are unused - explain what "used" means, then return flow
+// If pads are unused - confirm returnable condition
 async function handleQualityRefundUnused(quantity) {
-  await addBotMessage("Great! Just to make sure we're on the same page... by \"unused\" I mean:<br><br>• Your dog hasn't stepped on them, peed on them, or slept on them<br>• There's no fur, dirt, stains, or marks on the pad<br>• The pad hasn't been washed<br>• The packaging isn't damaged and can be resealed<br><br>If you've just opened the package to take a look and can put everything back like it was before... that's totally fine. That counts as unused.");
-
-  await delay(500);
-
-  await addBotMessage("Can you confirm the pads are still in this returnable condition?");
+  await addBotMessage("Perfect! Since they're still in returnable condition, we can process your refund once we receive them back.<br><br>Can you confirm the pads are definitely in this returnable condition — unopened or can be repackaged as new?");
 
   addOptions([
-    { icon: '✓', text: "Yes, they're in returnable condition", action: () => handleQualityRefundReturn(quantity) },
-    { icon: '✕', text: "Actually, they have been used", action: () => handleQualityRefundUsed(quantity) }
+    { text: "Yes, they're in returnable condition", action: () => handleQualityRefundReturn(quantity) },
+    { text: "Actually, they have been used", action: () => handleQualityRefundUsed(quantity) }
   ]);
 }
 
