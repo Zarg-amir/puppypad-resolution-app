@@ -4138,39 +4138,197 @@ async function processQualityFreeReship(padQuantity) {
   }
 }
 
-// Branch 3B: Still want refund
+// Branch 3B: Still want refund - strategic verification flow
 async function handleQualityStillWantRefund() {
-  const order = state.selectedOrder;
-  state.qualityDetails = {
-    padCount: order?.lineItems?.length || 1,
-    itemsUsed: true,
-    upgradeTotal: 0
+  await addBotMessage("No problem at all... I completely respect that. A refund it is. 💙<br><br>I do need to apologize though — I can't tell you the exact refund amount right now. Here's why...<br><br>Our team needs to look into your specific order to calculate the fair amount. Sometimes customers receive discounts or promotional pricing, so we need to verify what you actually paid versus the retail price.<br><br>We also need to cross-reference our records to confirm how many Original pads versus PuppyPad 2.0 you received in your order. We track this on our end, but I want to make sure everything matches up correctly.");
+
+  await delay(1500);
+
+  await addBotMessage("To help us process this accurately...<br><br>Could you please confirm how many Original material pads you received? This helps us verify against our shipping records and ensure we refund you the correct amount.");
+
+  await delay(500);
+
+  // Show quantity input form
+  const formId = `quality-refund-qty-${Date.now()}`;
+  const formHtml = `
+    <div class="form-card" id="${formId}" style="background: linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%); border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(111, 66, 193, 0.1);">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 24px; margin-bottom: 8px;">📦</div>
+        <div style="font-size: 16px; font-weight: 600; color: #1a1a2e;">Number of Original Pads Received</div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-size: 13px; color: #6c757d; margin-bottom: 8px;">Enter quantity:</label>
+        <input type="number" id="${formId}-input" min="1" max="50" placeholder="e.g., 2"
+          style="width: 100%; padding: 14px 16px; border: 2px solid #e9ecef; border-radius: 10px; font-size: 18px; text-align: center; font-weight: 600; transition: border-color 0.2s;"
+          onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e9ecef'">
+      </div>
+
+      <div style="background: #f0f4ff; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+          <span style="font-size: 16px;">ℹ️</span>
+          <div style="font-size: 12px; color: #495057; line-height: 1.5;">
+            We track which material type is shipped with each order. This information helps us verify your refund request accurately.
+          </div>
+        </div>
+      </div>
+
+      <button id="${formId}-submit" class="btn-primary" style="width: 100%; padding: 14px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; font-size: 15px; border: none; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;"
+        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(102, 126, 234, 0.4)'"
+        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+        Continue
+      </button>
+    </div>
+  `;
+
+  await addInteractiveContent(formHtml, 300);
+
+  // Attach submit handler
+  document.getElementById(`${formId}-submit`).onclick = async () => {
+    const input = document.getElementById(`${formId}-input`);
+    const quantity = parseInt(input.value);
+
+    if (!quantity || quantity < 1) {
+      input.style.borderColor = '#ef4444';
+      input.focus();
+      return;
+    }
+
+    if (quantity > 20) {
+      await addBotMessage("That seems like quite a lot! Please double-check the quantity. If it's correct, please enter it again.");
+      input.value = '';
+      input.focus();
+      return;
+    }
+
+    // Remove form and show user response
+    document.getElementById(formId)?.closest('.interactive-content').remove();
+    addUserMessage(`${quantity} Original pad${quantity > 1 ? 's' : ''}`);
+
+    // Store quantity and continue to usage question
+    state.qualityDetails = {
+      padCount: quantity,
+      customerReportedCount: quantity,
+      upgradeTotal: 0
+    };
+
+    await handleQualityRefundUsageCheck(quantity);
   };
 
-  showProgress("Processing refund request...");
+  // Allow enter key to submit
+  document.getElementById(`${formId}-input`).onkeypress = (e) => {
+    if (e.key === 'Enter') {
+      document.getElementById(`${formId}-submit`).click();
+    }
+  };
+}
+
+// Ask if pads have been used (don't reveal outcome)
+async function handleQualityRefundUsageCheck(quantity) {
+  await addBotMessage(`Got it — ${quantity} Original pad${quantity > 1 ? 's' : ''}. I've noted that down.<br><br>Just one more quick question before I send this to the team...<br><br>Have these pads been used at all?`);
+
+  addOptions([
+    { icon: '✓', text: "Yes, they've been used", action: () => handleQualityRefundUsed(quantity) },
+    { icon: '✕', text: "No, they're still unused", action: () => handleQualityRefundUnused(quantity) }
+  ]);
+}
+
+// If pads have been used - process refund, customer keeps pads
+async function handleQualityRefundUsed(quantity) {
+  await addBotMessage("Understood. Thank you for being honest with me — I really appreciate that. 💙<br><br>Since the pads have been used, we obviously can't accept them back for hygiene reasons. That's totally fine though.<br><br>Here's what happens next:<br><br>I'll submit your refund request to our team now. They'll review your order details and calculate the fair refund amount based on the Original pads you received. This review usually takes <strong>1-2 business days</strong>.<br><br>Once approved, the refund will be processed and you should see it back in your account within <strong>3-5 business days</strong> after that, depending on your bank.<br><br>You're welcome to keep or donate the pads you have... no need to ship anything back.");
+
+  await delay(500);
+
+  await addBotMessage("Rest assured, we'll refund you fairly based on what you actually paid for the Original material pads. Our team will verify everything against your order records.");
+
+  // Process the case
+  await processQualityRefundCase(quantity, true);
+}
+
+// If pads are unused - explain what "used" means, then return flow
+async function handleQualityRefundUnused(quantity) {
+  await addBotMessage("Great! Just to make sure we're on the same page... by \"unused\" I mean:<br><br>• Your dog hasn't stepped on them, peed on them, or slept on them<br>• There's no fur, dirt, stains, or marks on the pad<br>• The pad hasn't been washed<br>• The packaging isn't damaged and can be resealed<br><br>If you've just opened the package to take a look and can put everything back like it was before... that's totally fine. That counts as unused.");
+
+  await delay(500);
+
+  await addBotMessage("Can you confirm the pads are still in this returnable condition?");
+
+  addOptions([
+    { icon: '✓', text: "Yes, they're in returnable condition", action: () => handleQualityRefundReturn(quantity) },
+    { icon: '✕', text: "Actually, they have been used", action: () => handleQualityRefundUsed(quantity) }
+  ]);
+}
+
+// Return flow for unused pads
+async function handleQualityRefundReturn(quantity) {
+  await addBotMessage("Perfect! Since they're in returnable condition, here's how we'll process your refund...<br><br>Please ship the Original pads back to us at:<br><br><strong>PuppyPad Returns</strong><br>123 Warehouse Way<br>Los Angeles, CA 90001<br>United States");
+
+  await delay(1500);
+
+  await addBotMessage("I do need to mention — unfortunately we're not able to generate prepaid return shipping labels. We're a small team and our system only handles outbound shipments.<br><br>What we'd need you to do is arrange the return shipping yourself through your local post office or courier. It doesn't need to be anything fancy... just whatever's most convenient for you.");
+
+  await delay(1500);
+
+  await addBotMessage(`Here's the process:<br><br>1️⃣ Ship the ${quantity} Original pad${quantity > 1 ? 's' : ''} back to the address above<br>2️⃣ Once you've sent them, share the tracking number with us<br>3️⃣ When we receive the return, our team will review and process your refund<br><br>The review takes <strong>1-2 business days</strong> once we receive the pads, then the refund hits your account within <strong>3-5 business days</strong> after that.<br><br>Our team will calculate the fair refund amount based on what you actually paid for the Original pads, taking into account any discounts you may have received.`);
+
+  await delay(500);
+
+  await addBotMessage("Does that all make sense? Ready to proceed?");
+
+  addOptions([
+    { icon: '✓', text: "Yes, I'll arrange the return", action: () => processQualityRefundCase(quantity, false) },
+    { icon: '?', text: "I have a question", action: handleQualityRefundQuestion }
+  ]);
+}
+
+// Handle questions about refund
+async function handleQualityRefundQuestion() {
+  await addBotMessage("Of course! What would you like to know?");
+
+  showTextInput("Type your question...", async (question) => {
+    hideTextInput();
+    addUserMessage(question);
+
+    await addBotMessage("That's a great question. Let me make sure I address that properly...<br><br>Our team will review your specific situation when processing your refund. If you have any concerns about the refund amount or process, they'll be able to help clarify everything.<br><br>Is there anything else you'd like to know, or are you ready to proceed with the return?");
+
+    addOptions([
+      { icon: '✓', text: "I'm ready to proceed", action: () => processQualityRefundCase(state.qualityDetails?.padCount || 1, false) },
+      { icon: '?', text: "I have another question", action: handleQualityRefundQuestion }
+    ]);
+  });
+}
+
+// Process the refund case
+async function processQualityRefundCase(quantity, itemsUsed) {
+  const order = state.selectedOrder;
+
+  state.qualityDetails = {
+    ...state.qualityDetails,
+    padCount: quantity,
+    itemsUsed: itemsUsed,
+    requiresReturn: !itemsUsed
+  };
+
+  showProgress("Submitting refund request...");
   await delay(1500);
 
   try {
     const caseData = {
-      // Core identifiers
       sessionId: state.sessionId || '',
       caseType: 'refund',
       issueType: 'quality_difference',
-      resolution: 'full_refund_quality',
+      resolution: itemsUsed ? 'full_refund_quality_used' : 'full_refund_quality_return',
 
-      // Customer info
       email: state.customerData?.email || order?.email || '',
       customerName: order?.customerName || state.customerData?.name || '',
       customerFirstName: order?.customerFirstName || state.customerData?.firstName || '',
       customerLastName: order?.customerLastName || state.customerData?.lastName || '',
 
-      // Order info
       orderNumber: order?.orderNumber || '',
       orderDate: order?.orderDate || '',
       orderUrl: order?.orderUrl || '',
-      refundAmount: order?.total || null,
+      refundAmount: null, // Team will calculate based on verification
 
-      // Selected items
       selectedItems: (order?.lineItems || []).map(item => ({
         id: item.id,
         title: item.title,
@@ -4179,11 +4337,10 @@ async function handleQualityStillWantRefund() {
         quantity: item.quantity || 1,
       })),
 
-      // Quality-specific
       qualityDetails: state.qualityDetails,
-      keepProduct: true,
+      keepProduct: itemsUsed,
+      requiresReturn: !itemsUsed,
 
-      // Timestamps
       createdAt: new Date().toISOString(),
     };
 
@@ -4202,12 +4359,21 @@ async function handleQualityStillWantRefund() {
 
     hideProgress();
 
-    await addBotMessage("No problem at all... I completely respect that.<br><br>I'll process your refund now for the older material items. You should see it back in your account within 5-7 business days depending on your bank.<br><br>You're welcome to keep or donate the pads you've received... no need to ship anything back.<br><br>If you ever want to try us again in the future, we'll be here. Thank you for being honest with me... and I hope your pup finds something that works for them 💙");
+    if (itemsUsed) {
+      await addBotMessage("All done! Your refund request has been submitted to our team. 💙<br><br>They'll review your order within <strong>1-2 business days</strong> and process your refund. You should see it in your account within <strong>3-5 business days</strong> after that.<br><br>If you ever want to try us again in the future, we'll be here. Thank you for your patience and honesty throughout this... I really appreciate it.");
 
-    await showSuccess(
-      "Refund Requested",
-      `Your refund will be processed within 5-7 business days. No return needed!<br><br>${getCaseIdHtml(state.caseId)}`
-    );
+      await showSuccess(
+        "Refund Request Submitted",
+        `Our team will review within 1-2 business days. No return needed!<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    } else {
+      await addBotMessage("Perfect! I've submitted your refund request. 💙<br><br>Once you ship the pads back and share the tracking number with us, our team will process everything. Remember — <strong>1-2 business days</strong> to review after we receive them, then <strong>3-5 business days</strong> for the refund to hit your account.<br><br>Thank you for working with us on this. We really do appreciate your patience.");
+
+      await showSuccess(
+        "Refund Request Submitted",
+        `Ship your return and share tracking. Refund processed after we receive it.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    }
   } catch (error) {
     hideProgress();
     console.error('Quality refund error:', error);
