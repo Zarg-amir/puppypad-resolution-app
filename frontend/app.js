@@ -3897,18 +3897,48 @@ async function handleQualityRefund() {
 
   await delay(1500);
 
-  await addBotMessage("So here's the deal:<br><br>✓ <strong>Keep what you already have</strong> — it still works great<br>✓ <strong>We'll reship the Enhanced material pads today</strong> — at no cost to you<br><br>You'll essentially have both versions... and you can see the difference for yourself.<br><br>Does that work for you? 💙");
+  // Show attractive offer card instead of plain text
+  const offerCard = `
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 24px; margin: 10px 0; color: white; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);">
+      <div style="text-align: center; margin-bottom: 16px;">
+        <div style="font-size: 32px; margin-bottom: 8px;">🎁</div>
+        <div style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">Special Offer Just For You</div>
+        <div style="font-size: 13px; opacity: 0.9;">Because your satisfaction matters most</div>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="width: 24px; height: 24px; background: #4ade80; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">✓</div>
+          <div style="font-size: 14px;"><strong>Keep your current pads</strong> — they still work great</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 24px; height: 24px; background: #4ade80; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">✓</div>
+          <div style="font-size: 14px;"><strong>FREE Enhanced PuppyPads</strong> — shipped today</div>
+        </div>
+      </div>
+
+      <div style="text-align: center; font-size: 13px; opacity: 0.85;">
+        You'll have both versions to compare! 💙
+      </div>
+    </div>
+  `;
+  await addBotMessage(offerCard);
+
+  await delay(500);
+
+  await addBotMessage("Does that work for you?");
 
   addOptions([
-    { icon: '✓', text: "Yes, that sounds great! Thank you!", primary: true, action: handleQualityAcceptFreeReship },
+    { icon: '✓', text: "Yes, that sounds great! Thank you!", action: handleQualityAcceptFreeReship },
     { icon: '✕', text: "I'd still prefer just a refund", action: handleQualityStillWantRefund }
   ]);
 }
 
 // Branch 3A: Accept free reship
 async function handleQualityAcceptFreeReship() {
+  const order = state.selectedOrder;
   state.qualityDetails = {
-    padCount: state.selectedOrder?.items?.length || 1,
+    padCount: order?.lineItems?.length || 1,
     itemsUsed: true,
     upgradeTotal: 0
   };
@@ -3919,11 +3949,39 @@ async function handleQualityAcceptFreeReship() {
   // Create the case
   try {
     const caseData = {
-      ...buildBaseCaseData(),
+      // Core identifiers
+      sessionId: state.sessionId || '',
       caseType: 'shipping',
       issueType: 'quality_difference',
       resolution: 'reship_quality_upgrade',
-      qualityDetails: state.qualityDetails
+
+      // Customer info
+      email: state.customerData?.email || order?.email || '',
+      customerName: order?.customerName || state.customerData?.name || '',
+      customerFirstName: order?.customerFirstName || state.customerData?.firstName || '',
+      customerLastName: order?.customerLastName || state.customerData?.lastName || '',
+
+      // Order info
+      orderNumber: order?.orderNumber || '',
+      orderDate: order?.orderDate || '',
+      orderUrl: order?.orderUrl || '',
+      refundAmount: order?.total || null,
+
+      // Selected items
+      selectedItems: (order?.lineItems || []).map(item => ({
+        id: item.id,
+        title: item.title,
+        sku: item.sku || '',
+        price: item.price,
+        quantity: item.quantity || 1,
+      })),
+
+      // Quality-specific
+      qualityDetails: state.qualityDetails,
+      keepProduct: true,
+
+      // Timestamps
+      createdAt: new Date().toISOString(),
     };
 
     const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
@@ -3931,6 +3989,10 @@ async function handleQualityAcceptFreeReship() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(caseData)
     });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
 
     const result = await response.json();
     state.caseId = result.caseId;
@@ -3945,14 +4007,16 @@ async function handleQualityAcceptFreeReship() {
     );
   } catch (error) {
     hideProgress();
+    console.error('Quality reship error:', error);
     await addBotMessage("I'm sorry, there was an issue processing your request. Please try again or contact us directly.");
   }
 }
 
 // Branch 3B: Still want refund
 async function handleQualityStillWantRefund() {
+  const order = state.selectedOrder;
   state.qualityDetails = {
-    padCount: state.selectedOrder?.items?.length || 1,
+    padCount: order?.lineItems?.length || 1,
     itemsUsed: true,
     upgradeTotal: 0
   };
@@ -3962,12 +4026,39 @@ async function handleQualityStillWantRefund() {
 
   try {
     const caseData = {
-      ...buildBaseCaseData(),
+      // Core identifiers
+      sessionId: state.sessionId || '',
       caseType: 'refund',
       issueType: 'quality_difference',
       resolution: 'full_refund_quality',
+
+      // Customer info
+      email: state.customerData?.email || order?.email || '',
+      customerName: order?.customerName || state.customerData?.name || '',
+      customerFirstName: order?.customerFirstName || state.customerData?.firstName || '',
+      customerLastName: order?.customerLastName || state.customerData?.lastName || '',
+
+      // Order info
+      orderNumber: order?.orderNumber || '',
+      orderDate: order?.orderDate || '',
+      orderUrl: order?.orderUrl || '',
+      refundAmount: order?.total || null,
+
+      // Selected items
+      selectedItems: (order?.lineItems || []).map(item => ({
+        id: item.id,
+        title: item.title,
+        sku: item.sku || '',
+        price: item.price,
+        quantity: item.quantity || 1,
+      })),
+
+      // Quality-specific
+      qualityDetails: state.qualityDetails,
       keepProduct: true,
-      qualityDetails: state.qualityDetails
+
+      // Timestamps
+      createdAt: new Date().toISOString(),
     };
 
     const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
@@ -3975,6 +4066,10 @@ async function handleQualityStillWantRefund() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(caseData)
     });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
 
     const result = await response.json();
     state.caseId = result.caseId;
@@ -3989,6 +4084,7 @@ async function handleQualityStillWantRefund() {
     );
   } catch (error) {
     hideProgress();
+    console.error('Quality refund error:', error);
     await addBotMessage("I'm sorry, there was an issue processing your request. Please try again or contact us directly.");
   }
 }
@@ -3998,14 +4094,43 @@ async function handleQualityConfirmUpgrade(resolution) {
   showProgress("Creating your upgrade request...");
 
   try {
+    const order = state.selectedOrder;
     const caseType = resolution === 'upgrade_keep_originals' ? 'manual' : 'return';
 
     const caseData = {
-      ...buildBaseCaseData(),
+      // Core identifiers
+      sessionId: state.sessionId || '',
       caseType: caseType,
       issueType: 'quality_difference',
       resolution: resolution,
-      qualityDetails: state.qualityDetails
+
+      // Customer info
+      email: state.customerData?.email || order?.email || '',
+      customerName: order?.customerName || state.customerData?.name || '',
+      customerFirstName: order?.customerFirstName || state.customerData?.firstName || '',
+      customerLastName: order?.customerLastName || state.customerData?.lastName || '',
+
+      // Order info
+      orderNumber: order?.orderNumber || '',
+      orderDate: order?.orderDate || '',
+      orderUrl: order?.orderUrl || '',
+      refundAmount: state.qualityDetails?.upgradeTotal || null,
+
+      // Selected items
+      selectedItems: (order?.lineItems || []).map(item => ({
+        id: item.id,
+        title: item.title,
+        sku: item.sku || '',
+        price: item.price,
+        quantity: item.quantity || 1,
+      })),
+
+      // Quality-specific
+      qualityDetails: state.qualityDetails,
+      keepProduct: resolution === 'upgrade_keep_originals',
+
+      // Timestamps
+      createdAt: new Date().toISOString(),
     };
 
     const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
@@ -4013,6 +4138,10 @@ async function handleQualityConfirmUpgrade(resolution) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(caseData)
     });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
 
     const result = await response.json();
     state.caseId = result.caseId;
@@ -4036,6 +4165,7 @@ async function handleQualityConfirmUpgrade(resolution) {
     }
   } catch (error) {
     hideProgress();
+    console.error('Quality upgrade error:', error);
     await addBotMessage("I'm sorry, there was an issue processing your request. Please try again or contact us directly.");
   }
 }
@@ -4061,13 +4191,40 @@ async function handleQualityQuestion() {
     await addBotMessage("Great question! Let me connect you with our team who can help with that specific question.<br><br>I've noted your question and someone will get back to you within 24 hours.");
 
     // Create manual case for the question
+    const order = state.selectedOrder;
     const caseData = {
-      ...buildBaseCaseData(),
+      // Core identifiers
+      sessionId: state.sessionId || '',
       caseType: 'manual',
       issueType: 'quality_difference',
       resolution: 'manual_assistance',
+
+      // Customer info
+      email: state.customerData?.email || order?.email || '',
+      customerName: order?.customerName || state.customerData?.name || '',
+      customerFirstName: order?.customerFirstName || state.customerData?.firstName || '',
+      customerLastName: order?.customerLastName || state.customerData?.lastName || '',
+
+      // Order info
+      orderNumber: order?.orderNumber || '',
+      orderDate: order?.orderDate || '',
+      orderUrl: order?.orderUrl || '',
+
+      // Selected items
+      selectedItems: (order?.lineItems || []).map(item => ({
+        id: item.id,
+        title: item.title,
+        sku: item.sku || '',
+        price: item.price,
+        quantity: item.quantity || 1,
+      })),
+
+      // Question details
       intentDetails: question,
-      qualityDetails: state.qualityDetails
+      qualityDetails: state.qualityDetails,
+
+      // Timestamps
+      createdAt: new Date().toISOString(),
     };
 
     try {
@@ -4077,6 +4234,10 @@ async function handleQualityQuestion() {
         body: JSON.stringify(caseData)
       });
 
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
       const result = await response.json();
       state.caseId = result.caseId;
 
@@ -4085,6 +4246,7 @@ async function handleQualityQuestion() {
         `Our team will respond within 24 hours.<br><br>${getCaseIdHtml(state.caseId)}`
       );
     } catch (error) {
+      console.error('Quality question error:', error);
       await addBotMessage("I've noted your question. Our team will reach out to you soon!");
     }
   });
