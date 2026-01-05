@@ -3719,36 +3719,375 @@ function generateFallbackProductPitch(items) {
 }
 
 async function handleQualityDifference() {
-  await addBotMessage("I understand you've noticed a quality difference in your PuppyPads. Here's what's happening:<br><br>We recently <strong>upgraded</strong> our PuppyPads to a premium version! 🎉<br><br>The higher quality pads you received are actually our new and improved version — thicker, more absorbent, and more durable. They normally cost $20-30 more, but we're giving them to our valued customers at the same price!");
-  
+  // Opening message 1
+  await addBotMessage("Hey! 👋<br>Thanks for reaching out... I can see you've received different materials in your order and you're wondering what's going on.<br><br>Totally get it. Let me explain because honestly... this is actually good news for you.");
+
+  await delay(1500);
+
+  // Opening message 2 - Explain the two versions
+  await addBotMessage("So here's what's happening...<br><br>We've been quietly upgrading our PuppyPad materials over the past few months. Which means right now, there are two versions floating around:<br><br><strong>Original PuppyPad</strong> — our 5-layer design that earned us 37,000+ five-star reviews<br><br><strong>Enhanced PuppyPad</strong> — our newer 6-layer design with upgraded materials<br><br>During this transition period, some orders ship with Original, some with Enhanced... it just depends on what's available in our warehouse when your order gets packed.");
+
+  await delay(1500);
+
+  // Opening message 3 - Show comparison
+  await addBotMessage("Let me show you exactly what's different between them...");
+
+  await delay(800);
+
+  // Comparison card
+  const comparisonCard = `
+    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; padding: 20px; margin: 10px 0; border: 1px solid #dee2e6;">
+      <div style="display: flex; gap: 20px; text-align: center;">
+        <div style="flex: 1;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 12px; color: #495057;">ORIGINAL</div>
+          <div style="font-size: 13px; color: #6c757d; line-height: 1.8;">
+            5 Layers<br>
+            270gsm Absorber<br>
+            —<br>
+            Standard Waterproof<br>
+            Anti-Slip Coating<br>
+            Standard Stitching
+          </div>
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #dee2e6; font-weight: bold; color: #495057;">$50/pad</div>
+        </div>
+        <div style="width: 1px; background: #dee2e6;"></div>
+        <div style="flex: 1;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 12px; color: #6f42c1;">ENHANCED</div>
+          <div style="font-size: 13px; color: #6c757d; line-height: 1.8;">
+            6 Layers<br>
+            300gsm Absorber (+30%)<br>
+            Comfort Cushion Layer ✨<br>
+            Medical-Grade TPU<br>
+            Rubber Paw Grip Dots<br>
+            Reinforced Edge Binding ✨
+          </div>
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #dee2e6; font-weight: bold; color: #6f42c1;">$70/pad</div>
+        </div>
+      </div>
+    </div>
+  `;
+  await addBotMessage(comparisonCard);
+
+  await delay(1000);
+
+  // Explain the pricing
+  await addBotMessage("Now here's the important bit...<br><br>You paid the Original price ($50/pad).<br><br>During our transition, everyone pays Original pricing... regardless of which version actually ships. We're absorbing the extra cost on our end because we wanted to test the new materials with real customers before officially launching them.<br><br>So if you received Enhanced... you basically got a $20 upgrade per pad for free.<br><br>And if you received Original... you got exactly what you paid for. The same pad that thousands of customers have loved and reviewed.");
+
+  await delay(1500);
+
+  // What stays the same
+  await addBotMessage("What stays the same in BOTH versions:<br><br>✓ Pheromone technology (so your dog actually uses it)<br>✓ 100% leak-proof protection<br>✓ Machine washable 300+ times<br>✓ Our full 90-day guarantee<br><br>The Original isn't a \"worse\" version... it's the pad that built this company. The Enhanced just has some extra bells and whistles we've been developing.");
+
+  await delay(1500);
+
+  // Present options
+  await addBotMessage("So that's the full picture! 💙<br><br>Now I want to make sure you're completely happy here... what would you like to do?");
+
   addOptions([
-    { text: "Oh great! I love them actually", action: async () => {
-      await addBotMessage("That's wonderful to hear! 🎉 Enjoy your premium PuppyPads. Is there anything else I can help with?");
-      addOptions([
-        { text: "No, I'm all set!", action: () => showSuccess("Thanks for chatting!", "Enjoy your PuppyPads! 🐕") },
-        { text: "Yes, something else", action: showHomeMenu }
-      ]);
-    }},
-    { text: "I prefer the original quality", action: async () => {
-      await addBotMessage("I completely understand — everyone has preferences! As a one-time courtesy, I can ship you a set of our original PuppyPads free of charge. You can keep the premium ones too!");
-      
-      addOptionsRow([
-        { text: "Yes please!", primary: true, action: async () => {
-          showProgress("Creating free reship order...");
-          await delay(1500);
-          hideProgress();
-          
-          state.caseId = generateCaseId('shipping');
-          
-          await showSuccess(
-            "Free Reship Created!",
-            `We'll ship out the original PuppyPads within 1-2 business days. Keep the premium ones too! 🎁<br><br>${getCaseIdHtml(state.caseId)}`
-          );
-        }},
-        { text: "No thanks", action: showHomeMenu }
-      ]);
-    }}
+    { icon: '✓', text: "I'd like to keep my order as it is", action: handleQualityKeepOrder },
+    { icon: '↑', text: "I don't mind paying more to get the newer material ones", action: handleQualityPayMore },
+    { icon: '←', text: "I'd prefer a refund for the older material ones", action: handleQualityRefund }
   ]);
+}
+
+// Branch 1: Keep order as-is
+async function handleQualityKeepOrder() {
+  await addBotMessage("Amazing... thank you so much for understanding! 💙<br><br>Give your PuppyPad a go... I think you're going to love it. And if anything doesn't feel right after a week or two, just message us. We've got you covered.<br><br>Your pup's gonna do great with it 🐾");
+
+  addOptions([
+    { text: "Thanks!", action: () => showSuccess("You're all set!", "Enjoy your PuppyPads! 🐕") }
+  ]);
+}
+
+// Branch 2: Pay more for Enhanced
+async function handleQualityPayMore() {
+  await addBotMessage("That's really sweet of you to offer... we appreciate that so much 💙<br><br>So here's how we can make this work...<br><br>We can generate a custom checkout link for you to pay just the difference for the Enhanced material pads. But before we do that, we'd need you to return the older material ones.<br><br>Quick question first though...<br><br>Have the Original material pads been used?");
+
+  await delay(1000);
+
+  await addBotMessage("Just so we're on the same page... by \"used\" I mean:<br><br>• Your dog has stepped on them, peed on them, or slept on them<br>• There's any fur, dirt, stains, or marks on the pad<br>• The pad has been washed<br>• The packaging is damaged and can't be resealed<br><br>If you've just opened the package to take a look and can put everything back in like it was before... that's totally fine. That counts as unused and you can still return it.");
+
+  addOptions([
+    { icon: '✓', text: "Yes, they've been used", action: handleQualityUsedItems },
+    { icon: '✕', text: "No, they're unused / can be repackaged", action: handleQualityUnusedItems }
+  ]);
+}
+
+// Branch 2A: Items have been used
+async function handleQualityUsedItems() {
+  await addBotMessage("Okay got it... let me just check with my manager quickly to see what we can do here.<br><br>Obviously we can't accept returns on used items for hygiene reasons... but let me see if there's another way we can sort this out for you.<br><br>One moment 💙");
+
+  showProgress("Checking with manager...");
+  await delay(2500);
+  hideProgress();
+
+  await addBotMessage("Great news! I spoke with my manager and here's what we can do...<br><br>You can keep the Original PuppyPads you already have. No need to return them.<br><br>We'll generate a custom checkout link for you where you'd only pay the difference between the Original and Enhanced price.<br><br>So instead of paying $70 per pad for the new ones... you'd just pay the <strong>$20 difference per pad</strong>.<br><br>I'll be honest with you... this means we're losing out on our product costs here because you're keeping the Originals AND getting the Enhanced ones at a reduced rate. But that's okay. We'd rather you be happy than worry about the numbers.");
+
+  await delay(1000);
+
+  await addBotMessage("So just to get this sorted for you...<br><br>Can you please confirm how many pads you have that are the older Original material?");
+
+  showTextInput("Number of Original material pads...", async (padCount) => {
+    hideTextInput();
+
+    const count = parseInt(padCount) || 1;
+    const total = count * 20;
+
+    state.qualityDetails = {
+      padCount: count,
+      itemsUsed: true,
+      upgradeTotal: total
+    };
+
+    await addBotMessage(`Perfect... so that's ${count} pad${count > 1 ? 's' : ''}.<br><br>Here's what happens next:<br><br>1️⃣ We'll create a custom checkout link for you — this will be for <strong>$${total}</strong> (${count} pad${count > 1 ? 's' : ''} × $20 difference)<br>2️⃣ We'll send that link to your email within the next few hours<br>3️⃣ Once you've made the payment, we'll pack and ship your Enhanced material PuppyPads right away<br><br>You'll get a confirmation email with tracking as soon as it's dispatched.<br><br>Sound good? 💙`);
+
+    addOptions([
+      { icon: '✓', text: "Yes, sounds great!", primary: true, action: () => handleQualityConfirmUpgrade('upgrade_keep_originals') },
+      { icon: '←', text: "Actually, I've changed my mind", action: handleQualityChangedMind }
+    ]);
+  });
+}
+
+// Branch 2B: Items are unused
+async function handleQualityUnusedItems() {
+  await addBotMessage("Perfect... since they're still in returnable condition, you can send them back to us and we'll get the Enhanced ones out to you.<br><br>Here's our return address:<br><br><strong>PuppyPad Returns</strong><br>123 Warehouse Way<br>Los Angeles, CA 90001<br>United States");
+
+  await delay(1500);
+
+  await addBotMessage("Now I do need to explain something about the shipping...<br><br>Unfortunately we're not able to generate prepaid return shipping labels on our end. We're a small team and our shipping system isn't set up to create labels for inbound returns... it only handles outbound shipments.<br><br>I know that's not ideal and I'm really sorry about that 😅<br><br>What we'd need you to do is arrange the return shipping yourself through your local post office or courier. It doesn't need to be anything fancy... just whatever's most convenient and affordable for you.");
+
+  await delay(1500);
+
+  await addBotMessage("Here's how the process works:<br><br>1️⃣ You ship the unused Original pads back to us using the address above<br>2️⃣ Once you've sent them, share the tracking number with us<br>3️⃣ As soon as we have the tracking, we'll send you a custom checkout link for the difference ($20 per pad)<br>4️⃣ Once you've paid, we'll pack and ship your Enhanced PuppyPads right away<br><br>So basically... while your return is on its way back to us, your new Enhanced pads will already be getting packed and shipped out to you. That way you're not waiting around too long 💙");
+
+  await delay(1000);
+
+  await addBotMessage("Quick question... how many Original material pads will you be returning?");
+
+  showTextInput("Number of pads you're returning...", async (padCount) => {
+    hideTextInput();
+
+    const count = parseInt(padCount) || 1;
+    const total = count * 20;
+
+    state.qualityDetails = {
+      padCount: count,
+      itemsUsed: false,
+      upgradeTotal: total
+    };
+
+    await addBotMessage(`Got it... ${count} pad${count > 1 ? 's' : ''}.<br><br>So just to recap:<br><br>• You'll ship back ${count} Original PuppyPad${count > 1 ? 's' : ''} to the address above<br>• Once you have a tracking number, send it to us here or via email<br>• We'll then send you a custom checkout link for <strong>$${total}</strong> (${count} pad${count > 1 ? 's' : ''} × $20 difference)<br>• After payment, your ${count} Enhanced PuppyPad${count > 1 ? 's' : ''} will ship out immediately<br><br>Does that all make sense? 💙`);
+
+    addOptions([
+      { icon: '✓', text: "Yes, I'll arrange the return now", primary: true, action: () => handleQualityConfirmUpgrade('return_upgrade_enhanced') },
+      { icon: '?', text: "I have a question", action: handleQualityQuestion }
+    ]);
+  });
+}
+
+// Branch 3: Customer wants refund
+async function handleQualityRefund() {
+  await addBotMessage("Totally understand. Let me just check with my manager quickly to see if there's something else we can do for you here...<br><br>One moment 💙");
+
+  showProgress("Checking with manager...");
+  await delay(2500);
+  hideProgress();
+
+  await addBotMessage("Okay I'm back!<br><br>So I spoke with my manager and here's what we'd like to do...<br><br>We really value our customers and we want to make sure you're fully satisfied. So instead of a refund, what we can do is ship out the new Enhanced material pads to you... <strong>completely free of charge</strong>.<br><br>No extra cost to you at all.<br><br>I'll be honest... this means we're covering the product cost AND the shipping cost on our end. We're losing out on this one. But that's okay. Your satisfaction matters more to us than the money.");
+
+  await delay(1500);
+
+  await addBotMessage("So here's the deal:<br><br>✓ <strong>Keep what you already have</strong> — it still works great<br>✓ <strong>We'll reship the Enhanced material pads today</strong> — at no cost to you<br><br>You'll essentially have both versions... and you can see the difference for yourself.<br><br>Does that work for you? 💙");
+
+  addOptions([
+    { icon: '✓', text: "Yes, that sounds great! Thank you!", primary: true, action: handleQualityAcceptFreeReship },
+    { icon: '✕', text: "I'd still prefer just a refund", action: handleQualityStillWantRefund }
+  ]);
+}
+
+// Branch 3A: Accept free reship
+async function handleQualityAcceptFreeReship() {
+  state.qualityDetails = {
+    padCount: state.selectedOrder?.items?.length || 1,
+    itemsUsed: true,
+    upgradeTotal: 0
+  };
+
+  showProgress("Processing free reship...");
+  await delay(1500);
+
+  // Create the case
+  try {
+    const caseData = {
+      ...buildBaseCaseData(),
+      caseType: 'shipping',
+      issueType: 'quality_difference',
+      resolution: 'reship_quality_upgrade',
+      qualityDetails: state.qualityDetails
+    };
+
+    const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(caseData)
+    });
+
+    const result = await response.json();
+    state.caseId = result.caseId;
+
+    hideProgress();
+
+    await addBotMessage("Awesome! 🎉<br><br>I'm processing the reshipment now. You'll get a confirmation email with tracking once it's on its way... should be within 24 hours.<br><br>Thank you for giving us the chance to make this right. It genuinely means a lot to us.<br><br>If you have any other questions at all... I'm here. 💙");
+
+    await showSuccess(
+      "Free Reship Created!",
+      `We'll ship your Enhanced PuppyPads within 24 hours. Keep the Original ones too! 🎁<br><br>${getCaseIdHtml(state.caseId)}`
+    );
+  } catch (error) {
+    hideProgress();
+    await addBotMessage("I'm sorry, there was an issue processing your request. Please try again or contact us directly.");
+  }
+}
+
+// Branch 3B: Still want refund
+async function handleQualityStillWantRefund() {
+  state.qualityDetails = {
+    padCount: state.selectedOrder?.items?.length || 1,
+    itemsUsed: true,
+    upgradeTotal: 0
+  };
+
+  showProgress("Processing refund request...");
+  await delay(1500);
+
+  try {
+    const caseData = {
+      ...buildBaseCaseData(),
+      caseType: 'refund',
+      issueType: 'quality_difference',
+      resolution: 'full_refund_quality',
+      keepProduct: true,
+      qualityDetails: state.qualityDetails
+    };
+
+    const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(caseData)
+    });
+
+    const result = await response.json();
+    state.caseId = result.caseId;
+
+    hideProgress();
+
+    await addBotMessage("No problem at all... I completely respect that.<br><br>I'll process your refund now for the older material items. You should see it back in your account within 5-7 business days depending on your bank.<br><br>You're welcome to keep or donate the pads you've received... no need to ship anything back.<br><br>If you ever want to try us again in the future, we'll be here. Thank you for being honest with me... and I hope your pup finds something that works for them 💙");
+
+    await showSuccess(
+      "Refund Requested",
+      `Your refund will be processed within 5-7 business days. No return needed!<br><br>${getCaseIdHtml(state.caseId)}`
+    );
+  } catch (error) {
+    hideProgress();
+    await addBotMessage("I'm sorry, there was an issue processing your request. Please try again or contact us directly.");
+  }
+}
+
+// Confirm upgrade (for both used and unused branches)
+async function handleQualityConfirmUpgrade(resolution) {
+  showProgress("Creating your upgrade request...");
+
+  try {
+    const caseType = resolution === 'upgrade_keep_originals' ? 'manual' : 'return';
+
+    const caseData = {
+      ...buildBaseCaseData(),
+      caseType: caseType,
+      issueType: 'quality_difference',
+      resolution: resolution,
+      qualityDetails: state.qualityDetails
+    };
+
+    const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(caseData)
+    });
+
+    const result = await response.json();
+    state.caseId = result.caseId;
+
+    hideProgress();
+
+    if (resolution === 'upgrade_keep_originals') {
+      await addBotMessage("Amazing! I'll get that sorted for you now 🎉<br><br>Keep an eye on your inbox... you should receive the custom checkout link within a few hours.<br><br>Thank you so much for working with us on this. It really means a lot that you trust us to make it right.<br><br>Any questions at all, just message us. We're always here 💙");
+
+      await showSuccess(
+        "Upgrade Request Created!",
+        `We'll email you a checkout link for $${state.qualityDetails.upgradeTotal} within a few hours.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    } else {
+      await addBotMessage("Amazing! Thank you so much for being patient with this process 💙<br><br>Just send us the tracking number once you've shipped it and we'll take care of everything from there.<br><br>You can reply here or email us at help@teampuppypad.com with the tracking info.<br><br>Chat soon! 🐾");
+
+      await showSuccess(
+        "Return & Upgrade Request Created!",
+        `Ship your return and send us the tracking number. We'll then send you a $${state.qualityDetails.upgradeTotal} checkout link.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    }
+  } catch (error) {
+    hideProgress();
+    await addBotMessage("I'm sorry, there was an issue processing your request. Please try again or contact us directly.");
+  }
+}
+
+// Changed mind during upgrade flow
+async function handleQualityChangedMind() {
+  await addBotMessage("No problem at all! That's totally okay.<br><br>Would you like to:");
+
+  addOptions([
+    { icon: '✓', text: "Keep my order as it is", action: handleQualityKeepOrder },
+    { icon: '←', text: "Go back to other options", action: handleQualityDifference }
+  ]);
+}
+
+// Question during return flow
+async function handleQualityQuestion() {
+  await addBotMessage("Of course! What would you like to know?");
+
+  showTextInput("Type your question...", async (question) => {
+    hideTextInput();
+    state.intentDetails = question;
+
+    await addBotMessage("Great question! Let me connect you with our team who can help with that specific question.<br><br>I've noted your question and someone will get back to you within 24 hours.");
+
+    // Create manual case for the question
+    const caseData = {
+      ...buildBaseCaseData(),
+      caseType: 'manual',
+      issueType: 'quality_difference',
+      resolution: 'manual_assistance',
+      intentDetails: question,
+      qualityDetails: state.qualityDetails
+    };
+
+    try {
+      const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(caseData)
+      });
+
+      const result = await response.json();
+      state.caseId = result.caseId;
+
+      await showSuccess(
+        "Question Submitted",
+        `Our team will respond within 24 hours.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    } catch (error) {
+      await addBotMessage("I've noted your question. Our team will reach out to you soon!");
+    }
+  });
 }
 
 async function handleOtherReason() {
