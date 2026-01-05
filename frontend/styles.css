@@ -927,9 +927,21 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
 }
 
+.option-btn.primary .icon {
+  background: transparent;
+  width: auto;
+  height: auto;
+  color: white;
+}
+
 .option-btn.primary:hover {
   background: var(--brand-navy-light);
   transform: translateY(-2px);
+}
+
+.option-btn.primary:hover .icon {
+  background: transparent;
+  transform: none;
 }
 
 /* Options Container */
