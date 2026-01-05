@@ -704,6 +704,59 @@ Products in their order: ${data.products || 'PuppyPad products'}
 Order total: ${data.orderTotal || 'their order'}
 
 Get them excited about what they received! Focus on genuine benefits and problem-solution messaging. Be warm and enthusiastic but not pushy.`
+  },
+
+  // Quality difference - customer noticed material difference
+  quality_difference: {
+    model: 'gpt-4o-mini',
+    temperature: 0.7,
+    maxTokens: 600,
+    buildSystemPrompt: (productDoc) => `You are Amy, a warm and knowledgeable customer support specialist for PuppyPad.
+
+A customer has noticed a quality/material difference in their PuppyPad order. This is because we've been transitioning from Original (5-layer) to Enhanced (6-layer) materials.
+
+=== KEY INFORMATION ===
+We have TWO versions of PuppyPad:
+
+ORIGINAL (5-layer):
+- 270gsm absorber
+- Standard waterproof backing
+- Anti-slip coating
+- Standard stitching
+- Retail price: ~$50/pad
+
+ENHANCED (6-layer):
+- 300gsm absorber (+30% more absorbent)
+- Comfort cushion layer (NEW)
+- Medical-grade TPU waterproof backing
+- Rubber paw-shaped grip dots
+- Reinforced edge binding
+- Retail price: ~$70/pad
+
+During transition, some orders ship with Original, some with Enhanced - depending on warehouse stock. Everyone pays Original pricing regardless of which version ships.
+
+=== WHAT STAYS THE SAME ===
+Both versions have:
+✓ Pheromone technology
+✓ 100% leak-proof protection
+✓ Machine washable 300+ times
+✓ Full 90-day guarantee
+
+=== TONE & STYLE ===
+- Warm, friendly, reassuring
+- Make them feel like they got a good deal either way
+- Don't be defensive about the difference
+- Use ellipses (...) for pauses, NEVER em-dashes
+- This is a CHAT message, NOT an email
+- NEVER sign off with "Warm regards", "Best", etc.
+
+=== PRODUCT INFO ===
+${productDoc || 'PuppyPad premium reusable dog pee pads'}`,
+    buildUserPrompt: (data) => `Customer name: ${data.customerName || 'there'}
+Their concern: "${data.customerMessage || 'noticed different materials'}"
+What version they received: ${data.versionReceived || 'Unknown'}
+
+Explain the quality difference in a positive way. Make them feel good about their purchase.`
   }
 };
 
@@ -783,7 +836,8 @@ const SOP_URLS = {
   return: 'https://docs.puppypad.com/sop/returns',
   shipping: 'https://docs.puppypad.com/sop/shipping-issues',
   subscription: 'https://docs.puppypad.com/sop/subscriptions',
-  manual: 'https://docs.puppypad.com/sop/manual-assistance'
+  manual: 'https://docs.puppypad.com/sop/manual-assistance',
+  quality_difference: 'https://docs.puppypad.com/sop/quality-difference'
 };
 
 export default {
@@ -1887,6 +1941,12 @@ function formatResolution(resolution, caseData) {
     'stuck_out_for_delivery': 'Contact carrier or reship',
     'pending_too_long': 'Check fulfillment status',
     'multiple_failed_attempts': 'Arrange redelivery or reship',
+
+    // Quality difference - upgrade flows
+    'upgrade_keep_originals': 'Generate checkout link - customer keeps Originals + pays for Enhanced',
+    'return_upgrade_enhanced': 'Accept return of Originals + generate checkout link for Enhanced upgrade',
+    'reship_quality_upgrade': 'FREE reship of Enhanced pads (quality resolution)',
+    'full_refund_quality': `Full refund (${refundAmount}) - quality difference (customer keeps product)`,
   };
 
   // Check for dynamic partial_XX_reship patterns
@@ -2058,7 +2118,10 @@ async function createClickUpTask(env, listId, caseData) {
   const task = await response.json();
 
   // Build formatted comment using ClickUp's rich text API
-  const sopUrl = SOP_URLS[caseData.caseType] || SOP_URLS.manual;
+  // Use quality_difference SOP if that's the issue type, otherwise use case type
+  const sopUrl = caseData.issueType === 'quality_difference'
+    ? SOP_URLS.quality_difference
+    : (SOP_URLS[caseData.caseType] || SOP_URLS.manual);
   const orderDate = caseData.orderDate ? new Date(caseData.orderDate).toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric'
   }) : 'Unknown';
@@ -2211,6 +2274,73 @@ function buildClickUpComment(caseData, orderIssue, formattedResolution, orderDat
       addBoldLine('Cancel Reason:', reasonLabels[caseData.cancelReason] || caseData.cancelReason);
     }
     if (caseData.subscriptionStatus) addBoldLine('Status:', caseData.subscriptionStatus);
+  }
+
+  // Quality difference specific details
+  if (caseData.issueType === 'quality_difference' && caseData.qualityDetails) {
+    const qd = caseData.qualityDetails;
+    addHeader('🔄 QUALITY UPGRADE DETAILS');
+
+    if (qd.padCount) addBoldLine('Number of Pads:', qd.padCount);
+    if (qd.itemsUsed !== undefined) addBoldLine('Items Status:', qd.itemsUsed ? 'USED (keeping)' : 'UNUSED (returning)');
+    if (qd.upgradeTotal) addBoldLine('Upgrade Cost:', `$${qd.upgradeTotal} ($20 × ${qd.padCount} pads)`);
+
+    comment.push({ text: '\n', attributes: {} });
+
+    // Action steps based on resolution
+    if (caseData.resolution === 'upgrade_keep_originals') {
+      comment.push({ text: '✅ ACTION STEPS:', attributes: { bold: true } });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: `1. Generate custom checkout link for $${qd.upgradeTotal}`, attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: '2. Send checkout link to customer email', attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: `3. Once paid, ship ${qd.padCount} Enhanced PuppyPads`, attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: '4. Send tracking confirmation', attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: '5. Close ticket', attributes: {} });
+      comment.push({ text: '\n\n', attributes: {} });
+      comment.push({ text: '⚠️ NOTE: Customer is keeping Original pads. We are absorbing Original product cost for satisfaction.', attributes: { italic: true } });
+      comment.push({ text: '\n', attributes: {} });
+    } else if (caseData.resolution === 'return_upgrade_enhanced') {
+      comment.push({ text: '✅ ACTION STEPS:', attributes: { bold: true } });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: '1. Wait for customer to ship return (they arrange shipping)', attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: '2. Customer will provide tracking number', attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: `3. Once tracking received, generate checkout link for $${qd.upgradeTotal}`, attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: '4. Send checkout link to customer', attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: `5. Once paid, ship ${qd.padCount} Enhanced PuppyPads`, attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: '6. Close ticket when delivered', attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+    } else if (caseData.resolution === 'reship_quality_upgrade') {
+      comment.push({ text: '✅ ACTION STEPS:', attributes: { bold: true } });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: `1. Ship ${qd.padCount || 'order quantity'} Enhanced PuppyPads (FREE - no charge)`, attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: '2. Send tracking to customer', attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: '3. Close ticket once delivered', attributes: {} });
+      comment.push({ text: '\n\n', attributes: {} });
+      comment.push({ text: '⚠️ COST ABSORPTION: We are covering product + shipping cost. Customer keeps Original pads.', attributes: { italic: true } });
+      comment.push({ text: '\n', attributes: {} });
+    } else if (caseData.resolution === 'full_refund_quality') {
+      comment.push({ text: '✅ ACTION STEPS:', attributes: { bold: true } });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: '1. Process full refund in Shopify', attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: '2. Send refund confirmation email', attributes: {} });
+      comment.push({ text: '\n', attributes: {} });
+      comment.push({ text: '3. Close ticket', attributes: {} });
+      comment.push({ text: '\n\n', attributes: {} });
+      comment.push({ text: '⚠️ NOTE: Customer declined free Enhanced reship. No return needed - customer keeps Original pads.', attributes: { italic: true } });
+      comment.push({ text: '\n', attributes: {} });
+    }
   }
 
   // Session replay link (always include if available)
@@ -2516,6 +2646,105 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
       firstName
     );
   }
+  // QUALITY DIFFERENCE CASES - Custom messages based on resolution
+  else if (caseData.issueType === 'quality_difference') {
+    const qd = caseData.qualityDetails || {};
+    const padCount = qd.padCount || 'my';
+    const upgradeTotal = qd.upgradeTotal ? `$${qd.upgradeTotal}` : 'the difference';
+
+    if (caseData.resolution === 'upgrade_keep_originals') {
+      // Branch 2A: Used items - keep originals + pay for enhanced
+      messageParts.push(
+        'Hi there,',
+        '',
+        `I used your online resolution center about a quality difference I noticed in my PuppyPads.`,
+        '',
+        `After chatting with your support, I understand there are two versions (Original and Enhanced) and I'd like to upgrade to the Enhanced version.`,
+        '',
+        `I have ${padCount} Original pads that I've already used, so I can't return them. I was told I could keep them AND pay just the $20 difference per pad for the Enhanced ones.`,
+        '',
+        `So that's ${upgradeTotal} for ${padCount} Enhanced PuppyPads.`,
+        '',
+        `Please send me the checkout link when it's ready!`,
+        '',
+        `My order number is ${caseData.orderNumber || 'N/A'} and my case reference is ${caseId}.`,
+        '',
+        'Thanks!',
+        '',
+        firstName
+      );
+    } else if (caseData.resolution === 'return_upgrade_enhanced') {
+      // Branch 2B: Unused items - return + pay for enhanced
+      messageParts.push(
+        'Hi there,',
+        '',
+        `I used your online resolution center about a quality difference I noticed in my PuppyPads.`,
+        '',
+        `I'd like to return my ${padCount} unused Original pads and upgrade to the Enhanced version.`,
+        '',
+        `I was given your return address and I'll arrange shipping myself. I'll send you the tracking number once I've shipped it.`,
+        '',
+        `Then I'll pay the ${upgradeTotal} difference ($20 per pad) for the Enhanced ones.`,
+        '',
+        `My order number is ${caseData.orderNumber || 'N/A'} and my case reference is ${caseId}.`,
+        '',
+        'Thanks!',
+        '',
+        firstName
+      );
+    } else if (caseData.resolution === 'reship_quality_upgrade') {
+      // Branch 3A: Accepted free reship of enhanced
+      messageParts.push(
+        'Hi there,',
+        '',
+        `I used your online resolution center about a quality difference I noticed in my PuppyPads.`,
+        '',
+        `I wasn't fully satisfied with the Original materials, but your support team offered to ship me the Enhanced version for free, and I've accepted that offer.`,
+        '',
+        `I understand I can keep what I already have, and you'll send the Enhanced pads at no cost.`,
+        '',
+        'Thank you for making this right!',
+        '',
+        `My order number is ${caseData.orderNumber || 'N/A'} and my case reference is ${caseId}.`,
+        '',
+        'Thanks!',
+        '',
+        firstName
+      );
+    } else if (caseData.resolution === 'full_refund_quality') {
+      // Branch 3B: Still want refund
+      messageParts.push(
+        'Hi there,',
+        '',
+        `I used your online resolution center about a quality difference I noticed in my PuppyPads.`,
+        '',
+        `I was offered a free reship of the Enhanced version, but I'd prefer a refund instead.`,
+        '',
+        `I understand I can keep what I already have.`,
+        '',
+        `My order number is ${caseData.orderNumber || 'N/A'} and my case reference is ${caseId}.`,
+        '',
+        'Thanks!',
+        '',
+        firstName
+      );
+    } else {
+      // Generic quality difference fallback
+      messageParts.push(
+        'Hi there,',
+        '',
+        `I used your online resolution center about a quality difference I noticed in my PuppyPads.`,
+        '',
+        `My order number is ${caseData.orderNumber || 'N/A'} and my case reference is ${caseId}.`,
+        '',
+        `Through the resolution center, we agreed on: ${formattedResolution}.`,
+        '',
+        'Thanks!',
+        '',
+        firstName
+      );
+    }
+  }
   // DEFAULT/MANUAL CASE
   else {
     messageParts.push(
@@ -2570,7 +2799,10 @@ async function createRichpanelPrivateNote(env, ticketId, caseData, caseId) {
   const actionSteps = getActionStepsHtml(caseData);
   const formattedResolution = formatResolution(caseData.resolution, caseData);
   const orderIssue = formatOrderIssue(caseData);
-  const sopUrl = SOP_URLS[caseData.caseType] || SOP_URLS.manual;
+  // Use quality_difference SOP if that's the issue type, otherwise use case type
+  const sopUrl = caseData.issueType === 'quality_difference'
+    ? SOP_URLS.quality_difference
+    : (SOP_URLS[caseData.caseType] || SOP_URLS.manual);
   const orderDate = caseData.orderDate ? new Date(caseData.orderDate).toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric'
   }) : 'Unknown';
@@ -2656,6 +2888,36 @@ ${caseData.missingItemDescription ? `<b>What Customer Says Is Missing:</b><br>${
 `;
   }
 
+  // Build quality difference-specific details HTML
+  let qualityDetailsHtml = '';
+  if (caseData.issueType === 'quality_difference' && caseData.qualityDetails) {
+    const qd = caseData.qualityDetails;
+    const resolution = caseData.resolution;
+
+    let statusNote = '';
+    if (resolution === 'upgrade_keep_originals') {
+      statusNote = '⚠️ Customer has USED Original pads - they keep them + pay for Enhanced';
+    } else if (resolution === 'return_upgrade_enhanced') {
+      statusNote = '📦 Customer will RETURN unused Originals + pay for Enhanced';
+    } else if (resolution === 'reship_quality_upgrade') {
+      statusNote = '🎁 FREE RESHIP - Customer accepted free Enhanced pads';
+    } else if (resolution === 'full_refund_quality') {
+      statusNote = '💰 Customer declined free reship - wants refund instead';
+    }
+
+    qualityDetailsHtml = `
+<br>
+<b>─────────────────────</b><br>
+<br>
+<b>🔄 QUALITY UPGRADE DETAILS</b><br>
+<br>
+${statusNote ? `<b>${statusNote}</b><br><br>` : ''}
+${qd.padCount ? `<b>Number of Pads:</b> ${qd.padCount}<br>` : ''}
+${qd.itemsUsed !== undefined ? `<b>Items Status:</b> ${qd.itemsUsed ? 'USED (keeping)' : 'UNUSED (returning)'}<br>` : ''}
+${qd.upgradeTotal ? `<b>Upgrade Cost:</b> $${qd.upgradeTotal} ($20 × ${qd.padCount} pads)<br>` : ''}
+`;
+  }
+
   // Build HTML formatted note content with <br> and <b> tags (no italics)
   const noteContent = `
 <b>🎯 ACTION REQUIRED</b><br>
@@ -2676,6 +2938,7 @@ ${actionSteps}<br>
 ${shippingDetailsHtml}
 ${subscriptionDetailsHtml}
 ${missingItemDetailsHtml}
+${qualityDetailsHtml}
 <br>
 <b>─────────────────────</b><br>
 <br>
@@ -2742,6 +3005,26 @@ function getActionStepsHtml(caseData) {
 
   if (type === 'subscription') {
     return `1. ✅ Verify subscription in CheckoutChamp<br>2. ✅ Process requested change: ${resolution || 'N/A'}<br>3. ✅ Confirm change with customer<br>4. ✅ Close ticket`;
+  }
+
+  // Quality difference specific action steps
+  if (caseData.issueType === 'quality_difference') {
+    const qd = caseData.qualityDetails || {};
+    const padCount = qd.padCount || 'X';
+    const upgradeTotal = qd.upgradeTotal || 'TBD';
+
+    if (resolution === 'upgrade_keep_originals') {
+      return `1. ✅ Generate custom checkout link for $${upgradeTotal}<br>2. ✅ Send checkout link to customer email<br>3. ⏳ Wait for payment<br>4. ✅ Ship ${padCount} Enhanced PuppyPads<br>5. ✅ Send tracking confirmation<br>6. ✅ Close ticket<br><br>⚠️ Customer keeps Original pads - we're absorbing cost for satisfaction`;
+    }
+    if (resolution === 'return_upgrade_enhanced') {
+      return `1. ⏳ Wait for customer to ship return<br>2. ⏳ Customer will provide tracking number<br>3. ✅ Once tracking received, generate checkout link for $${upgradeTotal}<br>4. ✅ Send checkout link to customer<br>5. ⏳ Wait for payment<br>6. ✅ Ship ${padCount} Enhanced PuppyPads<br>7. ✅ Close ticket when delivered`;
+    }
+    if (resolution === 'reship_quality_upgrade') {
+      return `1. ✅ Ship ${padCount} Enhanced PuppyPads (FREE - no charge)<br>2. ✅ Send tracking to customer<br>3. ✅ Close ticket once delivered<br><br>⚠️ We're covering product + shipping cost. Customer keeps Original pads.`;
+    }
+    if (resolution === 'full_refund_quality') {
+      return `1. ✅ Process full refund in Shopify<br>2. ✅ Send refund confirmation email<br>3. ✅ Close ticket<br><br>⚠️ Customer declined free Enhanced reship. No return needed - customer keeps Original pads.`;
+    }
   }
 
   return `1. ✅ Review customer request<br>2. ✅ Take appropriate action<br>3. ✅ Update customer<br>4. ✅ Close ticket`;
