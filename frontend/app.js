@@ -3930,52 +3930,140 @@ async function handleQualityRefund() {
 
   await delay(1500);
 
-  // Show attractive offer card instead of plain text
-  const offerCard = `
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 24px; margin: 10px 0; color: white; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);">
-      <div style="text-align: center; margin-bottom: 16px;">
-        <div style="font-size: 32px; margin-bottom: 8px;">🎁</div>
-        <div style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">Special Offer Just For You</div>
-        <div style="font-size: 13px; opacity: 0.9;">Because your satisfaction matters most</div>
-      </div>
+  // Show standalone offer card with CTA buttons inside
+  const cardId = `quality-offer-${Date.now()}`;
+  const offerCardHtml = `
+    <div class="offer-card quality-offer" id="${cardId}">
+      <div class="offer-icon">🎁</div>
+      <div class="offer-amount" style="font-size: 24px; letter-spacing: 0;">FREE</div>
+      <div class="offer-value">Enhanced PuppyPads Reship</div>
+      <div class="offer-label">Because your satisfaction matters most</div>
 
-      <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+      <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 16px; margin: 16px 0; text-align: left;">
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-          <div style="width: 24px; height: 24px; background: #4ade80; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">✓</div>
+          <div style="width: 24px; height: 24px; background: #4ade80; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✓</div>
           <div style="font-size: 14px;"><strong>Keep your current pads</strong> — they still work great</div>
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="width: 24px; height: 24px; background: #4ade80; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">✓</div>
-          <div style="font-size: 14px;"><strong>FREE Enhanced PuppyPads</strong> — shipped today</div>
+          <div style="width: 24px; height: 24px; background: #4ade80; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✓</div>
+          <div style="font-size: 14px;"><strong>FREE Enhanced PuppyPads</strong> — shipped within 24hrs</div>
         </div>
       </div>
 
-      <div style="text-align: center; font-size: 13px; opacity: 0.85;">
+      <div style="text-align: center; font-size: 13px; opacity: 0.85; margin-bottom: 20px;">
         You'll have both versions to compare! 💙
+      </div>
+
+      <div class="offer-buttons">
+        <button class="offer-btn accept" id="${cardId}-accept">Yes, that sounds great!</button>
+        <button class="offer-btn decline" id="${cardId}-decline">I'd still prefer a refund</button>
       </div>
     </div>
   `;
-  await addBotMessage(offerCard);
+
+  await addInteractiveContent(offerCardHtml, 300);
+
+  // Attach event handlers
+  document.getElementById(`${cardId}-accept`).onclick = async () => {
+    document.getElementById(cardId)?.closest('.interactive-content').remove();
+    addUserMessage("Yes, that sounds great! Thank you!");
+    await handleQualityAcceptFreeReship();
+  };
+
+  document.getElementById(`${cardId}-decline`).onclick = async () => {
+    document.getElementById(cardId)?.closest('.interactive-content').remove();
+    addUserMessage("I'd still prefer just a refund");
+    await handleQualityStillWantRefund();
+  };
+}
+
+// Branch 3A: Accept free reship - first verify quantity
+async function handleQualityAcceptFreeReship() {
+  await addBotMessage("Awesome! Thank you so much for giving us the chance to make this right. 💙<br><br>Just one quick thing before I process this...<br><br>How many Original material pads did you receive? I need to make sure we reship the exact same quantity of Enhanced pads to you.");
 
   await delay(500);
 
-  await addBotMessage("Does that work for you?");
+  // Show quantity input form
+  const formId = `quality-qty-${Date.now()}`;
+  const formHtml = `
+    <div class="form-card" id="${formId}" style="background: linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%); border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(111, 66, 193, 0.1);">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 24px; margin-bottom: 8px;">📦</div>
+        <div style="font-size: 16px; font-weight: 600; color: #1a1a2e;">Number of Original Pads Received</div>
+      </div>
 
-  addOptions([
-    { icon: '✓', text: "Yes, that sounds great! Thank you!", action: handleQualityAcceptFreeReship },
-    { icon: '✕', text: "I'd still prefer just a refund", action: handleQualityStillWantRefund }
-  ]);
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-size: 13px; color: #6c757d; margin-bottom: 8px;">Enter quantity:</label>
+        <input type="number" id="${formId}-input" min="1" max="50" placeholder="e.g., 2"
+          style="width: 100%; padding: 14px 16px; border: 2px solid #e9ecef; border-radius: 10px; font-size: 18px; text-align: center; font-weight: 600; transition: border-color 0.2s;"
+          onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e9ecef'">
+      </div>
+
+      <div style="background: #fef3c7; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+          <span style="font-size: 16px;">ℹ️</span>
+          <div style="font-size: 12px; color: #92400e; line-height: 1.5;">
+            <strong>Please note:</strong> Our system tracks which material type was shipped for each order. We'll verify this against your order records to ensure everything matches up correctly.
+          </div>
+        </div>
+      </div>
+
+      <button id="${formId}-submit" class="btn-primary" style="width: 100%; padding: 14px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; font-size: 15px; border: none; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;"
+        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(102, 126, 234, 0.4)'"
+        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+        Confirm & Process Reship
+      </button>
+    </div>
+  `;
+
+  await addInteractiveContent(formHtml, 300);
+
+  // Attach submit handler
+  document.getElementById(`${formId}-submit`).onclick = async () => {
+    const input = document.getElementById(`${formId}-input`);
+    const quantity = parseInt(input.value);
+
+    if (!quantity || quantity < 1) {
+      input.style.borderColor = '#ef4444';
+      input.focus();
+      return;
+    }
+
+    if (quantity > 20) {
+      await addBotMessage("That seems like quite a lot! Please double-check the quantity. If it's correct, please enter it again.");
+      input.value = '';
+      input.focus();
+      return;
+    }
+
+    // Remove form and show user response
+    document.getElementById(formId)?.closest('.interactive-content').remove();
+    addUserMessage(`${quantity} Original material pad${quantity > 1 ? 's' : ''}`);
+
+    // Store quantity and process
+    await processQualityFreeReship(quantity);
+  };
+
+  // Allow enter key to submit
+  document.getElementById(`${formId}-input`).onkeypress = (e) => {
+    if (e.key === 'Enter') {
+      document.getElementById(`${formId}-submit`).click();
+    }
+  };
 }
 
-// Branch 3A: Accept free reship
-async function handleQualityAcceptFreeReship() {
+// Process the free reship after quantity verification
+async function processQualityFreeReship(padQuantity) {
   const order = state.selectedOrder;
   state.qualityDetails = {
-    padCount: order?.lineItems?.length || 1,
+    padCount: padQuantity,
+    customerReportedCount: padQuantity,
     itemsUsed: true,
     upgradeTotal: 0
   };
 
+  showProgress("Verifying order details...");
+  await delay(1000);
   showProgress("Processing free reship...");
   await delay(1500);
 
@@ -4009,7 +4097,7 @@ async function handleQualityAcceptFreeReship() {
         quantity: item.quantity || 1,
       })),
 
-      // Quality-specific
+      // Quality-specific with customer reported quantity
       qualityDetails: state.qualityDetails,
       keepProduct: true,
 
@@ -4032,11 +4120,11 @@ async function handleQualityAcceptFreeReship() {
 
     hideProgress();
 
-    await addBotMessage("Awesome! 🎉<br><br>I'm processing the reshipment now. You'll get a confirmation email with tracking once it's on its way... should be within 24 hours.<br><br>Thank you for giving us the chance to make this right. It genuinely means a lot to us.<br><br>If you have any other questions at all... I'm here. 💙");
+    await addBotMessage(`Perfect! I've verified your order and I'm processing the reshipment of <strong>${padQuantity} Enhanced PuppyPad${padQuantity > 1 ? 's' : ''}</strong> now. 🎉<br><br>You'll get a confirmation email with tracking once it's on its way... should be within 24 hours.<br><br>Thank you for giving us the chance to make this right. It genuinely means a lot to us.<br><br>If you have any other questions at all... I'm here. 💙`);
 
     await showSuccess(
       "Free Reship Created!",
-      `We'll ship your Enhanced PuppyPads within 24 hours. Keep the Original ones too! 🎁<br><br>${getCaseIdHtml(state.caseId)}`
+      `We'll ship ${padQuantity} Enhanced PuppyPad${padQuantity > 1 ? 's' : ''} within 24 hours. Keep the Original ones too! 🎁<br><br>${getCaseIdHtml(state.caseId)}`
     );
   } catch (error) {
     hideProgress();
