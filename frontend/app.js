@@ -3734,44 +3734,77 @@ async function handleQualityDifference() {
 
   await delay(800);
 
-  // Comparison card
+  // Comparison card - displayed as standalone visual element
   const comparisonCard = `
-    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; padding: 20px; margin: 10px 0; border: 1px solid #dee2e6;">
-      <div style="display: flex; gap: 20px; text-align: center;">
-        <div style="flex: 1;">
-          <div style="font-weight: bold; font-size: 14px; margin-bottom: 12px; color: #495057;">ORIGINAL</div>
-          <div style="font-size: 13px; color: #6c757d; line-height: 1.8;">
-            5 Layers<br>
-            270gsm Absorber<br>
-            —<br>
-            Standard Waterproof<br>
-            Anti-Slip Coating<br>
-            Standard Stitching
+    <div style="background: linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%); border-radius: 20px; padding: 0; margin: 16px 0; box-shadow: 0 10px 40px rgba(0,0,0,0.08), 0 0 0 1px rgba(111, 66, 193, 0.1); overflow: hidden;">
+      <!-- Header -->
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px 20px; text-align: center;">
+        <div style="color: white; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.9;">Side-by-Side Comparison</div>
+        <div style="color: white; font-size: 16px; font-weight: 700; margin-top: 4px;">Original vs Enhanced PuppyPad</div>
+      </div>
+
+      <!-- Comparison Content -->
+      <div style="display: flex; padding: 24px 16px 20px;">
+        <!-- Original Column -->
+        <div style="flex: 1; padding: 0 12px; text-align: center;">
+          <div style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 12px; display: inline-block; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">Original</div>
+
+          <div style="font-size: 13px; color: #495057; line-height: 2.2; text-align: left; padding-left: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #6c757d;">○</span> 5 Layers</div>
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #6c757d;">○</span> 270gsm Absorber</div>
+            <div style="display: flex; align-items: center; gap: 8px; color: #adb5bd;"><span>—</span> No Cushion Layer</div>
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #6c757d;">○</span> Standard Waterproof</div>
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #6c757d;">○</span> Anti-Slip Coating</div>
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #6c757d;">○</span> Standard Stitching</div>
           </div>
-          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #dee2e6; font-weight: bold; color: #495057;">$50/pad</div>
-        </div>
-        <div style="width: 1px; background: #dee2e6;"></div>
-        <div style="flex: 1;">
-          <div style="font-weight: bold; font-size: 14px; margin-bottom: 12px; color: #6f42c1;">ENHANCED</div>
-          <div style="font-size: 13px; color: #6c757d; line-height: 1.8;">
-            6 Layers<br>
-            300gsm Absorber (+30%)<br>
-            Comfort Cushion Layer ✨<br>
-            Medical-Grade TPU<br>
-            Rubber Paw Grip Dots<br>
-            Reinforced Edge Binding ✨
+
+          <div style="margin-top: 20px; padding-top: 16px; border-top: 2px dashed #e9ecef;">
+            <div style="font-size: 11px; color: #6c757d; margin-bottom: 4px;">RETAIL PRICE</div>
+            <div style="font-size: 28px; font-weight: 800; color: #495057;">$50<span style="font-size: 14px; font-weight: 500;">/pad</span></div>
           </div>
-          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #dee2e6; font-weight: bold; color: #6f42c1;">$70/pad</div>
         </div>
+
+        <!-- VS Divider -->
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 8px;">
+          <div style="width: 2px; height: 60px; background: linear-gradient(to bottom, transparent, #dee2e6, transparent);"></div>
+          <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">VS</div>
+          <div style="width: 2px; height: 60px; background: linear-gradient(to bottom, transparent, #dee2e6, transparent);"></div>
+        </div>
+
+        <!-- Enhanced Column -->
+        <div style="flex: 1; padding: 0 12px; text-align: center; position: relative;">
+          <div style="position: absolute; top: -8px; right: 8px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase;">Premium</div>
+
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 12px; display: inline-block; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">Enhanced</div>
+
+          <div style="font-size: 13px; color: #495057; line-height: 2.2; text-align: left; padding-left: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981;">✓</span> <strong>6 Layers</strong></div>
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981;">✓</span> 300gsm Absorber <span style="background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600;">+30%</span></div>
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #f59e0b;">✨</span> <strong>Comfort Cushion Layer</strong></div>
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981;">✓</span> Medical-Grade TPU</div>
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981;">✓</span> Rubber Paw Grip Dots</div>
+            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #f59e0b;">✨</span> <strong>Reinforced Edge Binding</strong></div>
+          </div>
+
+          <div style="margin-top: 20px; padding-top: 16px; border-top: 2px dashed #e9d5ff;">
+            <div style="font-size: 11px; color: #7c3aed; margin-bottom: 4px;">RETAIL PRICE</div>
+            <div style="font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">$70<span style="font-size: 14px; font-weight: 500;">/pad</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Note -->
+      <div style="background: #f8f9ff; padding: 12px 20px; border-top: 1px solid rgba(111, 66, 193, 0.1); text-align: center;">
+        <div style="font-size: 11px; color: #6c757d;">💡 <em>Prices shown are retail. Your actual purchase price may vary with discounts applied.</em></div>
       </div>
     </div>
   `;
-  await addBotMessage(comparisonCard);
+  await addInteractiveContent(comparisonCard, 300);
 
   await delay(1000);
 
   // Explain the pricing
-  await addBotMessage("Now here's the important bit...<br><br>You paid the Original price ($50/pad).<br><br>During our transition, everyone pays Original pricing... regardless of which version actually ships. We're absorbing the extra cost on our end because we wanted to test the new materials with real customers before officially launching them.<br><br>So if you received Enhanced... you basically got a $20 upgrade per pad for free.<br><br>And if you received Original... you got exactly what you paid for. The same pad that thousands of customers have loved and reviewed.");
+  await addBotMessage("Now here's the important bit...<br><br>Our Original retails at $50/pad (though you may have gotten a better deal with a discount!).<br><br>During this transition, we're shipping whichever version is available... and everyone pays Original pricing, regardless of which version actually ships. We're absorbing the extra cost on our end because we wanted to test the new materials with real customers before officially launching them.<br><br>So if you received Enhanced... you basically got a $20 upgrade per pad for free. Pretty sweet deal!<br><br>And if you received Original... you got exactly what you paid for. The same pad that thousands of customers have loved and reviewed.");
 
   await delay(1500);
 
