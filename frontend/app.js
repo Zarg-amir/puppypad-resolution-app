@@ -3725,7 +3725,7 @@ async function handleQualityDifference() {
   await delay(1500);
 
   // Opening message 2 - Explain the two versions
-  await addBotMessage("So here's what's happening...<br><br>We've been quietly upgrading our PuppyPad materials over the past few months. Which means right now, there are two versions floating around:<br><br><strong>Original PuppyPad</strong> — our 5-layer design that earned us 37,000+ five-star reviews<br><br><strong>Enhanced PuppyPad</strong> — our newer 6-layer design with upgraded materials<br><br>During this transition period, some orders ship with Original, some with Enhanced... it just depends on what's available in our warehouse when your order gets packed.");
+  await addBotMessage("So here's what's happening...<br><br>We've been quietly upgrading our PuppyPad materials over the past few months. Which means right now, there are two versions floating around:<br><br><strong>Original PuppyPad</strong> — our 5-layer design that earned us 37,000+ five-star reviews<br><br><strong>PuppyPad 2.0</strong> — our newer 6-layer design with upgraded materials<br><br>During this transition period, some orders ship with Original, some with 2.0... it just depends on what's available in our warehouse when your order gets packed.");
 
   await delay(1500);
 
@@ -3734,68 +3734,73 @@ async function handleQualityDifference() {
 
   await delay(800);
 
-  // Comparison card - displayed as standalone visual element
+  // Comparison card - friendly stacked design
   const comparisonCard = `
-    <div style="background: linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%); border-radius: 20px; padding: 0; margin: 16px 0; box-shadow: 0 10px 40px rgba(0,0,0,0.08), 0 0 0 1px rgba(111, 66, 193, 0.1); overflow: hidden;">
-      <!-- Header -->
-      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 16px 20px; text-align: center;">
-        <div style="color: white; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.9;">Side-by-Side Comparison</div>
-        <div style="color: white; font-size: 16px; font-weight: 700; margin-top: 4px;">Original vs Enhanced PuppyPad</div>
+    <div style="margin: 16px 0;">
+      <!-- Original Card -->
+      <div style="background: #f8f9fa; border-radius: 16px; padding: 20px; margin-bottom: 12px; border: 2px solid #e9ecef;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+          <div>
+            <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">You may have received</div>
+            <div style="font-size: 18px; font-weight: 700; color: #495057;">Original PuppyPad</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 11px; color: #6c757d;">Retail</div>
+            <div style="font-size: 20px; font-weight: 700; color: #495057;">$50<span style="font-size: 12px; font-weight: 500;">/pad</span></div>
+          </div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <span style="background: #e9ecef; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #495057;">5 Layers</span>
+          <span style="background: #e9ecef; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #495057;">270gsm Absorber</span>
+          <span style="background: #e9ecef; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #495057;">Standard Waterproof</span>
+          <span style="background: #e9ecef; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #495057;">Anti-Slip</span>
+        </div>
+        <div style="margin-top: 12px; font-size: 13px; color: #6c757d;">
+          ⭐ 37,000+ five-star reviews • The pad that built our company
+        </div>
       </div>
 
-      <!-- Comparison Content -->
-      <div style="display: flex; padding: 24px 16px 20px;">
-        <!-- Original Column -->
-        <div style="flex: 1; padding: 0 12px; text-align: center;">
-          <div style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 12px; display: inline-block; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">Original</div>
+      <!-- Arrow/Upgrade indicator -->
+      <div style="text-align: center; margin: 8px 0;">
+        <div style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+          <span>⬇️</span> OR <span>⬇️</span>
+        </div>
+      </div>
 
-          <div style="font-size: 13px; color: #495057; line-height: 2.2; text-align: left; padding-left: 8px;">
-            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #6c757d;">○</span> 5 Layers</div>
-            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #6c757d;">○</span> 270gsm Absorber</div>
-            <div style="display: flex; align-items: center; gap: 8px; color: #adb5bd;"><span>—</span> No Cushion Layer</div>
-            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #6c757d;">○</span> Standard Waterproof</div>
-            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #6c757d;">○</span> Anti-Slip Coating</div>
-            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #6c757d;">○</span> Standard Stitching</div>
+      <!-- PuppyPad 2.0 Card -->
+      <div style="background: linear-gradient(145deg, #ffffff 0%, #f0f4ff 100%); border-radius: 16px; padding: 20px; border: 2px solid #667eea; position: relative; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);">
+        <div style="position: absolute; top: -10px; left: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 700;">NEW</div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; margin-top: 8px;">
+          <div>
+            <div style="font-size: 11px; color: #667eea; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Our Latest Version</div>
+            <div style="font-size: 18px; font-weight: 700; color: #1a1a2e;">PuppyPad 2.0</div>
           </div>
-
-          <div style="margin-top: 20px; padding-top: 16px; border-top: 2px dashed #e9ecef;">
-            <div style="font-size: 11px; color: #6c757d; margin-bottom: 4px;">RETAIL PRICE</div>
-            <div style="font-size: 28px; font-weight: 800; color: #495057;">$50<span style="font-size: 14px; font-weight: 500;">/pad</span></div>
+          <div style="text-align: right;">
+            <div style="font-size: 11px; color: #667eea;">Retail</div>
+            <div style="font-size: 20px; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">$70<span style="font-size: 12px; font-weight: 500;">/pad</span></div>
           </div>
         </div>
 
-        <!-- VS Divider -->
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 8px;">
-          <div style="width: 2px; height: 60px; background: linear-gradient(to bottom, transparent, #dee2e6, transparent);"></div>
-          <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">VS</div>
-          <div style="width: 2px; height: 60px; background: linear-gradient(to bottom, transparent, #dee2e6, transparent);"></div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+          <span style="background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #15803d; font-weight: 500;">6 Layers</span>
+          <span style="background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #15803d; font-weight: 500;">300gsm (+30%)</span>
+          <span style="background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #15803d; font-weight: 500;">Medical-Grade TPU</span>
+          <span style="background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #15803d; font-weight: 500;">Paw Grip Dots</span>
         </div>
 
-        <!-- Enhanced Column -->
-        <div style="flex: 1; padding: 0 12px; text-align: center; position: relative;">
-          <div style="position: absolute; top: -8px; right: 8px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase;">Premium</div>
-
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 12px; display: inline-block; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">Enhanced</div>
-
-          <div style="font-size: 13px; color: #495057; line-height: 2.2; text-align: left; padding-left: 8px;">
-            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981;">✓</span> <strong>6 Layers</strong></div>
-            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981;">✓</span> 300gsm Absorber <span style="background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600;">+30%</span></div>
-            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #f59e0b;">✨</span> <strong>Comfort Cushion Layer</strong></div>
-            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981;">✓</span> Medical-Grade TPU</div>
-            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981;">✓</span> Rubber Paw Grip Dots</div>
-            <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #f59e0b;">✨</span> <strong>Reinforced Edge Binding</strong></div>
-          </div>
-
-          <div style="margin-top: 20px; padding-top: 16px; border-top: 2px dashed #e9d5ff;">
-            <div style="font-size: 11px; color: #7c3aed; margin-bottom: 4px;">RETAIL PRICE</div>
-            <div style="font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">$70<span style="font-size: 14px; font-weight: 500;">/pad</span></div>
+        <div style="background: rgba(102, 126, 234, 0.1); border-radius: 12px; padding: 12px 16px;">
+          <div style="font-size: 12px; font-weight: 600; color: #667eea; margin-bottom: 8px;">✨ What's New in 2.0:</div>
+          <div style="font-size: 13px; color: #495057; line-height: 1.6;">
+            • <strong>Comfort Cushion Layer</strong> — extra padding for senior dogs<br>
+            • <strong>Reinforced Edge Binding</strong> — lasts even longer
           </div>
         </div>
       </div>
 
       <!-- Footer Note -->
-      <div style="background: #f8f9ff; padding: 12px 20px; border-top: 1px solid rgba(111, 66, 193, 0.1); text-align: center;">
-        <div style="font-size: 11px; color: #6c757d;">💡 <em>Prices shown are retail. Your actual purchase price may vary with discounts applied.</em></div>
+      <div style="text-align: center; margin-top: 16px; font-size: 12px; color: #6c757d;">
+        💡 Prices shown are retail — you may have paid less with a discount!
       </div>
     </div>
   `;
@@ -3804,12 +3809,12 @@ async function handleQualityDifference() {
   await delay(1000);
 
   // Explain the pricing
-  await addBotMessage("Now here's the important bit...<br><br>Our Original retails at $50/pad (though you may have gotten a better deal with a discount!).<br><br>During this transition, we're shipping whichever version is available... and everyone pays Original pricing, regardless of which version actually ships. We're absorbing the extra cost on our end because we wanted to test the new materials with real customers before officially launching them.<br><br>So if you received Enhanced... you basically got a $20 upgrade per pad for free. Pretty sweet deal!<br><br>And if you received Original... you got exactly what you paid for. The same pad that thousands of customers have loved and reviewed.");
+  await addBotMessage("Now here's the important bit...<br><br>Our Original retails at $50/pad (though you may have gotten a better deal with a discount!).<br><br>During this transition, we're shipping whichever version is available... and everyone pays Original pricing, regardless of which version actually ships. We're absorbing the extra cost on our end because we wanted to test the new materials with real customers before officially launching them.<br><br>So if you received PuppyPad 2.0... you basically got a $20 upgrade per pad for free. Pretty sweet deal!<br><br>And if you received Original... you got exactly what you paid for. The same pad that thousands of customers have loved and reviewed.");
 
   await delay(1500);
 
   // What stays the same
-  await addBotMessage("What stays the same in BOTH versions:<br><br>✓ Pheromone technology (so your dog actually uses it)<br>✓ 100% leak-proof protection<br>✓ Machine washable 300+ times<br>✓ Our full 90-day guarantee<br><br>The Original isn't a \"worse\" version... it's the pad that built this company. The Enhanced just has some extra bells and whistles we've been developing.");
+  await addBotMessage("What stays the same in BOTH versions:<br><br>✓ Pheromone technology (so your dog actually uses it)<br>✓ 100% leak-proof protection<br>✓ Machine washable 300+ times<br>✓ Our full 90-day guarantee<br><br>The Original isn't a \"worse\" version... it's the pad that built this company. PuppyPad 2.0 just has some extra bells and whistles we've been developing.");
 
   await delay(1500);
 
@@ -3832,9 +3837,9 @@ async function handleQualityKeepOrder() {
   ]);
 }
 
-// Branch 2: Pay more for Enhanced
+// Branch 2: Pay more for PuppyPad 2.0
 async function handleQualityPayMore() {
-  await addBotMessage("That's really sweet of you to offer... we appreciate that so much 💙<br><br>So here's how we can make this work...<br><br>We can generate a custom checkout link for you to pay just the difference for the Enhanced material pads. But before we do that, we'd need you to return the older material ones.<br><br>Quick question first though...<br><br>Have the Original material pads been used?");
+  await addBotMessage("That's really sweet of you to offer... we appreciate that so much 💙<br><br>So here's how we can make this work...<br><br>We can generate a custom checkout link for you to pay just the difference for PuppyPad 2.0. But before we do that, we'd need you to return the older material ones.<br><br>Quick question first though...<br><br>Have the Original material pads been used?");
 
   await delay(1000);
 
@@ -3854,7 +3859,7 @@ async function handleQualityUsedItems() {
   await delay(2500);
   hideProgress();
 
-  await addBotMessage("Great news! I spoke with my manager and here's what we can do...<br><br>You can keep the Original PuppyPads you already have. No need to return them.<br><br>We'll generate a custom checkout link for you where you'd only pay the difference between the Original and Enhanced price.<br><br>So instead of paying $70 per pad for the new ones... you'd just pay the <strong>$20 difference per pad</strong>.<br><br>I'll be honest with you... this means we're losing out on our product costs here because you're keeping the Originals AND getting the Enhanced ones at a reduced rate. But that's okay. We'd rather you be happy than worry about the numbers.");
+  await addBotMessage("Great news! I spoke with my manager and here's what we can do...<br><br>You can keep the Original PuppyPads you already have. No need to return them.<br><br>We'll generate a custom checkout link for you where you'd only pay the difference between Original and PuppyPad 2.0.<br><br>So instead of paying $70 per pad for the new ones... you'd just pay the <strong>$20 difference per pad</strong>.<br><br>I'll be honest with you... this means we're losing out on our product costs here because you're keeping the Originals AND getting PuppyPad 2.0 at a reduced rate. But that's okay. We'd rather you be happy than worry about the numbers.");
 
   await delay(1000);
 
@@ -3872,7 +3877,7 @@ async function handleQualityUsedItems() {
       upgradeTotal: total
     };
 
-    await addBotMessage(`Perfect... so that's ${count} pad${count > 1 ? 's' : ''}.<br><br>Here's what happens next:<br><br>1️⃣ We'll create a custom checkout link for you — this will be for <strong>$${total}</strong> (${count} pad${count > 1 ? 's' : ''} × $20 difference)<br>2️⃣ We'll send that link to your email within the next few hours<br>3️⃣ Once you've made the payment, we'll pack and ship your Enhanced material PuppyPads right away<br><br>You'll get a confirmation email with tracking as soon as it's dispatched.<br><br>Sound good? 💙`);
+    await addBotMessage(`Perfect... so that's ${count} pad${count > 1 ? 's' : ''}.<br><br>Here's what happens next:<br><br>1️⃣ We'll create a custom checkout link for you — this will be for <strong>$${total}</strong> (${count} pad${count > 1 ? 's' : ''} × $20 difference)<br>2️⃣ We'll send that link to your email within the next few hours<br>3️⃣ Once you've made the payment, we'll pack and ship your PuppyPad 2.0 right away<br><br>You'll get a confirmation email with tracking as soon as it's dispatched.<br><br>Sound good? 💙`);
 
     addOptions([
       { icon: '✓', text: "Yes, sounds great!", primary: true, action: () => handleQualityConfirmUpgrade('upgrade_keep_originals') },
@@ -3883,7 +3888,7 @@ async function handleQualityUsedItems() {
 
 // Branch 2B: Items are unused
 async function handleQualityUnusedItems() {
-  await addBotMessage("Perfect... since they're still in returnable condition, you can send them back to us and we'll get the Enhanced ones out to you.<br><br>Here's our return address:<br><br><strong>PuppyPad Returns</strong><br>123 Warehouse Way<br>Los Angeles, CA 90001<br>United States");
+  await addBotMessage("Perfect... since they're still in returnable condition, you can send them back to us and we'll get PuppyPad 2.0 out to you.<br><br>Here's our return address:<br><br><strong>PuppyPad Returns</strong><br>123 Warehouse Way<br>Los Angeles, CA 90001<br>United States");
 
   await delay(1500);
 
@@ -3891,7 +3896,7 @@ async function handleQualityUnusedItems() {
 
   await delay(1500);
 
-  await addBotMessage("Here's how the process works:<br><br>1️⃣ You ship the unused Original pads back to us using the address above<br>2️⃣ Once you've sent them, share the tracking number with us<br>3️⃣ As soon as we have the tracking, we'll send you a custom checkout link for the difference ($20 per pad)<br>4️⃣ Once you've paid, we'll pack and ship your Enhanced PuppyPads right away<br><br>So basically... while your return is on its way back to us, your new Enhanced pads will already be getting packed and shipped out to you. That way you're not waiting around too long 💙");
+  await addBotMessage("Here's how the process works:<br><br>1️⃣ You ship the unused Original pads back to us using the address above<br>2️⃣ Once you've sent them, share the tracking number with us<br>3️⃣ As soon as we have the tracking, we'll send you a custom checkout link for the difference ($20 per pad)<br>4️⃣ Once you've paid, we'll pack and ship your PuppyPad 2.0 right away<br><br>So basically... while your return is on its way back to us, your new PuppyPad 2.0 will already be getting packed and shipped out to you. That way you're not waiting around too long 💙");
 
   await delay(1000);
 
@@ -3909,7 +3914,7 @@ async function handleQualityUnusedItems() {
       upgradeTotal: total
     };
 
-    await addBotMessage(`Got it... ${count} pad${count > 1 ? 's' : ''}.<br><br>So just to recap:<br><br>• You'll ship back ${count} Original PuppyPad${count > 1 ? 's' : ''} to the address above<br>• Once you have a tracking number, send it to us here or via email<br>• We'll then send you a custom checkout link for <strong>$${total}</strong> (${count} pad${count > 1 ? 's' : ''} × $20 difference)<br>• After payment, your ${count} Enhanced PuppyPad${count > 1 ? 's' : ''} will ship out immediately<br><br>Does that all make sense? 💙`);
+    await addBotMessage(`Got it... ${count} pad${count > 1 ? 's' : ''}.<br><br>So just to recap:<br><br>• You'll ship back ${count} Original PuppyPad${count > 1 ? 's' : ''} to the address above<br>• Once you have a tracking number, send it to us here or via email<br>• We'll then send you a custom checkout link for <strong>$${total}</strong> (${count} pad${count > 1 ? 's' : ''} × $20 difference)<br>• After payment, your ${count} PuppyPad 2.0 will ship out immediately<br><br>Does that all make sense? 💙`);
 
     addOptions([
       { icon: '✓', text: "Yes, I'll arrange the return now", primary: true, action: () => handleQualityConfirmUpgrade('return_upgrade_enhanced') },
@@ -3926,7 +3931,7 @@ async function handleQualityRefund() {
   await delay(2500);
   hideProgress();
 
-  await addBotMessage("Okay I'm back!<br><br>So I spoke with my manager and here's what we'd like to do...<br><br>We really value our customers and we want to make sure you're fully satisfied. So instead of a refund, what we can do is ship out the new Enhanced material pads to you... <strong>completely free of charge</strong>.<br><br>No extra cost to you at all.<br><br>I'll be honest... this means we're covering the product cost AND the shipping cost on our end. We're losing out on this one. But that's okay. Your satisfaction matters more to us than the money.");
+  await addBotMessage("Okay I'm back!<br><br>So I spoke with my manager and here's what we'd like to do...<br><br>We really value our customers and we want to make sure you're fully satisfied. So instead of a refund, what we can do is ship out our new PuppyPad 2.0 to you... <strong>completely free of charge</strong>.<br><br>No extra cost to you at all.<br><br>I'll be honest... this means we're covering the product cost AND the shipping cost on our end. We're losing out on this one. But that's okay. Your satisfaction matters more to us than the money.");
 
   await delay(1500);
 
@@ -3936,7 +3941,7 @@ async function handleQualityRefund() {
     <div class="offer-card quality-offer" id="${cardId}">
       <div class="offer-icon">🎁</div>
       <div class="offer-amount" style="font-size: 24px; letter-spacing: 0;">FREE</div>
-      <div class="offer-value">Enhanced PuppyPads Reship</div>
+      <div class="offer-value">PuppyPad 2.0 Reship</div>
       <div class="offer-label">Because your satisfaction matters most</div>
 
       <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 16px; margin: 16px 0; text-align: left;">
@@ -3946,7 +3951,7 @@ async function handleQualityRefund() {
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
           <div style="width: 24px; height: 24px; background: #4ade80; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✓</div>
-          <div style="font-size: 14px;"><strong>FREE Enhanced PuppyPads</strong> — shipped within 24hrs</div>
+          <div style="font-size: 14px;"><strong>FREE PuppyPad 2.0</strong> — shipped within 24hrs</div>
         </div>
       </div>
 
@@ -4120,11 +4125,11 @@ async function processQualityFreeReship(padQuantity) {
 
     hideProgress();
 
-    await addBotMessage(`Perfect! I've verified your order and I'm processing the reshipment of <strong>${padQuantity} Enhanced PuppyPad${padQuantity > 1 ? 's' : ''}</strong> now. 🎉<br><br>You'll get a confirmation email with tracking once it's on its way... should be within 24 hours.<br><br>Thank you for giving us the chance to make this right. It genuinely means a lot to us.<br><br>If you have any other questions at all... I'm here. 💙`);
+    await addBotMessage(`Perfect! I've verified your order and I'm processing the reshipment of <strong>${padQuantity} PuppyPad 2.0</strong> now. 🎉<br><br>You'll get a confirmation email with tracking once it's on its way... should be within 24 hours.<br><br>Thank you for giving us the chance to make this right. It genuinely means a lot to us.<br><br>If you have any other questions at all... I'm here. 💙`);
 
     await showSuccess(
       "Free Reship Created!",
-      `We'll ship ${padQuantity} Enhanced PuppyPad${padQuantity > 1 ? 's' : ''} within 24 hours. Keep the Original ones too! 🎁<br><br>${getCaseIdHtml(state.caseId)}`
+      `We'll ship ${padQuantity} PuppyPad 2.0 within 24 hours. Keep the Original ones too! 🎁<br><br>${getCaseIdHtml(state.caseId)}`
     );
   } catch (error) {
     hideProgress();
