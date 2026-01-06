@@ -3700,17 +3700,22 @@ async function handleQualityDifference() {
   // Opening message 1
   await addBotMessage("Hey! 👋<br>Thanks for reaching out... I can see you've received different materials in your order and you're wondering what's going on.<br><br>Totally get it. Let me explain because honestly... this is actually good news for you.");
 
-  await delay(1500);
+  await delay(300);
 
   // Opening message 2 - Explain the two versions
   await addBotMessage("So here's what's happening...<br><br>We've been quietly upgrading our PuppyPad materials over the past few months. Which means right now, there are two versions floating around:<br><br><strong>Original PuppyPad</strong> — our 5-layer design that earned us 37,000+ five-star reviews<br><br><strong>PuppyPad 2.0</strong> — our newer 6-layer design with upgraded materials<br><br>During this transition period, some orders ship with Original, some with 2.0... it just depends on what's available in our warehouse when your order gets packed.");
 
-  await delay(1500);
+  // First continue button - let customer read at their own pace
+  await new Promise(resolve => {
+    addOptions([
+      { text: "I understand, show me the differences", action: resolve, showAsMessage: false }
+    ]);
+  });
 
   // Opening message 3 - Show comparison
   await addBotMessage("Let me show you exactly what's different between them...");
 
-  await delay(800);
+  await delay(500);
 
   // Comparison card - friendly stacked design
   const comparisonCard = `
@@ -3784,17 +3789,22 @@ async function handleQualityDifference() {
   `;
   await addInteractiveContent(comparisonCard, 300);
 
-  await delay(1000);
+  // Second continue button - let customer review comparison
+  await new Promise(resolve => {
+    addOptions([
+      { text: "Got it! What does this mean for my order?", action: resolve, showAsMessage: false }
+    ]);
+  });
 
   // Explain the pricing
   await addBotMessage("Now here's the important bit...<br><br>Our Original retails at $50/pad (though you may have gotten a better deal with a discount!).<br><br>During this transition, we're shipping whichever version is available... and everyone pays Original pricing, regardless of which version actually ships. We're absorbing the extra cost on our end because we wanted to test the new materials with real customers before officially launching them.<br><br>So if you received PuppyPad 2.0... you basically got a $20 upgrade per pad for free. Pretty sweet deal!<br><br>And if you received Original... you got exactly what you paid for. The same pad that thousands of customers have loved and reviewed.");
 
-  await delay(1500);
+  await delay(300);
 
   // What stays the same
   await addBotMessage("What stays the same in BOTH versions:<br><br>✓ Pheromone technology (so your dog actually uses it)<br>✓ 100% leak-proof protection<br>✓ Machine washable 300+ times<br>✓ Our full 90-day guarantee<br><br>The Original isn't a \"worse\" version... it's the pad that built this company. PuppyPad 2.0 just has some extra bells and whistles we've been developing.");
 
-  await delay(1500);
+  await delay(300);
 
   // Present options
   await addBotMessage("So that's the full picture! 💙<br><br>Now I want to make sure you're completely happy here... what would you like to do?");
