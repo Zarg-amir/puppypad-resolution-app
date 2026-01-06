@@ -6596,35 +6596,47 @@ function getResolutionHubHTML() {
       if (!code) return '-';
       const amountStr = amount ? '$' + parseFloat(amount).toFixed(2) : '';
       const map = {
-        'full_refund': 'Full Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
-        'partial_20': '20% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
-        'partial_30': '30% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
-        'partial_40': '40% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
-        'partial_50': '50% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
-        'partial_75': '75% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
-        'store_credit': 'Store Credit Issued',
-        'replacement': 'Replacement Sent',
-        'exchange': 'Exchange Processed',
-        'reship': 'Order Reshipped',
-        'partial_20_reship': '20% Refund + Reship',
-        'partial_50_reship': '50% Refund + Reship',
-        'refund_missing_item': 'Missing Item Refunded',
-        'reship_missing_item': 'Missing Item Reshipped',
-        'reship_missing_item_bonus': 'Missing Item + Bonus Reshipped',
-        'replacement_damaged': 'Damaged Item Replaced',
-        'partial_missing': 'Partial Refund (Missing Item)',
-        'apology_note': 'Apology Sent',
-        'training_tips': 'Training Tips Provided',
-        'manual_assistance': 'Manual Assistance Required',
-        'manual_order_not_found': 'Manual Review - Order Not Found',
-        'escalate': 'Escalated to Team',
-        'no_action': 'No Action Required'
+        // Standard refunds
+        'full_refund': 'Process full refund' + (amountStr ? ' (' + amountStr + ')' : ' (calculate amount)'),
+        'partial_20': 'Process 20% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
+        'partial_30': 'Process 30% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
+        'partial_40': 'Process 40% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
+        'partial_50': 'Process 50% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
+        'partial_75': 'Process 75% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
+        'store_credit': 'Issue store credit',
+        'replacement': 'Ship replacement',
+        'exchange': 'Process exchange → Send return label, ship replacement after return',
+        'reship': 'Reship order',
+        'partial_20_reship': 'Process 20% refund + Reship order',
+        'partial_50_reship': 'Process 50% refund + Reship order',
+        'refund_missing_item': 'Calculate & refund missing item value',
+        'reship_missing_item': 'Ship missing item',
+        'reship_missing_item_bonus': 'Ship missing item + bonus for inconvenience',
+        'replacement_damaged': 'Ship replacement for damaged item',
+        'partial_missing': 'Process partial refund for missing item',
+        'apology_note': 'Send apology note',
+        'training_tips': 'Provide training tips',
+        'manual_assistance': 'Manual review required',
+        'manual_order_not_found': 'Manual review → Order not found in system',
+        'escalate': 'Escalate to team',
+        'no_action': 'No action required',
+
+        // Quality difference resolutions - ACTION-ORIENTED
+        'upgrade_keep_originals': 'Send $20/pad checkout link → Ship PuppyPad 2.0 after payment (customer keeps Originals)',
+        'return_upgrade_enhanced': 'Wait for return tracking → Send $20/pad checkout link → Ship PuppyPad 2.0 after payment',
+        'reship_quality_upgrade': 'Ship FREE PuppyPad 2.0 (customer keeps Originals) — We absorb cost',
+        'full_refund_quality': 'Process refund (calculate amount) → Customer keeps Originals',
+        'full_refund_quality_used': 'Process refund (calculate amount) → Items used, no return needed',
+        'full_refund_quality_return': 'Wait for return → Process refund after received (calculate amount)',
+
+        // Return flow
+        'return_refund': 'Send return label → Refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' after return received'
       };
       // Check for dynamic patterns
       const partialMatch = code.match(/^partial_(\\d+)$/);
-      if (partialMatch) return partialMatch[1] + '% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : '');
+      if (partialMatch) return 'Process ' + partialMatch[1] + '% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product';
       const partialReshipMatch = code.match(/^partial_(\\d+)_reship$/);
-      if (partialReshipMatch) return partialReshipMatch[1] + '% Refund + Reship';
+      if (partialReshipMatch) return 'Process ' + partialReshipMatch[1] + '% refund + Reship order';
       return map[code] || code.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());
     }
 
@@ -7171,24 +7183,9 @@ function getResolutionHubHTML() {
     function timeAgo(d) { if(!d)return'-'; const s=Math.floor((Date.now()-new Date(d))/1000); if(s<60)return'Just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
     function formatDate(d) { if(!d)return'-'; return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
 
-    // Build detailed case breakdown HTML for modal
+    // Build detailed case breakdown HTML for modal - plain English bullet points
     function buildCaseDetailsHtml(c) {
-      let html = '';
-
-      // Issue Type
-      const issueTypeMap = {
-        'quality_difference': 'Quality Difference — Customer received older material (Original) instead of PuppyPad 2.0',
-        'damaged': 'Damaged Product',
-        'missing_items': 'Missing Items',
-        'wrong_item': 'Wrong Item Received',
-        'not_met_expectations': 'Product Did Not Meet Expectations',
-        'lost_package': 'Lost Package',
-        'delivered_not_received': 'Delivered But Not Received',
-        'subscription_issue': 'Subscription Issue',
-        'charged_unexpectedly': 'Charged Unexpectedly',
-      };
-      const issueDesc = issueTypeMap[c.issue_type] || c.issue_type?.replace(/_/g, ' ') || c.case_type || '-';
-      html += '<div class="detail-row"><span class="detail-label">Issue Type</span><span class="detail-value">' + issueDesc + '</span></div>';
+      const bullets = [];
 
       // Parse extra data if available
       let extra = {};
@@ -7196,61 +7193,140 @@ function getResolutionHubHTML() {
         if (c.extra_data) extra = typeof c.extra_data === 'string' ? JSON.parse(c.extra_data) : c.extra_data;
       } catch(e) {}
 
-      // Quality Details (if quality_difference)
-      if (c.issue_type === 'quality_difference' && extra.qualityDetails) {
-        const qd = extra.qualityDetails;
-        if (qd.padCount || qd.customerReportedCount) {
-          html += '<div class="detail-row"><span class="detail-label">Original Pads (Customer Reported)</span><span class="detail-value">' + (qd.customerReportedCount || qd.padCount) + ' pad(s)</span></div>';
+      // QUALITY DIFFERENCE CASES
+      if (c.issue_type === 'quality_difference') {
+        const qd = extra.qualityDetails || {};
+        const padCount = qd.customerReportedCount || qd.padCount || 0;
+
+        // Opening explanation
+        bullets.push('Customer received <strong>Original material pads</strong> instead of the newer <strong>PuppyPad 2.0</strong>.');
+
+        if (padCount > 0) {
+          bullets.push('Customer reported receiving <strong>' + padCount + ' pad' + (padCount > 1 ? 's' : '') + '</strong> of Original material.');
         }
-        if (qd.itemsUsed !== undefined) {
-          const usedStatus = qd.itemsUsed ? '<span style="color:#f59e0b;">Yes — Used</span>' : '<span style="color:#10b981;">No — Unused/Returnable</span>';
-          html += '<div class="detail-row"><span class="detail-label">Items Used?</span><span class="detail-value">' + usedStatus + '</span></div>';
+
+        // Usage status
+        if (qd.itemsUsed === true) {
+          bullets.push('<span style="color:#f59e0b;font-weight:600;">Items have been USED</span> — Customer cannot return them.');
+        } else if (qd.itemsUsed === false) {
+          bullets.push('<span style="color:#10b981;font-weight:600;">Items are UNUSED</span> — Eligible for return if needed.');
         }
-        if (qd.requiresReturn !== undefined) {
-          const returnStatus = qd.requiresReturn ? '<span style="color:#667eea;">Yes — Awaiting return</span>' : '<span style="color:#6c757d;">No return needed</span>';
-          html += '<div class="detail-row"><span class="detail-label">Return Required?</span><span class="detail-value">' + returnStatus + '</span></div>';
+
+        // Return requirement
+        if (qd.requiresReturn === true) {
+          bullets.push('Return is <strong>REQUIRED</strong> — Customer must ship back items before resolution.');
+        } else if (qd.requiresReturn === false) {
+          bullets.push('No return needed — Customer keeps the Original pads.');
         }
-        if (qd.upgradeTotal) {
-          html += '<div class="detail-row"><span class="detail-label">Upgrade Amount</span><span class="detail-value">$' + qd.upgradeTotal + '</span></div>';
+
+        // Resolution path chosen
+        if (qd.resolutionPath === 'upgrade') {
+          bullets.push('Customer chose to <strong>upgrade to PuppyPad 2.0</strong> for $20/pad.');
+          if (qd.upgradeTotal) {
+            bullets.push('Total upgrade cost: <strong>$' + qd.upgradeTotal + '</strong>');
+          }
+        } else if (qd.resolutionPath === 'refund') {
+          bullets.push('Customer chose a <strong>full refund</strong> for the Original pads.');
+        } else if (qd.resolutionPath === 'free_upgrade') {
+          bullets.push('Customer received <strong>FREE PuppyPad 2.0 upgrade</strong> (company absorbed cost).');
         }
       }
 
-      // Selected Items
+      // REFUND CASES
+      else if (c.case_type === 'refund' || c.issue_type) {
+        const issueDescriptions = {
+          'damaged': 'Customer received a damaged product.',
+          'missing_items': 'Customer is missing items from their order.',
+          'wrong_item': 'Customer received the wrong item.',
+          'not_met_expectations': 'Product did not meet customer expectations.',
+          'lost_package': 'Package was lost in transit.',
+          'delivered_not_received': 'Tracking shows delivered but customer never received it.',
+          'charged_unexpectedly': 'Customer was charged unexpectedly.',
+        };
+
+        if (c.issue_type && issueDescriptions[c.issue_type]) {
+          bullets.push(issueDescriptions[c.issue_type]);
+        } else if (c.issue_type) {
+          bullets.push('Issue: ' + c.issue_type.replace(/_/g, ' '));
+        }
+
+        // Refund amount
+        if (c.refund_amount) {
+          bullets.push('Refund amount: <strong>$' + parseFloat(c.refund_amount).toFixed(2) + '</strong>');
+        }
+
+        // Keep product
+        if (extra.keepProduct === true) {
+          bullets.push('Customer <strong>keeps the product</strong> — no return required.');
+        } else if (extra.keepProduct === false) {
+          bullets.push('Customer must <strong>return the product</strong> to receive refund.');
+        }
+      }
+
+      // SHIPPING CASES
+      else if (c.case_type === 'shipping') {
+        if (c.issue_type) {
+          const shippingIssues = {
+            'no_tracking': 'No tracking information available for the order.',
+            'stuck_in_transit': 'Package is stuck in transit.',
+            'pending_too_long': 'Order has been pending for too long.',
+            'delivered_not_received': 'Tracking shows delivered but customer never received it.',
+          };
+          bullets.push(shippingIssues[c.issue_type] || 'Shipping issue: ' + c.issue_type.replace(/_/g, ' '));
+        }
+
+        if (extra.correctedAddress) {
+          const addr = extra.correctedAddress;
+          const addrStr = [addr.line1, addr.line2, addr.city, addr.state, addr.zip, addr.country].filter(Boolean).join(', ');
+          bullets.push('<strong>NEW ADDRESS:</strong> ' + addrStr);
+        }
+      }
+
+      // SUBSCRIPTION CASES
+      else if (c.case_type === 'subscription') {
+        const actionMap = {
+          'pause': 'Customer wants to pause their subscription.',
+          'cancel': 'Customer wants to cancel their subscription.',
+          'changeSchedule': 'Customer wants to change their delivery schedule.',
+          'changeAddress': 'Customer wants to update their shipping address.',
+        };
+        if (extra.actionType && actionMap[extra.actionType]) {
+          bullets.push(actionMap[extra.actionType]);
+        }
+        if (extra.pauseDuration) {
+          bullets.push('Pause duration: <strong>' + extra.pauseDuration + '</strong>');
+        }
+        if (extra.cancelReason) {
+          bullets.push('Reason: ' + extra.cancelReason);
+        }
+      }
+
+      // ITEMS AFFECTED (all case types)
       if (c.selected_items) {
         let items = c.selected_items;
         try { if (typeof items === 'string') items = JSON.parse(items); } catch(e) {}
         if (items && items.length > 0) {
-          const itemsList = items.map(function(item) {
-            return item.title + (item.quantity > 1 ? ' (x' + item.quantity + ')' : '') + (item.sku ? ' <span style="color:#6c757d;font-size:11px;">[' + item.sku + ']</span>' : '');
-          }).join('<br>');
-          html += '<div class="detail-row" style="align-items:flex-start;"><span class="detail-label">Items Affected</span><span class="detail-value">' + itemsList + '</span></div>';
+          const itemsStr = items.map(function(item) {
+            return item.title + (item.quantity > 1 ? ' (x' + item.quantity + ')' : '');
+          }).join(', ');
+          bullets.push('<strong>Items:</strong> ' + itemsStr);
         }
       }
 
-      // Corrected Address (if applicable)
-      if (extra.correctedAddress) {
-        const addr = extra.correctedAddress;
-        const addrStr = [addr.line1, addr.line2, addr.city, addr.state, addr.zip, addr.country].filter(Boolean).join(', ');
-        html += '<div class="detail-row" style="align-items:flex-start;"><span class="detail-label">Corrected Address</span><span class="detail-value">' + addrStr + '</span></div>';
-      }
-
-      // Keep Product flag
-      if (extra.keepProduct !== undefined) {
-        const keepStatus = extra.keepProduct ? '<span style="color:#10b981;">Yes — Customer keeps product</span>' : '<span style="color:#6c757d;">No — Return required</span>';
-        html += '<div class="detail-row"><span class="detail-label">Customer Keeps Product?</span><span class="detail-value">' + keepStatus + '</span></div>';
-      }
-
-      // Intent Details (customer's explanation)
+      // CUSTOMER NOTES
       if (extra.intentDetails) {
-        html += '<div class="detail-row" style="align-items:flex-start;"><span class="detail-label">Customer Notes</span><span class="detail-value" style="font-style:italic;color:#495057;">"' + extra.intentDetails + '"</span></div>';
+        bullets.push('<strong>Customer said:</strong> <em>"' + extra.intentDetails + '"</em>');
       }
 
       // If no details available
-      if (html === '') {
-        html = '<div class="detail-row"><span class="detail-value" style="color:#6c757d;">No additional details available</span></div>';
+      if (bullets.length === 0) {
+        return '<p style="color:#6c757d;margin:0;font-size:14px;">No additional details available for this case.</p>';
       }
 
-      return html;
+      // Build bullet list HTML
+      return '<ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7;color:#374151;">' +
+        bullets.map(function(b) { return '<li style="margin-bottom:6px;">' + b + '</li>'; }).join('') +
+        '</ul>';
     }
 
     async function openCase(caseId) {
