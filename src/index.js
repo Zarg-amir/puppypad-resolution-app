@@ -1942,11 +1942,13 @@ function formatResolution(resolution, caseData) {
     'pending_too_long': 'Check fulfillment status',
     'multiple_failed_attempts': 'Arrange redelivery or reship',
 
-    // Quality difference - upgrade flows
-    'upgrade_keep_originals': 'Generate checkout link - customer keeps Originals + pays for Enhanced',
-    'return_upgrade_enhanced': 'Accept return of Originals + generate checkout link for Enhanced upgrade',
-    'reship_quality_upgrade': 'FREE reship of Enhanced pads (quality resolution)',
-    'full_refund_quality': `Full refund (${refundAmount}) - quality difference (customer keeps product)`,
+    // Quality difference - upgrade flows (ACTION: what team needs to do)
+    'upgrade_keep_originals': 'ACTION: Send checkout link ($20/pad) → Ship PuppyPad 2.0 after payment (customer keeps Originals)',
+    'return_upgrade_enhanced': 'ACTION: Wait for return tracking → Send checkout link ($20/pad) → Ship PuppyPad 2.0 after payment',
+    'reship_quality_upgrade': 'ACTION: Ship FREE PuppyPad 2.0 (customer keeps Originals) — We absorb cost',
+    'full_refund_quality': 'ACTION: Process refund (team to calculate amount) — Customer keeps Originals',
+    'full_refund_quality_used': 'ACTION: Process refund (team to calculate amount) — Used items, no return needed',
+    'full_refund_quality_return': 'ACTION: Wait for return → Process refund after received (team to calculate amount)',
   };
 
   // Check for dynamic partial_XX_reship patterns
@@ -3023,7 +3025,13 @@ function getActionStepsHtml(caseData) {
       return `1. ✅ Ship ${padCount} Enhanced PuppyPads (FREE - no charge)<br>2. ✅ Send tracking to customer<br>3. ✅ Close ticket once delivered<br><br>⚠️ We're covering product + shipping cost. Customer keeps Original pads.`;
     }
     if (resolution === 'full_refund_quality') {
-      return `1. ✅ Process full refund in Shopify<br>2. ✅ Send refund confirmation email<br>3. ✅ Close ticket<br><br>⚠️ Customer declined free Enhanced reship. No return needed - customer keeps Original pads.`;
+      return `1. ✅ Calculate refund amount (check discounts applied)<br>2. ✅ Process refund in Shopify<br>3. ✅ Send refund confirmation email<br>4. ✅ Close ticket<br><br>⚠️ Customer declined free PuppyPad 2.0 reship. No return needed - customer keeps Original pads.`;
+    }
+    if (resolution === 'full_refund_quality_used') {
+      return `1. ✅ Verify customer reported quantity: ${padCount} Original pad(s)<br>2. ✅ Check order for any discounts applied<br>3. ✅ Calculate fair refund amount for Original pads<br>4. ✅ Process refund in Shopify<br>5. ✅ Send refund confirmation email<br>6. ✅ Close ticket<br><br>⚠️ USED ITEMS - No return needed. Customer keeps Original pads.`;
+    }
+    if (resolution === 'full_refund_quality_return') {
+      return `1. ⏳ Wait for customer to ship return<br>2. ⏳ Customer will provide tracking number<br>3. ⏳ Wait to receive ${padCount} Original pad(s)<br>4. ✅ Verify returned items<br>5. ✅ Check order for any discounts applied<br>6. ✅ Calculate fair refund amount<br>7. ✅ Process refund in Shopify<br>8. ✅ Send refund confirmation email<br>9. ✅ Close ticket`;
     }
   }
 
@@ -6435,17 +6443,37 @@ function getResolutionHubHTML() {
               </div>
             </div>
 
-            <!-- Resolution Details -->
+            <!-- Resolution (At-a-Glance) -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                Resolution (At-a-Glance)
+              </div>
+              <div class="detail-card" style="background: linear-gradient(135deg, #667eea15, #764ba215); border: 2px solid #667eea;">
+                <div class="detail-row" style="border-bottom: none;">
+                  <span class="detail-value" id="modalResolution" style="font-weight: 600; color: #1a1a2e; font-size: 14px; line-height: 1.5;">-</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Case Details (Full Breakdown) -->
             <div class="modal-section">
               <div class="modal-section-title">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-                Resolution Details
+                Case Details
+              </div>
+              <div class="detail-card" id="modalCaseDetails">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Timestamps -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Timestamps
               </div>
               <div class="detail-card">
-                <div class="detail-row">
-                  <span class="detail-label">Resolution Type</span>
-                  <span class="detail-value" id="modalResolution">-</span>
-                </div>
                 <div class="detail-row">
                   <span class="detail-label">Refund Amount</span>
                   <span class="detail-value money" id="modalRefundAmount">-</span>
@@ -7143,6 +7171,88 @@ function getResolutionHubHTML() {
     function timeAgo(d) { if(!d)return'-'; const s=Math.floor((Date.now()-new Date(d))/1000); if(s<60)return'Just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
     function formatDate(d) { if(!d)return'-'; return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
 
+    // Build detailed case breakdown HTML for modal
+    function buildCaseDetailsHtml(c) {
+      let html = '';
+
+      // Issue Type
+      const issueTypeMap = {
+        'quality_difference': 'Quality Difference — Customer received older material (Original) instead of PuppyPad 2.0',
+        'damaged': 'Damaged Product',
+        'missing_items': 'Missing Items',
+        'wrong_item': 'Wrong Item Received',
+        'not_met_expectations': 'Product Did Not Meet Expectations',
+        'lost_package': 'Lost Package',
+        'delivered_not_received': 'Delivered But Not Received',
+        'subscription_issue': 'Subscription Issue',
+        'charged_unexpectedly': 'Charged Unexpectedly',
+      };
+      const issueDesc = issueTypeMap[c.issue_type] || c.issue_type?.replace(/_/g, ' ') || c.case_type || '-';
+      html += '<div class="detail-row"><span class="detail-label">Issue Type</span><span class="detail-value">' + issueDesc + '</span></div>';
+
+      // Parse extra data if available
+      let extra = {};
+      try {
+        if (c.extra_data) extra = typeof c.extra_data === 'string' ? JSON.parse(c.extra_data) : c.extra_data;
+      } catch(e) {}
+
+      // Quality Details (if quality_difference)
+      if (c.issue_type === 'quality_difference' && extra.qualityDetails) {
+        const qd = extra.qualityDetails;
+        if (qd.padCount || qd.customerReportedCount) {
+          html += '<div class="detail-row"><span class="detail-label">Original Pads (Customer Reported)</span><span class="detail-value">' + (qd.customerReportedCount || qd.padCount) + ' pad(s)</span></div>';
+        }
+        if (qd.itemsUsed !== undefined) {
+          const usedStatus = qd.itemsUsed ? '<span style="color:#f59e0b;">Yes — Used</span>' : '<span style="color:#10b981;">No — Unused/Returnable</span>';
+          html += '<div class="detail-row"><span class="detail-label">Items Used?</span><span class="detail-value">' + usedStatus + '</span></div>';
+        }
+        if (qd.requiresReturn !== undefined) {
+          const returnStatus = qd.requiresReturn ? '<span style="color:#667eea;">Yes — Awaiting return</span>' : '<span style="color:#6c757d;">No return needed</span>';
+          html += '<div class="detail-row"><span class="detail-label">Return Required?</span><span class="detail-value">' + returnStatus + '</span></div>';
+        }
+        if (qd.upgradeTotal) {
+          html += '<div class="detail-row"><span class="detail-label">Upgrade Amount</span><span class="detail-value">$' + qd.upgradeTotal + '</span></div>';
+        }
+      }
+
+      // Selected Items
+      if (c.selected_items) {
+        let items = c.selected_items;
+        try { if (typeof items === 'string') items = JSON.parse(items); } catch(e) {}
+        if (items && items.length > 0) {
+          const itemsList = items.map(function(item) {
+            return item.title + (item.quantity > 1 ? ' (x' + item.quantity + ')' : '') + (item.sku ? ' <span style="color:#6c757d;font-size:11px;">[' + item.sku + ']</span>' : '');
+          }).join('<br>');
+          html += '<div class="detail-row" style="align-items:flex-start;"><span class="detail-label">Items Affected</span><span class="detail-value">' + itemsList + '</span></div>';
+        }
+      }
+
+      // Corrected Address (if applicable)
+      if (extra.correctedAddress) {
+        const addr = extra.correctedAddress;
+        const addrStr = [addr.line1, addr.line2, addr.city, addr.state, addr.zip, addr.country].filter(Boolean).join(', ');
+        html += '<div class="detail-row" style="align-items:flex-start;"><span class="detail-label">Corrected Address</span><span class="detail-value">' + addrStr + '</span></div>';
+      }
+
+      // Keep Product flag
+      if (extra.keepProduct !== undefined) {
+        const keepStatus = extra.keepProduct ? '<span style="color:#10b981;">Yes — Customer keeps product</span>' : '<span style="color:#6c757d;">No — Return required</span>';
+        html += '<div class="detail-row"><span class="detail-label">Customer Keeps Product?</span><span class="detail-value">' + keepStatus + '</span></div>';
+      }
+
+      // Intent Details (customer's explanation)
+      if (extra.intentDetails) {
+        html += '<div class="detail-row" style="align-items:flex-start;"><span class="detail-label">Customer Notes</span><span class="detail-value" style="font-style:italic;color:#495057;">"' + extra.intentDetails + '"</span></div>';
+      }
+
+      // If no details available
+      if (html === '') {
+        html = '<div class="detail-row"><span class="detail-value" style="color:#6c757d;">No additional details available</span></div>';
+      }
+
+      return html;
+    }
+
     async function openCase(caseId) {
       document.getElementById('caseModal').classList.add('active');
       document.getElementById('modalCaseId').textContent = caseId;
@@ -7173,11 +7283,14 @@ function getResolutionHubHTML() {
         document.getElementById('modalOrderDate').textContent = formatDate(c.order_date||c.created_at);
         document.getElementById('modalSessionId').textContent = c.session_id ? c.session_id.substring(0,20)+'...' : '-';
 
-        // Resolution details - use formatted resolution
+        // Resolution (at-a-glance) - use formatted resolution
         document.getElementById('modalResolution').textContent = formatResolution(c.resolution, c.refund_amount);
         document.getElementById('modalRefundAmount').textContent = c.refund_amount ? '$'+parseFloat(c.refund_amount).toFixed(2) : '-';
         document.getElementById('modalCreatedAt').textContent = formatDate(c.created_at);
         document.getElementById('modalUpdatedAt').textContent = formatDate(c.updated_at||c.created_at);
+
+        // Build Case Details breakdown
+        document.getElementById('modalCaseDetails').innerHTML = buildCaseDetailsHtml(c);
 
         // Due date - 1 day from creation (internal deadline)
         const dueEl = document.getElementById('modalDueDate');
