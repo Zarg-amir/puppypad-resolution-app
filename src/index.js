@@ -1255,7 +1255,14 @@ async function handleLookupOrder(request, env, corsHeaders) {
   // Process orders - extract line items with images and product type
   const processedOrders = await Promise.all(orders.map(async (order) => {
     const lineItems = await processLineItems(order.line_items, env);
-    const clientOrderId = extractClientOrderId(order);
+
+    // Try to extract clientOrderId from order data first
+    let clientOrderId = extractClientOrderId(order);
+
+    // If not found, try fetching from order metafields (separate API call)
+    if (!clientOrderId) {
+      clientOrderId = await fetchClientOrderIdFromMetafields(order.id, env);
+    }
 
     // Calculate fulfillment window (backend enforcement)
     const orderDate = new Date(order.created_at);
@@ -1337,22 +1344,149 @@ async function processLineItems(lineItems, env) {
   });
 }
 
-// Extract CheckoutChamp order ID from Shopify order
+// Extract CheckoutChamp order ID from Shopify order - search 5 locations
 function extractClientOrderId(order) {
-  // Check note attributes
-  const noteAttrs = order.note_attributes || [];
-  const clientOrderIdAttr = noteAttrs.find(attr => 
-    attr.name === 'clientOrderId' || attr.name === 'client_order_id'
-  );
-  if (clientOrderIdAttr) return clientOrderIdAttr.value;
+  // Attribute names to search for (case-insensitive)
+  const attributeNames = [
+    'clientOrderId', 'client_order_id', 'clientorderid',
+    'checkoutchamp_order_id', 'checkoutchampOrderId',
+    'cc_order_id', 'ccOrderId',
+    'orderId', 'order_id',
+    'external_order_id', 'externalOrderId',
+    'sticky_order_id', 'stickyOrderId',
+    'purchaseId', 'purchase_id'
+  ];
 
-  // Check order note
-  if (order.note) {
-    const match = order.note.match(/clientOrderId[:\s]+(\d+)/i);
-    if (match) return match[1];
+  // 1. Check note_attributes array (most common location)
+  const noteAttrs = order.note_attributes || [];
+  for (const attr of noteAttrs) {
+    if (attributeNames.some(name => name.toLowerCase() === attr.name?.toLowerCase())) {
+      if (attr.value) {
+        console.log('Found clientOrderId in note_attributes:', attr.value);
+        return attr.value;
+      }
+    }
   }
 
+  // 2. Check order tags field
+  if (order.tags) {
+    const tags = order.tags.split(/[,\s]+/);
+    for (const tag of tags) {
+      // Look for patterns like "cc:12345" or "orderId:12345"
+      const match = tag.match(/(?:cc|clientOrderId|orderId|checkoutchamp)[:\-_]?(\d+)/i);
+      if (match) {
+        console.log('Found clientOrderId in tags:', match[1]);
+        return match[1];
+      }
+    }
+  }
+
+  // 3. Check order note field
+  if (order.note) {
+    // Try various patterns
+    for (const attrName of attributeNames) {
+      const regex = new RegExp(`${attrName}[:\\s=]+["']?(\\d+)["']?`, 'i');
+      const match = order.note.match(regex);
+      if (match) {
+        console.log('Found clientOrderId in note:', match[1]);
+        return match[1];
+      }
+    }
+
+    // Also try to parse JSON in note
+    try {
+      const jsonMatch = order.note.match(/\{[^}]+\}/);
+      if (jsonMatch) {
+        const noteJson = JSON.parse(jsonMatch[0]);
+        for (const attrName of attributeNames) {
+          if (noteJson[attrName]) {
+            console.log('Found clientOrderId in note JSON:', noteJson[attrName]);
+            return noteJson[attrName];
+          }
+        }
+      }
+    } catch (e) {
+      // Not valid JSON, continue
+    }
+  }
+
+  // 4. Check custom attributes on line items
+  if (order.line_items) {
+    for (const item of order.line_items) {
+      const itemProps = item.properties || [];
+      for (const prop of itemProps) {
+        if (attributeNames.some(name => name.toLowerCase() === prop.name?.toLowerCase())) {
+          if (prop.value) {
+            console.log('Found clientOrderId in line_item properties:', prop.value);
+            return prop.value;
+          }
+        }
+      }
+    }
+  }
+
+  console.log('No clientOrderId found in order:', order.name);
   return null;
+}
+
+// Fetch clientOrderId from Shopify order metafields (separate API call)
+async function fetchClientOrderIdFromMetafields(orderId, env) {
+  const attributeNames = [
+    'clientOrderId', 'client_order_id', 'clientorderid',
+    'checkoutchamp_order_id', 'checkoutchampOrderId',
+    'cc_order_id', 'ccOrderId',
+    'orderId', 'order_id',
+    'external_order_id', 'externalOrderId',
+    'sticky_order_id', 'stickyOrderId',
+    'purchaseId', 'purchase_id'
+  ];
+
+  try {
+    const metafieldsUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders/${orderId}/metafields.json`;
+    const response = await fetch(metafieldsUrl, {
+      headers: {
+        'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.log('Metafields fetch failed for order:', orderId);
+      return null;
+    }
+
+    const data = await response.json();
+    const metafields = data.metafields || [];
+
+    for (const mf of metafields) {
+      // Check if the key matches any of our attribute names
+      if (attributeNames.some(name => name.toLowerCase() === mf.key?.toLowerCase())) {
+        console.log('Found clientOrderId in metafields:', mf.value);
+        return mf.value;
+      }
+
+      // Also check the value for JSON that might contain the ID
+      if (typeof mf.value === 'string' && mf.value.startsWith('{')) {
+        try {
+          const jsonValue = JSON.parse(mf.value);
+          for (const attrName of attributeNames) {
+            if (jsonValue[attrName]) {
+              console.log('Found clientOrderId in metafield JSON:', jsonValue[attrName]);
+              return jsonValue[attrName];
+            }
+          }
+        } catch (e) {
+          // Not valid JSON
+        }
+      }
+    }
+
+    console.log('No clientOrderId found in metafields for order:', orderId);
+    return null;
+  } catch (error) {
+    console.error('Error fetching metafields:', error);
+    return null;
+  }
 }
 
 // ============================================
