@@ -841,6 +841,30 @@ const SOP_URLS = {
   trouble_report: 'https://docs.puppypad.com/sop/trouble-reports'
 };
 
+// Database migrations - add missing columns
+let migrationsRun = false;
+async function runMigrations(env) {
+  if (migrationsRun || !env.ANALYTICS_DB) return;
+  migrationsRun = true;
+
+  const migrations = [
+    'ALTER TABLE cases ADD COLUMN extra_data TEXT',
+    'ALTER TABLE cases ADD COLUMN issue_type TEXT',
+  ];
+
+  for (const sql of migrations) {
+    try {
+      await env.ANALYTICS_DB.prepare(sql).run();
+      console.log('Migration success:', sql.substring(0, 50));
+    } catch (e) {
+      // Column likely already exists - ignore
+      if (!e.message.includes('duplicate column')) {
+        console.log('Migration skipped:', e.message.substring(0, 50));
+      }
+    }
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -857,6 +881,9 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
     }
+
+    // Run database migrations (adds missing columns)
+    await runMigrations(env);
 
     try {
       // Health check
