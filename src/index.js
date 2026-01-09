@@ -1818,6 +1818,7 @@ async function handleSubscription(request, env, corsHeaders) {
 }
 
 // Find subscription by searching CheckoutChamp with email
+// CheckoutChamp API uses 'emailAddress' parameter, not 'email'
 async function findSubscriptionByEmail(email, env) {
   const result = {
     isSubscription: false,
@@ -1833,102 +1834,191 @@ async function findSubscriptionByEmail(email, env) {
     price: null
   };
 
+  if (!email) {
+    console.log('No email provided for subscription lookup');
+    return result;
+  }
+
+  console.log('Finding subscription by email:', email);
+
   try {
-    // Try CheckoutChamp purchase/query with email parameter
-    const purchaseByEmailUrl = `https://api.checkoutchamp.com/purchase/query/?loginId=${encodeURIComponent(env.CC_API_USERNAME)}&password=${encodeURIComponent(env.CC_API_PASSWORD)}&email=${encodeURIComponent(email)}`;
+    // Method 1: Try customer/find to get customer ID first
+    const customerFindUrl = `https://api.checkoutchamp.com/customer/find/?loginId=${encodeURIComponent(env.CC_API_USERNAME)}&password=${encodeURIComponent(env.CC_API_PASSWORD)}&emailAddress=${encodeURIComponent(email)}`;
 
-    console.log('Calling CheckoutChamp purchase/query by email');
+    console.log('Calling CheckoutChamp customer/find');
+    const customerResponse = await fetch(customerFindUrl);
+    const customerResponseText = await customerResponse.text();
+    console.log('CheckoutChamp customer/find response:', customerResponseText.substring(0, 1000));
 
-    const purchaseResponse = await fetch(purchaseByEmailUrl);
-    const purchaseResponseText = await purchaseResponse.text();
-    console.log('CheckoutChamp email purchase response:', purchaseResponseText.substring(0, 1000));
+    if (customerResponse.ok) {
+      try {
+        const customerData = JSON.parse(customerResponseText);
 
-    if (purchaseResponse.ok) {
-      const purchaseData = JSON.parse(purchaseResponseText);
+        // Check for success response
+        if (customerData.result === 'SUCCESS' || customerData.message?.result === 'SUCCESS') {
+          const customerId = customerData.message?.customerId || customerData.customerId;
 
-      // Handle wrapped response
-      let purchases = purchaseData.message?.data || purchaseData.data || purchaseData;
+          if (customerId) {
+            console.log('Found customerId:', customerId);
 
-      // If it's an array, find ACTIVE subscription
-      if (Array.isArray(purchases) && purchases.length > 0) {
-        // Sort by dateCreated descending to get most recent first
-        purchases.sort((a, b) => {
-          const dateA = new Date(a.dateCreated || a.createdAt || 0);
-          const dateB = new Date(b.dateCreated || b.createdAt || 0);
-          return dateB - dateA;
-        });
+            // Now query purchases for this customer
+            const purchaseByCustomerUrl = `https://api.checkoutchamp.com/purchase/query/?loginId=${encodeURIComponent(env.CC_API_USERNAME)}&password=${encodeURIComponent(env.CC_API_PASSWORD)}&customerId=${encodeURIComponent(customerId)}`;
 
-        // Find first ACTIVE subscription
-        let purchaseInfo = purchases.find(p =>
-          p.status === 'ACTIVE' || p.purchaseStatus === 'ACTIVE'
-        ) || purchases[0];
+            console.log('Calling CheckoutChamp purchase/query by customerId');
+            const purchaseResponse = await fetch(purchaseByCustomerUrl);
+            const purchaseResponseText = await purchaseResponse.text();
+            console.log('CheckoutChamp purchase/query response:', purchaseResponseText.substring(0, 1000));
 
-        result.isSubscription = true;
-        result.purchaseId = purchaseInfo.purchaseId || purchaseInfo.purchase_id || purchaseInfo.id;
-        result.checkoutChampOrderId = purchaseInfo.orderId || purchaseInfo.order_id;
-        result.subscriptionStatus = purchaseInfo.status || purchaseInfo.purchaseStatus || 'Unknown';
-        result.nextBillDate = purchaseInfo.nextBillDate || purchaseInfo.next_bill_date || null;
-        result.currentBillDate = purchaseInfo.lastBillDate || purchaseInfo.last_bill_date || purchaseInfo.dateCreated || null;
-        result.billFrequency = purchaseInfo.billingIntervalDays || purchaseInfo.frequency || purchaseInfo.billFrequency || null;
-        result.cycleNumber = purchaseInfo.billingCycleNumber || purchaseInfo.cycleNumber || purchaseInfo.rebillDepth || null;
-        result.subscriptionProductSku = purchaseInfo.productSku || null;
-        result.subscriptionProductName = purchaseInfo.displayName || purchaseInfo.productName || null;
-        result.price = purchaseInfo.price || purchaseInfo.amount || purchaseInfo.recurringPrice || null;
-
-        console.log('Found subscription by email:', JSON.stringify(result));
-        return result;
-      } else if (purchases && !Array.isArray(purchases) && purchases.purchaseId) {
-        // Single object response
-        result.isSubscription = true;
-        result.purchaseId = purchases.purchaseId || purchases.purchase_id || purchases.id;
-        result.checkoutChampOrderId = purchases.orderId || purchases.order_id;
-        result.subscriptionStatus = purchases.status || purchases.purchaseStatus || 'Unknown';
-        result.nextBillDate = purchases.nextBillDate || purchases.next_bill_date || null;
-        result.currentBillDate = purchases.lastBillDate || purchases.last_bill_date || purchases.dateCreated || null;
-        result.billFrequency = purchases.billingIntervalDays || purchases.frequency || null;
-        result.cycleNumber = purchases.billingCycleNumber || purchases.cycleNumber || null;
-        result.subscriptionProductSku = purchases.productSku || null;
-        result.subscriptionProductName = purchases.displayName || purchases.productName || null;
-        result.price = purchases.price || purchases.amount || null;
-
-        console.log('Found subscription by email (single):', JSON.stringify(result));
-        return result;
-      }
-    }
-
-    // Try order/query with email as fallback
-    const orderByEmailUrl = `https://api.checkoutchamp.com/order/query/?loginId=${encodeURIComponent(env.CC_API_USERNAME)}&password=${encodeURIComponent(env.CC_API_PASSWORD)}&email=${encodeURIComponent(email)}`;
-
-    console.log('Trying CheckoutChamp order/query by email');
-
-    const orderResponse = await fetch(orderByEmailUrl);
-    const orderResponseText = await orderResponse.text();
-    console.log('CheckoutChamp email order response:', orderResponseText.substring(0, 1000));
-
-    if (orderResponse.ok) {
-      const orderData = JSON.parse(orderResponseText);
-      let orders = orderData.message?.data || orderData.data || orderData;
-
-      if (Array.isArray(orders) && orders.length > 0) {
-        // Look through orders for one with a purchaseId
-        for (const order of orders) {
-          const purchaseId = order.purchaseId || order.purchase_id;
-          if (purchaseId) {
-            // Found subscription order, get full details
-            console.log('Found order with purchaseId:', purchaseId, 'orderId:', order.orderId);
-            return await checkSubscriptionStatus(order.orderId || order.order_id, env);
+            if (purchaseResponse.ok) {
+              const purchaseData = JSON.parse(purchaseResponseText);
+              const subscriptionResult = extractSubscriptionFromPurchaseResponse(purchaseData);
+              if (subscriptionResult.isSubscription) {
+                return subscriptionResult;
+              }
+            }
           }
         }
+      } catch (parseError) {
+        console.log('Error parsing customer response:', parseError.message);
       }
     }
 
-    console.log('No subscription found by email');
+    // Method 2: Try purchase/query with emailAddress parameter
+    const purchaseByEmailUrl = `https://api.checkoutchamp.com/purchase/query/?loginId=${encodeURIComponent(env.CC_API_USERNAME)}&password=${encodeURIComponent(env.CC_API_PASSWORD)}&emailAddress=${encodeURIComponent(email)}`;
+
+    console.log('Calling CheckoutChamp purchase/query by emailAddress');
+    const purchaseResponse = await fetch(purchaseByEmailUrl);
+    const purchaseResponseText = await purchaseResponse.text();
+    console.log('CheckoutChamp purchase/query by email response:', purchaseResponseText.substring(0, 1000));
+
+    if (purchaseResponse.ok) {
+      try {
+        const purchaseData = JSON.parse(purchaseResponseText);
+        const subscriptionResult = extractSubscriptionFromPurchaseResponse(purchaseData);
+        if (subscriptionResult.isSubscription) {
+          return subscriptionResult;
+        }
+      } catch (parseError) {
+        console.log('Error parsing purchase response:', parseError.message);
+      }
+    }
+
+    // Method 3: Try order/query with emailAddress
+    const orderByEmailUrl = `https://api.checkoutchamp.com/order/query/?loginId=${encodeURIComponent(env.CC_API_USERNAME)}&password=${encodeURIComponent(env.CC_API_PASSWORD)}&emailAddress=${encodeURIComponent(email)}`;
+
+    console.log('Calling CheckoutChamp order/query by emailAddress');
+    const orderResponse = await fetch(orderByEmailUrl);
+    const orderResponseText = await orderResponse.text();
+    console.log('CheckoutChamp order/query by email response:', orderResponseText.substring(0, 1000));
+
+    if (orderResponse.ok) {
+      try {
+        const orderData = JSON.parse(orderResponseText);
+        let orders = orderData.message?.data || orderData.data || orderData;
+
+        // Handle single object response
+        if (orders && !Array.isArray(orders) && orders.orderId) {
+          orders = [orders];
+        }
+
+        if (Array.isArray(orders) && orders.length > 0) {
+          // Look through orders for one with a purchaseId (indicates subscription)
+          for (const order of orders) {
+            const purchaseId = order.purchaseId || order.purchase_id;
+            const orderId = order.orderId || order.order_id;
+
+            if (purchaseId) {
+              console.log('Found order with purchaseId:', purchaseId, 'orderId:', orderId);
+              return await checkSubscriptionStatus(orderId, env);
+            }
+          }
+
+          // If no purchaseId found in orders, try querying each order
+          for (const order of orders.slice(0, 5)) { // Limit to first 5 orders
+            const orderId = order.orderId || order.order_id;
+            if (orderId) {
+              console.log('Checking order for subscription:', orderId);
+              const subResult = await checkSubscriptionStatus(orderId, env);
+              if (subResult.isSubscription) {
+                return subResult;
+              }
+            }
+          }
+        }
+      } catch (parseError) {
+        console.log('Error parsing order response:', parseError.message);
+      }
+    }
+
+    console.log('No subscription found by email after all methods');
     return result;
 
   } catch (error) {
     console.error('Error finding subscription by email:', error);
     return result;
   }
+}
+
+// Extract subscription data from CheckoutChamp purchase/query response
+function extractSubscriptionFromPurchaseResponse(purchaseData) {
+  const result = {
+    isSubscription: false,
+    checkoutChampOrderId: null,
+    subscriptionStatus: null,
+    nextBillDate: null,
+    currentBillDate: null,
+    billFrequency: null,
+    cycleNumber: null,
+    purchaseId: null,
+    subscriptionProductSku: null,
+    subscriptionProductName: null,
+    price: null
+  };
+
+  // Handle wrapped response - check multiple locations
+  let purchases = purchaseData.message?.data || purchaseData.data || purchaseData;
+
+  // Check for error response
+  if (purchaseData.result === 'ERROR' || purchaseData.message?.result === 'ERROR') {
+    console.log('CheckoutChamp returned error:', purchaseData.message?.message || purchaseData.errorMessage);
+    return result;
+  }
+
+  // Handle single object response
+  if (purchases && !Array.isArray(purchases) && (purchases.purchaseId || purchases.id)) {
+    purchases = [purchases];
+  }
+
+  // If it's an array, find ACTIVE subscription
+  if (Array.isArray(purchases) && purchases.length > 0) {
+    // Sort by dateCreated descending to get most recent first
+    purchases.sort((a, b) => {
+      const dateA = new Date(a.dateCreated || a.createdAt || 0);
+      const dateB = new Date(b.dateCreated || b.createdAt || 0);
+      return dateB - dateA;
+    });
+
+    // Find first ACTIVE subscription, or use first one
+    let purchaseInfo = purchases.find(p =>
+      p.status === 'ACTIVE' || p.purchaseStatus === 'ACTIVE'
+    ) || purchases[0];
+
+    result.isSubscription = true;
+    result.purchaseId = purchaseInfo.purchaseId || purchaseInfo.purchase_id || purchaseInfo.id;
+    result.checkoutChampOrderId = purchaseInfo.orderId || purchaseInfo.order_id;
+    result.subscriptionStatus = purchaseInfo.status || purchaseInfo.purchaseStatus || 'Unknown';
+    result.nextBillDate = purchaseInfo.nextBillDate || purchaseInfo.next_bill_date || null;
+    result.currentBillDate = purchaseInfo.lastBillDate || purchaseInfo.last_bill_date || purchaseInfo.dateCreated || null;
+    result.billFrequency = purchaseInfo.billingIntervalDays || purchaseInfo.frequency || purchaseInfo.billFrequency || null;
+    result.cycleNumber = purchaseInfo.billingCycleNumber || purchaseInfo.cycleNumber || purchaseInfo.rebillDepth || null;
+    result.subscriptionProductSku = purchaseInfo.productSku || null;
+    result.subscriptionProductName = purchaseInfo.displayName || purchaseInfo.productName || null;
+    result.price = purchaseInfo.price || purchaseInfo.amount || purchaseInfo.recurringPrice || null;
+
+    console.log('Extracted subscription from purchase response:', JSON.stringify(result));
+  }
+
+  return result;
 }
 
 // Check subscription status - matches the working implementation exactly
