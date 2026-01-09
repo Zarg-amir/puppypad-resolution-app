@@ -6606,8 +6606,6 @@ async function submitTroubleReport(event) {
   const reportData = {
     name: document.getElementById('troubleName').value,
     email: document.getElementById('troubleEmail').value,
-    orderNumber: document.getElementById('troubleOrder').value || null,
-    issueType: document.getElementById('troubleType').value,
     description: document.getElementById('troubleDescription').value,
     // Include debug info (if available)
     sessionId: sessionInfo.sessionId || null,

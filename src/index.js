@@ -3746,8 +3746,6 @@ async function handleTroubleReport(request, env, corsHeaders) {
     const {
       name,
       email,
-      orderNumber,
-      issueType,
       description,
       sessionId,
       currentStep,
@@ -3764,16 +3762,14 @@ async function handleTroubleReport(request, env, corsHeaders) {
     try {
       await env.ANALYTICS_DB.prepare(`
         INSERT INTO trouble_reports (
-          report_id, name, email, order_number, issue_type, description,
+          report_id, name, email, description,
           session_id, current_step, browser, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
       `).bind(
         reportId,
         name,
         email,
-        orderNumber || null,
-        issueType,
         description,
         sessionId || null,
         currentStep || null,
@@ -3783,17 +3779,6 @@ async function handleTroubleReport(request, env, corsHeaders) {
       // Table might not exist yet - that's okay, we'll still create the ClickUp task
       console.log('Trouble reports table may not exist:', dbError.message);
     }
-
-    // Create a ClickUp task for the team to follow up
-    const issueTypeLabels = {
-      'refund': 'Request a refund',
-      'track': 'Track my order',
-      'cancel_subscription': 'Cancel subscription',
-      'report_issue': 'Report a product issue',
-      'page_not_loading': 'Page not loading properly',
-      'error_message': 'Getting an error message',
-      'other': 'Other'
-    };
 
     const taskDescription = `
 **TROUBLE REPORT: ${reportId}**
@@ -3805,11 +3790,9 @@ A customer reported an issue using the resolution app.
 **Customer Details:**
 • Name: ${name}
 • Email: ${email}
-• Order Number: ${orderNumber || 'Not provided'}
 
-**Issue Details:**
-• What they were trying to do: ${issueTypeLabels[issueType] || issueType}
-• Description: ${description}
+**What went wrong:**
+${description}
 
 **Technical Info:**
 • Session ID: ${sessionId || 'N/A'}
@@ -3835,7 +3818,7 @@ A customer reported an issue using the resolution app.
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            name: `[TROUBLE REPORT] ${name} - ${issueTypeLabels[issueType] || issueType}`,
+            name: `[TROUBLE REPORT] ${name} - App Issue`,
             description: taskDescription,
             priority: 2, // High priority
             tags: ['trouble-report', 'app-issue'],
@@ -6808,9 +6791,6 @@ function getResolutionHubHTML() {
           <div class="modal-case-id" id="issueModalId">Loading...</div>
           <div class="modal-title" id="issueModalName">Customer Name</div>
           <div class="modal-meta">
-            <div class="modal-meta-item" id="issueModalType">
-              <span class="type-badge">-</span>
-            </div>
             <div class="modal-meta-item" id="issueModalStatus">
               <span class="status-badge">-</span>
             </div>
@@ -6839,19 +6819,7 @@ function getResolutionHubHTML() {
                 Customer Information
               </div>
               <div class="info-grid">
-                <div class="info-item"><span class="info-label">Email</span><span class="info-value" id="issueModalEmail">-</span></div>
-                <div class="info-item"><span class="info-label">Order Number</span><span class="info-value" id="issueModalOrder">-</span></div>
-              </div>
-            </div>
-
-            <!-- What They Were Trying To Do -->
-            <div class="detail-section">
-              <div class="section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                What They Were Trying To Do
-              </div>
-              <div class="resolution-box" id="issueModalAction" style="background: #fef3c7; border-color: #f59e0b;">
-                -
+                <div class="info-item" style="grid-column: span 2;"><span class="info-label">Email</span><span class="info-value" id="issueModalEmail">-</span></div>
               </div>
             </div>
 
@@ -7343,22 +7311,13 @@ function getResolutionHubHTML() {
         const countEl = document.getElementById('issuesCount');
         if (countEl) countEl.textContent = issuesList.filter(i => i.status !== 'resolved').length;
 
-        const issueTypeLabels = {
-          'refund': 'Request a refund',
-          'track': 'Track order',
-          'cancel_subscription': 'Cancel subscription',
-          'report_issue': 'Report product issue',
-          'page_not_loading': 'Page not loading',
-          'error_message': 'Error message',
-          'other': 'Other'
-        };
-
         function renderIssueRow(issue) {
           const statusClass = (issue.status || 'pending').replace('_', '-');
+          const shortDesc = (issue.description || '-').substring(0, 60) + ((issue.description || '').length > 60 ? '...' : '');
           return '<tr onclick="openIssue(\\''+issue.report_id+'\\')">'+
             '<td><span class="case-id" style="background:#fef3c7;color:#92400e;">'+issue.report_id+'</span></td>'+
             '<td><div class="customer-info"><span class="customer-name">'+(issue.name||'Unknown')+'</span><span class="customer-email">'+(issue.email||'')+'</span></div></td>'+
-            '<td><span class="type-badge manual">'+(issueTypeLabels[issue.issue_type]||issue.issue_type||'-')+'</span></td>'+
+            '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--gray-600);">'+shortDesc+'</td>'+
             '<td><span class="status-badge '+statusClass+'">'+(issue.status||'pending')+'</span></td>'+
             '<td class="time-ago">'+timeAgo(issue.created_at)+'</td>'+
           '</tr>';
@@ -7370,7 +7329,7 @@ function getResolutionHubHTML() {
             '<span style="color:var(--gray-500);">Users who reported problems with the resolution app</span>'+
           '</div>'+
           '<table class="cases-table">'+
-            '<thead><tr><th>Report ID</th><th>Customer</th><th>Issue Type</th><th>Status</th><th>Reported</th></tr></thead>'+
+            '<thead><tr><th>Report ID</th><th>Customer</th><th>Issue</th><th>Status</th><th>Reported</th></tr></thead>'+
             '<tbody>'+
               (issuesList.length ? issuesList.map(renderIssueRow).join('') : '<tr><td colspan="5" class="empty-state">No issue reports yet</td></tr>')+
             '</tbody>'+
@@ -7395,27 +7354,13 @@ function getResolutionHubHTML() {
         const issue = await r.json();
         currentIssue = issue;
 
-        const issueTypeLabels = {
-          'refund': 'Request a refund',
-          'track': 'Track my order',
-          'cancel_subscription': 'Cancel subscription',
-          'report_issue': 'Report a product issue',
-          'page_not_loading': 'Page not loading properly',
-          'error_message': 'Getting an error message',
-          'other': 'Other'
-        };
-
         // Populate modal
         document.getElementById('issueModalId').textContent = issue.report_id;
         document.getElementById('issueModalName').textContent = issue.name || 'Unknown';
-        document.getElementById('issueModalType').innerHTML = '<span class="type-badge manual">'+(issueTypeLabels[issue.issue_type]||issue.issue_type||'-')+'</span>';
         document.getElementById('issueModalStatus').innerHTML = '<span class="status-badge '+(issue.status||'pending').replace('_','-')+'">'+(issue.status||'pending')+'</span>';
         document.getElementById('issueModalTime').textContent = timeAgo(issue.created_at);
 
         document.getElementById('issueModalEmail').textContent = issue.email || '-';
-        document.getElementById('issueModalOrder').textContent = issue.order_number || 'Not provided';
-
-        document.getElementById('issueModalAction').textContent = issueTypeLabels[issue.issue_type] || issue.issue_type || '-';
         document.getElementById('issueModalDescription').textContent = issue.description || 'No description provided';
 
         document.getElementById('issueModalSession').textContent = issue.session_id || 'N/A';
