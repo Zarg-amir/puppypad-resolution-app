@@ -841,6 +841,30 @@ const SOP_URLS = {
   trouble_report: 'https://docs.puppypad.com/sop/trouble-reports'
 };
 
+// Database migrations - add missing columns
+let migrationsRun = false;
+async function runMigrations(env) {
+  if (migrationsRun || !env.ANALYTICS_DB) return;
+  migrationsRun = true;
+
+  const migrations = [
+    'ALTER TABLE cases ADD COLUMN extra_data TEXT',
+    'ALTER TABLE cases ADD COLUMN issue_type TEXT',
+  ];
+
+  for (const sql of migrations) {
+    try {
+      await env.ANALYTICS_DB.prepare(sql).run();
+      console.log('Migration success:', sql.substring(0, 50));
+    } catch (e) {
+      // Column likely already exists - ignore
+      if (!e.message.includes('duplicate column')) {
+        console.log('Migration skipped:', e.message.substring(0, 50));
+      }
+    }
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -857,6 +881,9 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
     }
+
+    // Run database migrations (adds missing columns)
+    await runMigrations(env);
 
     try {
       // Health check
@@ -2404,7 +2431,7 @@ async function handleCreateCase(request, env, corsHeaders) {
     await updateClickUpWithConversationUrl(env, clickupTask.id, richpanelResult.conversationNo);
   }
 
-  // Log to D1 analytics database
+  // Log to D1 analytics database (include ALL fields for extra_data)
   await logCaseToAnalytics(env, {
     caseId,
     sessionId: caseData.sessionId,
@@ -2414,6 +2441,7 @@ async function handleCreateCase(request, env, corsHeaders) {
     email: caseData.email,
     customerName: caseData.customerName,
     customerFirstName: caseData.customerFirstName,
+    customerLastName: caseData.customerLastName,
     refundAmount: caseData.refundAmount,
     selectedItems: caseData.selectedItems,
     clickupTaskId: clickupTask?.id,
@@ -2421,7 +2449,24 @@ async function handleCreateCase(request, env, corsHeaders) {
     sessionReplayUrl: caseData.sessionReplayUrl,
     orderUrl: caseData.orderUrl,
     orderDate: caseData.orderDate,
-    richpanelConversationNo: richpanelResult?.conversationNo
+    richpanelConversationNo: richpanelResult?.conversationNo,
+    // Subscription-specific fields
+    actionType: caseData.actionType,
+    purchaseId: caseData.purchaseId,
+    clientOrderId: caseData.clientOrderId,
+    subscriptionProductName: caseData.subscriptionProductName,
+    subscriptionStatus: caseData.subscriptionStatus,
+    pauseDuration: caseData.pauseDuration,
+    pauseResumeDate: caseData.pauseResumeDate,
+    cancelReason: caseData.cancelReason,
+    discountPercent: caseData.discountPercent,
+    // Other fields for extra_data
+    keepProduct: caseData.keepProduct,
+    issueType: caseData.issueType,
+    qualityDetails: caseData.qualityDetails,
+    correctedAddress: caseData.correctedAddress,
+    notes: caseData.notes,
+    intentDetails: caseData.intentDetails,
   });
 
   return Response.json({
@@ -6642,6 +6687,9 @@ async function handleHubGetCase(caseId, env, corsHeaders) {
     }
     if (caseData.shipping_address) {
       try { caseData.shipping_address = JSON.parse(caseData.shipping_address); } catch (e) {}
+    }
+    if (caseData.extra_data) {
+      try { caseData.extra_data = JSON.parse(caseData.extra_data); } catch (e) {}
     }
 
     return Response.json({ case: caseData }, { headers: corsHeaders });
