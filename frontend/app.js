@@ -6610,20 +6610,43 @@ async function submitTroubleReport(event) {
     // Session data not available
   }
 
+  // Get PostHog session replay URL for watching the session recording
+  let sessionReplayUrl = '';
+  try {
+    if (typeof posthog !== 'undefined' && posthog.get_session_replay_url) {
+      sessionReplayUrl = posthog.get_session_replay_url({ withTimestamp: true }) || '';
+    }
+  } catch (e) {
+    console.warn('Could not get PostHog session replay URL:', e);
+  }
+
+  // Get current step from the visible screen
+  let currentStep = 'unknown';
+  try {
+    const currentScreen = document.querySelector('.screen.active');
+    if (currentScreen) {
+      currentStep = currentScreen.id || 'unknown';
+    }
+  } catch (e) {
+    // Fall back to sessionInfo
+    currentStep = sessionInfo.currentFlow || 'unknown';
+  }
+
   const reportData = {
     name: document.getElementById('troubleName').value,
     email: document.getElementById('troubleEmail').value,
     description: document.getElementById('troubleDescription').value,
     // Include debug info (if available)
     sessionId: sessionInfo.sessionId || null,
-    currentStep: sessionInfo.currentFlow || 'unknown',
+    currentStep: currentStep,
     customerEmail: sessionInfo.customerEmail || null,
     orderData: sessionInfo.currentOrder ? {
       orderNumber: sessionInfo.currentOrder.order_number,
       orderDate: sessionInfo.currentOrder.created_at
     } : null,
     browser: navigator.userAgent,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    sessionReplayUrl: sessionReplayUrl
   };
 
   try {

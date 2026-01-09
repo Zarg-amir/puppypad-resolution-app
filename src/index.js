@@ -3752,20 +3752,40 @@ async function handleTroubleReport(request, env, corsHeaders) {
       customerEmail,
       orderData,
       browser,
-      timestamp
+      timestamp,
+      sessionReplayUrl
     } = data;
 
     // Generate a reference ID for the report
     const reportId = 'TR-' + Date.now().toString(36).toUpperCase();
+
+    // Create Richpanel conversation so team can respond to customer via email
+    let richpanelResult = null;
+    if (env.RICHPANEL_API_KEY && email) {
+      try {
+        richpanelResult = await createTroubleReportRichpanelEntry(env, {
+          name,
+          email,
+          description,
+          sessionId,
+          currentStep,
+          browser,
+          sessionReplayUrl
+        }, reportId);
+      } catch (richpanelError) {
+        console.error('Richpanel error:', richpanelError);
+      }
+    }
 
     // Log to analytics database
     try {
       await env.ANALYTICS_DB.prepare(`
         INSERT INTO trouble_reports (
           report_id, name, email, description,
-          session_id, current_step, browser, created_at
+          session_id, current_step, browser, session_replay_url,
+          richpanel_conversation_no, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       `).bind(
         reportId,
         name,
@@ -3773,11 +3793,32 @@ async function handleTroubleReport(request, env, corsHeaders) {
         description,
         sessionId || null,
         currentStep || null,
-        browser || null
+        browser || null,
+        sessionReplayUrl || null,
+        richpanelResult?.conversationNo || null
       ).run();
     } catch (dbError) {
-      // Table might not exist yet - that's okay, we'll still create the ClickUp task
-      console.log('Trouble reports table may not exist:', dbError.message);
+      // Table might not exist yet or columns missing - that's okay, try basic insert
+      console.log('Trouble reports table issue:', dbError.message);
+      try {
+        await env.ANALYTICS_DB.prepare(`
+          INSERT INTO trouble_reports (
+            report_id, name, email, description,
+            session_id, current_step, browser, created_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `).bind(
+          reportId,
+          name,
+          email,
+          description,
+          sessionId || null,
+          currentStep || null,
+          browser || null
+        ).run();
+      } catch (dbError2) {
+        console.log('Basic insert also failed:', dbError2.message);
+      }
     }
 
     const taskDescription = `
@@ -3799,16 +3840,19 @@ ${description}
 • Current Step: ${currentStep || 'N/A'}
 • Browser: ${browser || 'N/A'}
 • Timestamp: ${timestamp || new Date().toISOString()}
+${sessionReplayUrl ? `• Session Recording: ${sessionReplayUrl}` : ''}
+${richpanelResult?.conversationNo ? `• Richpanel Conversation: https://app.richpanel.com/conversations?viewId=search&conversationNo=${richpanelResult.conversationNo}` : ''}
 
 ---
 
 **Action Required:**
-1. Review the issue and reach out to the customer within 24 hours
+1. Respond to customer via Richpanel conversation
 2. If this is a bug, report it to the dev team
 3. Help the customer complete their resolution manually if needed
 `;
 
     // Create task in ClickUp (use manual help list)
+    let clickupTaskId = null;
     if (env.CLICKUP_API_KEY) {
       try {
         const clickupResponse = await fetch('https://api.clickup.com/api/v2/list/901105691498/task', {
@@ -3831,19 +3875,25 @@ ${description}
 
         if (!clickupResponse.ok) {
           console.error('ClickUp task creation failed:', await clickupResponse.text());
+        } else {
+          const clickupResult = await clickupResponse.json();
+          clickupTaskId = clickupResult.id;
+
+          // Update ClickUp with Richpanel conversation URL
+          if (richpanelResult?.conversationNo && clickupTaskId) {
+            await updateClickUpWithConversationUrl(env, clickupTaskId, richpanelResult.conversationNo);
+          }
         }
       } catch (clickupError) {
         console.error('ClickUp error:', clickupError);
       }
     }
 
-    // Send notification email to support team (optional)
-    // Could integrate with email service here
-
     return Response.json({
       success: true,
       reportId: reportId,
-      message: 'Report submitted successfully'
+      message: 'Report submitted successfully',
+      richpanelConversationNo: richpanelResult?.conversationNo || null
     }, { headers: corsHeaders });
 
   } catch (error) {
@@ -3852,6 +3902,151 @@ ${description}
       success: false,
       error: 'Failed to submit report'
     }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Create Richpanel entry for trouble reports
+async function createTroubleReportRichpanelEntry(env, reportData, reportId) {
+  const testMode = isTestMode(env);
+  const fromEmail = testMode
+    ? RICHPANEL_CONFIG.testEmail
+    : (reportData.email || RICHPANEL_CONFIG.testEmail);
+
+  const customerName = reportData.name || 'Customer';
+  const nameParts = customerName.split(' ');
+  const firstName = nameParts[0] || 'Customer';
+  const lastName = nameParts.slice(1).join(' ') || '';
+
+  const subject = `${reportId} - Trouble Report - App Issue`;
+
+  // Build customer message (simulated email from customer)
+  const testNotice = testMode
+    ? '[TEST MODE - This is not a real customer request]<br><br>'
+    : '';
+
+  const customerMessage = `${testNotice}Hi,<br><br>
+I was using the PuppyPad Resolution App and ran into an issue.<br><br>
+<b>What went wrong:</b><br>
+${(reportData.description || 'No description provided').replace(/\n/g, '<br>')}<br><br>
+<b>Technical Details:</b><br>
+• Step I was on: ${reportData.currentStep || 'Unknown'}<br>
+• Browser: ${reportData.browser || 'Unknown'}<br><br>
+Please help me resolve this issue.<br><br>
+Thanks,<br>
+${customerName}`;
+
+  try {
+    const response = await fetch('https://api.richpanel.com/v1/tickets', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-richpanel-key': env.RICHPANEL_API_KEY
+      },
+      body: JSON.stringify({
+        ticket: {
+          status: 'OPEN',
+          subject: subject,
+          comment: {
+            sender_type: 'customer',
+            body: customerMessage
+          },
+          customer_profile: {
+            firstName: firstName,
+            lastName: lastName
+          },
+          via: {
+            channel: 'email',
+            source: {
+              from: { address: fromEmail },
+              to: { address: RICHPANEL_CONFIG.supportEmail }
+            }
+          }
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Richpanel API error for trouble report:', response.status, errorText);
+      return { success: false, error: `Richpanel API error: ${response.status}` };
+    }
+
+    const result = await response.json();
+    const ticketId = result.id || result.ticket?.id;
+    const conversationNo = result.conversationNo ||
+                           result.ticket?.conversationNo ||
+                           result.conversation_no ||
+                           result.ticket?.conversation_no ||
+                           result.ticketNumber ||
+                           result.ticket?.ticketNumber;
+
+    // Add private note with action steps
+    if (ticketId) {
+      await createTroubleReportPrivateNote(env, ticketId, reportData, reportId);
+    }
+
+    console.log('Richpanel trouble report created:', { reportId, ticketId, conversationNo });
+
+    return {
+      success: true,
+      ticketId,
+      conversationNo,
+      conversationUrl: conversationNo ? `https://app.richpanel.com/conversations?viewId=search&conversationNo=${conversationNo}` : null
+    };
+  } catch (error) {
+    console.error('Richpanel trouble report error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function createTroubleReportPrivateNote(env, ticketId, reportData, reportId) {
+  const noteContent = `
+<div style="font-family: Arial, sans-serif; padding: 16px; background: #fff8e1; border-radius: 8px; border-left: 4px solid #f59e0b;">
+  <h3 style="margin: 0 0 12px 0; color: #b45309;">⚠️ TROUBLE REPORT: ${reportId}</h3>
+
+  <p style="margin: 0 0 16px 0;"><b>Customer reported an issue with the Resolution App</b></p>
+
+  <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+    <b>Issue Description:</b><br>
+    ${(reportData.description || 'No description').replace(/\n/g, '<br>')}
+  </div>
+
+  <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+    <b>Technical Info:</b><br>
+    • Session ID: ${reportData.sessionId || 'N/A'}<br>
+    • Current Step: ${reportData.currentStep || 'Unknown'}<br>
+    • Browser: ${reportData.browser || 'Unknown'}<br>
+    ${reportData.sessionReplayUrl ? `<br><a href="${reportData.sessionReplayUrl}" target="_blank">🎥 Watch Session Recording</a>` : ''}
+  </div>
+
+  <div style="background: #fef3c7; padding: 12px; border-radius: 6px;">
+    <b>Action Required:</b><br>
+    1. Respond to customer and help resolve their issue<br>
+    2. If this is a bug, notify the dev team<br>
+    3. If customer needs manual help, guide them through the process
+  </div>
+</div>
+`;
+
+  try {
+    await fetch(`https://api.richpanel.com/v1/tickets/${ticketId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-richpanel-key': env.RICHPANEL_API_KEY
+      },
+      body: JSON.stringify({
+        ticket: {
+          comment: {
+            body: noteContent,
+            public: false,
+            sender_type: 'operator'
+          }
+        }
+      })
+    });
+  } catch (error) {
+    console.error('Failed to create trouble report private note:', error);
   }
 }
 
@@ -6893,6 +7088,10 @@ function getResolutionHubHTML() {
                 Quick Actions
               </div>
               <div class="quick-actions">
+                <a class="quick-action-btn" id="issueConversationLink" href="#" target="_blank" style="display:none;">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                  View Conversation
+                </a>
                 <a class="quick-action-btn" id="issueEmailLink" href="mailto:">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                   Email Customer
@@ -7403,10 +7602,22 @@ function getResolutionHubHTML() {
         // Email link
         document.getElementById('issueEmailLink').href = 'mailto:' + (issue.email || '');
 
-        // Session replay link - try to find it
+        // Richpanel conversation link
+        const conversationLink = document.getElementById('issueConversationLink');
+        if (issue.richpanel_conversation_no) {
+          conversationLink.href = 'https://app.richpanel.com/conversations?viewId=search&conversationNo=' + issue.richpanel_conversation_no;
+          conversationLink.style.display = 'flex';
+        } else {
+          conversationLink.style.display = 'none';
+        }
+
+        // Session replay link - use stored URL if available, otherwise construct from session ID
         const replayLink = document.getElementById('issueReplayLink');
-        if (issue.session_id) {
-          // Build replay URL based on session ID
+        if (issue.session_replay_url) {
+          replayLink.href = issue.session_replay_url;
+          replayLink.style.display = 'flex';
+        } else if (issue.session_id) {
+          // Fallback: construct URL from session ID
           replayLink.href = 'https://app.posthog.com/replay/' + issue.session_id;
           replayLink.style.display = 'flex';
         } else {
