@@ -947,6 +947,11 @@ export default {
         return await handleLogPolicyBlock(request, env, corsHeaders);
       }
 
+      // Trouble report submission (for users having issues with the app)
+      if (pathname === '/api/trouble-report' && request.method === 'POST') {
+        return await handleTroubleReport(request, env, corsHeaders);
+      }
+
       // ============================================
       // ADMIN DASHBOARD ENDPOINTS
       // ============================================
@@ -3713,6 +3718,140 @@ async function handleLogPolicyBlock(request, env, corsHeaders) {
   } catch (e) {
     console.error('Policy block logging failed:', e);
     return Response.json({ success: false, error: e.message }, { headers: corsHeaders });
+  }
+}
+
+// Handle trouble report submissions (users having issues with the app)
+async function handleTroubleReport(request, env, corsHeaders) {
+  try {
+    const data = await request.json();
+
+    const {
+      name,
+      email,
+      orderNumber,
+      issueType,
+      description,
+      sessionId,
+      currentStep,
+      customerEmail,
+      orderData,
+      browser,
+      timestamp
+    } = data;
+
+    // Generate a reference ID for the report
+    const reportId = 'TR-' + Date.now().toString(36).toUpperCase();
+
+    // Log to analytics database
+    try {
+      await env.ANALYTICS_DB.prepare(`
+        INSERT INTO trouble_reports (
+          report_id, name, email, order_number, issue_type, description,
+          session_id, current_step, browser, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `).bind(
+        reportId,
+        name,
+        email,
+        orderNumber || null,
+        issueType,
+        description,
+        sessionId || null,
+        currentStep || null,
+        browser || null
+      ).run();
+    } catch (dbError) {
+      // Table might not exist yet - that's okay, we'll still create the ClickUp task
+      console.log('Trouble reports table may not exist:', dbError.message);
+    }
+
+    // Create a ClickUp task for the team to follow up
+    const issueTypeLabels = {
+      'refund': 'Request a refund',
+      'track': 'Track my order',
+      'cancel_subscription': 'Cancel subscription',
+      'report_issue': 'Report a product issue',
+      'page_not_loading': 'Page not loading properly',
+      'error_message': 'Getting an error message',
+      'other': 'Other'
+    };
+
+    const taskDescription = `
+**TROUBLE REPORT: ${reportId}**
+
+A customer reported an issue using the resolution app.
+
+---
+
+**Customer Details:**
+• Name: ${name}
+• Email: ${email}
+• Order Number: ${orderNumber || 'Not provided'}
+
+**Issue Details:**
+• What they were trying to do: ${issueTypeLabels[issueType] || issueType}
+• Description: ${description}
+
+**Technical Info:**
+• Session ID: ${sessionId || 'N/A'}
+• Current Step: ${currentStep || 'N/A'}
+• Browser: ${browser || 'N/A'}
+• Timestamp: ${timestamp || new Date().toISOString()}
+
+---
+
+**Action Required:**
+1. Review the issue and reach out to the customer within 24 hours
+2. If this is a bug, report it to the dev team
+3. Help the customer complete their resolution manually if needed
+`;
+
+    // Create task in ClickUp (use manual help list)
+    if (env.CLICKUP_API_KEY) {
+      try {
+        const clickupResponse = await fetch('https://api.clickup.com/api/v2/list/901105691498/task', {
+          method: 'POST',
+          headers: {
+            'Authorization': env.CLICKUP_API_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: `[TROUBLE REPORT] ${name} - ${issueTypeLabels[issueType] || issueType}`,
+            description: taskDescription,
+            priority: 2, // High priority
+            tags: ['trouble-report', 'app-issue'],
+            custom_fields: [
+              { id: 'f5e59891-0237-4d5b-806b-80bcb2c87936', value: reportId },
+              { id: '3db1a193-4548-49b2-a498-b4ed44cce69a', value: email }
+            ]
+          })
+        });
+
+        if (!clickupResponse.ok) {
+          console.error('ClickUp task creation failed:', await clickupResponse.text());
+        }
+      } catch (clickupError) {
+        console.error('ClickUp error:', clickupError);
+      }
+    }
+
+    // Send notification email to support team (optional)
+    // Could integrate with email service here
+
+    return Response.json({
+      success: true,
+      reportId: reportId,
+      message: 'Report submitted successfully'
+    }, { headers: corsHeaders });
+
+  } catch (error) {
+    console.error('Trouble report error:', error);
+    return Response.json({
+      success: false,
+      error: 'Failed to submit report'
+    }, { status: 500, headers: corsHeaders });
   }
 }
 

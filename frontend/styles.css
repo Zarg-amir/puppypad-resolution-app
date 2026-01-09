@@ -2781,6 +2781,239 @@ textarea.form-input {
   opacity: 1;
 }
 
+.footer-divider {
+  color: var(--gray-300);
+  font-size: 10px;
+  margin: 0 4px;
+}
+
+.trouble-link {
+  font-size: 12px;
+  color: var(--gray-400);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.trouble-link:hover {
+  color: var(--gray-600);
+  text-decoration: underline;
+}
+
+/* ============================================
+   TROUBLE REPORT MODAL
+   ============================================ */
+.trouble-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.trouble-modal.active {
+  display: flex;
+}
+
+.trouble-modal-content {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: slideUp 0.3s ease-out;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.trouble-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--gray-100);
+  border-radius: 50%;
+  font-size: 20px;
+  color: var(--gray-500);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.trouble-close:hover {
+  background: var(--gray-200);
+  color: var(--gray-700);
+}
+
+.trouble-header {
+  text-align: center;
+  padding: 28px 24px 20px;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.trouble-icon {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.trouble-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin: 0 0 8px;
+}
+
+.trouble-header p {
+  font-size: 14px;
+  color: var(--gray-500);
+  margin: 0;
+  line-height: 1.5;
+}
+
+#troubleForm {
+  padding: 20px 24px 24px;
+}
+
+.trouble-field {
+  margin-bottom: 16px;
+}
+
+.trouble-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-700);
+  margin-bottom: 6px;
+}
+
+.trouble-field .optional {
+  font-weight: 400;
+  color: var(--gray-400);
+}
+
+.trouble-field input,
+.trouble-field select,
+.trouble-field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--gray-900);
+  background: white;
+  transition: all var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.trouble-field input:focus,
+.trouble-field select:focus,
+.trouble-field textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.trouble-field input::placeholder,
+.trouble-field textarea::placeholder {
+  color: var(--gray-400);
+}
+
+.trouble-field textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.trouble-submit {
+  width: 100%;
+  padding: 14px 20px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-top: 8px;
+}
+
+.trouble-submit:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.trouble-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.trouble-success {
+  text-align: center;
+  padding: 40px 24px;
+}
+
+.trouble-success .success-icon {
+  width: 60px;
+  height: 60px;
+  background: #10b981;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin: 0 auto 16px;
+}
+
+.trouble-success h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin: 0 0 8px;
+}
+
+.trouble-success p {
+  font-size: 14px;
+  color: var(--gray-500);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.trouble-done-btn {
+  padding: 12px 32px;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.trouble-done-btn:hover {
+  background: var(--gray-200);
+}
+
 /* ============================================
    SKELETON LOADING
    ============================================ */
