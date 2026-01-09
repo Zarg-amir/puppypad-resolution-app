@@ -6387,6 +6387,29 @@ function getResolutionHubHTML() {
     .info-card-label { font-size: 11px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
     .info-card-value { font-size: 15px; font-weight: 600; color: var(--gray-800); }
     .info-card-value.email { font-size: 13px; word-break: break-all; }
+    /* Issue Modal Specific Styles */
+    .detail-section { margin-bottom: 24px; }
+    .detail-section:last-child { margin-bottom: 0; }
+    .section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--gray-500); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px; }
+    .section-title svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .info-item { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; background: white; border: 1px solid var(--gray-200); border-radius: 8px; }
+    .info-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); }
+    .info-value { font-size: 14px; font-weight: 500; color: var(--gray-800); word-break: break-word; }
+    .sidebar-section { margin-bottom: 24px; }
+    .sidebar-section:last-child { margin-bottom: 0; }
+    .action-link { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: white; border: 1px solid var(--gray-200); border-radius: 8px; text-decoration: none; color: var(--gray-700); font-size: 14px; font-weight: 500; margin-bottom: 8px; transition: all 0.2s; }
+    .action-link:hover { border-color: var(--brand-navy); color: var(--brand-navy); background: #f0f4ff; }
+    .action-link svg { width: 20px; height: 20px; flex-shrink: 0; }
+    #issueModal .status-cards { flex-direction: column; gap: 8px; }
+    #issueModal .status-card { padding: 10px 14px; font-size: 13px; font-weight: 500; }
+    #issueModal .status-card .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    #issueModal .status-card.pending .status-dot { background: #f59e0b; }
+    #issueModal .status-card.in-progress .status-dot { background: #3b82f6; }
+    #issueModal .status-card.completed .status-dot { background: #10b981; }
+    #issueModal .timeline { display: flex; flex-direction: column; gap: 12px; }
+    #issueModal .timeline-item { display: flex; flex-direction: column; gap: 2px; }
+    #issueModal .timeline-label { font-size: 11px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; }
+    #issueModal .timeline-value { font-size: 13px; font-weight: 500; color: var(--gray-700); }
     /* Status Cards - New Design */
     .status-cards { display: flex; gap: 12px; }
     .status-card { flex: 1; display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 12px; border: 2px solid var(--gray-200); background: white; cursor: pointer; transition: all 0.2s; position: relative; }
