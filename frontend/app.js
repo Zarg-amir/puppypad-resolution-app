@@ -2406,7 +2406,7 @@ async function submitAppendToCase() {
       body: JSON.stringify({
         taskId: state.existingCaseInfo?.taskId,
         caseData: {
-          sessionId: Analytics.sessionId,
+          sessionId: state.sessionId,
           email: state.customerData?.email || state.selectedOrder?.email,
           orderNumber: state.selectedOrder?.orderNumber,
           selectedItems: state.selectedItems,
@@ -2826,10 +2826,14 @@ async function confirmReturn() {
 async function submitCase(caseType, resolution, options = {}) {
   const order = state.selectedOrder;
   const items = state.selectedItems || [];
+  const subscription = state.selectedSubscription;
+
+  // For subscription cases, use clientOrderId as order number if no Shopify order
+  const orderNumber = order?.orderNumber || subscription?.clientOrderId || '';
 
   const caseData = {
     // Session info
-    sessionId: Analytics.sessionId,
+    sessionId: state.sessionId,
     sessionReplayUrl: getSessionReplayUrl(),
 
     // Case type
@@ -2843,11 +2847,11 @@ async function submitCase(caseType, resolution, options = {}) {
     customerFirstName: state.customerData?.firstName || order?.customerFirstName || '',
     customerLastName: state.customerData?.lastName || order?.customerLastName || '',
 
-    // Order info
-    orderNumber: order?.orderNumber || '',
+    // Order info (use subscription clientOrderId for subscription cases)
+    orderNumber: orderNumber,
     orderId: order?.id || '',
     orderUrl: order?.orderUrl || '',
-    orderDate: order?.createdAt || '',
+    orderDate: order?.createdAt || new Date().toISOString(),
 
     // Items
     selectedItems: items.map(item => ({
@@ -4067,6 +4071,7 @@ async function processQualityFreeReship(padQuantity) {
     const caseData = {
       // Core identifiers
       sessionId: state.sessionId || '',
+      sessionReplayUrl: getSessionReplayUrl(),
       caseType: 'shipping',
       issueType: 'quality_difference',
       resolution: 'reship_quality_upgrade',
@@ -4095,6 +4100,7 @@ async function processQualityFreeReship(padQuantity) {
       // Quality-specific with customer reported quantity
       qualityDetails: state.qualityDetails,
       keepProduct: true,
+      notes: `Customer received Original material pads instead of PuppyPad 2.0. Requesting FREE reship of ${state.qualityDetails?.customerReportedCount || 'N/A'} PuppyPad 2.0 pads.`,
 
       // Timestamps
       createdAt: new Date().toISOString(),
@@ -4305,6 +4311,7 @@ async function processQualityRefundCase(quantity, itemsUsed) {
   try {
     const caseData = {
       sessionId: state.sessionId || '',
+      sessionReplayUrl: getSessionReplayUrl(),
       caseType: 'refund',
       issueType: 'quality_difference',
       resolution: itemsUsed ? 'full_refund_quality_used' : 'full_refund_quality_return',
@@ -4330,6 +4337,7 @@ async function processQualityRefundCase(quantity, itemsUsed) {
       qualityDetails: state.qualityDetails,
       keepProduct: itemsUsed,
       requiresReturn: !itemsUsed,
+      notes: `Quality difference refund request. Items ${itemsUsed ? 'USED - no return required' : 'UNUSED - return required'}. Customer reported ${state.qualityDetails?.customerReportedCount || 'N/A'} pads.`,
 
       createdAt: new Date().toISOString(),
     };
@@ -4382,6 +4390,7 @@ async function handleQualityConfirmUpgrade(resolution) {
     const caseData = {
       // Core identifiers
       sessionId: state.sessionId || '',
+      sessionReplayUrl: getSessionReplayUrl(),
       caseType: caseType,
       issueType: 'quality_difference',
       resolution: resolution,
@@ -4410,6 +4419,7 @@ async function handleQualityConfirmUpgrade(resolution) {
       // Quality-specific
       qualityDetails: state.qualityDetails,
       keepProduct: resolution === 'upgrade_keep_originals',
+      notes: `Quality difference upgrade request. ${state.qualityDetails?.customerReportedCount || 'N/A'} pads at $20/each = $${state.qualityDetails?.upgradeTotal || 0} total.`,
 
       // Timestamps
       createdAt: new Date().toISOString(),
@@ -4477,6 +4487,7 @@ async function handleQualityQuestion() {
     const caseData = {
       // Core identifiers
       sessionId: state.sessionId || '',
+      sessionReplayUrl: getSessionReplayUrl(),
       caseType: 'manual',
       issueType: 'quality_difference',
       resolution: 'manual_assistance',
@@ -4504,6 +4515,7 @@ async function handleQualityQuestion() {
       // Question details
       intentDetails: question,
       qualityDetails: state.qualityDetails,
+      notes: `Customer question during quality difference flow: ${question}`,
 
       // Timestamps
       createdAt: new Date().toISOString(),
