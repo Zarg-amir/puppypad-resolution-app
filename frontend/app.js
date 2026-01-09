@@ -6024,7 +6024,7 @@ async function showSubscriptionCards() {
     const frequencyText = sub.frequency ? `Every ${sub.frequency} days` : 'N/A';
 
     return `
-      <div class="subscription-card" onclick="selectSubscription(${index})">
+      <div class="subscription-card clickable-card" onclick="selectSubscription(${index})">
         <div class="subscription-header">
           <div>
             <div class="subscription-name">${sub.productName || 'Subscription'}</div>
@@ -6048,6 +6048,12 @@ async function showSubscriptionCards() {
             <div class="subscription-detail-label">Price</div>
             <div class="subscription-detail-value">${sub.price ? formatCurrency(sub.price) : 'N/A'}</div>
           </div>
+        </div>
+        <div class="card-action-footer">
+          <span>Click to manage</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
         </div>
       </div>
     `;
