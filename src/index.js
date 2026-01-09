@@ -1629,58 +1629,216 @@ async function handleValidateGuarantee(request, env, corsHeaders) {
 // CHECKOUTCHAMP SUBSCRIPTION
 // ============================================
 async function handleSubscription(request, env, corsHeaders) {
-  const { clientOrderId } = await request.json();
+  const { clientOrderId, email } = await request.json();
 
-  if (!clientOrderId) {
-    return Response.json({ error: 'clientOrderId required' }, { status: 400, headers: corsHeaders });
+  if (!clientOrderId && !email) {
+    return Response.json({ error: 'clientOrderId or email required' }, { status: 400, headers: corsHeaders });
   }
 
-  // Get order from CheckoutChamp
-  const authHeader = 'Basic ' + btoa(`${env.CC_API_USERNAME}:${env.CC_API_PASSWORD}`);
-  
-  const orderResponse = await fetch(`https://api.checkoutchamp.com/order/${clientOrderId}`, {
-    headers: {
-      'Authorization': authHeader,
-      'Content-Type': 'application/json',
-    },
+  try {
+    let subscriptions = [];
+
+    // Method 1: Try clientOrderId first if provided
+    if (clientOrderId) {
+      console.log('Subscription lookup via clientOrderId:', clientOrderId);
+      subscriptions = await getSubscriptionsByOrderId(env, clientOrderId);
+    }
+
+    // Method 2: Fallback to email search if no subscriptions found
+    if (subscriptions.length === 0 && email) {
+      console.log('Subscription lookup via email:', email);
+      subscriptions = await getSubscriptionsByEmail(env, email);
+    }
+
+    return Response.json({
+      subscriptions,
+      lookupMethod: subscriptions.length > 0 ? (clientOrderId ? 'clientOrderId' : 'email') : 'none'
+    }, { headers: corsHeaders });
+
+  } catch (error) {
+    console.error('Subscription lookup error:', error);
+    return Response.json({
+      error: 'Subscription lookup failed',
+      details: error.message,
+      subscriptions: []
+    }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Get subscriptions by CheckoutChamp order ID
+async function getSubscriptionsByOrderId(env, clientOrderId) {
+  // Call CheckoutChamp Order Query API with query parameters
+  const orderUrl = `https://api.checkoutchamp.com/order/query/?loginId=${encodeURIComponent(env.CC_API_USERNAME)}&password=${encodeURIComponent(env.CC_API_PASSWORD)}&orderId=${encodeURIComponent(clientOrderId)}`;
+
+  const orderResponse = await fetch(orderUrl, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
   });
 
   if (!orderResponse.ok) {
-    return Response.json({ error: 'CheckoutChamp order lookup failed' }, { status: 500, headers: corsHeaders });
+    console.error('CheckoutChamp order query failed:', orderResponse.status);
+    return [];
   }
 
   const orderData = await orderResponse.json();
-  const purchaseIds = orderData.result?.purchases?.map(p => p.purchaseId) || [];
+  console.log('CheckoutChamp order response:', JSON.stringify(orderData).substring(0, 500));
 
-  // Get subscription details for each purchase
-  const subscriptions = await Promise.all(purchaseIds.map(async (purchaseId) => {
-    const purchaseResponse = await fetch(`https://api.checkoutchamp.com/purchase/${purchaseId}`, {
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json',
-      },
-    });
+  // Find purchaseId in the response (search 6 locations)
+  const purchaseId = findPurchaseId(orderData);
 
-    if (!purchaseResponse.ok) return null;
+  if (!purchaseId) {
+    console.log('No purchaseId found - order is not a subscription');
+    return [];
+  }
 
-    const purchaseData = await purchaseResponse.json();
-    const purchase = purchaseData.result;
+  console.log('Found purchaseId:', purchaseId);
 
-    return {
-      purchaseId,
-      productName: purchase.productName,
-      status: purchase.status,
-      lastBillingDate: purchase.lastBillingDate,
-      nextBillingDate: purchase.nextBillingDate,
-      frequency: purchase.billingIntervalDays,
-      price: purchase.price,
-      orders: purchase.orders || [],
-    };
-  }));
+  // Get subscription details from Purchase Query API
+  return await getSubscriptionDetails(env, purchaseId, orderData);
+}
 
-  return Response.json({ 
-    subscriptions: subscriptions.filter(s => s !== null) 
-  }, { headers: corsHeaders });
+// Get subscriptions by email (searches CheckoutChamp for orders with that email)
+async function getSubscriptionsByEmail(env, email) {
+  // Search for orders by email in CheckoutChamp
+  const searchUrl = `https://api.checkoutchamp.com/order/query/?loginId=${encodeURIComponent(env.CC_API_USERNAME)}&password=${encodeURIComponent(env.CC_API_PASSWORD)}&email=${encodeURIComponent(email)}`;
+
+  const searchResponse = await fetch(searchUrl, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (!searchResponse.ok) {
+    console.error('CheckoutChamp email search failed:', searchResponse.status);
+    return [];
+  }
+
+  const searchData = await searchResponse.json();
+  console.log('CheckoutChamp email search response:', JSON.stringify(searchData).substring(0, 500));
+
+  // Handle both single order and array of orders
+  const orders = searchData.result?.data || (searchData.result ? [searchData.result] : []);
+
+  const allSubscriptions = [];
+
+  for (const order of orders) {
+    const purchaseId = findPurchaseIdInOrder(order);
+    if (purchaseId) {
+      const subs = await getSubscriptionDetails(env, purchaseId, { result: order });
+      allSubscriptions.push(...subs);
+    }
+  }
+
+  // Deduplicate by purchaseId
+  const seen = new Set();
+  return allSubscriptions.filter(sub => {
+    if (seen.has(sub.purchaseId)) return false;
+    seen.add(sub.purchaseId);
+    return true;
+  });
+}
+
+// Search for purchaseId in 6 locations within CheckoutChamp response
+function findPurchaseId(responseData) {
+  const result = responseData?.result || responseData;
+  return findPurchaseIdInOrder(result);
+}
+
+function findPurchaseIdInOrder(order) {
+  if (!order) return null;
+
+  // 1. Top-level fields
+  if (order.purchaseId) return order.purchaseId;
+  if (order.purchase_id) return order.purchase_id;
+  if (order.subscriptionId) return order.subscriptionId;
+  if (order.subscription_id) return order.subscription_id;
+
+  // 2. Inside items[] array
+  if (Array.isArray(order.items)) {
+    for (const item of order.items) {
+      if (item.purchaseId) return item.purchaseId;
+      if (item.purchase_id) return item.purchase_id;
+      if (item.subscriptionId) return item.subscriptionId;
+    }
+  }
+
+  // 3. Inside products[] array
+  if (Array.isArray(order.products)) {
+    for (const product of order.products) {
+      if (product.purchaseId) return product.purchaseId;
+      if (product.purchase_id) return product.purchase_id;
+      if (product.subscriptionId) return product.subscriptionId;
+    }
+  }
+
+  // 4. Inside purchases[] array
+  if (Array.isArray(order.purchases)) {
+    for (const purchase of order.purchases) {
+      if (purchase.purchaseId) return purchase.purchaseId;
+      if (purchase.purchase_id) return purchase.purchase_id;
+      if (purchase.id) return purchase.id;
+    }
+  }
+
+  // 5. Nested order object
+  if (order.order) {
+    const nestedId = findPurchaseIdInOrder(order.order);
+    if (nestedId) return nestedId;
+  }
+
+  // 6. Deep regex search of entire response (last resort)
+  try {
+    const jsonStr = JSON.stringify(order);
+    const purchaseMatch = jsonStr.match(/"purchaseId"\s*:\s*"?(\d+)"?/i);
+    if (purchaseMatch) return purchaseMatch[1];
+
+    const subscriptionMatch = jsonStr.match(/"subscriptionId"\s*:\s*"?(\d+)"?/i);
+    if (subscriptionMatch) return subscriptionMatch[1];
+  } catch (e) {
+    // Ignore JSON stringify errors
+  }
+
+  return null;
+}
+
+// Get subscription details from Purchase Query API
+async function getSubscriptionDetails(env, purchaseId, orderData) {
+  const purchaseUrl = `https://api.checkoutchamp.com/purchase/query/?loginId=${encodeURIComponent(env.CC_API_USERNAME)}&password=${encodeURIComponent(env.CC_API_PASSWORD)}&purchaseId=${encodeURIComponent(purchaseId)}`;
+
+  const purchaseResponse = await fetch(purchaseUrl, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (!purchaseResponse.ok) {
+    console.error('CheckoutChamp purchase query failed:', purchaseResponse.status);
+    return [];
+  }
+
+  const purchaseData = await purchaseResponse.json();
+  console.log('CheckoutChamp purchase response:', JSON.stringify(purchaseData).substring(0, 500));
+
+  const purchase = purchaseData?.result || purchaseData;
+
+  if (!purchase) {
+    return [];
+  }
+
+  // Extract subscription details from various possible field names
+  const subscription = {
+    purchaseId: purchaseId,
+    productName: purchase.displayName || purchase.productName || purchase.product_name || 'Subscription',
+    productSku: purchase.productSku || purchase.product_sku || purchase.sku || '',
+    status: (purchase.status || purchase.purchaseStatus || purchase.purchase_status || 'unknown').toUpperCase(),
+    nextBillingDate: purchase.nextBillDate || purchase.next_bill_date || purchase.nextBillingDate || null,
+    lastBillingDate: purchase.lastBillDate || purchase.last_bill_date || purchase.dateCreated || purchase.createdAt || null,
+    frequency: purchase.billingIntervalDays || purchase.frequency || purchase.billFrequency || purchase.billing_interval_days || 30,
+    cycleNumber: purchase.billingCycleNumber || purchase.cycleNumber || purchase.rebillDepth || purchase.cycle_number || 1,
+    price: purchase.price || purchase.amount || purchase.recurringPrice || '0.00',
+    // Include order info if available
+    orderId: orderData?.result?.orderId || orderData?.result?.id || null,
+  };
+
+  return [subscription];
 }
 
 // ============================================

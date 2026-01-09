@@ -5945,12 +5945,13 @@ async function startManageSubscription() {
 async function handleSubscriptionFlow() {
   await addBotMessage("Let me check for any active subscriptions on your account...");
 
-  // Check if we have a clientOrderId from the selected order
+  // Get both clientOrderId and email for lookup (backend will try both)
   const clientOrderId = state.selectedOrder?.clientOrderId;
+  const email = state.selectedOrder?.email || state.customerData?.email;
 
-  if (!clientOrderId) {
-    // No CheckoutChamp order ID found - can't look up subscriptions
-    await addBotMessage("I couldn't find subscription information for this order. This might be a one-time purchase. Would you like help with something else?");
+  if (!clientOrderId && !email) {
+    // No identifiers available
+    await addBotMessage("I couldn't find the information needed to look up subscriptions. Would you like help with something else?");
     addOptions([
       { text: "Help with an order", action: startHelpWithOrder },
       { text: "Back to home", action: showHomeMenu }
@@ -5961,10 +5962,11 @@ async function handleSubscriptionFlow() {
   try {
     showProgress("Checking subscriptions...", "Looking up your subscription details");
 
+    // Send both identifiers - backend will try clientOrderId first, then email
     const response = await fetch(`${CONFIG.API_URL}/api/subscription`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clientOrderId })
+      body: JSON.stringify({ clientOrderId, email })
     });
 
     hideProgress();
@@ -5974,12 +5976,14 @@ async function handleSubscriptionFlow() {
     }
 
     const data = await response.json();
+    console.log('Subscription lookup result:', data);
+
     state.subscriptions = data.subscriptions || [];
 
     // Add clientOrderId to each subscription for case creation
     state.subscriptions = state.subscriptions.map(sub => ({
       ...sub,
-      clientOrderId
+      clientOrderId: sub.orderId || clientOrderId
     }));
 
   } catch (error) {
@@ -5995,7 +5999,7 @@ async function handleSubscriptionFlow() {
   }
 
   if (state.subscriptions.length === 0) {
-    await addBotMessage("I couldn't find any active subscriptions on your account. Would you like help with something else?");
+    await addBotMessage("I couldn't find any active subscriptions on your account. This order might be a one-time purchase. Would you like help with something else?");
     addOptions([
       { text: "Help with an order", action: startHelpWithOrder },
       { text: "Back to home", action: showHomeMenu }
