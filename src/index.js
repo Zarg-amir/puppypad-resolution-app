@@ -837,7 +837,8 @@ const SOP_URLS = {
   shipping: 'https://docs.puppypad.com/sop/shipping-issues',
   subscription: 'https://docs.puppypad.com/sop/subscriptions',
   manual: 'https://docs.puppypad.com/sop/manual-assistance',
-  quality_difference: 'https://docs.puppypad.com/sop/quality-difference'
+  quality_difference: 'https://docs.puppypad.com/sop/quality-difference',
+  trouble_report: 'https://docs.puppypad.com/sop/trouble-reports'
 };
 
 export default {
@@ -3917,23 +3918,19 @@ async function createTroubleReportRichpanelEntry(env, reportData, reportId) {
   const firstName = nameParts[0] || 'Customer';
   const lastName = nameParts.slice(1).join(' ') || '';
 
-  const subject = `${reportId} - Trouble Report - App Issue`;
+  const subject = `${reportId} - Help Request - Resolution App`;
 
-  // Build customer message (simulated email from customer)
+  // Build customer message (simulated email from customer - sounds natural)
   const testNotice = testMode
     ? '[TEST MODE - This is not a real customer request]<br><br>'
     : '';
 
   const customerMessage = `${testNotice}Hi,<br><br>
-I was using the PuppyPad Resolution App and ran into an issue.<br><br>
-<b>What went wrong:</b><br>
+I need some help with my order. I was trying to use the Resolution Center but ran into a problem.<br><br>
 ${(reportData.description || 'No description provided').replace(/\n/g, '<br>')}<br><br>
-<b>Technical Details:</b><br>
-• Step I was on: ${reportData.currentStep || 'Unknown'}<br>
-• Browser: ${reportData.browser || 'Unknown'}<br><br>
-Please help me resolve this issue.<br><br>
+Could you please help me sort this out?<br><br>
 Thanks,<br>
-${customerName}`;
+${firstName}`;
 
   try {
     const response = await fetch('https://api.richpanel.com/v1/tickets', {
@@ -4000,33 +3997,35 @@ ${customerName}`;
 }
 
 async function createTroubleReportPrivateNote(env, ticketId, reportData, reportId) {
+  const sopUrl = SOP_URLS.trouble_report;
+
   const noteContent = `
-<div style="font-family: Arial, sans-serif; padding: 16px; background: #fff8e1; border-radius: 8px; border-left: 4px solid #f59e0b;">
-  <h3 style="margin: 0 0 12px 0; color: #b45309;">⚠️ TROUBLE REPORT: ${reportId}</h3>
-
-  <p style="margin: 0 0 16px 0;"><b>Customer reported an issue with the Resolution App</b></p>
-
-  <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-    <b>Issue Description:</b><br>
-    ${(reportData.description || 'No description').replace(/\n/g, '<br>')}
-  </div>
-
-  <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-    <b>Technical Info:</b><br>
-    • Session ID: ${reportData.sessionId || 'N/A'}<br>
-    • Current Step: ${reportData.currentStep || 'Unknown'}<br>
-    • Browser: ${reportData.browser || 'Unknown'}<br>
-    ${reportData.sessionReplayUrl ? `<br><a href="${reportData.sessionReplayUrl}" target="_blank">🎥 Watch Session Recording</a>` : ''}
-  </div>
-
-  <div style="background: #fef3c7; padding: 12px; border-radius: 6px;">
-    <b>Action Required:</b><br>
-    1. Respond to customer and help resolve their issue<br>
-    2. If this is a bug, notify the dev team<br>
-    3. If customer needs manual help, guide them through the process
-  </div>
-</div>
-`;
+<b>⚠️ TROUBLE REPORT: ${reportId}</b><br>
+<br>
+Customer reported an issue using the Resolution App and needs manual assistance.<br>
+<br>
+<b>─────────────────────</b><br>
+<br>
+<b>Issue Description:</b><br>
+${(reportData.description || 'No description provided').replace(/\n/g, '<br>')}<br>
+<br>
+<b>─────────────────────</b><br>
+<br>
+<b>Action Steps:</b><br>
+1. ✅ Respond to customer and understand what they need<br>
+2. ✅ Help them complete their resolution manually if needed<br>
+3. ✅ If this is a bug, notify the dev team<br>
+4. ✅ Close ticket once resolved<br>
+<br>
+<b>─────────────────────</b><br>
+<br>
+<b>Technical Info:</b><br>
+• Session ID: ${reportData.sessionId || 'N/A'}<br>
+• Current Step: ${reportData.currentStep || 'Unknown'}<br>
+${reportData.sessionReplayUrl ? `<br>🎥 <b>Session Recording:</b> <a href="${reportData.sessionReplayUrl}">${reportData.sessionReplayUrl}</a><br>` : ''}
+<br>
+<b>SOP:</b> <a href="${sopUrl}">${sopUrl}</a>
+`.trim();
 
   try {
     await fetch(`https://api.richpanel.com/v1/tickets/${ticketId}`, {
@@ -7092,13 +7091,13 @@ function getResolutionHubHTML() {
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
                   View Conversation
                 </a>
-                <a class="quick-action-btn" id="issueEmailLink" href="mailto:">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                  Email Customer
-                </a>
                 <a class="quick-action-btn" id="issueReplayLink" href="#" target="_blank" style="display:none;">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
                   Watch Session Recording
+                </a>
+                <a class="quick-action-btn" id="issueSopLink" href="https://docs.puppypad.com/sop/trouble-reports" target="_blank">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  View SOP
                 </a>
               </div>
             </div>
@@ -7598,9 +7597,6 @@ function getResolutionHubHTML() {
         document.querySelectorAll('#issueModal .status-card').forEach(card => card.classList.remove('active'));
         const statusClass = (issue.status || 'pending') === 'resolved' ? 'completed' : (issue.status || 'pending').replace('_', '-');
         document.querySelector('#issueModal .status-card.' + statusClass)?.classList.add('active');
-
-        // Email link
-        document.getElementById('issueEmailLink').href = 'mailto:' + (issue.email || '');
 
         // Richpanel conversation link
         const conversationLink = document.getElementById('issueConversationLink');
