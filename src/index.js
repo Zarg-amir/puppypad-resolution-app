@@ -7413,20 +7413,6 @@ function getResolutionHubHTML() {
           replayLink.style.display = 'none';
         }
 
-        // Shopify link
-        const shopifyLink = document.getElementById('issueShopifyLink');
-        if (issue.order_number) {
-          shopifyLink.href = 'https://admin.shopify.com/store/puppypad/orders?query=' + encodeURIComponent(issue.order_number);
-          shopifyLink.style.display = 'flex';
-        } else {
-          shopifyLink.style.display = 'none';
-        }
-
-        // Update status cards
-        document.querySelectorAll('#issueModal .status-card').forEach(card => card.classList.remove('active'));
-        const statusClass = (issue.status || 'pending').replace('_', '-');
-        document.querySelector('#issueModal .status-card.' + statusClass)?.classList.add('active');
-
         // Navigation buttons
         document.getElementById('prevIssueBtn').disabled = currentIssueIndex <= 0;
         document.getElementById('nextIssueBtn').disabled = currentIssueIndex >= issuesList.length - 1;
