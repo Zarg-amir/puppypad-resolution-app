@@ -4782,7 +4782,63 @@ async function logCaseToAnalytics(env, caseData) {
     }
   }
 
-  // Try full insert first, fall back to basic insert if columns don't exist
+  // Build extra_data JSON with all additional fields
+  const extraData = JSON.stringify({
+    // Subscription fields
+    actionType: caseData.actionType || null,
+    purchaseId: caseData.purchaseId || null,
+    clientOrderId: caseData.clientOrderId || null,
+    subscriptionProductName: caseData.subscriptionProductName || null,
+    subscriptionStatus: caseData.subscriptionStatus || null,
+    pauseDuration: caseData.pauseDuration || null,
+    pauseResumeDate: caseData.pauseResumeDate || null,
+    cancelReason: caseData.cancelReason || null,
+    discountPercent: caseData.discountPercent || null,
+    // Other fields
+    intentDetails: caseData.intentDetails || null,
+    keepProduct: caseData.keepProduct,
+    issueType: caseData.issueType || null,
+    qualityDetails: caseData.qualityDetails || null,
+    correctedAddress: caseData.correctedAddress || null,
+    notes: caseData.notes || null,
+  });
+
+  // Try full insert first with extra_data, fall back to basic insert if columns don't exist
+  try {
+    await env.ANALYTICS_DB.prepare(`
+      INSERT INTO cases (
+        case_id, case_type, resolution, customer_email, customer_name,
+        order_number, refund_amount, status, session_id,
+        clickup_task_id, clickup_task_url, session_replay_url,
+        order_url, order_date, richpanel_conversation_no, extra_data, issue_type, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).bind(
+      caseData.caseId,
+      caseData.caseType,
+      caseData.resolution,
+      caseData.email,
+      customerName || null,
+      caseData.orderNumber,
+      caseData.refundAmount || null,
+      'pending',
+      caseData.sessionId || null,
+      caseData.clickupTaskId || null,
+      caseData.clickupTaskUrl || null,
+      caseData.sessionReplayUrl || null,
+      caseData.orderUrl || null,
+      caseData.orderDate || null,
+      caseData.richpanelConversationNo || null,
+      extraData,
+      caseData.issueType || null
+    ).run();
+    console.log('Case saved to database (full with extra_data):', caseData.caseId);
+    return;
+  } catch (e) {
+    console.log('Full insert failed, trying without extra_data:', e.message);
+  }
+
+  // Try insert without extra_data column
   try {
     await env.ANALYTICS_DB.prepare(`
       INSERT INTO cases (
@@ -8715,19 +8771,49 @@ function getResolutionHubHTML() {
       // SUBSCRIPTION CASES
       else if (c.case_type === 'subscription') {
         const actionMap = {
-          'pause': 'Customer wants to pause their subscription.',
-          'cancel': 'Customer wants to cancel their subscription.',
-          'changeSchedule': 'Customer wants to change their delivery schedule.',
-          'changeAddress': 'Customer wants to update their shipping address.',
+          'pause': 'Customer wants to <strong>pause</strong> their subscription.',
+          'cancel': 'Customer wants to <strong>cancel</strong> their subscription.',
+          'changeSchedule': 'Customer wants to <strong>change delivery schedule</strong>.',
+          'changeAddress': 'Customer wants to <strong>update shipping address</strong>.',
         };
         if (extra.actionType && actionMap[extra.actionType]) {
           bullets.push(actionMap[extra.actionType]);
         }
-        if (extra.pauseDuration) {
-          bullets.push('Pause duration: <strong>' + extra.pauseDuration + '</strong>');
+
+        // Subscription product name
+        if (extra.subscriptionProductName) {
+          bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
         }
+
+        // Subscription ID (Purchase ID)
+        if (extra.purchaseId) {
+          bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+        }
+
+        // Pause duration and resume date
+        if (extra.pauseDuration) {
+          bullets.push('Pause duration: <strong>' + extra.pauseDuration + ' days</strong>');
+        }
+        if (extra.pauseResumeDate) {
+          const resumeDate = new Date(extra.pauseResumeDate);
+          bullets.push('Resume date: <strong>' + resumeDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) + '</strong>');
+        }
+
+        // Cancel reason
         if (extra.cancelReason) {
-          bullets.push('Reason: ' + extra.cancelReason);
+          const cancelReasons = {
+            'expensive': 'Too expensive',
+            'too_many': 'Has too many',
+            'not_working': 'Not working as described',
+            'moving': 'Moving',
+            'other': 'Other reason'
+          };
+          bullets.push('Cancel reason: <strong>' + (cancelReasons[extra.cancelReason] || extra.cancelReason) + '</strong>');
+        }
+
+        // CheckoutChamp Order ID
+        if (extra.clientOrderId) {
+          bullets.push('CheckoutChamp Order: <strong>' + extra.clientOrderId + '</strong>');
         }
       }
 
