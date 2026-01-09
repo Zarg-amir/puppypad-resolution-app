@@ -1806,16 +1806,48 @@ textarea.form-input {
   margin-bottom: 12px;
   cursor: pointer;
   transition: all var(--transition-normal);
-  border: 2px solid transparent;
+  border: 2px solid #e5e7eb;
 }
 
 .subscription-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-xl);
+  border-color: var(--brand-navy);
+}
+
+.subscription-card:active {
+  transform: translateY(0);
 }
 
 .subscription-card.selected {
   border-color: var(--brand-navy);
+}
+
+/* Clickable card footer with "Click to manage" */
+.card-action-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #f0f0f0;
+  color: var(--brand-navy);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all var(--transition-normal);
+}
+
+.card-action-footer svg {
+  transition: transform var(--transition-normal);
+}
+
+.subscription-card:hover .card-action-footer {
+  color: var(--brand-navy);
+}
+
+.subscription-card:hover .card-action-footer svg {
+  transform: translateX(3px);
 }
 
 .subscription-header {
