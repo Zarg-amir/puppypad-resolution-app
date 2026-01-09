@@ -1770,16 +1770,17 @@ async function handleSubscription(request, env, corsHeaders) {
   try {
     let subscriptionData = null;
 
-    // Method 1: Try clientOrderId if provided
+    // Method 1: If clientOrderId provided directly, use it
     if (clientOrderId) {
-      console.log('Trying subscription lookup by clientOrderId:', clientOrderId);
+      console.log('Trying subscription lookup by provided clientOrderId:', clientOrderId);
       subscriptionData = await checkSubscriptionStatus(clientOrderId, env);
     }
 
-    // Method 2: If no subscription found and email provided, search by email
+    // Method 2: If no subscription found and email provided, search Shopify first
+    // CORRECT FLOW: Email → Shopify → clientOrderId → CheckoutChamp
     if ((!subscriptionData || !subscriptionData.isSubscription) && email) {
-      console.log('Trying subscription lookup by email:', email);
-      subscriptionData = await findSubscriptionByEmail(email, env);
+      console.log('Searching Shopify for orders with email:', email);
+      subscriptionData = await findSubscriptionViaShopify(email, env);
     }
 
     if (!subscriptionData || !subscriptionData.isSubscription) {
@@ -1814,6 +1815,92 @@ async function handleSubscription(request, env, corsHeaders) {
       error: 'Subscription lookup failed: ' + error.message,
       isSubscription: false
     }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// CORRECT FLOW: Email → Shopify → clientOrderId → CheckoutChamp
+async function findSubscriptionViaShopify(email, env) {
+  const result = {
+    isSubscription: false,
+    checkoutChampOrderId: null,
+    subscriptionStatus: null,
+    nextBillDate: null,
+    currentBillDate: null,
+    billFrequency: null,
+    cycleNumber: null,
+    purchaseId: null,
+    subscriptionProductSku: null,
+    subscriptionProductName: null,
+    price: null
+  };
+
+  if (!email) {
+    console.log('No email provided for subscription lookup');
+    return result;
+  }
+
+  try {
+    // Step 1: Query Shopify for orders with this email
+    const shopifyUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=50&query=email:${encodeURIComponent(email)}`;
+
+    console.log('Querying Shopify for orders with email:', email);
+
+    const shopifyResponse = await fetch(shopifyUrl, {
+      headers: {
+        'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!shopifyResponse.ok) {
+      console.error('Shopify order query failed:', shopifyResponse.status);
+      return result;
+    }
+
+    const shopifyData = await shopifyResponse.json();
+    const orders = shopifyData.orders || [];
+
+    console.log('Found', orders.length, 'Shopify orders for email:', email);
+
+    if (orders.length === 0) {
+      console.log('No Shopify orders found for email');
+      return result;
+    }
+
+    // Step 2: For each Shopify order, try to find clientOrderId and check for subscription
+    for (const order of orders) {
+      console.log('Checking Shopify order:', order.name, 'id:', order.id);
+
+      // Try to extract clientOrderId from order data
+      let clientOrderId = extractClientOrderId(order);
+
+      // If not found in order data, try metafields
+      if (!clientOrderId) {
+        clientOrderId = await fetchClientOrderIdFromMetafields(order.id, env);
+      }
+
+      if (!clientOrderId) {
+        console.log('No clientOrderId found in Shopify order:', order.name);
+        continue;
+      }
+
+      console.log('Found clientOrderId:', clientOrderId, 'in Shopify order:', order.name);
+
+      // Step 3: Query CheckoutChamp with this clientOrderId
+      const subscriptionData = await checkSubscriptionStatus(clientOrderId, env);
+
+      if (subscriptionData.isSubscription) {
+        console.log('Found subscription for clientOrderId:', clientOrderId);
+        return subscriptionData;
+      }
+    }
+
+    console.log('No subscription found in any Shopify order for email:', email);
+    return result;
+
+  } catch (error) {
+    console.error('Error finding subscription via Shopify:', error);
+    return result;
   }
 }
 
