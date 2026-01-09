@@ -1883,7 +1883,7 @@ async function selectOrder(index, flowType) {
   } else if (flowType === 'help') {
     await showItemSelection();
   } else if (flowType === 'subscription') {
-    await fetchSubscriptionDetails();
+    await handleSubscriptionFlow();
   }
 }
 
@@ -5944,20 +5944,56 @@ async function startManageSubscription() {
 
 async function handleSubscriptionFlow() {
   await addBotMessage("Let me check for any active subscriptions on your account...");
-  
-  // Mock subscription for demo
-  state.subscriptions = [
-    {
-      purchaseId: 'PUR123456',
-      productName: 'PuppyPad Reusable Pee Pad - Large',
-      status: 'active',
-      lastBillingDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      frequency: 30,
-      price: '39.99'
+
+  // Check if we have a clientOrderId from the selected order
+  const clientOrderId = state.selectedOrder?.clientOrderId;
+
+  if (!clientOrderId) {
+    // No CheckoutChamp order ID found - can't look up subscriptions
+    await addBotMessage("I couldn't find subscription information for this order. This might be a one-time purchase. Would you like help with something else?");
+    addOptions([
+      { text: "Help with an order", action: startHelpWithOrder },
+      { text: "Back to home", action: showHomeMenu }
+    ]);
+    return;
+  }
+
+  try {
+    showProgress("Checking subscriptions...", "Looking up your subscription details");
+
+    const response = await fetch(`${CONFIG.API_URL}/api/subscription`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientOrderId })
+    });
+
+    hideProgress();
+
+    if (!response.ok) {
+      throw new Error('Subscription lookup failed');
     }
-  ];
-  
+
+    const data = await response.json();
+    state.subscriptions = data.subscriptions || [];
+
+    // Add clientOrderId to each subscription for case creation
+    state.subscriptions = state.subscriptions.map(sub => ({
+      ...sub,
+      clientOrderId
+    }));
+
+  } catch (error) {
+    hideProgress();
+    console.error('Subscription fetch error:', error);
+    await addBotMessage("I had trouble looking up your subscription. Would you like to try again or get help from our team?");
+    addOptions([
+      { text: "Try again", action: handleSubscriptionFlow },
+      { text: "Contact support", action: startHelpWithOrder },
+      { text: "Back to home", action: showHomeMenu }
+    ]);
+    return;
+  }
+
   if (state.subscriptions.length === 0) {
     await addBotMessage("I couldn't find any active subscriptions on your account. Would you like help with something else?");
     addOptions([
@@ -5966,67 +6002,77 @@ async function handleSubscriptionFlow() {
     ]);
     return;
   }
-  
+
   await showSubscriptionCards();
 }
 
 async function showSubscriptionCards() {
   await addBotMessage(`I found ${state.subscriptions.length} subscription(s). Which one would you like to manage?`);
-  
+
   const subsHtml = state.subscriptions.map((sub, index) => {
-    const statusClass = sub.status === 'active' ? 'active' : 
-                       sub.status === 'paused' ? 'paused' : 'cancelled';
-    
+    // Normalize status (CheckoutChamp may return uppercase)
+    const status = (sub.status || 'unknown').toLowerCase();
+    const statusClass = status === 'active' ? 'active' :
+                       status === 'paused' ? 'paused' : 'cancelled';
+    const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+
+    // Handle frequency display
+    const frequencyText = sub.frequency ? `Every ${sub.frequency} days` : 'N/A';
+
     return `
       <div class="subscription-card" onclick="selectSubscription(${index})">
         <div class="subscription-header">
           <div>
-            <div class="subscription-name">${sub.productName}</div>
+            <div class="subscription-name">${sub.productName || 'Subscription'}</div>
           </div>
-          <span class="subscription-status ${statusClass}">${sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}</span>
+          <span class="subscription-status ${statusClass}">${statusLabel}</span>
         </div>
         <div class="subscription-details">
           <div class="subscription-detail">
             <div class="subscription-detail-label">Last Billing</div>
-            <div class="subscription-detail-value">${formatDate(sub.lastBillingDate)}</div>
+            <div class="subscription-detail-value">${sub.lastBillingDate ? formatDate(sub.lastBillingDate) : 'N/A'}</div>
           </div>
           <div class="subscription-detail">
             <div class="subscription-detail-label">Next Billing</div>
-            <div class="subscription-detail-value">${formatDate(sub.nextBillingDate)}</div>
+            <div class="subscription-detail-value">${sub.nextBillingDate ? formatDate(sub.nextBillingDate) : 'N/A'}</div>
           </div>
           <div class="subscription-detail">
             <div class="subscription-detail-label">Delivery Schedule</div>
-            <div class="subscription-detail-value">Every ${sub.frequency} days</div>
+            <div class="subscription-detail-value">${frequencyText}</div>
           </div>
           <div class="subscription-detail">
             <div class="subscription-detail-label">Price</div>
-            <div class="subscription-detail-value">${formatCurrency(sub.price)}</div>
+            <div class="subscription-detail-value">${sub.price ? formatCurrency(sub.price) : 'N/A'}</div>
           </div>
         </div>
       </div>
     `;
   }).join('');
-  
+
   addInteractiveContent(`<div class="subscriptions-list">${subsHtml}</div>`);
 }
 
 async function selectSubscription(index) {
   state.selectedSubscription = state.subscriptions[index];
-  
+
   document.querySelector('.subscriptions-list')?.closest('.interactive-content').remove();
-  
+
+  // Normalize status for display
+  const status = (state.selectedSubscription.status || 'unknown').toLowerCase();
+  const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+
   const summaryHtml = `
     <div class="editable-summary">
-      <div class="summary-row"><span class="summary-label">Product:</span> ${state.selectedSubscription.productName}</div>
-      <div class="summary-row"><span class="summary-label">Status:</span> ${state.selectedSubscription.status}</div>
+      <div class="summary-row"><span class="summary-label">Product:</span> ${state.selectedSubscription.productName || 'Subscription'}</div>
+      <div class="summary-row"><span class="summary-label">Status:</span> ${statusLabel}</div>
     </div>
   `;
-  
+
   addEditableUserMessage(summaryHtml, () => {
     state.selectedSubscription = null;
     showSubscriptionCards();
   }, 'Change');
-  
+
   await showSubscriptionActions();
 }
 
