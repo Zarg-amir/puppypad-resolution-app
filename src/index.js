@@ -2460,6 +2460,9 @@ async function handleCreateCase(request, env, corsHeaders) {
     pauseResumeDate: caseData.pauseResumeDate,
     cancelReason: caseData.cancelReason,
     discountPercent: caseData.discountPercent,
+    newFrequency: caseData.newFrequency, // For schedule changes
+    previousFrequency: caseData.previousFrequency, // For schedule changes
+    newAddress: caseData.newAddress, // For address changes
     // Other fields for extra_data
     keepProduct: caseData.keepProduct,
     issueType: caseData.issueType,
@@ -4839,6 +4842,9 @@ async function logCaseToAnalytics(env, caseData) {
     pauseResumeDate: caseData.pauseResumeDate || null,
     cancelReason: caseData.cancelReason || null,
     discountPercent: caseData.discountPercent || null,
+    newFrequency: caseData.newFrequency || null, // For schedule changes
+    previousFrequency: caseData.previousFrequency || null, // For schedule changes
+    newAddress: caseData.newAddress || null, // For address changes
     // Other fields
     intentDetails: caseData.intentDetails || null,
     keepProduct: caseData.keepProduct,
@@ -8816,50 +8822,138 @@ function getResolutionHubHTML() {
         }
       }
 
-      // SUBSCRIPTION CASES
+      // SUBSCRIPTION CASES - use resolution to determine display, not actionType
       else if (c.case_type === 'subscription') {
-        const actionMap = {
-          'pause': 'Customer wants to <strong>pause</strong> their subscription.',
-          'cancel': 'Customer wants to <strong>cancel</strong> their subscription.',
-          'changeSchedule': 'Customer wants to <strong>change delivery schedule</strong>.',
-          'changeAddress': 'Customer wants to <strong>update shipping address</strong>.',
-        };
-        if (extra.actionType && actionMap[extra.actionType]) {
-          bullets.push(actionMap[extra.actionType]);
+        // Determine the actual outcome based on resolution
+        const resolution = c.resolution || '';
+
+        // PAUSE SUBSCRIPTION
+        if (resolution === 'subscription_paused') {
+          bullets.push('Customer <strong>paused</strong> their subscription.');
+
+          if (extra.subscriptionProductName) {
+            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+          }
+          if (extra.purchaseId) {
+            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          }
+          if (extra.pauseDuration) {
+            bullets.push('Pause duration: <strong>' + extra.pauseDuration + ' days</strong>');
+          }
+          if (extra.pauseResumeDate) {
+            const resumeDate = new Date(extra.pauseResumeDate);
+            bullets.push('Resume date: <strong>' + resumeDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) + '</strong>');
+          }
         }
 
-        // Subscription product name
-        if (extra.subscriptionProductName) {
-          bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+        // DISCOUNT APPLIED (customer retained with discount)
+        else if (resolution === 'discount_applied') {
+          bullets.push('Customer <strong>retained</strong> with discount offer.');
+
+          if (extra.subscriptionProductName) {
+            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+          }
+          if (extra.purchaseId) {
+            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          }
+          if (extra.discountPercent) {
+            bullets.push('Discount applied: <strong>' + extra.discountPercent + '% off</strong> future shipments');
+          }
+          if (extra.cancelReason) {
+            const cancelReasons = {
+              'expensive': 'Too expensive',
+              'too_many': 'Has too many',
+              'not_working': 'Not working as described',
+              'moving': 'Moving',
+              'other': 'Other reason'
+            };
+            bullets.push('Original cancel reason: <strong>' + (cancelReasons[extra.cancelReason] || extra.cancelReason) + '</strong>');
+          }
         }
 
-        // Subscription ID (Purchase ID)
-        if (extra.purchaseId) {
-          bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+        // FULL CANCELLATION
+        else if (resolution === 'subscription_cancelled') {
+          bullets.push('Customer <strong>cancelled</strong> their subscription.');
+
+          if (extra.subscriptionProductName) {
+            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+          }
+          if (extra.purchaseId) {
+            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          }
+          if (extra.cancelReason) {
+            const cancelReasons = {
+              'expensive': 'Too expensive',
+              'too_many': 'Has too many',
+              'not_working': 'Not working as described',
+              'moving': 'Moving',
+              'other': 'Other reason'
+            };
+            bullets.push('Cancel reason: <strong>' + (cancelReasons[extra.cancelReason] || extra.cancelReason) + '</strong>');
+          }
+          if (extra.keepProduct === true) {
+            bullets.push('Return required: <strong>No</strong> — customer keeps product');
+          } else if (extra.keepProduct === false) {
+            bullets.push('Return required: <strong>Yes</strong> — customer must return product');
+          }
         }
 
-        // Pause duration and resume date
-        if (extra.pauseDuration) {
-          bullets.push('Pause duration: <strong>' + extra.pauseDuration + ' days</strong>');
-        }
-        if (extra.pauseResumeDate) {
-          const resumeDate = new Date(extra.pauseResumeDate);
-          bullets.push('Resume date: <strong>' + resumeDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) + '</strong>');
+        // SCHEDULE CHANGED
+        else if (resolution === 'schedule_changed') {
+          bullets.push('Customer <strong>changed delivery schedule</strong>.');
+
+          if (extra.subscriptionProductName) {
+            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+          }
+          if (extra.purchaseId) {
+            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          }
+          if (extra.newFrequency) {
+            bullets.push('New schedule: Every <strong>' + extra.newFrequency + ' days</strong>');
+          }
+          if (extra.previousFrequency) {
+            bullets.push('Previous schedule: Every <strong>' + extra.previousFrequency + ' days</strong>');
+          }
         }
 
-        // Cancel reason
-        if (extra.cancelReason) {
-          const cancelReasons = {
-            'expensive': 'Too expensive',
-            'too_many': 'Has too many',
-            'not_working': 'Not working as described',
-            'moving': 'Moving',
-            'other': 'Other reason'
-          };
-          bullets.push('Cancel reason: <strong>' + (cancelReasons[extra.cancelReason] || extra.cancelReason) + '</strong>');
+        // ADDRESS CHANGED
+        else if (resolution === 'address_changed') {
+          bullets.push('Customer <strong>updated shipping address</strong>.');
+
+          if (extra.subscriptionProductName) {
+            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+          }
+          if (extra.purchaseId) {
+            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          }
+          if (extra.newAddress) {
+            const addr = extra.newAddress;
+            const addrStr = [addr.address1, addr.address2, addr.city, addr.state, addr.zip, addr.country].filter(Boolean).join(', ');
+            bullets.push('New address: <strong>' + addrStr + '</strong>');
+          }
         }
 
-        // CheckoutChamp Order ID
+        // FALLBACK for any other subscription resolution
+        else {
+          if (extra.actionType) {
+            const actionMap = {
+              'pause': 'Customer paused their subscription.',
+              'cancel': 'Customer cancelled their subscription.',
+              'changeSchedule': 'Customer changed delivery schedule.',
+              'changeAddress': 'Customer updated shipping address.',
+            };
+            bullets.push(actionMap[extra.actionType] || 'Subscription action: ' + extra.actionType);
+          }
+
+          if (extra.subscriptionProductName) {
+            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+          }
+          if (extra.purchaseId) {
+            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          }
+        }
+
+        // Show CheckoutChamp Order ID if available (for all subscription cases)
         if (extra.clientOrderId) {
           bullets.push('CheckoutChamp Order: <strong>' + extra.clientOrderId + '</strong>');
         }

@@ -2881,6 +2881,9 @@ async function submitCase(caseType, resolution, options = {}) {
     discountPercent: options.discountPercent || null,
     subscriptionStatus: options.subscriptionStatus || state.selectedSubscription?.status || '',
     cancelReason: options.cancelReason || state.cancelReason || '',
+    newFrequency: options.newFrequency || null, // For schedule changes
+    previousFrequency: options.previousFrequency || null, // For schedule changes
+    newAddress: options.newAddress || null, // For address changes
 
     // Shipping-specific fields (for shipping cases)
     trackingNumber: options.trackingNumber || '',
@@ -6303,9 +6306,10 @@ async function acceptSubscriptionOffer(percent) {
 
   // Submit case to ClickUp/Richpanel with discount info
   const result = await submitCase('subscription', 'discount_applied', {
-    actionType: 'cancel', // Intent was to cancel, but saved with discount
+    actionType: 'discount_accepted', // Customer accepted discount offer
     discountPercent: percent,
-    notes: `Customer retained with ${percent}% discount on future shipments.`,
+    cancelReason: state.cancelReason || '', // Include original cancel reason
+    notes: `Customer retained with ${percent}% discount on future shipments. Original cancel reason: ${state.cancelReason || 'Not specified'}.`,
   });
 
   hideProgress();
@@ -6355,6 +6359,7 @@ async function processSubscriptionCancel(isUsed) {
   const result = await submitCase('subscription', 'subscription_cancelled', {
     actionType: 'cancel',
     keepProduct: keepProduct,
+    cancelReason: state.cancelReason || '', // Include cancel reason
     issueType: 'subscription_cancel',
     notes: `Full cancellation. Reason: ${state.cancelReason || 'Not specified'}. Keep product: ${keepProduct ? 'Yes' : 'No (return required)'}`,
   });
@@ -6388,6 +6393,8 @@ async function confirmScheduleChange(days) {
   // Submit case to ClickUp/Richpanel with schedule change
   const result = await submitCase('subscription', 'schedule_changed', {
     actionType: 'changeSchedule',
+    newFrequency: days, // New delivery frequency
+    previousFrequency: previousFrequency, // Previous delivery frequency
     notes: `Schedule changed from every ${previousFrequency} days to every ${days} days.`,
   });
 
@@ -6466,11 +6473,22 @@ async function submitNewAddress() {
 
   const newAddressFormatted = [address1, address2, `${city}, ${province} ${zip}`, country].filter(Boolean).join(', ');
 
+  // Build new address object
+  const newAddress = {
+    address1: address1,
+    address2: address2 || '',
+    city: city,
+    state: province,
+    zip: zip,
+    country: country
+  };
+
   showProgress("Updating your shipping address...", "Creating case...");
 
   // Submit case to ClickUp/Richpanel with address change
   const result = await submitCase('subscription', 'address_changed', {
     actionType: 'changeAddress',
+    newAddress: newAddress, // Include structured address data
     notes: `New address: ${newAddressFormatted}`,
   });
 
