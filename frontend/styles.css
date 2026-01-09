@@ -117,9 +117,31 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
 }
 
+/* Japanese-inspired animated gradient */
+@keyframes japaneseGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 @media (min-width: 481px) {
   body {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(-45deg,
+      #faf5f0,  /* warm cream */
+      #f5e6e8,  /* soft sakura pink */
+      #e8f4f8,  /* light sky blue */
+      #f0f4f8,  /* pale cloud */
+      #faf0f5,  /* cherry blossom */
+      #f5f8f0   /* bamboo hint */
+    );
+    background-size: 400% 400%;
+    animation: japaneseGradient 20s ease infinite;
     padding: 24px;
     min-height: 100vh;
   }
