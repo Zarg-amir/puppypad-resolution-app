@@ -6159,12 +6159,20 @@ async function submitCustomPause() {
 
   document.querySelector('.form-container')?.closest('.interactive-content').remove();
 
+  // Calculate days until resume
+  const resumeDate = new Date(dateInput);
+  const today = new Date();
+  const diffTime = resumeDate.getTime() - today.getTime();
+  const pauseDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
   showProgress("Pausing your subscription...", "Creating case...");
 
   // Submit case to ClickUp/Richpanel with subscription fields
   const result = await submitCase('subscription', 'subscription_paused', {
     actionType: 'pause',
-    notes: `Custom pause. Resume on ${formatDate(dateInput)}`,
+    pauseDuration: pauseDays,
+    pauseResumeDate: resumeDate.toISOString(),
+    notes: `Pause for ${pauseDays} days. Resume on ${formatDate(dateInput)}`,
   });
 
   hideProgress();
