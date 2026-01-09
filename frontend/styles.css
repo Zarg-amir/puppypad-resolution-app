@@ -434,7 +434,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .trouble-cta {
-  color: var(--primary);
+  color: #667eea;
   font-weight: 500;
   text-decoration: underline;
 }
@@ -2954,7 +2954,7 @@ textarea.form-input {
 .trouble-field select:focus,
 .trouble-field textarea:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -2971,7 +2971,7 @@ textarea.form-input {
 .trouble-submit {
   width: 100%;
   padding: 14px 20px;
-  background: var(--primary);
+  background: #667eea;
   color: white;
   border: none;
   border-radius: 10px;
@@ -2983,7 +2983,7 @@ textarea.form-input {
 }
 
 .trouble-submit:hover {
-  background: var(--primary-dark);
+  background: #5a6fd6;
   transform: translateY(-1px);
 }
 
