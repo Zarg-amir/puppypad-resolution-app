@@ -2967,18 +2967,26 @@ function buildClickUpComment(caseData, orderIssue, formattedResolution, orderDat
   if (caseData.caseType === 'subscription') {
     addHeader('SUBSCRIPTION DETAILS');
 
-    if (caseData.purchaseId) addBoldLine('Purchase ID:', caseData.purchaseId);
-    if (caseData.clientOrderId) addBoldLine('Client Order ID:', caseData.clientOrderId);
+    if (caseData.purchaseId) addBoldLine('Subscription ID (Purchase ID):', caseData.purchaseId);
+    if (caseData.clientOrderId) addBoldLine('CheckoutChamp Order ID:', caseData.clientOrderId);
     if (caseData.subscriptionProductName) addBoldLine('Product:', caseData.subscriptionProductName);
 
     if (caseData.actionType) {
-      const actionLabels = {
-        pause: 'Pause Subscription',
-        cancel: 'Cancel Subscription',
-        changeSchedule: 'Change Schedule',
-        changeAddress: 'Change Address'
-      };
-      addBoldLine('Action:', actionLabels[caseData.actionType] || caseData.actionType);
+      let actionLabel = caseData.actionType;
+      if (caseData.actionType === 'pause') {
+        actionLabel = caseData.pauseDuration ? `Pause for ${caseData.pauseDuration} days` : 'Pause Subscription';
+      } else if (caseData.actionType === 'cancel') {
+        actionLabel = 'Cancel Subscription';
+      } else if (caseData.actionType === 'changeSchedule') {
+        actionLabel = 'Change Schedule';
+      } else if (caseData.actionType === 'changeAddress') {
+        actionLabel = 'Change Address';
+      }
+      addBoldLine('Action:', actionLabel);
+    }
+    if (caseData.pauseResumeDate) {
+      const resumeDate = new Date(caseData.pauseResumeDate);
+      addBoldLine('Resume Date:', resumeDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
     }
     if (caseData.discountPercent) addBoldLine('Discount Applied:', `${caseData.discountPercent}%`);
     if (caseData.cancelReason) {
@@ -3334,13 +3342,34 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
   }
   // SUBSCRIPTION CASE - Natural customer email
   else if (caseData.caseType === 'subscription') {
-    const actionLabels = {
-      pause: 'pause my subscription',
-      cancel: 'cancel my subscription',
-      changeSchedule: 'change my delivery schedule',
-      changeAddress: 'update my shipping address'
-    };
-    const actionText = actionLabels[caseData.actionType] || 'make changes to my subscription';
+    // Build action text with pause duration if applicable
+    let actionText = 'make changes to my subscription';
+    if (caseData.actionType === 'pause') {
+      if (caseData.pauseDuration) {
+        actionText = `pause my subscription for ${caseData.pauseDuration} days`;
+      } else {
+        actionText = 'pause my subscription';
+      }
+    } else if (caseData.actionType === 'cancel') {
+      actionText = 'cancel my subscription';
+    } else if (caseData.actionType === 'changeSchedule') {
+      actionText = 'change my delivery schedule';
+    } else if (caseData.actionType === 'changeAddress') {
+      actionText = 'update my shipping address';
+    }
+
+    // Build resolution text with pause details
+    let resolutionText = formattedResolution;
+    if (caseData.actionType === 'pause' && caseData.pauseDuration) {
+      resolutionText = `subscription paused for ${caseData.pauseDuration} days`;
+      if (caseData.pauseResumeDate) {
+        const resumeDate = new Date(caseData.pauseResumeDate);
+        resolutionText += ` (resumes ${resumeDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`;
+      }
+    }
+
+    // Use clientOrderId if orderNumber not available
+    const orderDisplay = caseData.orderNumber || caseData.clientOrderId || 'N/A';
 
     messageParts.push(
       'Hi there,',
@@ -3350,14 +3379,14 @@ function buildCustomerMessage(caseData, caseId, testMode = true) {
       `Reason: ${orderIssue}`,
       '',
       `My details:`,
-      `• Order: ${caseData.orderNumber || 'N/A'}`,
+      `• Order: ${orderDisplay}`,
       `• Case ID: ${caseId}`
     );
-    if (caseData.purchaseId) messageParts.push(`• Purchase ID: ${caseData.purchaseId}`);
+    if (caseData.purchaseId) messageParts.push(`• Subscription ID: ${caseData.purchaseId} (Purchase ID)`);
     if (caseData.subscriptionProductName) messageParts.push(`• Product: ${caseData.subscriptionProductName}`);
     messageParts.push(
       '',
-      `Through the resolution center, the agreed action is: ${formattedResolution}${refundAmountStr ? ` (${refundAmountStr})` : ''}.`,
+      `Through the resolution center, the agreed action is: ${resolutionText}${refundAmountStr ? ` (${refundAmountStr})` : ''}.`,
       '',
       'Thanks!',
       '',
@@ -7410,7 +7439,7 @@ function getResolutionHubHTML() {
       <div class="sidebar-header"><div class="sidebar-logo"><img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad"><span>Resolution Hub</span></div></div>
       <nav class="sidebar-nav">
         <div class="nav-section"><div class="nav-section-title">Overview</div><a class="nav-item active" data-page="dashboard"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a></div>
-        <div class="nav-section"><div class="nav-section-title">Cases</div><a class="nav-item" data-page="cases" data-filter="all"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>All Cases<span class="badge" id="allCasesCount">0</span></a><a class="nav-item" data-page="cases" data-filter="shipping"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>Shipping<span class="badge" id="shippingCount">0</span></a><a class="nav-item" data-page="cases" data-filter="refund"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>Refunds<span class="badge" id="refundCount">0</span></a><a class="nav-item" data-page="cases" data-filter="subscription"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Subscriptions<span class="badge" id="subscriptionsCount">0</span></a><a class="nav-item" data-page="cases" data-filter="manual"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>Manual Review<span class="badge" id="manualCount">0</span></a></div>
+        <div class="nav-section"><div class="nav-section-title">Cases</div><a class="nav-item" data-page="cases" data-filter="all"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>All Cases<span class="badge" id="allCasesCount">0</span></a><a class="nav-item" data-page="cases" data-filter="shipping"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>Shipping<span class="badge" id="shippingCount">0</span></a><a class="nav-item" data-page="cases" data-filter="refund"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>Refunds<span class="badge" id="refundCount">0</span></a><a class="nav-item" data-page="cases" data-filter="subscription"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Subscriptions<span class="badge" id="subscriptionCount">0</span></a><a class="nav-item" data-page="cases" data-filter="manual"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>Manual Review<span class="badge" id="manualCount">0</span></a></div>
         <div class="nav-section"><div class="nav-section-title">Activity</div><a class="nav-item" data-page="sessions"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>Sessions</a><a class="nav-item" data-page="events"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>Event Log</a><a class="nav-item" data-page="issues"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>Issue Reports<span class="badge issue-badge" id="issuesCount">0</span></a></div>
         <div class="nav-section"><div class="nav-section-title">Analytics</div><a class="nav-item" data-page="analytics"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Performance</a></div>
       </nav>

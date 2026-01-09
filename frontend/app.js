@@ -2872,6 +2872,8 @@ async function submitCase(caseType, resolution, options = {}) {
     clientOrderId: options.clientOrderId || state.selectedSubscription?.clientOrderId || '',
     subscriptionProductName: options.subscriptionProductName || state.selectedSubscription?.productName || '',
     actionType: options.actionType || '',
+    pauseDuration: options.pauseDuration || null,
+    pauseResumeDate: options.pauseResumeDate || null,
     discountPercent: options.discountPercent || null,
     subscriptionStatus: options.subscriptionStatus || state.selectedSubscription?.status || '',
     cancelReason: options.cancelReason || state.cancelReason || '',
@@ -6116,6 +6118,8 @@ async function confirmPause(days) {
   // Submit case to ClickUp/Richpanel with subscription fields
   const result = await submitCase('subscription', 'subscription_paused', {
     actionType: 'pause',
+    pauseDuration: days,
+    pauseResumeDate: resumeDate.toISOString(),
     notes: `Pause for ${days} days. Resume on ${formatDate(resumeDate.toISOString())}`,
   });
 
