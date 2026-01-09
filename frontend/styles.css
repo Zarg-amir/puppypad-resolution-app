@@ -2970,21 +2970,21 @@ textarea.form-input {
 
 .trouble-submit {
   width: 100%;
-  padding: 14px 20px;
+  padding: 18px 20px;
   background: var(--brand-navy);
   color: white;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-normal);
   margin-top: 8px;
 }
 
 .trouble-submit:hover {
   background: var(--brand-navy-light);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .trouble-submit:disabled {

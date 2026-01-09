@@ -6579,6 +6579,13 @@ function openTroubleReport(event) {
 
 function closeTroubleReport() {
   document.getElementById('troubleModal').classList.remove('active');
+  // Reset modal state for next open
+  setTimeout(() => {
+    document.querySelector('.trouble-header').style.display = '';
+    document.getElementById('troubleForm').style.display = '';
+    document.getElementById('troubleSuccess').style.display = 'none';
+    document.getElementById('troubleForm').reset();
+  }, 300);
 }
 
 async function submitTroubleReport(event) {
@@ -6628,7 +6635,8 @@ async function submitTroubleReport(event) {
 
     if (!response.ok) throw new Error('Failed to submit report');
 
-    // Show success state
+    // Show success state - hide header and form, show success
+    document.querySelector('.trouble-header').style.display = 'none';
     document.getElementById('troubleForm').style.display = 'none';
     document.getElementById('troubleSuccess').style.display = 'block';
 
