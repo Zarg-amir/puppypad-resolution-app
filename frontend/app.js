@@ -6546,20 +6546,32 @@ function openTroubleReport(event) {
   const form = document.getElementById('troubleForm');
   const success = document.getElementById('troubleSuccess');
 
+  if (!modal || !form) {
+    console.error('Trouble modal elements not found');
+    return;
+  }
+
   // Reset form and show it
   form.style.display = 'block';
-  success.style.display = 'none';
+  if (success) success.style.display = 'none';
   form.reset();
 
-  // Pre-fill known data from session
-  if (sessionData.customerEmail) {
-    document.getElementById('troubleEmail').value = sessionData.customerEmail;
-  }
-  if (sessionData.customerName) {
-    document.getElementById('troubleName').value = sessionData.customerName;
-  }
-  if (sessionData.currentOrder?.order_number) {
-    document.getElementById('troubleOrder').value = sessionData.currentOrder.order_number;
+  // Pre-fill known data from session (if available)
+  try {
+    if (typeof sessionData !== 'undefined' && sessionData) {
+      if (sessionData.customerEmail) {
+        document.getElementById('troubleEmail').value = sessionData.customerEmail;
+      }
+      if (sessionData.customerName) {
+        document.getElementById('troubleName').value = sessionData.customerName;
+      }
+      if (sessionData.currentOrder?.order_number) {
+        document.getElementById('troubleOrder').value = sessionData.currentOrder.order_number;
+      }
+    }
+  } catch (e) {
+    // Session data not available, that's fine
+    console.log('Session data not available for pre-fill');
   }
 
   modal.classList.add('active');
@@ -6581,19 +6593,29 @@ async function submitTroubleReport(event) {
   submitText.style.display = 'none';
   submitLoading.style.display = 'inline';
 
+  // Safely get session data if available
+  let sessionInfo = { sessionId: null, currentFlow: 'unknown', customerEmail: null, currentOrder: null };
+  try {
+    if (typeof sessionData !== 'undefined' && sessionData) {
+      sessionInfo = sessionData;
+    }
+  } catch (e) {
+    // Session data not available
+  }
+
   const reportData = {
     name: document.getElementById('troubleName').value,
     email: document.getElementById('troubleEmail').value,
     orderNumber: document.getElementById('troubleOrder').value || null,
     issueType: document.getElementById('troubleType').value,
     description: document.getElementById('troubleDescription').value,
-    // Include debug info
-    sessionId: sessionData.sessionId || null,
-    currentStep: sessionData.currentFlow || 'unknown',
-    customerEmail: sessionData.customerEmail || null,
-    orderData: sessionData.currentOrder ? {
-      orderNumber: sessionData.currentOrder.order_number,
-      orderDate: sessionData.currentOrder.created_at
+    // Include debug info (if available)
+    sessionId: sessionInfo.sessionId || null,
+    currentStep: sessionInfo.currentFlow || 'unknown',
+    customerEmail: sessionInfo.customerEmail || null,
+    orderData: sessionInfo.currentOrder ? {
+      orderNumber: sessionInfo.currentOrder.order_number,
+      orderDate: sessionInfo.currentOrder.created_at
     } : null,
     browser: navigator.userAgent,
     timestamp: new Date().toISOString()
