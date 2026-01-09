@@ -1786,7 +1786,13 @@ async function handleSubscription(request, env, corsHeaders) {
 
     return Response.json({
       subscriptions,
-      lookupMethod: subscriptions.length > 0 ? (clientOrderId ? 'clientOrderId' : 'email') : 'none'
+      lookupMethod: subscriptions.length > 0 ? (clientOrderId ? 'clientOrderId' : 'email') : 'none',
+      debug: {
+        clientOrderIdProvided: !!clientOrderId,
+        emailProvided: !!email,
+        clientOrderIdValue: clientOrderId || null,
+        emailValue: email || null
+      }
     }, { headers: corsHeaders });
 
   } catch (error) {
@@ -1833,30 +1839,96 @@ async function getSubscriptionsByOrderId(env, clientOrderId) {
 
 // Get subscriptions by email (searches CheckoutChamp for orders with that email)
 async function getSubscriptionsByEmail(env, email) {
-  // Search for orders by email in CheckoutChamp
-  const searchUrl = `https://api.checkoutchamp.com/order/query/?loginId=${encodeURIComponent(env.CC_API_USERNAME)}&password=${encodeURIComponent(env.CC_API_PASSWORD)}&email=${encodeURIComponent(email)}`;
+  console.log('Attempting email-based subscription lookup for:', email);
 
-  const searchResponse = await fetch(searchUrl, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' }
-  });
+  // Try multiple approaches since CheckoutChamp API might vary
 
-  if (!searchResponse.ok) {
-    console.error('CheckoutChamp email search failed:', searchResponse.status);
-    return [];
+  // Approach 1: Try /order/query with email parameter
+  const emailParams = ['email', 'emailAddress', 'customerEmail', 'billEmail'];
+
+  for (const param of emailParams) {
+    try {
+      const searchUrl = `https://api.checkoutchamp.com/order/query/?loginId=${encodeURIComponent(env.CC_API_USERNAME)}&password=${encodeURIComponent(env.CC_API_PASSWORD)}&${param}=${encodeURIComponent(email)}`;
+
+      console.log(`Trying order query with ${param}:`, email);
+
+      const searchResponse = await fetch(searchUrl, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const responseText = await searchResponse.text();
+      console.log(`CheckoutChamp ${param} response (${searchResponse.status}):`, responseText.substring(0, 500));
+
+      if (searchResponse.ok) {
+        const searchData = JSON.parse(responseText);
+
+        // Check if we got valid results
+        if (searchData.result === 'SUCCESS' || searchData.result?.data || searchData.message === 'Success') {
+          const orders = searchData.result?.data || searchData.data || (searchData.result && typeof searchData.result === 'object' && !Array.isArray(searchData.result) ? [searchData.result] : []);
+
+          if (orders.length > 0) {
+            console.log(`Found ${orders.length} orders via ${param}`);
+            return await processOrdersForSubscriptions(env, orders);
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`Error with ${param} search:`, e.message);
+    }
   }
 
-  const searchData = await searchResponse.json();
-  console.log('CheckoutChamp email search response:', JSON.stringify(searchData).substring(0, 500));
+  // Approach 2: Try /purchase/query with email (some APIs support this)
+  try {
+    const purchaseUrl = `https://api.checkoutchamp.com/purchase/query/?loginId=${encodeURIComponent(env.CC_API_USERNAME)}&password=${encodeURIComponent(env.CC_API_PASSWORD)}&email=${encodeURIComponent(email)}`;
 
-  // Handle both single order and array of orders
-  const orders = searchData.result?.data || (searchData.result ? [searchData.result] : []);
+    console.log('Trying purchase query with email');
 
+    const purchaseResponse = await fetch(purchaseUrl, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const purchaseText = await purchaseResponse.text();
+    console.log('CheckoutChamp purchase by email response:', purchaseText.substring(0, 500));
+
+    if (purchaseResponse.ok) {
+      const purchaseData = JSON.parse(purchaseText);
+
+      if (purchaseData.result === 'SUCCESS' || purchaseData.message === 'Success') {
+        const purchase = purchaseData.result || purchaseData;
+        if (purchase && purchase.purchaseId) {
+          // We found a purchase directly!
+          return [{
+            purchaseId: purchase.purchaseId,
+            productName: purchase.displayName || purchase.productName || 'Subscription',
+            productSku: purchase.productSku || purchase.sku || '',
+            status: (purchase.status || 'unknown').toUpperCase(),
+            nextBillingDate: purchase.nextBillDate || purchase.nextBillingDate || null,
+            lastBillingDate: purchase.lastBillDate || purchase.dateCreated || null,
+            frequency: purchase.billingIntervalDays || purchase.frequency || 30,
+            cycleNumber: purchase.billingCycleNumber || purchase.cycleNumber || 1,
+            price: purchase.price || purchase.amount || '0.00',
+          }];
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error with purchase email search:', e.message);
+  }
+
+  console.log('No subscriptions found via email search');
+  return [];
+}
+
+// Process orders array to find subscriptions
+async function processOrdersForSubscriptions(env, orders) {
   const allSubscriptions = [];
 
   for (const order of orders) {
     const purchaseId = findPurchaseIdInOrder(order);
     if (purchaseId) {
+      console.log('Found purchaseId in order:', purchaseId);
       const subs = await getSubscriptionDetails(env, purchaseId, { result: order });
       allSubscriptions.push(...subs);
     }
