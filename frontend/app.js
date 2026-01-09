@@ -6536,6 +6536,109 @@ styleSheet.textContent = additionalStyles;
 document.head.appendChild(styleSheet);
 
 // ============================================
+// TROUBLE REPORT MODAL FUNCTIONS
+// ============================================
+
+function openTroubleReport(event) {
+  if (event) event.preventDefault();
+
+  const modal = document.getElementById('troubleModal');
+  const form = document.getElementById('troubleForm');
+  const success = document.getElementById('troubleSuccess');
+
+  // Reset form and show it
+  form.style.display = 'block';
+  success.style.display = 'none';
+  form.reset();
+
+  // Pre-fill known data from session
+  if (sessionData.customerEmail) {
+    document.getElementById('troubleEmail').value = sessionData.customerEmail;
+  }
+  if (sessionData.customerName) {
+    document.getElementById('troubleName').value = sessionData.customerName;
+  }
+  if (sessionData.currentOrder?.order_number) {
+    document.getElementById('troubleOrder').value = sessionData.currentOrder.order_number;
+  }
+
+  modal.classList.add('active');
+}
+
+function closeTroubleReport() {
+  document.getElementById('troubleModal').classList.remove('active');
+}
+
+async function submitTroubleReport(event) {
+  event.preventDefault();
+
+  const submitBtn = document.getElementById('troubleSubmitBtn');
+  const submitText = submitBtn.querySelector('.submit-text');
+  const submitLoading = submitBtn.querySelector('.submit-loading');
+
+  // Show loading state
+  submitBtn.disabled = true;
+  submitText.style.display = 'none';
+  submitLoading.style.display = 'inline';
+
+  const reportData = {
+    name: document.getElementById('troubleName').value,
+    email: document.getElementById('troubleEmail').value,
+    orderNumber: document.getElementById('troubleOrder').value || null,
+    issueType: document.getElementById('troubleType').value,
+    description: document.getElementById('troubleDescription').value,
+    // Include debug info
+    sessionId: sessionData.sessionId || null,
+    currentStep: sessionData.currentFlow || 'unknown',
+    customerEmail: sessionData.customerEmail || null,
+    orderData: sessionData.currentOrder ? {
+      orderNumber: sessionData.currentOrder.order_number,
+      orderDate: sessionData.currentOrder.created_at
+    } : null,
+    browser: navigator.userAgent,
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/trouble-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reportData)
+    });
+
+    if (!response.ok) throw new Error('Failed to submit report');
+
+    // Show success state
+    document.getElementById('troubleForm').style.display = 'none';
+    document.getElementById('troubleSuccess').style.display = 'block';
+
+  } catch (error) {
+    console.error('Trouble report submission error:', error);
+    alert('Sorry, we couldn\'t submit your report. Please try again or email us directly at support@puppypad.com');
+  } finally {
+    // Reset button state
+    submitBtn.disabled = false;
+    submitText.style.display = 'inline';
+    submitLoading.style.display = 'none';
+  }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+  const modal = document.getElementById('troubleModal');
+  if (event.target === modal) {
+    closeTroubleReport();
+  }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeTroubleReport();
+  }
+});
+
+// ============================================
 // MAKE FUNCTIONS GLOBALLY ACCESSIBLE
 // ============================================
 window.toggleIdentifyMethod = toggleIdentifyMethod;
@@ -6569,3 +6672,6 @@ window.restartChat = restartChat;
 window.formatPhoneInput = formatPhoneInput;
 window.updateAddressFields = updateAddressFields;
 window.selectContactMethod = selectContactMethod;
+window.openTroubleReport = openTroubleReport;
+window.closeTroubleReport = closeTroubleReport;
+window.submitTroubleReport = submitTroubleReport;

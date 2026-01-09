@@ -155,12 +155,13 @@
 
       <!-- Home Footer -->
       <footer class="home-footer">
-        <p class="footer-text">Powered by</p>
         <img
           src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041"
           alt="PuppyPad"
           class="footer-logo"
         >
+        <span class="footer-divider">•</span>
+        <a href="#" class="trouble-link" onclick="openTroubleReport(event)">Having trouble?</a>
       </footer>
     </div>
 
@@ -209,14 +210,68 @@
       <!-- Chat Footer -->
       <footer class="app-footer">
         <div class="footer-content">
-          <span class="powered-text">Powered by</span>
           <img
             src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041"
             alt="PuppyPad"
             class="brand-logo"
           >
+          <span class="footer-divider">•</span>
+          <a href="#" class="trouble-link" onclick="openTroubleReport(event)">Having trouble?</a>
         </div>
       </footer>
+    </div>
+  </div>
+
+  <!-- Trouble Report Modal -->
+  <div class="trouble-modal" id="troubleModal">
+    <div class="trouble-modal-content">
+      <button class="trouble-close" onclick="closeTroubleReport()">&times;</button>
+      <div class="trouble-header">
+        <span class="trouble-icon">😕</span>
+        <h2>Having trouble?</h2>
+        <p>Let us know what's happening and we'll get back to you within 24 hours.</p>
+      </div>
+      <form id="troubleForm" onsubmit="submitTroubleReport(event)">
+        <div class="trouble-field">
+          <label for="troubleName">Your Name</label>
+          <input type="text" id="troubleName" placeholder="Enter your name" required>
+        </div>
+        <div class="trouble-field">
+          <label for="troubleEmail">Email Address</label>
+          <input type="email" id="troubleEmail" placeholder="Enter your email" required>
+        </div>
+        <div class="trouble-field">
+          <label for="troubleOrder">Order Number <span class="optional">(if applicable)</span></label>
+          <input type="text" id="troubleOrder" placeholder="e.g. #12345">
+        </div>
+        <div class="trouble-field">
+          <label for="troubleType">What were you trying to do?</label>
+          <select id="troubleType" required>
+            <option value="">Select an option...</option>
+            <option value="refund">Request a refund</option>
+            <option value="track">Track my order</option>
+            <option value="cancel_subscription">Cancel subscription</option>
+            <option value="report_issue">Report a product issue</option>
+            <option value="page_not_loading">Page not loading properly</option>
+            <option value="error_message">Getting an error message</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="trouble-field">
+          <label for="troubleDescription">What went wrong?</label>
+          <textarea id="troubleDescription" placeholder="Please describe what happened or what you're seeing..." rows="4" required></textarea>
+        </div>
+        <button type="submit" class="trouble-submit" id="troubleSubmitBtn">
+          <span class="submit-text">Submit Report</span>
+          <span class="submit-loading" style="display:none;">Sending...</span>
+        </button>
+      </form>
+      <div class="trouble-success" id="troubleSuccess" style="display:none;">
+        <span class="success-icon">✓</span>
+        <h3>Report Submitted!</h3>
+        <p>We've received your report and will email you within 24 hours.</p>
+        <button onclick="closeTroubleReport()" class="trouble-done-btn">Done</button>
+      </div>
     </div>
   </div>
 

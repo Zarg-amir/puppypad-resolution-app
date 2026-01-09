@@ -947,6 +947,11 @@ export default {
         return await handleLogPolicyBlock(request, env, corsHeaders);
       }
 
+      // Trouble report submission (for users having issues with the app)
+      if (pathname === '/api/trouble-report' && request.method === 'POST') {
+        return await handleTroubleReport(request, env, corsHeaders);
+      }
+
       // ============================================
       // ADMIN DASHBOARD ENDPOINTS
       // ============================================
@@ -1043,6 +1048,23 @@ export default {
       // Hub API - Analytics
       if (pathname === '/hub/api/analytics' && request.method === 'GET') {
         return await handleHubAnalytics(request, env, corsHeaders);
+      }
+
+      // Hub API - Issues (Trouble Reports)
+      if (pathname === '/hub/api/issues' && request.method === 'GET') {
+        return await handleHubIssues(request, env, corsHeaders);
+      }
+
+      // Hub API - Single Issue
+      if (pathname.startsWith('/hub/api/issues/') && request.method === 'GET') {
+        const reportId = pathname.split('/hub/api/issues/')[1];
+        return await handleHubIssueDetail(reportId, env, corsHeaders);
+      }
+
+      // Hub API - Update Issue Status
+      if (pathname.match(/\\/hub\\/api\\/issues\\/[^\\/]+\\/status/) && request.method === 'PUT') {
+        const reportId = pathname.split('/hub/api/issues/')[1].split('/status')[0];
+        return await handleHubIssueStatusUpdate(reportId, request, env, corsHeaders);
       }
 
       // ============================================
@@ -3716,6 +3738,140 @@ async function handleLogPolicyBlock(request, env, corsHeaders) {
   }
 }
 
+// Handle trouble report submissions (users having issues with the app)
+async function handleTroubleReport(request, env, corsHeaders) {
+  try {
+    const data = await request.json();
+
+    const {
+      name,
+      email,
+      orderNumber,
+      issueType,
+      description,
+      sessionId,
+      currentStep,
+      customerEmail,
+      orderData,
+      browser,
+      timestamp
+    } = data;
+
+    // Generate a reference ID for the report
+    const reportId = 'TR-' + Date.now().toString(36).toUpperCase();
+
+    // Log to analytics database
+    try {
+      await env.ANALYTICS_DB.prepare(`
+        INSERT INTO trouble_reports (
+          report_id, name, email, order_number, issue_type, description,
+          session_id, current_step, browser, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `).bind(
+        reportId,
+        name,
+        email,
+        orderNumber || null,
+        issueType,
+        description,
+        sessionId || null,
+        currentStep || null,
+        browser || null
+      ).run();
+    } catch (dbError) {
+      // Table might not exist yet - that's okay, we'll still create the ClickUp task
+      console.log('Trouble reports table may not exist:', dbError.message);
+    }
+
+    // Create a ClickUp task for the team to follow up
+    const issueTypeLabels = {
+      'refund': 'Request a refund',
+      'track': 'Track my order',
+      'cancel_subscription': 'Cancel subscription',
+      'report_issue': 'Report a product issue',
+      'page_not_loading': 'Page not loading properly',
+      'error_message': 'Getting an error message',
+      'other': 'Other'
+    };
+
+    const taskDescription = `
+**TROUBLE REPORT: ${reportId}**
+
+A customer reported an issue using the resolution app.
+
+---
+
+**Customer Details:**
+• Name: ${name}
+• Email: ${email}
+• Order Number: ${orderNumber || 'Not provided'}
+
+**Issue Details:**
+• What they were trying to do: ${issueTypeLabels[issueType] || issueType}
+• Description: ${description}
+
+**Technical Info:**
+• Session ID: ${sessionId || 'N/A'}
+• Current Step: ${currentStep || 'N/A'}
+• Browser: ${browser || 'N/A'}
+• Timestamp: ${timestamp || new Date().toISOString()}
+
+---
+
+**Action Required:**
+1. Review the issue and reach out to the customer within 24 hours
+2. If this is a bug, report it to the dev team
+3. Help the customer complete their resolution manually if needed
+`;
+
+    // Create task in ClickUp (use manual help list)
+    if (env.CLICKUP_API_KEY) {
+      try {
+        const clickupResponse = await fetch('https://api.clickup.com/api/v2/list/901105691498/task', {
+          method: 'POST',
+          headers: {
+            'Authorization': env.CLICKUP_API_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: `[TROUBLE REPORT] ${name} - ${issueTypeLabels[issueType] || issueType}`,
+            description: taskDescription,
+            priority: 2, // High priority
+            tags: ['trouble-report', 'app-issue'],
+            custom_fields: [
+              { id: 'f5e59891-0237-4d5b-806b-80bcb2c87936', value: reportId },
+              { id: '3db1a193-4548-49b2-a498-b4ed44cce69a', value: email }
+            ]
+          })
+        });
+
+        if (!clickupResponse.ok) {
+          console.error('ClickUp task creation failed:', await clickupResponse.text());
+        }
+      } catch (clickupError) {
+        console.error('ClickUp error:', clickupError);
+      }
+    }
+
+    // Send notification email to support team (optional)
+    // Could integrate with email service here
+
+    return Response.json({
+      success: true,
+      reportId: reportId,
+      message: 'Report submitted successfully'
+    }, { headers: corsHeaders });
+
+  } catch (error) {
+    console.error('Trouble report error:', error);
+    return Response.json({
+      success: false,
+      error: 'Failed to submit report'
+    }, { status: 500, headers: corsHeaders });
+  }
+}
+
 // Log case creation (called from handleCreateCase)
 async function logCaseToAnalytics(env, caseData) {
   // Build customer name from first/last name if not directly provided
@@ -5861,6 +6017,66 @@ async function handleHubAnalytics(request, env, corsHeaders) {
 }
 
 // ============================================
+// HUB API - ISSUES (TROUBLE REPORTS)
+// ============================================
+
+async function handleHubIssues(request, env, corsHeaders) {
+  try {
+    const url = new URL(request.url);
+    const limit = parseInt(url.searchParams.get('limit')) || 50;
+
+    // Try to get issues from trouble_reports table
+    let issues = [];
+    try {
+      const result = await env.ANALYTICS_DB.prepare(`
+        SELECT * FROM trouble_reports ORDER BY created_at DESC LIMIT ?
+      `).bind(limit).all();
+      issues = result.results || [];
+    } catch (dbError) {
+      // Table might not exist, return empty
+      console.log('Trouble reports table may not exist:', dbError.message);
+    }
+
+    return Response.json({ issues }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub issues error:', error);
+    return Response.json({ issues: [] }, { headers: corsHeaders });
+  }
+}
+
+async function handleHubIssueDetail(reportId, env, corsHeaders) {
+  try {
+    const result = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM trouble_reports WHERE report_id = ?
+    `).bind(reportId).first();
+
+    if (!result) {
+      return Response.json({ error: 'Issue not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    return Response.json(result, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub issue detail error:', error);
+    return Response.json({ error: 'Failed to load issue' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+async function handleHubIssueStatusUpdate(reportId, request, env, corsHeaders) {
+  try {
+    const { status } = await request.json();
+
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE trouble_reports SET status = ? WHERE report_id = ?
+    `).bind(status, reportId).run();
+
+    return Response.json({ success: true }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub issue status update error:', error);
+    return Response.json({ error: 'Failed to update status' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
 // CLICKUP TWO-WAY SYNC
 // ============================================
 
@@ -6325,7 +6541,7 @@ function getResolutionHubHTML() {
       <nav class="sidebar-nav">
         <div class="nav-section"><div class="nav-section-title">Overview</div><a class="nav-item active" data-page="dashboard"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a></div>
         <div class="nav-section"><div class="nav-section-title">Cases</div><a class="nav-item" data-page="cases" data-filter="all"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>All Cases<span class="badge" id="allCasesCount">0</span></a><a class="nav-item" data-page="cases" data-filter="shipping"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>Shipping<span class="badge" id="shippingCount">0</span></a><a class="nav-item" data-page="cases" data-filter="refund"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>Refunds<span class="badge" id="refundCount">0</span></a><a class="nav-item" data-page="cases" data-filter="subscription"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Subscriptions<span class="badge" id="subscriptionsCount">0</span></a><a class="nav-item" data-page="cases" data-filter="manual"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>Manual Review<span class="badge" id="manualCount">0</span></a></div>
-        <div class="nav-section"><div class="nav-section-title">Activity</div><a class="nav-item" data-page="sessions"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>Sessions</a><a class="nav-item" data-page="events"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>Event Log</a></div>
+        <div class="nav-section"><div class="nav-section-title">Activity</div><a class="nav-item" data-page="sessions"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>Sessions</a><a class="nav-item" data-page="events"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>Event Log</a><a class="nav-item" data-page="issues"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>Issue Reports<span class="badge issue-badge" id="issuesCount">0</span></a></div>
         <div class="nav-section"><div class="nav-section-title">Analytics</div><a class="nav-item" data-page="analytics"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Performance</a></div>
       </nav>
       <div class="sidebar-footer"><div class="user-info"><div class="user-avatar">A</div><div><div class="user-name">Admin</div><div class="user-role">Administrator</div></div></div></div>
@@ -6340,6 +6556,7 @@ function getResolutionHubHTML() {
         <div id="casesView" style="display:none"></div>
         <div id="sessionsView" style="display:none"></div>
         <div id="eventsView" style="display:none"></div>
+        <div id="issuesView" style="display:none"></div>
         <div id="analyticsView" style="display:none"></div>
       </div>
     </main>
@@ -6583,6 +6800,139 @@ function getResolutionHubHTML() {
     </div>
   </div>
 
+  <!-- Issue Report Modal -->
+  <div class="modal-overlay" id="issueModal">
+    <div class="modal">
+      <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+        <div class="modal-header-content">
+          <div class="modal-case-id" id="issueModalId">Loading...</div>
+          <div class="modal-title" id="issueModalName">Customer Name</div>
+          <div class="modal-meta">
+            <div class="modal-meta-item" id="issueModalType">
+              <span class="type-badge">-</span>
+            </div>
+            <div class="modal-meta-item" id="issueModalStatus">
+              <span class="status-badge">-</span>
+            </div>
+            <div class="modal-meta-item" id="issueModalTime">-</div>
+          </div>
+        </div>
+        <div class="modal-nav">
+          <button class="nav-arrow prev" id="prevIssueBtn" onclick="navigateIssue('prev')" title="Previous issue">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <button class="nav-arrow next" id="nextIssueBtn" onclick="navigateIssue('next')" title="Next issue">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+          <button class="modal-close" onclick="closeIssueModal()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="modal-grid">
+          <div class="modal-main">
+            <!-- Customer Info -->
+            <div class="detail-section">
+              <div class="section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                Customer Information
+              </div>
+              <div class="info-grid">
+                <div class="info-item"><span class="info-label">Email</span><span class="info-value" id="issueModalEmail">-</span></div>
+                <div class="info-item"><span class="info-label">Order Number</span><span class="info-value" id="issueModalOrder">-</span></div>
+              </div>
+            </div>
+
+            <!-- What They Were Trying To Do -->
+            <div class="detail-section">
+              <div class="section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                What They Were Trying To Do
+              </div>
+              <div class="resolution-box" id="issueModalAction" style="background: #fef3c7; border-color: #f59e0b;">
+                -
+              </div>
+            </div>
+
+            <!-- Issue Description -->
+            <div class="detail-section">
+              <div class="section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+                Issue Description
+              </div>
+              <div class="detail-card" id="issueModalDescription" style="background: #f9fafb; padding: 16px; border-radius: 8px; font-size: 14px; line-height: 1.6; color: #374151; white-space: pre-wrap;">
+                -
+              </div>
+            </div>
+
+            <!-- Technical Details -->
+            <div class="detail-section">
+              <div class="section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                Technical Details
+              </div>
+              <div class="info-grid">
+                <div class="info-item"><span class="info-label">Session ID</span><span class="info-value" id="issueModalSession" style="font-family: monospace; font-size: 12px;">-</span></div>
+                <div class="info-item"><span class="info-label">Current Step</span><span class="info-value" id="issueModalStep">-</span></div>
+                <div class="info-item" style="grid-column: span 2;"><span class="info-label">Browser</span><span class="info-value" id="issueModalBrowser" style="font-size: 12px; word-break: break-all;">-</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-sidebar">
+            <!-- Quick Actions -->
+            <div class="sidebar-section">
+              <div class="section-title">Quick Actions</div>
+              <a href="#" class="action-link" id="issueReplayLink" target="_blank" style="display:none;">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                Watch Session Replay
+              </a>
+              <a href="#" class="action-link" id="issueShopifyLink" target="_blank" style="display:none;">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                View Shopify Order
+              </a>
+              <a href="mailto:" class="action-link" id="issueEmailLink">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                Email Customer
+              </a>
+            </div>
+
+            <!-- Status Update -->
+            <div class="sidebar-section">
+              <div class="section-title">Update Status</div>
+              <div class="status-cards">
+                <div class="status-card pending" onclick="updateIssueStatus('pending')">
+                  <span class="status-dot"></span> Pending
+                </div>
+                <div class="status-card in-progress" onclick="updateIssueStatus('in_progress')">
+                  <span class="status-dot"></span> In Progress
+                </div>
+                <div class="status-card completed" onclick="updateIssueStatus('resolved')">
+                  <span class="status-dot"></span> Resolved
+                </div>
+              </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="sidebar-section">
+              <div class="section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Timeline
+              </div>
+              <div class="timeline">
+                <div class="timeline-item">
+                  <div class="timeline-label">Reported</div>
+                  <div class="timeline-value" id="issueTimelineCreated">-</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     const API = '';
@@ -6590,41 +6940,56 @@ function getResolutionHubHTML() {
     let currentFilter = 'all';
     let casesList = [];
     let currentCaseIndex = -1;
+    let issuesList = [];
+    let currentIssueIndex = -1;
+    let currentIssue = null;
 
     // Resolution code to human-readable text
     function formatResolution(code, amount) {
       if (!code) return '-';
       const amountStr = amount ? '$' + parseFloat(amount).toFixed(2) : '';
       const map = {
-        'full_refund': 'Full Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
-        'partial_20': '20% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
-        'partial_30': '30% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
-        'partial_40': '40% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
-        'partial_50': '50% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
-        'partial_75': '75% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : ''),
-        'store_credit': 'Store Credit Issued',
-        'replacement': 'Replacement Sent',
-        'exchange': 'Exchange Processed',
-        'reship': 'Order Reshipped',
-        'partial_20_reship': '20% Refund + Reship',
-        'partial_50_reship': '50% Refund + Reship',
-        'refund_missing_item': 'Missing Item Refunded',
-        'reship_missing_item': 'Missing Item Reshipped',
-        'reship_missing_item_bonus': 'Missing Item + Bonus Reshipped',
-        'replacement_damaged': 'Damaged Item Replaced',
-        'partial_missing': 'Partial Refund (Missing Item)',
-        'apology_note': 'Apology Sent',
-        'training_tips': 'Training Tips Provided',
-        'manual_assistance': 'Manual Assistance Required',
-        'manual_order_not_found': 'Manual Review - Order Not Found',
-        'escalate': 'Escalated to Team',
-        'no_action': 'No Action Required'
+        // Standard refunds
+        'full_refund': 'Process full refund' + (amountStr ? ' (' + amountStr + ')' : ' (calculate amount)'),
+        'partial_20': 'Process 20% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
+        'partial_30': 'Process 30% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
+        'partial_40': 'Process 40% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
+        'partial_50': 'Process 50% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
+        'partial_75': 'Process 75% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
+        'store_credit': 'Issue store credit',
+        'replacement': 'Ship replacement',
+        'exchange': 'Process exchange → Send return label, ship replacement after return',
+        'reship': 'Reship order',
+        'partial_20_reship': 'Process 20% refund + Reship order',
+        'partial_50_reship': 'Process 50% refund + Reship order',
+        'refund_missing_item': 'Calculate & refund missing item value',
+        'reship_missing_item': 'Ship missing item',
+        'reship_missing_item_bonus': 'Ship missing item + bonus for inconvenience',
+        'replacement_damaged': 'Ship replacement for damaged item',
+        'partial_missing': 'Process partial refund for missing item',
+        'apology_note': 'Send apology note',
+        'training_tips': 'Provide training tips',
+        'manual_assistance': 'Manual review required',
+        'manual_order_not_found': 'Manual review → Order not found in system',
+        'escalate': 'Escalate to team',
+        'no_action': 'No action required',
+
+        // Quality difference resolutions - ACTION-ORIENTED
+        'upgrade_keep_originals': 'Send $20/pad checkout link → Ship PuppyPad 2.0 after payment (customer keeps Originals)',
+        'return_upgrade_enhanced': 'Wait for return tracking → Send $20/pad checkout link → Ship PuppyPad 2.0 after payment',
+        'reship_quality_upgrade': 'Ship FREE PuppyPad 2.0 (customer keeps Originals) — We absorb cost',
+        'full_refund_quality': 'Process refund (calculate amount) → Customer keeps Originals',
+        'full_refund_quality_used': 'Process refund (calculate amount) → Items used, no return needed',
+        'full_refund_quality_return': 'Wait for return → Process refund after received (calculate amount)',
+
+        // Return flow
+        'return_refund': 'Send return label → Refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' after return received'
       };
       // Check for dynamic patterns
       const partialMatch = code.match(/^partial_(\\d+)$/);
-      if (partialMatch) return partialMatch[1] + '% Partial Refund' + (amountStr ? ' (' + amountStr + ')' : '');
+      if (partialMatch) return 'Process ' + partialMatch[1] + '% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product';
       const partialReshipMatch = code.match(/^partial_(\\d+)_reship$/);
-      if (partialReshipMatch) return partialReshipMatch[1] + '% Refund + Reship';
+      if (partialReshipMatch) return 'Process ' + partialReshipMatch[1] + '% refund + Reship order';
       return map[code] || code.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());
     }
 
@@ -6635,11 +7000,12 @@ function getResolutionHubHTML() {
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       const sel = filter ? '.nav-item[data-page="'+page+'"][data-filter="'+filter+'"]' : '.nav-item[data-page="'+page+'"]';
       document.querySelector(sel)?.classList.add('active');
-      document.getElementById('pageTitle').textContent = {dashboard:'Dashboard',cases:'Cases',sessions:'Sessions',events:'Event Log',analytics:'Performance'}[page]||'Dashboard';
-      ['dashboard','cases','sessions','events','analytics'].forEach(v => document.getElementById(v+'View').style.display = v===page?'block':'none');
+      document.getElementById('pageTitle').textContent = {dashboard:'Dashboard',cases:'Cases',sessions:'Sessions',events:'Event Log',issues:'Issue Reports',analytics:'Performance'}[page]||'Dashboard';
+      ['dashboard','cases','sessions','events','issues','analytics'].forEach(v => document.getElementById(v+'View').style.display = v===page?'block':'none');
       if(page==='cases') { currentFilter = filter||'all'; loadCasesView(); }
       if(page==='sessions') loadSessionsView();
       if(page==='events') loadEventsView();
+      if(page==='issues') loadIssuesView();
       if(page==='analytics') loadAnalyticsView();
     }
 
@@ -6652,7 +7018,19 @@ function getResolutionHubHTML() {
         document.getElementById('statAvgTime').textContent = d.avgTime||'-';
         ['all','shipping','refund','subscription','manual'].forEach(t => { const el = document.getElementById((t==='all'?'allCases':t)+'Count'); if(el) el.textContent = d[t]||0; });
         loadRecentCases();
+        // Load issues count
+        loadIssuesCount();
       } catch(e) { console.error(e); }
+    }
+
+    async function loadIssuesCount() {
+      try {
+        const r = await fetch(API+'/hub/api/issues?limit=100');
+        const d = await r.json();
+        const pendingCount = (d.issues || []).filter(i => i.status !== 'resolved').length;
+        const countEl = document.getElementById('issuesCount');
+        if (countEl) countEl.textContent = pendingCount;
+      } catch(e) { console.log('Issues count load skipped:', e.message); }
     }
 
     async function loadRecentCases() {
@@ -6949,6 +7327,176 @@ function getResolutionHubHTML() {
       } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load events</div>'; }
     }
 
+    // ============================================
+    // ISSUES / TROUBLE REPORTS
+    // ============================================
+
+    async function loadIssuesView() {
+      const view = document.getElementById('issuesView');
+      view.innerHTML = '<div class="spinner"></div>';
+      try {
+        const r = await fetch(API+'/hub/api/issues?limit=50');
+        const d = await r.json();
+        issuesList = d.issues || [];
+
+        // Update badge count
+        const countEl = document.getElementById('issuesCount');
+        if (countEl) countEl.textContent = issuesList.filter(i => i.status !== 'resolved').length;
+
+        const issueTypeLabels = {
+          'refund': 'Request a refund',
+          'track': 'Track order',
+          'cancel_subscription': 'Cancel subscription',
+          'report_issue': 'Report product issue',
+          'page_not_loading': 'Page not loading',
+          'error_message': 'Error message',
+          'other': 'Other'
+        };
+
+        function renderIssueRow(issue) {
+          const statusClass = (issue.status || 'pending').replace('_', '-');
+          return '<tr onclick="openIssue(\\''+issue.report_id+'\\')">'+
+            '<td><span class="case-id" style="background:#fef3c7;color:#92400e;">'+issue.report_id+'</span></td>'+
+            '<td><div class="customer-info"><span class="customer-name">'+(issue.name||'Unknown')+'</span><span class="customer-email">'+(issue.email||'')+'</span></div></td>'+
+            '<td><span class="type-badge manual">'+(issueTypeLabels[issue.issue_type]||issue.issue_type||'-')+'</span></td>'+
+            '<td><span class="status-badge '+statusClass+'">'+(issue.status||'pending')+'</span></td>'+
+            '<td class="time-ago">'+timeAgo(issue.created_at)+'</td>'+
+          '</tr>';
+        }
+
+        view.innerHTML = '<div class="cases-card">'+
+          '<div class="cases-header">'+
+            '<h2 class="cases-title">Issue Reports</h2>'+
+            '<span style="color:var(--gray-500);">Users who reported problems with the resolution app</span>'+
+          '</div>'+
+          '<table class="cases-table">'+
+            '<thead><tr><th>Report ID</th><th>Customer</th><th>Issue Type</th><th>Status</th><th>Reported</th></tr></thead>'+
+            '<tbody>'+
+              (issuesList.length ? issuesList.map(renderIssueRow).join('') : '<tr><td colspan="5" class="empty-state">No issue reports yet</td></tr>')+
+            '</tbody>'+
+          '</table>'+
+        '</div>';
+
+      } catch(e) {
+        console.error(e);
+        view.innerHTML = '<div class="empty-state">Failed to load issues</div>';
+      }
+    }
+
+    async function openIssue(reportId) {
+      document.getElementById('issueModal').classList.add('active');
+      document.getElementById('issueModalId').textContent = reportId;
+      document.getElementById('issueModalName').textContent = 'Loading...';
+
+      currentIssueIndex = issuesList.findIndex(i => i.report_id === reportId);
+
+      try {
+        const r = await fetch(API+'/hub/api/issues/'+reportId);
+        const issue = await r.json();
+        currentIssue = issue;
+
+        const issueTypeLabels = {
+          'refund': 'Request a refund',
+          'track': 'Track my order',
+          'cancel_subscription': 'Cancel subscription',
+          'report_issue': 'Report a product issue',
+          'page_not_loading': 'Page not loading properly',
+          'error_message': 'Getting an error message',
+          'other': 'Other'
+        };
+
+        // Populate modal
+        document.getElementById('issueModalId').textContent = issue.report_id;
+        document.getElementById('issueModalName').textContent = issue.name || 'Unknown';
+        document.getElementById('issueModalType').innerHTML = '<span class="type-badge manual">'+(issueTypeLabels[issue.issue_type]||issue.issue_type||'-')+'</span>';
+        document.getElementById('issueModalStatus').innerHTML = '<span class="status-badge '+(issue.status||'pending').replace('_','-')+'">'+(issue.status||'pending')+'</span>';
+        document.getElementById('issueModalTime').textContent = timeAgo(issue.created_at);
+
+        document.getElementById('issueModalEmail').textContent = issue.email || '-';
+        document.getElementById('issueModalOrder').textContent = issue.order_number || 'Not provided';
+
+        document.getElementById('issueModalAction').textContent = issueTypeLabels[issue.issue_type] || issue.issue_type || '-';
+        document.getElementById('issueModalDescription').textContent = issue.description || 'No description provided';
+
+        document.getElementById('issueModalSession').textContent = issue.session_id || 'N/A';
+        document.getElementById('issueModalStep').textContent = issue.current_step || 'Unknown';
+        document.getElementById('issueModalBrowser').textContent = issue.browser || 'Unknown';
+
+        document.getElementById('issueTimelineCreated').textContent = formatDate(issue.created_at);
+
+        // Email link
+        document.getElementById('issueEmailLink').href = 'mailto:' + (issue.email || '');
+
+        // Session replay link - try to find it
+        const replayLink = document.getElementById('issueReplayLink');
+        if (issue.session_id) {
+          // Build replay URL based on session ID
+          replayLink.href = 'https://app.posthog.com/replay/' + issue.session_id;
+          replayLink.style.display = 'flex';
+        } else {
+          replayLink.style.display = 'none';
+        }
+
+        // Shopify link
+        const shopifyLink = document.getElementById('issueShopifyLink');
+        if (issue.order_number) {
+          shopifyLink.href = 'https://admin.shopify.com/store/puppypad/orders?query=' + encodeURIComponent(issue.order_number);
+          shopifyLink.style.display = 'flex';
+        } else {
+          shopifyLink.style.display = 'none';
+        }
+
+        // Update status cards
+        document.querySelectorAll('#issueModal .status-card').forEach(card => card.classList.remove('active'));
+        const statusClass = (issue.status || 'pending').replace('_', '-');
+        document.querySelector('#issueModal .status-card.' + statusClass)?.classList.add('active');
+
+        // Navigation buttons
+        document.getElementById('prevIssueBtn').disabled = currentIssueIndex <= 0;
+        document.getElementById('nextIssueBtn').disabled = currentIssueIndex >= issuesList.length - 1;
+
+      } catch(e) {
+        console.error(e);
+        document.getElementById('issueModalDescription').textContent = 'Failed to load issue details';
+      }
+    }
+
+    function closeIssueModal() {
+      document.getElementById('issueModal').classList.remove('active');
+      currentIssue = null;
+    }
+
+    function navigateIssue(direction) {
+      if (direction === 'prev' && currentIssueIndex > 0) {
+        openIssue(issuesList[currentIssueIndex - 1].report_id);
+      } else if (direction === 'next' && currentIssueIndex < issuesList.length - 1) {
+        openIssue(issuesList[currentIssueIndex + 1].report_id);
+      }
+    }
+
+    async function updateIssueStatus(newStatus) {
+      if (!currentIssue) return;
+      try {
+        const r = await fetch(API+'/hub/api/issues/'+currentIssue.report_id+'/status', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (r.ok) {
+          currentIssue.status = newStatus;
+          // Update UI
+          document.getElementById('issueModalStatus').innerHTML = '<span class="status-badge '+newStatus.replace('_','-')+'">'+newStatus+'</span>';
+          document.querySelectorAll('#issueModal .status-card').forEach(card => card.classList.remove('active'));
+          document.querySelector('#issueModal .status-card.'+newStatus.replace('_','-'))?.classList.add('active');
+          // Refresh list
+          loadIssuesView();
+        }
+      } catch(e) { console.error(e); }
+    }
+
+    // Close issue modal when clicking outside
+    document.getElementById('issueModal').addEventListener('click', e => { if(e.target.id === 'issueModal') closeIssueModal(); });
+
     let analyticsCharts = {};
 
     async function loadAnalyticsView() {
@@ -7171,24 +7719,9 @@ function getResolutionHubHTML() {
     function timeAgo(d) { if(!d)return'-'; const s=Math.floor((Date.now()-new Date(d))/1000); if(s<60)return'Just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
     function formatDate(d) { if(!d)return'-'; return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
 
-    // Build detailed case breakdown HTML for modal
+    // Build detailed case breakdown HTML for modal - plain English bullet points
     function buildCaseDetailsHtml(c) {
-      let html = '';
-
-      // Issue Type
-      const issueTypeMap = {
-        'quality_difference': 'Quality Difference — Customer received older material (Original) instead of PuppyPad 2.0',
-        'damaged': 'Damaged Product',
-        'missing_items': 'Missing Items',
-        'wrong_item': 'Wrong Item Received',
-        'not_met_expectations': 'Product Did Not Meet Expectations',
-        'lost_package': 'Lost Package',
-        'delivered_not_received': 'Delivered But Not Received',
-        'subscription_issue': 'Subscription Issue',
-        'charged_unexpectedly': 'Charged Unexpectedly',
-      };
-      const issueDesc = issueTypeMap[c.issue_type] || c.issue_type?.replace(/_/g, ' ') || c.case_type || '-';
-      html += '<div class="detail-row"><span class="detail-label">Issue Type</span><span class="detail-value">' + issueDesc + '</span></div>';
+      const bullets = [];
 
       // Parse extra data if available
       let extra = {};
@@ -7196,61 +7729,140 @@ function getResolutionHubHTML() {
         if (c.extra_data) extra = typeof c.extra_data === 'string' ? JSON.parse(c.extra_data) : c.extra_data;
       } catch(e) {}
 
-      // Quality Details (if quality_difference)
-      if (c.issue_type === 'quality_difference' && extra.qualityDetails) {
-        const qd = extra.qualityDetails;
-        if (qd.padCount || qd.customerReportedCount) {
-          html += '<div class="detail-row"><span class="detail-label">Original Pads (Customer Reported)</span><span class="detail-value">' + (qd.customerReportedCount || qd.padCount) + ' pad(s)</span></div>';
+      // QUALITY DIFFERENCE CASES
+      if (c.issue_type === 'quality_difference') {
+        const qd = extra.qualityDetails || {};
+        const padCount = qd.customerReportedCount || qd.padCount || 0;
+
+        // Opening explanation
+        bullets.push('Customer received <strong>Original material pads</strong> instead of the newer <strong>PuppyPad 2.0</strong>.');
+
+        if (padCount > 0) {
+          bullets.push('Customer reported receiving <strong>' + padCount + ' pad' + (padCount > 1 ? 's' : '') + '</strong> of Original material.');
         }
-        if (qd.itemsUsed !== undefined) {
-          const usedStatus = qd.itemsUsed ? '<span style="color:#f59e0b;">Yes — Used</span>' : '<span style="color:#10b981;">No — Unused/Returnable</span>';
-          html += '<div class="detail-row"><span class="detail-label">Items Used?</span><span class="detail-value">' + usedStatus + '</span></div>';
+
+        // Usage status
+        if (qd.itemsUsed === true) {
+          bullets.push('<span style="color:#f59e0b;font-weight:600;">Items have been USED</span> — Customer cannot return them.');
+        } else if (qd.itemsUsed === false) {
+          bullets.push('<span style="color:#10b981;font-weight:600;">Items are UNUSED</span> — Eligible for return if needed.');
         }
-        if (qd.requiresReturn !== undefined) {
-          const returnStatus = qd.requiresReturn ? '<span style="color:#667eea;">Yes — Awaiting return</span>' : '<span style="color:#6c757d;">No return needed</span>';
-          html += '<div class="detail-row"><span class="detail-label">Return Required?</span><span class="detail-value">' + returnStatus + '</span></div>';
+
+        // Return requirement
+        if (qd.requiresReturn === true) {
+          bullets.push('Return is <strong>REQUIRED</strong> — Customer must ship back items before resolution.');
+        } else if (qd.requiresReturn === false) {
+          bullets.push('No return needed — Customer keeps the Original pads.');
         }
-        if (qd.upgradeTotal) {
-          html += '<div class="detail-row"><span class="detail-label">Upgrade Amount</span><span class="detail-value">$' + qd.upgradeTotal + '</span></div>';
+
+        // Resolution path chosen
+        if (qd.resolutionPath === 'upgrade') {
+          bullets.push('Customer chose to <strong>upgrade to PuppyPad 2.0</strong> for $20/pad.');
+          if (qd.upgradeTotal) {
+            bullets.push('Total upgrade cost: <strong>$' + qd.upgradeTotal + '</strong>');
+          }
+        } else if (qd.resolutionPath === 'refund') {
+          bullets.push('Customer chose a <strong>full refund</strong> for the Original pads.');
+        } else if (qd.resolutionPath === 'free_upgrade') {
+          bullets.push('Customer received <strong>FREE PuppyPad 2.0 upgrade</strong> (company absorbed cost).');
         }
       }
 
-      // Selected Items
+      // REFUND CASES
+      else if (c.case_type === 'refund' || c.issue_type) {
+        const issueDescriptions = {
+          'damaged': 'Customer received a damaged product.',
+          'missing_items': 'Customer is missing items from their order.',
+          'wrong_item': 'Customer received the wrong item.',
+          'not_met_expectations': 'Product did not meet customer expectations.',
+          'lost_package': 'Package was lost in transit.',
+          'delivered_not_received': 'Tracking shows delivered but customer never received it.',
+          'charged_unexpectedly': 'Customer was charged unexpectedly.',
+        };
+
+        if (c.issue_type && issueDescriptions[c.issue_type]) {
+          bullets.push(issueDescriptions[c.issue_type]);
+        } else if (c.issue_type) {
+          bullets.push('Issue: ' + c.issue_type.replace(/_/g, ' '));
+        }
+
+        // Refund amount
+        if (c.refund_amount) {
+          bullets.push('Refund amount: <strong>$' + parseFloat(c.refund_amount).toFixed(2) + '</strong>');
+        }
+
+        // Keep product
+        if (extra.keepProduct === true) {
+          bullets.push('Customer <strong>keeps the product</strong> — no return required.');
+        } else if (extra.keepProduct === false) {
+          bullets.push('Customer must <strong>return the product</strong> to receive refund.');
+        }
+      }
+
+      // SHIPPING CASES
+      else if (c.case_type === 'shipping') {
+        if (c.issue_type) {
+          const shippingIssues = {
+            'no_tracking': 'No tracking information available for the order.',
+            'stuck_in_transit': 'Package is stuck in transit.',
+            'pending_too_long': 'Order has been pending for too long.',
+            'delivered_not_received': 'Tracking shows delivered but customer never received it.',
+          };
+          bullets.push(shippingIssues[c.issue_type] || 'Shipping issue: ' + c.issue_type.replace(/_/g, ' '));
+        }
+
+        if (extra.correctedAddress) {
+          const addr = extra.correctedAddress;
+          const addrStr = [addr.line1, addr.line2, addr.city, addr.state, addr.zip, addr.country].filter(Boolean).join(', ');
+          bullets.push('<strong>NEW ADDRESS:</strong> ' + addrStr);
+        }
+      }
+
+      // SUBSCRIPTION CASES
+      else if (c.case_type === 'subscription') {
+        const actionMap = {
+          'pause': 'Customer wants to pause their subscription.',
+          'cancel': 'Customer wants to cancel their subscription.',
+          'changeSchedule': 'Customer wants to change their delivery schedule.',
+          'changeAddress': 'Customer wants to update their shipping address.',
+        };
+        if (extra.actionType && actionMap[extra.actionType]) {
+          bullets.push(actionMap[extra.actionType]);
+        }
+        if (extra.pauseDuration) {
+          bullets.push('Pause duration: <strong>' + extra.pauseDuration + '</strong>');
+        }
+        if (extra.cancelReason) {
+          bullets.push('Reason: ' + extra.cancelReason);
+        }
+      }
+
+      // ITEMS AFFECTED (all case types)
       if (c.selected_items) {
         let items = c.selected_items;
         try { if (typeof items === 'string') items = JSON.parse(items); } catch(e) {}
         if (items && items.length > 0) {
-          const itemsList = items.map(function(item) {
-            return item.title + (item.quantity > 1 ? ' (x' + item.quantity + ')' : '') + (item.sku ? ' <span style="color:#6c757d;font-size:11px;">[' + item.sku + ']</span>' : '');
-          }).join('<br>');
-          html += '<div class="detail-row" style="align-items:flex-start;"><span class="detail-label">Items Affected</span><span class="detail-value">' + itemsList + '</span></div>';
+          const itemsStr = items.map(function(item) {
+            return item.title + (item.quantity > 1 ? ' (x' + item.quantity + ')' : '');
+          }).join(', ');
+          bullets.push('<strong>Items:</strong> ' + itemsStr);
         }
       }
 
-      // Corrected Address (if applicable)
-      if (extra.correctedAddress) {
-        const addr = extra.correctedAddress;
-        const addrStr = [addr.line1, addr.line2, addr.city, addr.state, addr.zip, addr.country].filter(Boolean).join(', ');
-        html += '<div class="detail-row" style="align-items:flex-start;"><span class="detail-label">Corrected Address</span><span class="detail-value">' + addrStr + '</span></div>';
-      }
-
-      // Keep Product flag
-      if (extra.keepProduct !== undefined) {
-        const keepStatus = extra.keepProduct ? '<span style="color:#10b981;">Yes — Customer keeps product</span>' : '<span style="color:#6c757d;">No — Return required</span>';
-        html += '<div class="detail-row"><span class="detail-label">Customer Keeps Product?</span><span class="detail-value">' + keepStatus + '</span></div>';
-      }
-
-      // Intent Details (customer's explanation)
+      // CUSTOMER NOTES
       if (extra.intentDetails) {
-        html += '<div class="detail-row" style="align-items:flex-start;"><span class="detail-label">Customer Notes</span><span class="detail-value" style="font-style:italic;color:#495057;">"' + extra.intentDetails + '"</span></div>';
+        bullets.push('<strong>Customer said:</strong> <em>"' + extra.intentDetails + '"</em>');
       }
 
       // If no details available
-      if (html === '') {
-        html = '<div class="detail-row"><span class="detail-value" style="color:#6c757d;">No additional details available</span></div>';
+      if (bullets.length === 0) {
+        return '<p style="color:#6c757d;margin:0;font-size:14px;">No additional details available for this case.</p>';
       }
 
-      return html;
+      // Build bullet list HTML
+      return '<ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7;color:#374151;">' +
+        bullets.map(function(b) { return '<li style="margin-bottom:6px;">' + b + '</li>'; }).join('') +
+        '</ul>';
     }
 
     async function openCase(caseId) {
