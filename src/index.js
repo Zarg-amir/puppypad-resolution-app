@@ -1062,7 +1062,7 @@ export default {
       }
 
       // Hub API - Update Issue Status
-      if (pathname.match(/\\/hub\\/api\\/issues\\/[^\\/]+\\/status/) && request.method === 'PUT') {
+      if (pathname.match(/\/hub\/api\/issues\/[^\/]+\/status/) && request.method === 'PUT') {
         const reportId = pathname.split('/hub/api/issues/')[1].split('/status')[0];
         return await handleHubIssueStatusUpdate(reportId, request, env, corsHeaders);
       }
