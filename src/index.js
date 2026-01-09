@@ -6387,29 +6387,6 @@ function getResolutionHubHTML() {
     .info-card-label { font-size: 11px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
     .info-card-value { font-size: 15px; font-weight: 600; color: var(--gray-800); }
     .info-card-value.email { font-size: 13px; word-break: break-all; }
-    /* Issue Modal Specific Styles */
-    .detail-section { margin-bottom: 24px; }
-    .detail-section:last-child { margin-bottom: 0; }
-    .section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--gray-500); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px; }
-    .section-title svg { width: 18px; height: 18px; flex-shrink: 0; }
-    .info-item { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; background: white; border: 1px solid var(--gray-200); border-radius: 8px; }
-    .info-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); }
-    .info-value { font-size: 14px; font-weight: 500; color: var(--gray-800); word-break: break-word; }
-    .sidebar-section { margin-bottom: 24px; }
-    .sidebar-section:last-child { margin-bottom: 0; }
-    .action-link { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: white; border: 1px solid var(--gray-200); border-radius: 8px; text-decoration: none; color: var(--gray-700); font-size: 14px; font-weight: 500; margin-bottom: 8px; transition: all 0.2s; }
-    .action-link:hover { border-color: var(--brand-navy); color: var(--brand-navy); background: #f0f4ff; }
-    .action-link svg { width: 20px; height: 20px; flex-shrink: 0; }
-    #issueModal .status-cards { flex-direction: column; gap: 8px; }
-    #issueModal .status-card { padding: 10px 14px; font-size: 13px; font-weight: 500; }
-    #issueModal .status-card .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    #issueModal .status-card.pending .status-dot { background: #f59e0b; }
-    #issueModal .status-card.in-progress .status-dot { background: #3b82f6; }
-    #issueModal .status-card.completed .status-dot { background: #10b981; }
-    #issueModal .timeline { display: flex; flex-direction: column; gap: 12px; }
-    #issueModal .timeline-item { display: flex; flex-direction: column; gap: 2px; }
-    #issueModal .timeline-label { font-size: 11px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; }
-    #issueModal .timeline-value { font-size: 13px; font-weight: 500; color: var(--gray-700); }
     /* Status Cards - New Design */
     .status-cards { display: flex; gap: 12px; }
     .status-card { flex: 1; display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 12px; border: 2px solid var(--gray-200); background: white; cursor: pointer; transition: all 0.2s; position: relative; }
@@ -6806,7 +6783,7 @@ function getResolutionHubHTML() {
     </div>
   </div>
 
-  <!-- Issue Report Modal -->
+  <!-- Issue Report Modal - Same structure as Case Modal -->
   <div class="modal-overlay" id="issueModal">
     <div class="modal">
       <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
@@ -6814,7 +6791,7 @@ function getResolutionHubHTML() {
           <div class="modal-case-id" id="issueModalId">Loading...</div>
           <div class="modal-title" id="issueModalName">Customer Name</div>
           <div class="modal-meta">
-            <div class="modal-meta-item" id="issueModalStatus">
+            <div class="modal-meta-item" id="issueModalStatusBadge">
               <span class="status-badge">-</span>
             </div>
             <div class="modal-meta-item" id="issueModalTime">-</div>
@@ -6827,94 +6804,119 @@ function getResolutionHubHTML() {
           <button class="nav-arrow next" id="nextIssueBtn" onclick="navigateIssue('next')" title="Next issue">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
           </button>
-          <button class="modal-close" onclick="closeIssueModal()">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
+          <button class="modal-close" onclick="closeIssueModal()">&times;</button>
         </div>
       </div>
       <div class="modal-body">
         <div class="modal-grid">
           <div class="modal-main">
-            <!-- Customer Info -->
-            <div class="detail-section">
-              <div class="section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            <!-- Status Section - Same as Case Modal -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Update Status
+              </div>
+              <div class="status-cards">
+                <button class="status-card pending" onclick="updateIssueStatus('pending')">
+                  <div class="status-card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                  <div class="status-card-content"><div class="status-card-title">Pending</div><div class="status-card-desc">Awaiting review</div></div>
+                  <div class="status-card-check"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+                </button>
+                <button class="status-card in-progress" onclick="updateIssueStatus('in_progress')">
+                  <div class="status-card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div>
+                  <div class="status-card-content"><div class="status-card-title">In Progress</div><div class="status-card-desc">Being worked on</div></div>
+                  <div class="status-card-check"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+                </button>
+                <button class="status-card completed" onclick="updateIssueStatus('resolved')">
+                  <div class="status-card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                  <div class="status-card-content"><div class="status-card-title">Resolved</div><div class="status-card-desc">Issue fixed</div></div>
+                  <div class="status-card-check"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Customer Info - Same structure as Case Modal -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                 Customer Information
               </div>
               <div class="info-grid">
-                <div class="info-item" style="grid-column: span 2;"><span class="info-label">Email</span><span class="info-value" id="issueModalEmail">-</span></div>
+                <div class="info-card" style="grid-column: span 2;">
+                  <div class="info-card-label">Email Address</div>
+                  <div class="info-card-value email" id="issueModalEmail">-</div>
+                </div>
               </div>
             </div>
 
-            <!-- Issue Description -->
-            <div class="detail-section">
-              <div class="section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+            <!-- Issue Description - Styled like Resolution box -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
                 Issue Description
               </div>
-              <div class="detail-card" id="issueModalDescription" style="background: #f9fafb; padding: 16px; border-radius: 8px; font-size: 14px; line-height: 1.6; color: #374151; white-space: pre-wrap;">
-                -
+              <div class="detail-card" style="background: linear-gradient(135deg, #fef3c715, #f59e0b15); border: 2px solid #f59e0b;">
+                <div class="detail-row" style="border-bottom: none;">
+                  <span class="detail-value" id="issueModalDescription" style="font-weight: 500; color: #1a1a2e; font-size: 14px; line-height: 1.6; text-align: left; max-width: 100%; white-space: pre-wrap;">-</span>
+                </div>
               </div>
             </div>
 
-            <!-- Technical Details -->
-            <div class="detail-section">
-              <div class="section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+            <!-- Technical Details - Same structure as Case Modal -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
                 Technical Details
               </div>
               <div class="info-grid">
-                <div class="info-item"><span class="info-label">Session ID</span><span class="info-value" id="issueModalSession" style="font-family: monospace; font-size: 12px;">-</span></div>
-                <div class="info-item"><span class="info-label">Current Step</span><span class="info-value" id="issueModalStep">-</span></div>
-                <div class="info-item" style="grid-column: span 2;"><span class="info-label">Browser</span><span class="info-value" id="issueModalBrowser" style="font-size: 12px; word-break: break-all;">-</span></div>
+                <div class="info-card">
+                  <div class="info-card-label">Session ID</div>
+                  <div class="info-card-value" id="issueModalSession" style="font-size:11px;font-family:monospace;">-</div>
+                </div>
+                <div class="info-card">
+                  <div class="info-card-label">Current Step</div>
+                  <div class="info-card-value" id="issueModalStep">-</div>
+                </div>
+                <div class="info-card" style="grid-column: span 2;">
+                  <div class="info-card-label">Browser</div>
+                  <div class="info-card-value" id="issueModalBrowser" style="font-size:12px;word-break:break-all;">-</div>
+                </div>
               </div>
             </div>
           </div>
 
           <div class="modal-sidebar">
-            <!-- Quick Actions -->
-            <div class="sidebar-section">
-              <div class="section-title">Quick Actions</div>
-              <a href="#" class="action-link" id="issueReplayLink" target="_blank" style="display:none;">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                Watch Session Replay
-              </a>
-              <a href="#" class="action-link" id="issueShopifyLink" target="_blank" style="display:none;">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-                View Shopify Order
-              </a>
-              <a href="mailto:" class="action-link" id="issueEmailLink">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                Email Customer
-              </a>
-            </div>
-
-            <!-- Status Update -->
-            <div class="sidebar-section">
-              <div class="section-title">Update Status</div>
-              <div class="status-cards">
-                <div class="status-card pending" onclick="updateIssueStatus('pending')">
-                  <span class="status-dot"></span> Pending
-                </div>
-                <div class="status-card in-progress" onclick="updateIssueStatus('in_progress')">
-                  <span class="status-dot"></span> In Progress
-                </div>
-                <div class="status-card completed" onclick="updateIssueStatus('resolved')">
-                  <span class="status-dot"></span> Resolved
-                </div>
+            <!-- Quick Actions - Same structure as Case Modal -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                Quick Actions
+              </div>
+              <div class="quick-actions">
+                <a class="quick-action-btn" id="issueEmailLink" href="mailto:">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  Email Customer
+                </a>
+                <a class="quick-action-btn" id="issueReplayLink" href="#" target="_blank" style="display:none;">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+                  Watch Session Recording
+                </a>
               </div>
             </div>
 
-            <!-- Timeline -->
-            <div class="sidebar-section">
-              <div class="section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <!-- Timeline - Same structure as Case Modal -->
+            <div class="modal-section">
+              <div class="modal-section-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Timeline
               </div>
-              <div class="timeline">
+              <div class="detail-card" style="padding:16px;">
                 <div class="timeline-item">
-                  <div class="timeline-label">Reported</div>
-                  <div class="timeline-value" id="issueTimelineCreated">-</div>
+                  <div class="timeline-dot"></div>
+                  <div class="timeline-content">
+                    <div class="timeline-label">Issue Reported</div>
+                    <div class="timeline-value" id="issueTimelineCreated">-</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -7380,7 +7382,8 @@ function getResolutionHubHTML() {
         // Populate modal
         document.getElementById('issueModalId').textContent = issue.report_id;
         document.getElementById('issueModalName').textContent = issue.name || 'Unknown';
-        document.getElementById('issueModalStatus').innerHTML = '<span class="status-badge '+(issue.status||'pending').replace('_','-')+'">'+(issue.status||'pending')+'</span>';
+        const statusText = (issue.status || 'pending').replace('_', ' ');
+        document.getElementById('issueModalStatusBadge').innerHTML = '<span class="status-badge '+(issue.status||'pending').replace('_','-')+'">'+statusText+'</span>';
         document.getElementById('issueModalTime').textContent = timeAgo(issue.created_at);
 
         document.getElementById('issueModalEmail').textContent = issue.email || '-';
@@ -7391,6 +7394,11 @@ function getResolutionHubHTML() {
         document.getElementById('issueModalBrowser').textContent = issue.browser || 'Unknown';
 
         document.getElementById('issueTimelineCreated').textContent = formatDate(issue.created_at);
+
+        // Update status cards - highlight current status
+        document.querySelectorAll('#issueModal .status-card').forEach(card => card.classList.remove('active'));
+        const statusClass = (issue.status || 'pending') === 'resolved' ? 'completed' : (issue.status || 'pending').replace('_', '-');
+        document.querySelector('#issueModal .status-card.' + statusClass)?.classList.add('active');
 
         // Email link
         document.getElementById('issueEmailLink').href = 'mailto:' + (issue.email || '');
@@ -7452,10 +7460,13 @@ function getResolutionHubHTML() {
         });
         if (r.ok) {
           currentIssue.status = newStatus;
-          // Update UI
-          document.getElementById('issueModalStatus').innerHTML = '<span class="status-badge '+newStatus.replace('_','-')+'">'+newStatus+'</span>';
+          // Update UI - header badge
+          const statusText = newStatus.replace('_', ' ');
+          document.getElementById('issueModalStatusBadge').innerHTML = '<span class="status-badge '+newStatus.replace('_','-')+'">'+statusText+'</span>';
+          // Update status cards
           document.querySelectorAll('#issueModal .status-card').forEach(card => card.classList.remove('active'));
-          document.querySelector('#issueModal .status-card.'+newStatus.replace('_','-'))?.classList.add('active');
+          const statusClass = newStatus === 'resolved' ? 'completed' : newStatus.replace('_', '-');
+          document.querySelector('#issueModal .status-card.' + statusClass)?.classList.add('active');
           // Refresh list
           loadIssuesView();
         }
