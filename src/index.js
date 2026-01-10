@@ -1086,6 +1086,54 @@ export default {
         return await handleRecalculateLoads(request, env, corsHeaders);
       }
 
+      // ============================================
+      // SAVED VIEWS ENDPOINTS
+      // ============================================
+
+      // Get saved views
+      if (pathname === '/hub/api/views' && request.method === 'GET') {
+        return await handleGetSavedViews(request, env, corsHeaders);
+      }
+
+      // Create saved view
+      if (pathname === '/hub/api/views' && request.method === 'POST') {
+        return await handleCreateSavedView(request, env, corsHeaders);
+      }
+
+      // Update saved view
+      if (pathname === '/hub/api/views' && request.method === 'PUT') {
+        return await handleUpdateSavedView(request, env, corsHeaders);
+      }
+
+      // Delete saved view
+      if (pathname.match(/^\/hub\/api\/views\/\d+$/) && request.method === 'DELETE') {
+        return await handleDeleteSavedView(request, env, corsHeaders);
+      }
+
+      // ============================================
+      // COMPLETION CHECKLIST ENDPOINTS
+      // ============================================
+
+      // Get checklist items for a case type
+      if (pathname === '/hub/api/checklist-items' && request.method === 'GET') {
+        return await handleGetChecklistItems(request, env, corsHeaders);
+      }
+
+      // Get checklist status for a specific case
+      if (pathname.match(/^\/hub\/api\/case\/[^\/]+\/checklist$/) && request.method === 'GET') {
+        return await handleGetCaseChecklistStatus(request, env, corsHeaders);
+      }
+
+      // Mark checklist item complete/incomplete
+      if (pathname === '/hub/api/checklist/complete' && request.method === 'POST') {
+        return await handleCompleteChecklistItem(request, env, corsHeaders);
+      }
+
+      // Admin: Manage checklist templates (GET/POST/PUT/DELETE)
+      if (pathname === '/hub/api/admin/checklists' || pathname.match(/^\/hub\/api\/admin\/checklists\/\d+$/)) {
+        return await handleManageChecklists(request, env, corsHeaders);
+      }
+
       // Dashboard data (protected)
       if (pathname === '/admin/api/dashboard' && request.method === 'GET') {
         return await handleDashboardData(request, env, corsHeaders);
@@ -5995,6 +6043,365 @@ async function handleRecalculateLoads(request, env, corsHeaders) {
   } catch (e) {
     console.error('Recalculate loads error:', e);
     return Response.json({ error: 'Failed to recalculate loads' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// SAVED VIEWS
+// ============================================
+
+// Get saved views for current user
+async function handleGetSavedViews(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const views = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM saved_views WHERE user_id = ? ORDER BY sort_order ASC, created_at ASC
+    `).bind(auth.user.id).all();
+
+    return Response.json({ success: true, views: views.results || [] }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get saved views error:', e);
+    return Response.json({ error: 'Failed to get saved views' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Create saved view
+async function handleCreateSavedView(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { name, filters, isDefault } = await request.json();
+
+    if (!name || !filters) {
+      return Response.json({ error: 'Name and filters are required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Check limit (max 20 views per user)
+    const count = await env.ANALYTICS_DB.prepare(`
+      SELECT COUNT(*) as count FROM saved_views WHERE user_id = ?
+    `).bind(auth.user.id).first();
+
+    if (count?.count >= 20) {
+      return Response.json({ error: 'Maximum 20 saved views allowed' }, { status: 400, headers: corsHeaders });
+    }
+
+    // If setting as default, unset other defaults
+    if (isDefault) {
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE saved_views SET is_default = 0 WHERE user_id = ?
+      `).bind(auth.user.id).run();
+    }
+
+    const result = await env.ANALYTICS_DB.prepare(`
+      INSERT INTO saved_views (user_id, name, filters, is_default, sort_order)
+      VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM saved_views WHERE user_id = ?))
+    `).bind(auth.user.id, name, JSON.stringify(filters), isDefault ? 1 : 0, auth.user.id).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'view_created', 'views', 'saved_view', result.meta?.last_row_id,
+      { name, filters }, null, name, request);
+
+    return Response.json({ success: true, message: 'View saved', viewId: result.meta?.last_row_id }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Create saved view error:', e);
+    return Response.json({ error: 'Failed to create saved view: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Update saved view
+async function handleUpdateSavedView(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { viewId, name, filters, isDefault, sortOrder } = await request.json();
+
+    if (!viewId) {
+      return Response.json({ error: 'View ID is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Verify ownership
+    const view = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM saved_views WHERE id = ? AND user_id = ?
+    `).bind(viewId, auth.user.id).first();
+
+    if (!view) {
+      return Response.json({ error: 'View not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    // If setting as default, unset other defaults
+    if (isDefault) {
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE saved_views SET is_default = 0 WHERE user_id = ?
+      `).bind(auth.user.id).run();
+    }
+
+    const updates = [];
+    const values = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (filters !== undefined) {
+      updates.push('filters = ?');
+      values.push(JSON.stringify(filters));
+    }
+    if (isDefault !== undefined) {
+      updates.push('is_default = ?');
+      values.push(isDefault ? 1 : 0);
+    }
+    if (sortOrder !== undefined) {
+      updates.push('sort_order = ?');
+      values.push(sortOrder);
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(viewId);
+
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE saved_views SET ${updates.join(', ')} WHERE id = ?
+    `).bind(...values).run();
+
+    return Response.json({ success: true, message: 'View updated' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Update saved view error:', e);
+    return Response.json({ error: 'Failed to update saved view: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Delete saved view
+async function handleDeleteSavedView(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const viewId = url.pathname.split('/').pop();
+
+    if (!viewId) {
+      return Response.json({ error: 'View ID is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Verify ownership
+    const view = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM saved_views WHERE id = ? AND user_id = ?
+    `).bind(viewId, auth.user.id).first();
+
+    if (!view) {
+      return Response.json({ error: 'View not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    await env.ANALYTICS_DB.prepare(`
+      DELETE FROM saved_views WHERE id = ?
+    `).bind(viewId).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'view_deleted', 'views', 'saved_view', viewId,
+      { name: view.name }, view.name, null, request);
+
+    return Response.json({ success: true, message: 'View deleted' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Delete saved view error:', e);
+    return Response.json({ error: 'Failed to delete saved view: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// COMPLETION CHECKLISTS
+// ============================================
+
+// Get checklist items for a case type
+async function handleGetChecklistItems(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const caseType = url.searchParams.get('caseType');
+    const resolution = url.searchParams.get('resolution');
+
+    let query = `
+      SELECT * FROM completion_checklists
+      WHERE is_active = 1 AND case_type = ?
+      AND (resolution_pattern IS NULL OR ? LIKE resolution_pattern)
+      ORDER BY sort_order ASC
+    `;
+
+    const items = await env.ANALYTICS_DB.prepare(query).bind(caseType, resolution || '').all();
+
+    return Response.json({ success: true, items: items.results || [] }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get checklist items error:', e);
+    return Response.json({ error: 'Failed to get checklist items' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Get checklist status for a specific case
+async function handleGetCaseChecklistStatus(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const caseId = url.pathname.split('/')[4]; // /hub/api/case/{caseId}/checklist
+
+    // Get case info
+    const caseInfo = await env.ANALYTICS_DB.prepare(`
+      SELECT case_type, resolution FROM cases WHERE case_id = ?
+    `).bind(caseId).first();
+
+    if (!caseInfo) {
+      return Response.json({ error: 'Case not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    // Get checklist items for this case type
+    const items = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM completion_checklists
+      WHERE is_active = 1 AND case_type = ?
+      AND (resolution_pattern IS NULL OR ? LIKE resolution_pattern)
+      ORDER BY sort_order ASC
+    `).bind(caseInfo.case_type, caseInfo.resolution || '').all();
+
+    // Get completed items for this case
+    const completions = await env.ANALYTICS_DB.prepare(`
+      SELECT cc.*, au.name as completed_by_name
+      FROM checklist_completions cc
+      LEFT JOIN admin_users au ON cc.completed_by = au.id
+      WHERE cc.case_id = ?
+    `).bind(caseId).all();
+
+    const completedIds = new Set((completions.results || []).map(c => c.checklist_item_id));
+
+    const checklistWithStatus = (items.results || []).map(item => ({
+      ...item,
+      isCompleted: completedIds.has(item.id),
+      completedBy: completions.results?.find(c => c.checklist_item_id === item.id)?.completed_by_name,
+      completedAt: completions.results?.find(c => c.checklist_item_id === item.id)?.completed_at
+    }));
+
+    return Response.json({
+      success: true,
+      checklist: checklistWithStatus,
+      allRequiredComplete: checklistWithStatus.filter(i => i.is_required).every(i => i.isCompleted)
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get case checklist status error:', e);
+    return Response.json({ error: 'Failed to get checklist status' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Mark checklist item as complete
+async function handleCompleteChecklistItem(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { caseId, checklistItemId, completed } = await request.json();
+
+    if (!caseId || !checklistItemId) {
+      return Response.json({ error: 'Case ID and checklist item ID are required' }, { status: 400, headers: corsHeaders });
+    }
+
+    if (completed) {
+      // Mark as completed
+      await env.ANALYTICS_DB.prepare(`
+        INSERT OR REPLACE INTO checklist_completions (case_id, checklist_item_id, completed_by)
+        VALUES (?, ?, ?)
+      `).bind(caseId, checklistItemId, auth.user.id).run();
+    } else {
+      // Remove completion
+      await env.ANALYTICS_DB.prepare(`
+        DELETE FROM checklist_completions WHERE case_id = ? AND checklist_item_id = ?
+      `).bind(caseId, checklistItemId).run();
+    }
+
+    return Response.json({ success: true, message: completed ? 'Item marked complete' : 'Item marked incomplete' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Complete checklist item error:', e);
+    return Response.json({ error: 'Failed to update checklist item' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Admin: Manage checklist templates
+async function handleManageChecklists(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    if (request.method === 'GET') {
+      const items = await env.ANALYTICS_DB.prepare(`
+        SELECT * FROM completion_checklists ORDER BY case_type, sort_order ASC
+      `).all();
+      return Response.json({ success: true, items: items.results || [] }, { headers: corsHeaders });
+    }
+
+    if (request.method === 'POST') {
+      const { caseType, resolutionPattern, checklistItem, sortOrder, isRequired } = await request.json();
+
+      if (!caseType || !checklistItem) {
+        return Response.json({ error: 'Case type and checklist item are required' }, { status: 400, headers: corsHeaders });
+      }
+
+      await env.ANALYTICS_DB.prepare(`
+        INSERT INTO completion_checklists (case_type, resolution_pattern, checklist_item, sort_order, is_required)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(caseType, resolutionPattern || null, checklistItem, sortOrder || 0, isRequired ? 1 : 0).run();
+
+      await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'checklist_item_created', 'system', 'checklist', null,
+        { caseType, checklistItem }, null, null, request);
+
+      return Response.json({ success: true, message: 'Checklist item created' }, { headers: corsHeaders });
+    }
+
+    if (request.method === 'PUT') {
+      const { id, checklistItem, sortOrder, isRequired, isActive } = await request.json();
+
+      if (!id) {
+        return Response.json({ error: 'Checklist item ID is required' }, { status: 400, headers: corsHeaders });
+      }
+
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE completion_checklists SET checklist_item = ?, sort_order = ?, is_required = ?, is_active = ? WHERE id = ?
+      `).bind(checklistItem, sortOrder || 0, isRequired ? 1 : 0, isActive !== false ? 1 : 0, id).run();
+
+      return Response.json({ success: true, message: 'Checklist item updated' }, { headers: corsHeaders });
+    }
+
+    if (request.method === 'DELETE') {
+      const url = new URL(request.url);
+      const id = url.pathname.split('/').pop();
+
+      await env.ANALYTICS_DB.prepare(`
+        DELETE FROM completion_checklists WHERE id = ?
+      `).bind(id).run();
+
+      return Response.json({ success: true, message: 'Checklist item deleted' }, { headers: corsHeaders });
+    }
+
+    return Response.json({ error: 'Method not allowed' }, { status: 405, headers: corsHeaders });
+  } catch (e) {
+    console.error('Manage checklists error:', e);
+    return Response.json({ error: 'Failed to manage checklists: ' + e.message }, { status: 500, headers: corsHeaders });
   }
 }
 
