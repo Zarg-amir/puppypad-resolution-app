@@ -31,7 +31,7 @@ const HubState = {
   currentFilter: 'all',
   currentStatus: null,
   currentSearch: '',
-  currentPage: 1,
+  casesPage: 1,  // Renamed from currentPage to avoid conflict with navigation
   totalPages: 1,
 
   // Views
@@ -720,7 +720,7 @@ const HubKeyboard = {
       'ga': () => HubNavigation.goto('analytics'),
       'gs': () => HubNavigation.goto('sessions'),
       'gu': () => HubAuth.isAdmin() && HubUsers.showManagement(),
-      'gl': () => HubAuth.isAdmin() && HubAuditLog.show(),
+      'gl': () => HubAuth.isAdmin() && HubEnhancedAuditLog.show(),
       'gq': () => HubAuth.isAdmin() && HubAssignment.showQueue(),
 
       // Filters: f + key
@@ -1232,65 +1232,6 @@ const HubAssignment = {
 };
 
 // ============================================
-// AUDIT LOG (Admin)
-// ============================================
-const HubAuditLog = {
-  async show() {
-    if (!HubAuth.isAdmin()) {
-      HubUI.showToast('Admin access required', 'error');
-      return;
-    }
-
-    try {
-      const result = await HubAPI.get('/hub/api/audit-log?limit=50');
-      const logs = result.logs || [];
-
-      const html = `
-        <div class="modal-overlay active" id="auditLogModal">
-          <div class="modal" style="max-width: 800px;">
-            <div class="modal-header" style="padding: 20px 24px;">
-              <div class="modal-header-content">
-                <div class="modal-title" style="font-size: 18px;">Audit Log</div>
-              </div>
-              <button class="modal-close" onclick="document.getElementById('auditLogModal').remove()">&times;</button>
-            </div>
-            <div class="modal-body" style="padding: 0; max-height: 60vh; overflow-y: auto;">
-              <table class="audit-table">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>User</th>
-                    <th>Action</th>
-                    <th>Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${logs.map(log => `
-                    <tr>
-                      <td>${this.formatTime(log.created_at)}</td>
-                      <td>${log.user_name || log.user_email || '-'}</td>
-                      <td><span class="action-badge ${log.action_category}">${log.action_type}</span></td>
-                      <td>${log.resource_type ? `${log.resource_type}: ${log.resource_id || ''}` : '-'}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.insertAdjacentHTML('beforeend', html);
-    } catch (e) {
-      HubUI.showToast('Failed to load audit log', 'error');
-    }
-  },
-
-  formatTime(timestamp) {
-    return new Date(timestamp).toLocaleString();
-  }
-};
-
-// ============================================
 // CASES
 // ============================================
 const HubCases = {
@@ -1312,7 +1253,7 @@ const HubCases = {
 
       const result = await HubAPI.get(url);
       HubState.cases = result.cases || [];
-      HubState.currentPage = page;
+      HubState.casesPage = page;
       HubState.totalPages = result.totalPages || 1;
 
       this.renderCasesList();
@@ -1367,14 +1308,14 @@ const HubCases = {
 
     let html = '';
 
-    if (HubState.currentPage > 1) {
-      html += `<button onclick="HubCases.loadCases(${HubState.currentPage - 1})">Previous</button>`;
+    if (HubState.casesPage > 1) {
+      html += `<button onclick="HubCases.loadCases(${HubState.casesPage - 1})">Previous</button>`;
     }
 
-    html += `<span>Page ${HubState.currentPage} of ${HubState.totalPages}</span>`;
+    html += `<span>Page ${HubState.casesPage} of ${HubState.totalPages}</span>`;
 
-    if (HubState.currentPage < HubState.totalPages) {
-      html += `<button onclick="HubCases.loadCases(${HubState.currentPage + 1})">Next</button>`;
+    if (HubState.casesPage < HubState.totalPages) {
+      html += `<button onclick="HubCases.loadCases(${HubState.casesPage + 1})">Next</button>`;
     }
 
     container.innerHTML = html;
@@ -1411,7 +1352,7 @@ const HubCases = {
         HubUI.showToast(`Status updated to ${status}`, 'success');
 
         // Refresh cases list
-        this.loadCases(HubState.currentPage);
+        this.loadCases(HubState.casesPage);
       } else {
         HubUI.showToast(result.error, 'error');
       }
@@ -1639,7 +1580,7 @@ const HubUI = {
     if (HubState.currentPage === 'dashboard') {
       HubDashboard.load();
     } else if (HubState.currentPage === 'cases') {
-      HubCases.loadCases(HubState.currentPage);
+      HubCases.loadCases(HubState.casesPage);
     }
     HubUI.showToast('Refreshed', 'success');
   },
