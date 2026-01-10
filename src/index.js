@@ -10576,14 +10576,28 @@ function getResolutionHubHTML() {
         console.log('[loadCasesView] Response status:', r.status);
         const d = await r.json();
         console.log('[loadCasesView] Got', d.cases?.length || 0, 'cases');
+        if (d.cases?.length > 0) {
+          console.log('[loadCasesView] First case sample:', JSON.stringify({
+            case_id: d.cases[0].case_id,
+            created_at: d.cases[0].created_at,
+            resolution: d.cases[0].resolution,
+            status: d.cases[0].status
+          }));
+        }
         casesList = d.cases || [];
 
         // Calculate due date status
         function getDueStatus(c) {
-          if (!c.created_at) return { text: '-', class: '' };
+          if (!c.created_at) {
+            console.log('[getDueStatus] No created_at for case:', c.case_id);
+            return { text: '-', class: '' };
+          }
           try {
             const createdDate = new Date(c.created_at);
-            if (isNaN(createdDate.getTime())) return { text: '-', class: '' };
+            if (isNaN(createdDate.getTime())) {
+              console.log('[getDueStatus] Invalid date for case:', c.case_id, 'created_at:', c.created_at);
+              return { text: '-', class: '' };
+            }
             const dueDate = new Date(createdDate.getTime() + 24*60*60*1000);
             const now = Date.now();
             const timeLeft = dueDate.getTime() - now;
@@ -10593,7 +10607,10 @@ function getResolutionHubHTML() {
             if (hoursLeft < 1) return { text: '<1h left', class: 'due-urgent' };
             if (hoursLeft < 6) return { text: hoursLeft + 'h left', class: 'due-warning' };
             return { text: hoursLeft + 'h left', class: 'due-ok' };
-          } catch(e) { return { text: '-', class: '' }; }
+          } catch(e) {
+            console.log('[getDueStatus] Error for case:', c.case_id, 'error:', e.message);
+            return { text: '-', class: '' };
+          }
         }
 
         function renderCaseRow(c) {
