@@ -9576,10 +9576,52 @@ function getResolutionHubHTML() {
     .empty-state { text-align: center; padding: 30px 20px; color: var(--gray-400); font-size: 14px; }
   </style>
   <link rel="stylesheet" href="/hub/hub-styles.css">
+  <style>
+    .login-screen { display: flex; min-height: 100vh; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%); }
+    .login-card { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 400px; }
+    .login-logo { text-align: center; margin-bottom: 32px; }
+    .login-logo img { height: 40px; margin-bottom: 12px; }
+    .login-logo h1 { font-family: 'Poppins', sans-serif; font-size: 24px; color: var(--brand-navy); margin: 0; }
+    .login-logo p { color: var(--gray-500); font-size: 14px; margin: 8px 0 0; }
+    .login-form .form-group { margin-bottom: 20px; }
+    .login-form label { display: block; font-size: 14px; font-weight: 500; color: var(--gray-700); margin-bottom: 8px; }
+    .login-form input { width: 100%; padding: 12px 16px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 15px; transition: all 0.2s; }
+    .login-form input:focus { outline: none; border-color: var(--brand-navy); box-shadow: 0 0 0 3px rgba(30,58,95,0.1); }
+    .login-btn { width: 100%; padding: 14px; background: var(--brand-navy); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .login-btn:hover { background: #2d4a6f; }
+    .login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+    .login-error { background: #fef2f2; color: #dc2626; padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; display: none; }
+    .admin-only { display: none; }
+  </style>
 </head>
 <body>
   <div id="toastContainer"></div>
-  <div class="app-container">
+
+  <!-- Login Screen -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="login-logo">
+        <img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad">
+        <h1>Resolution Hub</h1>
+        <p>Sign in to manage customer cases</p>
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <form class="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="loginUsername">Username</label>
+          <input type="text" id="loginUsername" placeholder="Enter your username" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="Enter your password" required>
+        </div>
+        <button type="submit" class="login-btn" id="loginBtn">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- App Container (hidden by default until logged in) -->
+  <div class="app-container" id="appContainer" style="display: none;">
     <aside class="sidebar">
       <div class="sidebar-header"><div class="sidebar-logo"><img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad"><span>Resolution Hub</span></div></div>
       <nav class="sidebar-nav">
@@ -9590,7 +9632,7 @@ function getResolutionHubHTML() {
         <div class="nav-section admin-only" id="adminNavSection"><div class="nav-section-title">Admin</div><a class="nav-item" data-page="audit"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>Audit Log</a><a class="nav-item" data-page="users"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>User Management</a></div>
         <div class="nav-section"><div class="nav-section-title">Saved Views</div><div id="savedViewsContainer" class="saved-views-list"></div></div>
       </nav>
-      <div class="sidebar-footer"><div class="user-info"><div class="user-avatar">A</div><div><div class="user-name">Admin</div><div class="user-role">Administrator</div></div></div></div>
+      <div class="sidebar-footer"><div class="user-info"><div class="user-avatar">A</div><div><div class="user-name">Admin</div><div class="user-role">Administrator</div></div><button onclick="handleLogout()" style="margin-left:auto;background:rgba(255,255,255,0.1);border:none;color:rgba(255,255,255,0.7);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;" title="Sign out">Logout</button></div></div>
     </aside>
     <main class="main-content">
       <header class="top-header"><h1 class="page-title" id="pageTitle">Dashboard</h1><div class="header-actions"><div class="search-box"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Search cases, orders..." id="searchInput"></div><button class="btn btn-secondary" onclick="refreshData()">Refresh</button></div></header>
@@ -10015,6 +10057,93 @@ function getResolutionHubHTML() {
     let issuesList = [];
     let currentIssueIndex = -1;
     let currentIssue = null;
+
+    // Login handler
+    async function handleLogin(event) {
+      event.preventDefault();
+      const username = document.getElementById('loginUsername').value;
+      const password = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('loginBtn');
+      const errorEl = document.getElementById('loginError');
+
+      btn.disabled = true;
+      btn.textContent = 'Signing in...';
+      errorEl.style.display = 'none';
+
+      try {
+        const response = await fetch(API + '/admin/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          localStorage.setItem('hub_token', data.token);
+          localStorage.setItem('hub_user', JSON.stringify(data.user));
+          showAppAfterLogin(data.user);
+        } else {
+          errorEl.textContent = data.error || 'Invalid username or password';
+          errorEl.style.display = 'block';
+        }
+      } catch (e) {
+        errorEl.textContent = 'Network error. Please try again.';
+        errorEl.style.display = 'block';
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+    }
+
+    function showAppAfterLogin(user) {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appContainer').style.display = 'flex';
+
+      // Update user info in sidebar
+      const userName = user?.name || 'User';
+      const userRole = user?.role || 'user';
+      const userNameEl = document.querySelector('.user-name');
+      const userRoleEl = document.querySelector('.user-role');
+      const userAvatarEl = document.querySelector('.user-avatar');
+
+      if (userNameEl) userNameEl.textContent = userName;
+      if (userRoleEl) userRoleEl.textContent = userRole === 'admin' ? 'Administrator' : 'Team Member';
+      if (userAvatarEl) userAvatarEl.textContent = userName.charAt(0).toUpperCase();
+
+      // Show admin elements for admin users
+      if (userRole === 'admin') {
+        document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+      }
+
+      // Load dashboard data
+      loadDashboard();
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('hub_token');
+      localStorage.removeItem('hub_user');
+      document.getElementById('appContainer').style.display = 'none';
+      document.getElementById('loginScreen').style.display = 'flex';
+      // Hide admin elements
+      document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    }
+
+    // Check for existing session on page load
+    function checkExistingSession() {
+      const token = localStorage.getItem('hub_token');
+      const userStr = localStorage.getItem('hub_user');
+      if (token && userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          showAppAfterLogin(user);
+          return true;
+        } catch (e) {
+          localStorage.removeItem('hub_token');
+          localStorage.removeItem('hub_user');
+        }
+      }
+      return false;
+    }
 
     // Resolution code to human-readable text
     function formatResolution(code, amount) {
@@ -11519,7 +11648,8 @@ function getResolutionHubHTML() {
       }
     });
 
-    loadDashboard();
+    // Check for existing session, otherwise show login screen
+    checkExistingSession();
   </script>
 
   <!-- Bulk Actions Toolbar -->
