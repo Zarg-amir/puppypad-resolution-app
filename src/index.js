@@ -10143,14 +10143,15 @@ function getResolutionHubHTML() {
 
         function renderCaseRow(c) {
           const due = getDueStatus(c);
-          return '<tr onclick="openCase(\\''+c.case_id+'\\')">'+
-            '<td><span class="case-id">'+c.case_id+'</span></td>'+
-            '<td><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td>'+
-            '<td><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td>'+
-            '<td><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td>'+
-            '<td><span class="due-badge '+due.class+'">'+due.text+'</span></td>'+
-            '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+formatResolution(c.resolution, c.refund_amount)+'</td>'+
-            '<td class="time-ago">'+timeAgo(c.created_at)+'</td>'+
+          return '<tr>'+
+            '<td onclick="event.stopPropagation()"><input type="checkbox" class="case-checkbox" data-case-id="'+c.case_id+'" onchange="toggleCaseSelect(\\''+c.case_id+'\\')" style="width:16px;height:16px;cursor:pointer;"></td>'+
+            '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="case-id">'+c.case_id+'</span></td>'+
+            '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td>'+
+            '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td>'+
+            '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td>'+
+            '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="due-badge '+due.class+'">'+due.text+'</span></td>'+
+            '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+formatResolution(c.resolution, c.refund_amount)+'</td>'+
+            '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;" class="time-ago">'+timeAgo(c.created_at)+'</td>'+
           '</tr>';
         }
 
@@ -10180,8 +10181,8 @@ function getResolutionHubHTML() {
           '</select>'+
           '<span id="searchResultsCount" style="font-size:13px;color:var(--gray-500);"></span>'+
         '</div>'+
-        '<div class="cases-card"><table class="cases-table"><thead><tr><th>Case ID</th><th>Customer</th><th>Type</th><th>Status</th><th>Due</th><th>Resolution</th><th>Created</th></tr></thead><tbody id="casesTableBody">'+
-          (casesList.length ? casesList.map(renderCaseRow).join('') : '<tr><td colspan="7" class="empty-state">No cases found</td></tr>')+
+        '<div class="cases-card"><table class="cases-table"><thead><tr><th style="width:40px;"><input type="checkbox" id="selectAllCases" onchange="toggleSelectAll(this.checked)" style="width:16px;height:16px;cursor:pointer;"></th><th>Case ID</th><th>Customer</th><th>Type</th><th>Status</th><th>Due</th><th>Resolution</th><th>Created</th></tr></thead><tbody id="casesTableBody">'+
+          (casesList.length ? casesList.map(renderCaseRow).join('') : '<tr><td colspan="8" class="empty-state">No cases found</td></tr>')+
         '</tbody></table></div>';
 
         window.allCases = casesList;
@@ -10205,6 +10206,50 @@ function getResolutionHubHTML() {
       if (input) input.value = '';
       if (clearBtn) clearBtn.style.display = 'none';
       applyCaseFilters();
+    }
+
+    // Bulk selection state
+    window.selectedCaseIds = new Set();
+
+    function toggleCaseSelect(caseId) {
+      if (window.selectedCaseIds.has(caseId)) {
+        window.selectedCaseIds.delete(caseId);
+      } else {
+        window.selectedCaseIds.add(caseId);
+      }
+      updateBulkToolbar();
+    }
+
+    function toggleSelectAll(checked) {
+      const checkboxes = document.querySelectorAll('.case-checkbox');
+      checkboxes.forEach(cb => {
+        cb.checked = checked;
+        const caseId = cb.dataset.caseId;
+        if (checked) {
+          window.selectedCaseIds.add(caseId);
+        } else {
+          window.selectedCaseIds.delete(caseId);
+        }
+      });
+      updateBulkToolbar();
+    }
+
+    function updateBulkToolbar() {
+      const toolbar = document.getElementById('bulkActionsToolbar');
+      const count = window.selectedCaseIds.size;
+      if (count > 0) {
+        toolbar.classList.add('visible');
+        document.getElementById('selectedCount').textContent = count + ' selected';
+      } else {
+        toolbar.classList.remove('visible');
+      }
+      // Update select all checkbox state
+      const selectAll = document.getElementById('selectAllCases');
+      const checkboxes = document.querySelectorAll('.case-checkbox');
+      if (selectAll && checkboxes.length > 0) {
+        selectAll.checked = count === checkboxes.length;
+        selectAll.indeterminate = count > 0 && count < checkboxes.length;
+      }
     }
 
     function applyCaseFilters() {
@@ -10274,7 +10319,7 @@ function getResolutionHubHTML() {
       }
 
       const tbody = document.getElementById('casesTableBody');
-      tbody.innerHTML = filtered.length ? filtered.map(window.renderCaseRow).join('') : '<tr><td colspan="7" class="empty-state">No cases match filters</td></tr>';
+      tbody.innerHTML = filtered.length ? filtered.map(window.renderCaseRow).join('') : '<tr><td colspan="8" class="empty-state">No cases match filters</td></tr>';
     }
 
     async function loadSessionsView() {

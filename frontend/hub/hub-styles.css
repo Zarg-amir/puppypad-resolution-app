@@ -102,6 +102,10 @@ body {
   animation: slideUp 0.2s ease;
 }
 
+.bulk-actions-toolbar.visible {
+  display: flex;
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;
