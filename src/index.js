@@ -10455,7 +10455,17 @@ function getResolutionHubHTML() {
         'full_refund_quality_return': 'Wait for return → Process refund after received (calculate amount)',
 
         // Return flow
-        'return_refund': 'Send return label → Refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' after return received'
+        'return_refund': 'Send return label → Refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' after return received',
+
+        // Subscription resolutions
+        'subscription_paused': 'Subscription paused',
+        'subscription_cancelled': 'Subscription cancelled',
+        'subscription_resumed': 'Subscription resumed',
+        'subscription_modified': 'Subscription modified',
+        'subscription_address_updated': 'Address updated',
+        'subscription_schedule_changed': 'Schedule changed',
+        'subscription_skip_next': 'Next shipment skipped',
+        'subscription_unskip': 'Shipment unskipped'
       };
       // Check for dynamic patterns
       const partialMatch = code.match(/^partial_(\\d+)$/);
@@ -10614,7 +10624,10 @@ function getResolutionHubHTML() {
         }
 
         function renderCaseRow(c) {
+          console.log('[renderCaseRow] Rendering case:', c.case_id, 'created_at:', c.created_at, 'resolution:', c.resolution);
           const due = getDueStatus(c);
+          const res = formatResolution(c.resolution, c.refund_amount);
+          console.log('[renderCaseRow] Due result:', due, 'Resolution result:', res);
           return '<tr>'+
             '<td onclick="event.stopPropagation()"><input type="checkbox" class="case-checkbox" data-case-id="'+c.case_id+'" onchange="toggleCaseSelect(\\''+c.case_id+'\\')" style="width:16px;height:16px;cursor:pointer;"></td>'+
             '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="case-id">'+c.case_id+'</span></td>'+
@@ -10622,7 +10635,7 @@ function getResolutionHubHTML() {
             '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td>'+
             '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td>'+
             '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="due-badge '+due.class+'">'+due.text+'</span></td>'+
-            '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+formatResolution(c.resolution, c.refund_amount)+'</td>'+
+            '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+res+'</td>'+
             '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;" class="time-ago">'+timeAgo(c.created_at)+'</td>'+
           '</tr>';
         }
@@ -10654,7 +10667,28 @@ function getResolutionHubHTML() {
           '<span id="searchResultsCount" style="font-size:13px;color:var(--gray-500);"></span>'+
         '</div>'+
         '<div class="cases-card"><table class="cases-table"><thead><tr><th style="width:40px;"><input type="checkbox" id="selectAllCases" onchange="toggleSelectAll(this.checked)" style="width:16px;height:16px;cursor:pointer;"></th><th>Case ID</th><th>Customer</th><th>Type</th><th>Status</th><th>Due</th><th>Resolution</th><th>Created</th></tr></thead><tbody id="casesTableBody">'+
-          (casesList.length ? casesList.map(renderCaseRow).join('') : '<tr><td colspan="8" class="empty-state">No cases found</td></tr>')+
+          (function() {
+            console.log('[TABLE RENDER] About to render', casesList.length, 'cases');
+            if (!casesList.length) return '<tr><td colspan="8" class="empty-state">No cases found</td></tr>';
+            const rows = casesList.map(function(c, i) {
+              console.log('[ROW', i, ']', c.case_id, '| created_at:', c.created_at, '| resolution:', c.resolution);
+              const due = getDueStatus(c);
+              const res = formatResolution(c.resolution, c.refund_amount);
+              console.log('[ROW', i, '] due:', due.text, '| res:', res);
+              return '<tr>'+
+                '<td onclick="event.stopPropagation()"><input type="checkbox" class="case-checkbox" data-case-id="'+c.case_id+'" onchange="toggleCaseSelect(\\''+c.case_id+'\\')" style="width:16px;height:16px;cursor:pointer;"></td>'+
+                '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="case-id">'+c.case_id+'</span></td>'+
+                '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td>'+
+                '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td>'+
+                '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td>'+
+                '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="due-badge '+due.class+'">'+due.text+'</span></td>'+
+                '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+res+'</td>'+
+                '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;" class="time-ago">'+timeAgo(c.created_at)+'</td>'+
+              '</tr>';
+            });
+            console.log('[TABLE RENDER] Finished rendering rows');
+            return rows.join('');
+          })()+
         '</tbody></table></div>';
 
         window.allCases = casesList;
