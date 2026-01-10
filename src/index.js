@@ -10144,7 +10144,7 @@ function getResolutionHubHTML() {
         view.innerHTML = '<div class="cases-filters" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">'+
           '<div class="search-input-wrapper" style="position:relative;flex:1;min-width:200px;max-width:400px;">'+
             '<svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--gray-400);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>'+
-            '<input type="text" id="caseSearchInput" placeholder="Search cases, emails, orders, notes..." oninput="debounceSearch()" style="width:100%;padding:8px 12px 8px 36px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;"/>'+
+            '<input type="text" id="caseSearchInput" placeholder="Search cases... (⌘K)" oninput="debounceSearch()" style="width:100%;padding:8px 12px 8px 36px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;"/>'+
             '<button id="clearSearchBtn" onclick="clearCaseSearch()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px;line-height:1;">&times;</button>'+
           '</div>'+
           '<select id="caseStatusFilter" onchange="applyCaseFilters()" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;">'+
@@ -11458,6 +11458,38 @@ function getResolutionHubHTML() {
     }
 
     function refreshData() { loadDashboard(); }
+
+    // Global keyboard shortcut: Cmd/Ctrl+K to focus search
+    document.addEventListener('keydown', function(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.getElementById('caseSearchInput');
+        if (searchInput) {
+          if (document.getElementById('casesView').style.display === 'none') {
+            navigateTo('cases', 'all');
+            setTimeout(() => document.getElementById('caseSearchInput')?.focus(), 100);
+          } else {
+            searchInput.focus();
+            searchInput.select();
+          }
+        }
+      }
+      if (e.key === 'Escape') {
+        if (document.activeElement?.matches('input, textarea')) {
+          document.activeElement.blur();
+        }
+        const activeModal = document.querySelector('.modal-overlay.active');
+        if (activeModal) closeModal();
+      }
+      if (e.key === '/' && !e.target.matches('input, textarea, select')) {
+        e.preventDefault();
+        const searchInput = document.getElementById('caseSearchInput');
+        if (searchInput && document.getElementById('casesView').style.display !== 'none') {
+          searchInput.focus();
+        }
+      }
+    });
+
     loadDashboard();
   </script>
 
