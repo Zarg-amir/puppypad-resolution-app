@@ -1534,21 +1534,29 @@ const HubUI = {
   },
 
   showLoginScreen() {
-    document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('appContainer').style.display = 'none';
+    const loginScreen = document.getElementById('loginScreen');
+    const appContainer = document.getElementById('appContainer');
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (appContainer) appContainer.style.display = 'none';
   },
 
   showApp() {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('appContainer').style.display = 'flex';
+    const loginScreen = document.getElementById('loginScreen');
+    const appContainer = document.getElementById('appContainer');
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (appContainer) appContainer.style.display = 'flex';
 
     // Update user info in sidebar
     const userName = HubState.currentUser?.name || 'User';
     const userRole = HubState.currentUser?.role || 'user';
 
-    document.querySelector('.user-name').textContent = userName;
-    document.querySelector('.user-role').textContent = userRole === 'admin' ? 'Administrator' : 'Team Member';
-    document.querySelector('.user-avatar').textContent = userName.charAt(0).toUpperCase();
+    const userNameEl = document.querySelector('.user-name');
+    const userRoleEl = document.querySelector('.user-role');
+    const userAvatarEl = document.querySelector('.user-avatar');
+
+    if (userNameEl) userNameEl.textContent = userName;
+    if (userRoleEl) userRoleEl.textContent = userRole === 'admin' ? 'Administrator' : 'Team Member';
+    if (userAvatarEl) userAvatarEl.textContent = userName.charAt(0).toUpperCase();
 
     // Show/hide admin nav items
     document.querySelectorAll('.admin-only').forEach(el => {
@@ -2352,7 +2360,6 @@ window.HubViews = HubViews;
 window.HubChecklist = HubChecklist;
 window.HubUsers = HubUsers;
 window.HubAssignment = HubAssignment;
-window.HubAuditLog = HubAuditLog;
 window.HubUI = HubUI;
 window.HubNavigation = HubNavigation;
 window.HubKeyboard = HubKeyboard;
