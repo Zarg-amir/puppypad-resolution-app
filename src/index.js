@@ -8885,6 +8885,119 @@ async function handleHubAnalytics(request, env, corsHeaders) {
       `SELECT COUNT(*) as count FROM cases WHERE status = 'pending' AND created_at < datetime('now', '-24 hours')`
     ).first();
 
+    // ============================================
+    // PHASE 3: ENHANCED ANALYTICS
+    // ============================================
+
+    // Resolution Time Metrics (for completed cases)
+    let avgResolutionTime = { avg_hours: 0 };
+    let minResolutionTime = { min_hours: 0 };
+    let maxResolutionTime = { max_hours: 0 };
+    try {
+      avgResolutionTime = await env.ANALYTICS_DB.prepare(
+        `SELECT AVG((julianday(resolved_at) - julianday(created_at)) * 24) as avg_hours
+         FROM cases WHERE status = 'completed' AND resolved_at IS NOT NULL`
+      ).first() || { avg_hours: 0 };
+
+      minResolutionTime = await env.ANALYTICS_DB.prepare(
+        `SELECT MIN((julianday(resolved_at) - julianday(created_at)) * 24) as min_hours
+         FROM cases WHERE status = 'completed' AND resolved_at IS NOT NULL`
+      ).first() || { min_hours: 0 };
+
+      maxResolutionTime = await env.ANALYTICS_DB.prepare(
+        `SELECT MAX((julianday(resolved_at) - julianday(created_at)) * 24) as max_hours
+         FROM cases WHERE status = 'completed' AND resolved_at IS NOT NULL`
+      ).first() || { max_hours: 0 };
+    } catch (e) { console.log('Resolution time calc skipped:', e.message); }
+
+    // SLA Compliance (completed within 24 hours)
+    let slaCompliant = { count: 0 };
+    let slaBreached = { count: 0 };
+    try {
+      slaCompliant = await env.ANALYTICS_DB.prepare(
+        `SELECT COUNT(*) as count FROM cases
+         WHERE status = 'completed' AND resolved_at IS NOT NULL
+         AND (julianday(resolved_at) - julianday(created_at)) <= 1`
+      ).first() || { count: 0 };
+
+      slaBreached = await env.ANALYTICS_DB.prepare(
+        `SELECT COUNT(*) as count FROM cases
+         WHERE status = 'completed' AND resolved_at IS NOT NULL
+         AND (julianday(resolved_at) - julianday(created_at)) > 1`
+      ).first() || { count: 0 };
+    } catch (e) { console.log('SLA calc skipped:', e.message); }
+
+    // Team Performance (cases completed per user)
+    let teamPerformance = { results: [] };
+    try {
+      teamPerformance = await env.ANALYTICS_DB.prepare(
+        `SELECT
+           COALESCE(c.resolved_by, c.assigned_to, 'Unassigned') as user_name,
+           COUNT(*) as cases_completed,
+           SUM(c.refund_amount) as total_refunds,
+           AVG((julianday(c.resolved_at) - julianday(c.created_at)) * 24) as avg_resolution_hours
+         FROM cases c
+         WHERE c.status = 'completed' AND c.created_at > datetime('now', '-30 days')
+         GROUP BY COALESCE(c.resolved_by, c.assigned_to, 'Unassigned')
+         ORDER BY cases_completed DESC
+         LIMIT 10`
+      ).all();
+    } catch (e) { console.log('Team performance skipped:', e.message); }
+
+    // Root Cause Analysis (refund reasons breakdown)
+    let rootCauses = { results: [] };
+    try {
+      rootCauses = await env.ANALYTICS_DB.prepare(
+        `SELECT
+           COALESCE(refund_reason, resolution, 'Unknown') as reason,
+           COUNT(*) as count,
+           SUM(refund_amount) as total_amount,
+           AVG(refund_amount) as avg_amount
+         FROM cases
+         WHERE created_at > datetime('now', '-30 days')
+         GROUP BY COALESCE(refund_reason, resolution, 'Unknown')
+         ORDER BY count DESC
+         LIMIT 15`
+      ).all();
+    } catch (e) { console.log('Root causes skipped:', e.message); }
+
+    // Cases by hour of day (to identify peak times)
+    let casesByHour = { results: [] };
+    try {
+      casesByHour = await env.ANALYTICS_DB.prepare(
+        `SELECT strftime('%H', created_at) as hour, COUNT(*) as count
+         FROM cases WHERE created_at > datetime('now', '-30 days')
+         GROUP BY strftime('%H', created_at) ORDER BY hour`
+      ).all();
+    } catch (e) { console.log('Cases by hour skipped:', e.message); }
+
+    // Resolution time distribution
+    let resolutionDistribution = { results: [] };
+    try {
+      resolutionDistribution = await env.ANALYTICS_DB.prepare(
+        `SELECT
+           CASE
+             WHEN (julianday(resolved_at) - julianday(created_at)) * 24 < 1 THEN '< 1 hour'
+             WHEN (julianday(resolved_at) - julianday(created_at)) * 24 < 4 THEN '1-4 hours'
+             WHEN (julianday(resolved_at) - julianday(created_at)) * 24 < 12 THEN '4-12 hours'
+             WHEN (julianday(resolved_at) - julianday(created_at)) * 24 < 24 THEN '12-24 hours'
+             ELSE '24+ hours'
+           END as time_bucket,
+           COUNT(*) as count
+         FROM cases
+         WHERE status = 'completed' AND resolved_at IS NOT NULL
+         GROUP BY time_bucket
+         ORDER BY
+           CASE time_bucket
+             WHEN '< 1 hour' THEN 1
+             WHEN '1-4 hours' THEN 2
+             WHEN '4-12 hours' THEN 3
+             WHEN '12-24 hours' THEN 4
+             ELSE 5
+           END`
+      ).all();
+    } catch (e) { console.log('Resolution distribution skipped:', e.message); }
+
     return Response.json({
       totalSessions: totalSessions?.count || 0,
       completedSessions: completedSessions?.count || 0,
@@ -8907,7 +9020,20 @@ async function handleHubAnalytics(request, env, corsHeaders) {
       casesByDay: casesByDay.results || [],
       refundsByDay: refundsByDay.results || [],
       flowTypes: flowTypes.results || [],
-      highValueRefunds: highValueRefunds.results || []
+      highValueRefunds: highValueRefunds.results || [],
+      // Phase 3: Enhanced Analytics
+      avgResolutionHours: avgResolutionTime?.avg_hours || 0,
+      minResolutionHours: minResolutionTime?.min_hours || 0,
+      maxResolutionHours: maxResolutionTime?.max_hours || 0,
+      slaCompliant: slaCompliant?.count || 0,
+      slaBreached: slaBreached?.count || 0,
+      slaComplianceRate: (slaCompliant?.count || 0) + (slaBreached?.count || 0) > 0
+        ? Math.round((slaCompliant?.count || 0) / ((slaCompliant?.count || 0) + (slaBreached?.count || 0)) * 100)
+        : 0,
+      teamPerformance: teamPerformance.results || [],
+      rootCauses: rootCauses.results || [],
+      casesByHour: casesByHour.results || [],
+      resolutionDistribution: resolutionDistribution.results || []
     }, { headers: corsHeaders });
   } catch (error) {
     console.error('Hub analytics error:', error);
@@ -9402,6 +9528,9 @@ function getResolutionHubHTML() {
     .kpi-card.highlight .kpi-value, .kpi-card.highlight .kpi-label, .kpi-card.highlight .kpi-sub { color: white; }
     .kpi-card.highlight .kpi-sub { opacity: 0.8; }
     .kpi-card.success { border-left: 4px solid #10b981; }
+    .kpi-card.warning { border-left: 4px solid #f59e0b; }
+    .kpi-card.danger { border-left: 4px solid #ef4444; }
+    .kpi-sub.alert { color: #ef4444; font-weight: 600; }
 
     .kpi-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .kpi-icon svg { width: 24px; height: 24px; }
@@ -10489,6 +10618,32 @@ function getResolutionHubHTML() {
           return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="type-badge '+f.flow_type+'">'+(f.flow_type || 'unknown')+'</span></div><span class="breakdown-item-count">'+f.count+'</span></div>';
         }).join('') || '<div class="empty-state">No data</div>';
 
+        // Build team performance leaderboard
+        const teamList = (d.teamPerformance||[]).map(function(t, i) {
+          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+          const avgHours = t.avg_resolution_hours ? t.avg_resolution_hours.toFixed(1) + 'h avg' : '';
+          return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="breakdown-item-name">' + medal + ' ' + (t.user_name || 'Unknown') + '</span><span class="breakdown-item-meta">' + avgHours + (t.total_refunds ? ' · $' + parseFloat(t.total_refunds).toFixed(0) + ' refunds' : '') + '</span></div><span class="breakdown-item-count">' + t.cases_completed + '</span></div>';
+        }).join('') || '<div class="empty-state">No data yet</div>';
+
+        // Build root cause analysis list
+        const rootCauseList = (d.rootCauses||[]).map(function(r) {
+          return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="breakdown-item-name">' + formatResolution(r.reason) + '</span><span class="breakdown-item-meta">' + (r.total_amount ? '$' + parseFloat(r.total_amount).toFixed(0) + ' total' : '') + (r.avg_amount ? ' · $' + parseFloat(r.avg_amount).toFixed(0) + ' avg' : '') + '</span></div><span class="breakdown-item-count">' + r.count + '</span></div>';
+        }).join('') || '<div class="empty-state">No data</div>';
+
+        // Build resolution time distribution
+        const timeDistList = (d.resolutionDistribution||[]).map(function(t) {
+          const color = t.time_bucket === '< 1 hour' ? '#10b981' : t.time_bucket === '1-4 hours' ? '#22c55e' : t.time_bucket === '4-12 hours' ? '#f59e0b' : t.time_bucket === '12-24 hours' ? '#f97316' : '#ef4444';
+          return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="breakdown-item-name" style="color:' + color + ';">' + t.time_bucket + '</span></div><span class="breakdown-item-count">' + t.count + '</span></div>';
+        }).join('') || '<div class="empty-state">No data</div>';
+
+        // Format resolution time
+        function formatHours(h) {
+          if (!h || h === 0) return '-';
+          if (h < 1) return Math.round(h * 60) + 'm';
+          if (h < 24) return h.toFixed(1) + 'h';
+          return (h / 24).toFixed(1) + 'd';
+        }
+
         view.innerHTML = '<div class="analytics-header"><div class="analytics-title-section"><h2>Performance Dashboard</h2><p>Track your resolution metrics and KPIs</p></div><div class="analytics-actions"><select id="reportPeriod" onchange="loadAnalyticsView()" style="padding:10px 16px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;cursor:pointer;"><option value="14">Last 14 Days</option><option value="30">Last 30 Days</option><option value="90">Last 90 Days</option></select><button onclick="downloadReport()" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Export Report</button></div></div>'+
           '<div class="kpi-grid">'+
             '<div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff;color:#2563eb;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.totalCases||0)+'</div><div class="kpi-label">Total Cases</div><div class="kpi-sub">'+(d.casesToday||0)+' today</div></div></div>'+
@@ -10502,6 +10657,13 @@ function getResolutionHubHTML() {
             '<div class="kpi-card"><div class="kpi-icon" style="background:#e0e7ff;color:#4f46e5;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg></div><div class="kpi-content"><div class="kpi-value">$'+(d.avgRefund||0).toFixed(2)+'</div><div class="kpi-label">Avg. Refund</div><div class="kpi-sub">Per case</div></div></div>'+
             '<div class="kpi-card"><div class="kpi-icon" style="background:#ecfdf5;color:#059669;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.totalSessions||0)+'</div><div class="kpi-label">Total Sessions</div><div class="kpi-sub">'+(d.completionRate||0)+'% completion</div></div></div>'+
           '</div>'+
+          // Time & SLA Metrics Row
+          '<div class="kpi-grid" style="margin-top:16px;">'+
+            '<div class="kpi-card"><div class="kpi-icon" style="background:#dbeafe;color:#2563eb;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+formatHours(d.avgResolutionHours)+'</div><div class="kpi-label">Avg Resolution Time</div><div class="kpi-sub">Min: '+formatHours(d.minResolutionHours)+' · Max: '+formatHours(d.maxResolutionHours)+'</div></div></div>'+
+            '<div class="kpi-card '+(d.slaComplianceRate >= 90 ? 'success' : d.slaComplianceRate >= 70 ? '' : 'warning')+'"><div class="kpi-icon" style="background:'+(d.slaComplianceRate >= 90 ? '#d1fae5' : d.slaComplianceRate >= 70 ? '#fef3c7' : '#fee2e2')+';color:'+(d.slaComplianceRate >= 90 ? '#059669' : d.slaComplianceRate >= 70 ? '#d97706' : '#dc2626')+';"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.slaComplianceRate||0)+'%</div><div class="kpi-label">SLA Compliance</div><div class="kpi-sub">'+(d.slaCompliant||0)+' met · '+(d.slaBreached||0)+' breached (24h)</div></div></div>'+
+            '<div class="kpi-card"><div class="kpi-icon" style="background:#faf5ff;color:#7c3aed;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.teamPerformance?.length||0)+'</div><div class="kpi-label">Active Team Members</div><div class="kpi-sub">Last 30 days</div></div></div>'+
+            '<div class="kpi-card"><div class="kpi-icon" style="background:#fef2f2;color:#dc2626;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.rootCauses?.length||0)+'</div><div class="kpi-label">Root Cause Categories</div><div class="kpi-sub">Last 30 days</div></div></div>'+
+          '</div>'+
           '<div class="charts-grid">'+
             '<div class="chart-card"><div class="chart-header"><h3>Cases & Sessions Trend</h3><span class="chart-period">Last 14 days</span></div><div class="chart-body"><canvas id="trendChart" height="250"></canvas></div></div>'+
             '<div class="chart-card"><div class="chart-header"><h3>Cases by Type</h3></div><div class="chart-body"><canvas id="typeChart" height="250"></canvas></div></div>'+
@@ -10510,6 +10672,12 @@ function getResolutionHubHTML() {
             '<div class="breakdown-card"><div class="breakdown-header"><h3>Resolution Types</h3><span class="breakdown-count">'+(d.resolutionTypes||[]).length+' types</span></div><div class="breakdown-list">'+resolutionList+'</div></div>'+
             '<div class="breakdown-card"><div class="breakdown-header"><h3>Status Distribution</h3></div><div class="breakdown-list">'+statusList+'</div></div>'+
             '<div class="breakdown-card"><div class="breakdown-header"><h3>Flow Types</h3></div><div class="breakdown-list">'+flowList+'</div></div>'+
+          '</div>'+
+          // Phase 3: Enhanced Analytics Breakdown Cards
+          '<div class="breakdown-grid" style="margin-top:20px;">'+
+            '<div class="breakdown-card"><div class="breakdown-header"><h3>Team Leaderboard</h3><span class="breakdown-count">Last 30 days</span></div><div class="breakdown-list">'+teamList+'</div></div>'+
+            '<div class="breakdown-card"><div class="breakdown-header"><h3>Root Cause Analysis</h3><span class="breakdown-count">'+(d.rootCauses||[]).length+' categories</span></div><div class="breakdown-list">'+rootCauseList+'</div></div>'+
+            '<div class="breakdown-card"><div class="breakdown-header"><h3>Resolution Time Distribution</h3></div><div class="breakdown-list">'+timeDistList+'</div></div>'+
           '</div>';
 
         // Initialize charts
