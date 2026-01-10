@@ -10099,6 +10099,12 @@ function getResolutionHubHTML() {
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('appContainer').style.display = 'flex';
 
+      // Update HubState for hub-app.js modules (so HubAuth.isAdmin() works)
+      if (typeof HubState !== 'undefined') {
+        HubState.currentUser = user;
+        HubState.token = localStorage.getItem('hub_token');
+      }
+
       // Update user info in sidebar
       const userName = user?.name || 'User';
       const userRole = user?.role || 'user';
