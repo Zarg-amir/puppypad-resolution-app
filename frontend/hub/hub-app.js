@@ -505,7 +505,7 @@ const HubViews = {
   },
 
   renderSidebar() {
-    const container = document.getElementById('savedViewsList');
+    const container = document.getElementById('savedViewsContainer') || document.getElementById('savedViewsList');
     if (!container) return;
 
     if (HubState.savedViews.length === 0) {
@@ -999,6 +999,50 @@ const HubUsers = {
     }
   },
 
+  // Render user management into usersView container (for navigation)
+  async show() {
+    const view = document.getElementById('usersView');
+    if (!view) return;
+
+    if (!HubAuth.isAdmin()) {
+      view.innerHTML = '<div class="empty-state"><p>Admin access required to view this page.</p></div>';
+      return;
+    }
+
+    view.innerHTML = '<div class="spinner" style="margin: 40px auto;"></div>';
+    await this.load();
+
+    view.innerHTML = `
+      <div class="cases-card" style="margin-bottom: 24px;">
+        <div class="cases-header">
+          <h2 class="cases-title">Team Members</h2>
+          <button class="btn btn-primary" onclick="HubUsers.showCreateForm()">Add User</button>
+        </div>
+        <div style="padding: 24px;">
+          <div class="users-list">
+            ${this.users.length ? this.users.map(u => `
+              <div class="user-row">
+                <div class="user-row-info">
+                  <div class="user-row-name">${this.escapeHtml(u.name)}</div>
+                  <div class="user-row-meta">${u.username} &bull; ${u.role}</div>
+                </div>
+                <div class="user-row-status ${u.is_active ? 'active' : 'inactive'}">
+                  ${u.is_active ? 'Active' : 'Inactive'}
+                </div>
+                <div class="user-row-actions">
+                  <button class="btn-icon" onclick="HubUsers.edit(${u.id})" title="Edit">Edit</button>
+                  ${HubState.currentUser && u.id !== HubState.currentUser.id ? `
+                    <button class="btn-icon danger" onclick="HubUsers.delete(${u.id})" title="Delete">Delete</button>
+                  ` : ''}
+                </div>
+              </div>
+            `).join('') : '<p class="empty-state">No users found.</p>'}
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
   showManagement() {
     if (!HubAuth.isAdmin()) {
       HubUI.showToast('Admin access required', 'error');
@@ -1460,12 +1504,15 @@ const HubNavigation = {
       cases: 'Cases',
       sessions: 'Sessions',
       events: 'Event Log',
-      analytics: 'Performance'
+      issues: 'Issue Reports',
+      analytics: 'Performance',
+      audit: 'Audit Log',
+      users: 'User Management'
     };
     document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';
 
     // Show/hide views
-    ['dashboard', 'cases', 'sessions', 'events', 'analytics'].forEach(v => {
+    ['dashboard', 'cases', 'sessions', 'events', 'issues', 'analytics', 'audit', 'users'].forEach(v => {
       const el = document.getElementById(v + 'View');
       if (el) el.style.display = v === page ? 'block' : 'none';
     });
@@ -1476,6 +1523,10 @@ const HubNavigation = {
       HubCases.loadCases();
     } else if (page === 'dashboard') {
       HubDashboard.load();
+    } else if (page === 'audit') {
+      HubEnhancedAuditLog.show();
+    } else if (page === 'users') {
+      HubUsers.show();
     }
   }
 };
@@ -1980,73 +2031,64 @@ const HubEnhancedAuditLog = {
   availableFilters: { categories: [], actionTypes: [] },
 
   async show() {
+    const view = document.getElementById('auditView');
+    if (!view) return;
+
     if (!HubAuth.isAdmin()) {
-      HubUI.showToast('Admin access required', 'error');
+      view.innerHTML = '<div class="empty-state"><p>Admin access required to view this page.</p></div>';
       return;
     }
 
+    view.innerHTML = '<div class="spinner" style="margin: 40px auto;"></div>';
     const result = await this.load(1);
 
-    const html = `
-      <div class="modal-overlay active" id="enhancedAuditModal">
-        <div class="modal" style="max-width: 1000px;">
-          <div class="modal-header" style="padding: 20px 24px;">
-            <div class="modal-header-content">
-              <div class="modal-title" style="font-size: 18px;">Audit Log</div>
-              <div style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
-                Complete activity history for compliance and security
-              </div>
-            </div>
-            <button class="modal-close" onclick="document.getElementById('enhancedAuditModal').remove()">&times;</button>
-          </div>
-          <div class="modal-body" style="padding: 0;">
-            <!-- Filters -->
-            <div style="padding: 16px 24px; border-bottom: 1px solid var(--gray-200); display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-              <select id="auditCategoryFilter" class="form-input" style="width: 140px;" onchange="HubEnhancedAuditLog.applyFilters()">
-                <option value="">All Categories</option>
-                ${this.availableFilters.categories.map(c =>
-                  `<option value="${c}">${c}</option>`
-                ).join('')}
-              </select>
-              <select id="auditActionFilter" class="form-input" style="width: 180px;" onchange="HubEnhancedAuditLog.applyFilters()">
-                <option value="">All Actions</option>
-                ${this.availableFilters.actionTypes.map(a =>
-                  `<option value="${a}">${a.replace(/_/g, ' ')}</option>`
-                ).join('')}
-              </select>
-              <input type="date" id="auditStartDate" class="form-input" style="width: 140px;" onchange="HubEnhancedAuditLog.applyFilters()">
-              <input type="date" id="auditEndDate" class="form-input" style="width: 140px;" onchange="HubEnhancedAuditLog.applyFilters()">
-              <input type="text" id="auditSearch" class="form-input" style="width: 180px;" placeholder="Search..." onkeyup="HubEnhancedAuditLog.debounceSearch(this.value)">
-              <div style="margin-left: auto;">
-                <button class="btn btn-secondary" onclick="HubEnhancedAuditLog.export()">Export CSV</button>
-              </div>
-            </div>
-            <!-- Table -->
-            <div style="max-height: 50vh; overflow-y: auto;">
-              <table class="audit-table">
-                <thead>
-                  <tr>
-                    <th style="padding: 12px 24px; position: sticky; top: 0; background: var(--gray-50);">Time</th>
-                    <th style="position: sticky; top: 0; background: var(--gray-50);">User</th>
-                    <th style="position: sticky; top: 0; background: var(--gray-50);">Action</th>
-                    <th style="position: sticky; top: 0; background: var(--gray-50);">Resource</th>
-                    <th style="position: sticky; top: 0; background: var(--gray-50);">Details</th>
-                  </tr>
-                </thead>
-                <tbody id="auditLogTableBody">
-                  ${this.renderRows(result.logs)}
-                </tbody>
-              </table>
-            </div>
-            <!-- Pagination -->
-            <div id="auditPagination" style="padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: center; align-items: center; gap: 16px;">
-              ${this.renderPagination(result.pagination)}
-            </div>
-          </div>
+    view.innerHTML = `
+      <div class="cases-card">
+        <div class="cases-header">
+          <h2 class="cases-title">Audit Log</h2>
+          <button class="btn btn-secondary" onclick="HubEnhancedAuditLog.export()">Export CSV</button>
+        </div>
+        <!-- Filters -->
+        <div style="padding: 16px 24px; border-bottom: 1px solid var(--gray-200); display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+          <select id="auditCategoryFilter" class="form-input" style="width: 140px;" onchange="HubEnhancedAuditLog.applyFilters()">
+            <option value="">All Categories</option>
+            ${this.availableFilters.categories.map(c =>
+              `<option value="${c}">${c}</option>`
+            ).join('')}
+          </select>
+          <select id="auditActionFilter" class="form-input" style="width: 180px;" onchange="HubEnhancedAuditLog.applyFilters()">
+            <option value="">All Actions</option>
+            ${this.availableFilters.actionTypes.map(a =>
+              `<option value="${a}">${a.replace(/_/g, ' ')}</option>`
+            ).join('')}
+          </select>
+          <input type="date" id="auditStartDate" class="form-input" style="width: 140px;" onchange="HubEnhancedAuditLog.applyFilters()">
+          <input type="date" id="auditEndDate" class="form-input" style="width: 140px;" onchange="HubEnhancedAuditLog.applyFilters()">
+          <input type="text" id="auditSearch" class="form-input" style="width: 180px;" placeholder="Search..." onkeyup="HubEnhancedAuditLog.debounceSearch(this.value)">
+        </div>
+        <!-- Table -->
+        <div style="max-height: 60vh; overflow-y: auto;">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th style="padding: 12px 24px; position: sticky; top: 0; background: var(--gray-50);">Time</th>
+                <th style="position: sticky; top: 0; background: var(--gray-50);">User</th>
+                <th style="position: sticky; top: 0; background: var(--gray-50);">Action</th>
+                <th style="position: sticky; top: 0; background: var(--gray-50);">Resource</th>
+                <th style="position: sticky; top: 0; background: var(--gray-50);">Details</th>
+              </tr>
+            </thead>
+            <tbody id="auditLogTableBody">
+              ${this.renderRows(result.logs)}
+            </tbody>
+          </table>
+        </div>
+        <!-- Pagination -->
+        <div id="auditPagination" style="padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: center; align-items: center; gap: 16px;">
+          ${this.renderPagination(result.pagination)}
         </div>
       </div>
     `;
-    document.body.insertAdjacentHTML('beforeend', html);
   },
 
   renderRows(logs) {
