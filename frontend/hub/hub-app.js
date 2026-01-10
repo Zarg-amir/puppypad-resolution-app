@@ -1031,8 +1031,9 @@ const HubUsers = {
                 </div>
                 <div class="user-row-actions">
                   <button class="btn-icon" onclick="HubUsers.edit(${u.id})" title="Edit">Edit</button>
+                  <button class="btn-icon" onclick="HubUsers.showResetPasswordModal(${u.id}, '${this.escapeHtml(u.name)}')" title="Reset Password">Reset Pwd</button>
                   ${HubState.currentUser && u.id !== HubState.currentUser.id ? `
-                    <button class="btn-icon danger" onclick="HubUsers.delete(${u.id})" title="Delete">Delete</button>
+                    <button class="btn-icon danger" onclick="HubUsers.confirmDelete(${u.id}, '${this.escapeHtml(u.name)}')" title="Delete">Delete</button>
                   ` : ''}
                 </div>
               </div>
@@ -1171,13 +1172,117 @@ const HubUsers = {
       const result = await HubAPI.delete(`/hub/api/users/${userId}`);
       if (result.success) {
         HubUI.showToast('User deleted', 'success');
-        document.getElementById('userManagementModal').remove();
-        this.showManagement();
+        const modal = document.getElementById('userManagementModal');
+        if (modal) modal.remove();
+        this.show(); // Refresh the users view
       } else {
         HubUI.showToast(result.error, 'error');
       }
     } catch (e) {
       HubUI.showToast('Failed to delete user', 'error');
+    }
+  },
+
+  confirmDelete(userId, userName) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.id = 'confirmDeleteModal';
+    modal.innerHTML = `
+      <div class="modal" style="max-width: 400px;">
+        <div class="modal-header" style="padding: 20px 24px;">
+          <div class="modal-title" style="font-size: 18px;">Delete User</div>
+          <button class="modal-close" onclick="document.getElementById('confirmDeleteModal').remove()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+          <p style="margin-bottom: 20px;">Are you sure you want to delete <strong>${userName}</strong>? This action cannot be undone.</p>
+          <div style="display: flex; gap: 12px; justify-content: flex-end;">
+            <button class="btn btn-secondary" onclick="document.getElementById('confirmDeleteModal').remove()">Cancel</button>
+            <button class="btn btn-danger" onclick="HubUsers.executeDelete(${userId})">Delete User</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  },
+
+  async executeDelete(userId) {
+    try {
+      const result = await HubAPI.delete(`/hub/api/users/${userId}`);
+      if (result.success) {
+        HubUI.showToast('User deleted', 'success');
+        document.getElementById('confirmDeleteModal').remove();
+        this.show(); // Refresh the users view
+      } else {
+        HubUI.showToast(result.error, 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to delete user', 'error');
+    }
+  },
+
+  showResetPasswordModal(userId, userName) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.id = 'resetPasswordModal';
+    modal.innerHTML = `
+      <div class="modal" style="max-width: 400px;">
+        <div class="modal-header" style="padding: 20px 24px;">
+          <div class="modal-title" style="font-size: 18px;">Reset Password</div>
+          <button class="modal-close" onclick="document.getElementById('resetPasswordModal').remove()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+          <p style="margin-bottom: 16px;">Reset password for <strong>${userName}</strong></p>
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="resetNewPassword" class="form-input" placeholder="Enter new password (min 6 chars)">
+          </div>
+          <div class="form-group">
+            <label>Confirm Password</label>
+            <input type="password" id="resetConfirmPassword" class="form-input" placeholder="Confirm new password">
+          </div>
+          <div id="resetPasswordError" class="error-message" style="display: none;"></div>
+          <p style="font-size: 12px; color: var(--gray-500); margin-top: 12px;">User will be required to change their password on next login.</p>
+          <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+            <button class="btn btn-secondary" onclick="document.getElementById('resetPasswordModal').remove()">Cancel</button>
+            <button class="btn btn-primary" onclick="HubUsers.executeResetPassword(${userId})">Reset Password</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  },
+
+  async executeResetPassword(userId) {
+    const newPassword = document.getElementById('resetNewPassword').value;
+    const confirmPassword = document.getElementById('resetConfirmPassword').value;
+    const errorEl = document.getElementById('resetPasswordError');
+
+    errorEl.style.display = 'none';
+
+    if (!newPassword || newPassword.length < 6) {
+      errorEl.textContent = 'Password must be at least 6 characters';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      errorEl.textContent = 'Passwords do not match';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      const result = await HubAPI.post(`/hub/api/users/${userId}/reset-password`, { newPassword });
+      if (result.success) {
+        HubUI.showToast('Password reset successfully', 'success');
+        document.getElementById('resetPasswordModal').remove();
+      } else {
+        errorEl.textContent = result.error || 'Failed to reset password';
+        errorEl.style.display = 'block';
+      }
+    } catch (e) {
+      errorEl.textContent = 'Network error. Please try again.';
+      errorEl.style.display = 'block';
     }
   },
 
