@@ -10288,7 +10288,7 @@ function getResolutionHubHTML() {
       const modal = document.createElement('div');
       modal.className = 'modal-overlay active';
       modal.id = 'profileModal';
-      modal.innerHTML = `
+      modal.innerHTML = \`
         <div class="modal" style="max-width:450px;">
           <div class="modal-header" style="padding:20px 24px;">
             <div class="modal-title" style="font-size:18px;">Edit Profile</div>
@@ -10296,16 +10296,16 @@ function getResolutionHubHTML() {
           </div>
           <div class="modal-body" style="padding:24px;">
             <div style="text-align:center;margin-bottom:24px;">
-              <div style="width:80px;height:80px;border-radius:50%;background:var(--accent-teal);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:600;color:white;margin:0 auto 12px;" id="profileAvatar">${(user.name || 'U').charAt(0).toUpperCase()}</div>
+              <div style="width:80px;height:80px;border-radius:50%;background:var(--accent-teal);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:600;color:white;margin:0 auto 12px;" id="profileAvatar">\${(user.name || 'U').charAt(0).toUpperCase()}</div>
               <div style="font-size:12px;color:var(--gray-500);">Click your name in sidebar to change</div>
             </div>
             <div class="form-group">
               <label>Display Name</label>
-              <input type="text" id="profileName" class="form-input" value="${user.name || ''}" placeholder="Your name">
+              <input type="text" id="profileName" class="form-input" value="\${user.name || ''}" placeholder="Your name">
             </div>
             <div class="form-group">
               <label>Email Address</label>
-              <input type="email" id="profileEmail" class="form-input" value="${user.username || ''}" placeholder="your@email.com">
+              <input type="email" id="profileEmail" class="form-input" value="\${user.username || ''}" placeholder="your@email.com">
             </div>
             <hr style="margin:24px 0;border:none;border-top:1px solid var(--gray-200);">
             <div style="font-weight:500;margin-bottom:16px;">Change Password</div>
@@ -10326,7 +10326,7 @@ function getResolutionHubHTML() {
             <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="saveProfile()">Save Changes</button>
           </div>
         </div>
-      `;
+      \`;
       modal.onclick = (e) => { if(e.target === modal) closeProfileModal(); };
       document.body.appendChild(modal);
     }
