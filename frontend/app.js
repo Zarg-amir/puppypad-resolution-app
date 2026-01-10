@@ -5962,6 +5962,13 @@ async function startManageSubscription() {
 async function handleSubscriptionFlow() {
   await addBotMessage("Let me check for any active subscriptions on your account...");
 
+  // If we have Shopify orders from lookup but no selected order, use the first one
+  // This captures the Shopify order number for subscription cases
+  if (!state.selectedOrder && state.orders && state.orders.length > 0) {
+    state.selectedOrder = state.orders[0];
+    console.log('Set selectedOrder from orders for subscription flow:', state.selectedOrder.orderNumber);
+  }
+
   // Get both clientOrderId and email for lookup (backend will try both)
   const clientOrderId = state.selectedOrder?.clientOrderId;
   const email = state.selectedOrder?.email || state.customerData?.email;
@@ -5998,9 +6005,10 @@ async function handleSubscriptionFlow() {
     state.subscriptions = data.subscriptions || [];
 
     // Add clientOrderId to each subscription for case creation
+    // Backend sends clientOrderId, not orderId
     state.subscriptions = state.subscriptions.map(sub => ({
       ...sub,
-      clientOrderId: sub.orderId || clientOrderId
+      clientOrderId: sub.clientOrderId || clientOrderId
     }));
 
   } catch (error) {
