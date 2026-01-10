@@ -994,6 +994,45 @@ export default {
         return await handleAdminSetup(request, env, corsHeaders);
       }
 
+      // ============================================
+      // USER MANAGEMENT ENDPOINTS
+      // ============================================
+
+      // List users (Admin only)
+      if (pathname === '/hub/api/users' && request.method === 'GET') {
+        return await handleListUsers(request, env, corsHeaders);
+      }
+
+      // Create user (Admin only)
+      if (pathname === '/hub/api/users' && request.method === 'POST') {
+        return await handleCreateUser(request, env, corsHeaders);
+      }
+
+      // Update user (Admin only)
+      if (pathname === '/hub/api/users' && request.method === 'PUT') {
+        return await handleUpdateUser(request, env, corsHeaders);
+      }
+
+      // Delete user (Admin only)
+      if (pathname.match(/^\/hub\/api\/users\/\d+$/) && request.method === 'DELETE') {
+        return await handleDeleteUser(request, env, corsHeaders);
+      }
+
+      // Get current user profile
+      if (pathname === '/hub/api/profile' && request.method === 'GET') {
+        return await handleGetProfile(request, env, corsHeaders);
+      }
+
+      // Change password
+      if (pathname === '/hub/api/change-password' && request.method === 'POST') {
+        return await handleChangePassword(request, env, corsHeaders);
+      }
+
+      // Audit log (Admin only)
+      if (pathname === '/hub/api/audit-log' && request.method === 'GET') {
+        return await handleGetAuditLog(request, env, corsHeaders);
+      }
+
       // Dashboard data (protected)
       if (pathname === '/admin/api/dashboard' && request.method === 'GET') {
         return await handleDashboardData(request, env, corsHeaders);
@@ -5031,6 +5070,11 @@ async function handleAdminLogin(request, env, corsHeaders) {
       return Response.json({ success: false, error: 'Invalid credentials' }, { status: 401, headers: corsHeaders });
     }
 
+    // Check if account is active
+    if (user.is_active === 0) {
+      return Response.json({ success: false, error: 'Account is disabled. Contact an administrator.' }, { status: 403, headers: corsHeaders });
+    }
+
     // Update last login
     await env.ANALYTICS_DB.prepare(`
       UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = ?
@@ -5041,7 +5085,13 @@ async function handleAdminLogin(request, env, corsHeaders) {
     return Response.json({
       success: true,
       token,
-      user: { username: user.username, name: user.name, role: user.role }
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+        mustChangePassword: user.must_change_password === 1
+      }
     }, { headers: corsHeaders });
   } catch (e) {
     console.error('Login error:', e);
@@ -5078,6 +5128,407 @@ async function handleAdminSetup(request, env, corsHeaders) {
   } catch (e) {
     console.error('Admin setup error:', e);
     return Response.json({ error: 'Setup failed: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// USER MANAGEMENT (Admin Only)
+// ============================================
+
+// Helper: Verify token and get user with role
+async function verifyAuthAndGetUser(request, env) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { error: 'Unauthorized', status: 401 };
+  }
+
+  const token = authHeader.substring(7);
+  const payload = await verifyToken(token);
+  if (!payload) {
+    return { error: 'Invalid or expired token', status: 401 };
+  }
+
+  // Get user details from database
+  const user = await env.ANALYTICS_DB.prepare(`
+    SELECT id, username, name, role, is_active FROM admin_users WHERE username = ?
+  `).bind(payload.username).first();
+
+  if (!user) {
+    return { error: 'User not found', status: 401 };
+  }
+
+  if (user.is_active === 0) {
+    return { error: 'Account is disabled', status: 403 };
+  }
+
+  return { user };
+}
+
+// Helper: Verify admin role
+async function verifyAdmin(request, env) {
+  const result = await verifyAuthAndGetUser(request, env);
+  if (result.error) return result;
+
+  if (result.user.role !== 'admin') {
+    return { error: 'Admin access required', status: 403 };
+  }
+
+  return result;
+}
+
+// Helper: Log audit event
+async function logAudit(env, userId, userEmail, userName, actionType, actionCategory, resourceType, resourceId, details, oldValue, newValue, request) {
+  try {
+    const ip = request?.headers?.get('CF-Connecting-IP') || request?.headers?.get('X-Forwarded-For') || 'unknown';
+    const ua = request?.headers?.get('User-Agent') || 'unknown';
+
+    await env.ANALYTICS_DB.prepare(`
+      INSERT INTO audit_log (user_id, user_email, user_name, action_type, action_category, resource_type, resource_id, details, old_value, new_value, ip_address, user_agent)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      userId, userEmail, userName, actionType, actionCategory, resourceType, resourceId,
+      details ? JSON.stringify(details) : null,
+      oldValue, newValue, ip, ua
+    ).run();
+  } catch (e) {
+    console.error('Audit log error:', e);
+  }
+}
+
+// List all users (Admin only)
+async function handleListUsers(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const users = await env.ANALYTICS_DB.prepare(`
+      SELECT id, username, name, role, is_active, must_change_password, created_at, last_login, last_activity_at,
+             (SELECT name FROM admin_users WHERE id = admin_users.created_by) as created_by_name
+      FROM admin_users
+      ORDER BY created_at DESC
+    `).all();
+
+    return Response.json({ success: true, users: users.results || [] }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('List users error:', e);
+    return Response.json({ error: 'Failed to list users' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Create new user (Admin only)
+async function handleCreateUser(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { username, name, role, password } = await request.json();
+
+    if (!username || !name || !password) {
+      return Response.json({ error: 'Username, name, and password are required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Validate role
+    const validRoles = ['admin', 'user'];
+    if (!validRoles.includes(role)) {
+      return Response.json({ error: 'Invalid role. Must be admin or user' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Check if username exists
+    const existing = await env.ANALYTICS_DB.prepare(`
+      SELECT id FROM admin_users WHERE username = ?
+    `).bind(username).first();
+
+    if (existing) {
+      return Response.json({ error: 'Username already exists' }, { status: 400, headers: corsHeaders });
+    }
+
+    const passwordHash = await hashPassword(password);
+
+    // Create user
+    await env.ANALYTICS_DB.prepare(`
+      INSERT INTO admin_users (username, password_hash, name, role, is_active, must_change_password, created_by)
+      VALUES (?, ?, ?, ?, 1, 1, ?)
+    `).bind(username, passwordHash, name, role, auth.user.id).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'user_created', 'users', 'user', username, { name, role }, null, username, request);
+
+    return Response.json({
+      success: true,
+      message: `User '${username}' created successfully. They will be prompted to change their password on first login.`
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Create user error:', e);
+    return Response.json({ error: 'Failed to create user: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Update user (Admin only)
+async function handleUpdateUser(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { userId, name, role, is_active, resetPassword } = await request.json();
+
+    if (!userId) {
+      return Response.json({ error: 'User ID is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Get current user data
+    const currentUser = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM admin_users WHERE id = ?
+    `).bind(userId).first();
+
+    if (!currentUser) {
+      return Response.json({ error: 'User not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    // Prevent deactivating yourself
+    if (userId === auth.user.id && is_active === false) {
+      return Response.json({ error: 'Cannot deactivate your own account' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Build update query
+    const updates = [];
+    const values = [];
+    const changes = {};
+
+    if (name !== undefined && name !== currentUser.name) {
+      updates.push('name = ?');
+      values.push(name);
+      changes.name = { old: currentUser.name, new: name };
+    }
+
+    if (role !== undefined && role !== currentUser.role) {
+      const validRoles = ['admin', 'user'];
+      if (!validRoles.includes(role)) {
+        return Response.json({ error: 'Invalid role' }, { status: 400, headers: corsHeaders });
+      }
+      updates.push('role = ?');
+      values.push(role);
+      changes.role = { old: currentUser.role, new: role };
+    }
+
+    if (is_active !== undefined && is_active !== currentUser.is_active) {
+      updates.push('is_active = ?');
+      values.push(is_active ? 1 : 0);
+      changes.is_active = { old: currentUser.is_active, new: is_active };
+    }
+
+    if (resetPassword) {
+      // Generate a temporary password
+      const tempPassword = 'temp' + Math.random().toString(36).substring(2, 10);
+      const passwordHash = await hashPassword(tempPassword);
+      updates.push('password_hash = ?');
+      updates.push('must_change_password = 1');
+      values.push(passwordHash);
+      changes.password = { reset: true, tempPassword };
+    }
+
+    if (updates.length === 0) {
+      return Response.json({ error: 'No changes provided' }, { status: 400, headers: corsHeaders });
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(userId);
+
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE admin_users SET ${updates.join(', ')} WHERE id = ?
+    `).bind(...values).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'user_updated', 'users', 'user', currentUser.username, changes, JSON.stringify(currentUser), null, request);
+
+    const response = { success: true, message: 'User updated successfully' };
+    if (resetPassword && changes.password) {
+      response.tempPassword = changes.password.tempPassword;
+      response.message += `. Temporary password: ${changes.password.tempPassword}`;
+    }
+
+    return Response.json(response, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Update user error:', e);
+    return Response.json({ error: 'Failed to update user: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Delete user (Admin only)
+async function handleDeleteUser(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const userId = url.pathname.split('/').pop();
+
+    if (!userId) {
+      return Response.json({ error: 'User ID is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Prevent deleting yourself
+    if (parseInt(userId) === auth.user.id) {
+      return Response.json({ error: 'Cannot delete your own account' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Get user for audit
+    const user = await env.ANALYTICS_DB.prepare(`
+      SELECT username, name FROM admin_users WHERE id = ?
+    `).bind(userId).first();
+
+    if (!user) {
+      return Response.json({ error: 'User not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    await env.ANALYTICS_DB.prepare(`
+      DELETE FROM admin_users WHERE id = ?
+    `).bind(userId).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'user_deleted', 'users', 'user', user.username, { deletedUser: user.name }, user.username, null, request);
+
+    return Response.json({ success: true, message: 'User deleted successfully' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Delete user error:', e);
+    return Response.json({ error: 'Failed to delete user: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Change own password
+async function handleChangePassword(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { currentPassword, newPassword } = await request.json();
+
+    if (!newPassword || newPassword.length < 6) {
+      return Response.json({ error: 'New password must be at least 6 characters' }, { status: 400, headers: corsHeaders });
+    }
+
+    // If not must_change_password, verify current password
+    const userFull = await env.ANALYTICS_DB.prepare(`
+      SELECT password_hash, must_change_password FROM admin_users WHERE id = ?
+    `).bind(auth.user.id).first();
+
+    if (!userFull.must_change_password) {
+      if (!currentPassword) {
+        return Response.json({ error: 'Current password is required' }, { status: 400, headers: corsHeaders });
+      }
+      const currentHash = await hashPassword(currentPassword);
+      if (currentHash !== userFull.password_hash) {
+        return Response.json({ error: 'Current password is incorrect' }, { status: 400, headers: corsHeaders });
+      }
+    }
+
+    const newPasswordHash = await hashPassword(newPassword);
+
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE admin_users SET password_hash = ?, must_change_password = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).bind(newPasswordHash, auth.user.id).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'password_changed', 'auth', 'user', auth.user.username, null, null, null, request);
+
+    return Response.json({ success: true, message: 'Password changed successfully' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Change password error:', e);
+    return Response.json({ error: 'Failed to change password: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Get current user profile
+async function handleGetProfile(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const user = await env.ANALYTICS_DB.prepare(`
+      SELECT id, username, name, role, is_active, must_change_password, created_at, last_login
+      FROM admin_users WHERE id = ?
+    `).bind(auth.user.id).first();
+
+    return Response.json({ success: true, user }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get profile error:', e);
+    return Response.json({ error: 'Failed to get profile' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// AUDIT LOG (Admin Only)
+// ============================================
+
+async function handleGetAuditLog(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page')) || 1;
+    const limit = parseInt(url.searchParams.get('limit')) || 50;
+    const category = url.searchParams.get('category');
+    const userId = url.searchParams.get('userId');
+    const offset = (page - 1) * limit;
+
+    let query = `SELECT * FROM audit_log WHERE 1=1`;
+    const params = [];
+
+    if (category) {
+      query += ` AND action_category = ?`;
+      params.push(category);
+    }
+
+    if (userId) {
+      query += ` AND user_id = ?`;
+      params.push(userId);
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const logs = await env.ANALYTICS_DB.prepare(query).bind(...params).all();
+
+    // Get total count
+    let countQuery = `SELECT COUNT(*) as count FROM audit_log WHERE 1=1`;
+    const countParams = [];
+    if (category) {
+      countQuery += ` AND action_category = ?`;
+      countParams.push(category);
+    }
+    if (userId) {
+      countQuery += ` AND user_id = ?`;
+      countParams.push(userId);
+    }
+    const total = await env.ANALYTICS_DB.prepare(countQuery).bind(...countParams).first();
+
+    return Response.json({
+      success: true,
+      logs: logs.results || [],
+      pagination: {
+        page,
+        limit,
+        total: total?.count || 0,
+        totalPages: Math.ceil((total?.count || 0) / limit)
+      }
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get audit log error:', e);
+    return Response.json({ error: 'Failed to get audit log' }, { status: 500, headers: corsHeaders });
   }
 }
 
