@@ -284,17 +284,28 @@ const HubBulkActions = {
     const count = HubState.selectedCaseIds.size;
     const toolbar = document.getElementById('bulkActionsToolbar');
 
-    if (count > 0) {
-      toolbar.style.display = 'flex';
-      document.getElementById('selectedCount').textContent = `${count} selected`;
-    } else {
-      toolbar.style.display = 'none';
+    // Add null check for toolbar
+    if (toolbar) {
+      if (count > 0) {
+        toolbar.style.display = 'flex';
+        const countEl = document.getElementById('selectedCount');
+        if (countEl) countEl.textContent = `${count} selected`;
+      } else {
+        toolbar.style.display = 'none';
+      }
     }
 
     // Update checkboxes
     document.querySelectorAll('.case-checkbox').forEach(cb => {
       cb.checked = HubState.selectedCaseIds.has(cb.dataset.caseId);
     });
+
+    // Update select all checkbox
+    const selectAllCb = document.getElementById('selectAllCases');
+    if (selectAllCb) {
+      const allCases = window.allCases || window.casesList || HubState.cases || [];
+      selectAllCb.checked = count > 0 && count >= allCases.length;
+    }
   },
 
   async updateStatus(status) {
@@ -316,9 +327,14 @@ const HubBulkActions = {
       if (result.success) {
         HubUI.showToast(result.message, 'success');
         this.deselectAll();
-        HubCases.loadCases();
+        // Use inline script's loadCasesView if available, otherwise HubCases.loadCases
+        if (typeof loadCasesView === 'function') {
+          loadCasesView();
+        } else if (typeof HubCases !== 'undefined') {
+          HubCases.loadCases();
+        }
       } else {
-        HubUI.showToast(result.error, 'error');
+        HubUI.showToast(result.error || 'Update failed', 'error');
       }
     } catch (e) {
       console.error('Bulk update error:', e);
@@ -344,12 +360,17 @@ const HubBulkActions = {
       if (result.success) {
         HubUI.showToast(result.message, 'success');
         this.deselectAll();
-        HubCases.loadCases();
+        // Use inline script's loadCasesView if available
+        if (typeof loadCasesView === 'function') {
+          loadCasesView();
+        } else if (typeof HubCases !== 'undefined') {
+          HubCases.loadCases();
+        }
       } else {
-        HubUI.showToast(result.error, 'error');
+        HubUI.showToast(result.error || 'Assign failed', 'error');
       }
     } catch (e) {
-      HubUI.showToast('Failed to assign cases', 'error');
+      HubUI.showToast('Failed to assign cases: ' + (e.message || 'Unknown error'), 'error');
     } finally {
       HubUI.hideLoading();
     }
@@ -446,12 +467,17 @@ const HubBulkActions = {
       if (result.success) {
         HubUI.showToast(result.message, 'success');
         this.deselectAll();
-        HubCases.loadCases();
+        // Use inline script's loadCasesView if available
+        if (typeof loadCasesView === 'function') {
+          loadCasesView();
+        } else if (typeof HubCases !== 'undefined') {
+          HubCases.loadCases();
+        }
       } else {
-        HubUI.showToast(result.error, 'error');
+        HubUI.showToast(result.error || 'Complete failed', 'error');
       }
     } catch (e) {
-      HubUI.showToast('Failed to complete cases', 'error');
+      HubUI.showToast('Failed to complete cases: ' + (e.message || 'Unknown error'), 'error');
     } finally {
       HubUI.hideLoading();
     }
