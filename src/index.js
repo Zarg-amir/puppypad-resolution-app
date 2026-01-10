@@ -5721,11 +5721,12 @@ async function handleBulkUpdateStatus(request, env, corsHeaders) {
     }
 
     const placeholders = caseIds.map(() => '?').join(',');
-    const timestamp = status === 'completed' ? ', resolved_at = CURRENT_TIMESTAMP' : '';
+    const resolvedFields = status === 'completed' ? `, resolved_at = CURRENT_TIMESTAMP, resolved_by = ?` : '';
+    const bindings = status === 'completed' ? [status, auth.user.name || auth.user.username, ...caseIds] : [status, ...caseIds];
 
     await env.ANALYTICS_DB.prepare(`
-      UPDATE cases SET status = ?, updated_at = CURRENT_TIMESTAMP ${timestamp} WHERE case_id IN (${placeholders})
-    `).bind(status, ...caseIds).run();
+      UPDATE cases SET status = ?, updated_at = CURRENT_TIMESTAMP ${resolvedFields} WHERE case_id IN (${placeholders})
+    `).bind(...bindings).run();
 
     // Log audit
     await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'bulk_status_update', 'cases', 'case', null,
@@ -8591,19 +8592,31 @@ async function handleHubUpdateStatus(request, caseId, env, corsHeaders) {
     try {
       if (status === 'completed' && oldStatus !== 'completed') {
         await env.ANALYTICS_DB.prepare(
-          `UPDATE cases SET status = ?, updated_at = ?, resolved_at = ? WHERE case_id = ?`
-        ).bind(status, now, now, caseId).run();
+          `UPDATE cases SET status = ?, updated_at = ?, resolved_at = ?, resolved_by = ? WHERE case_id = ?`
+        ).bind(status, now, now, actor || actor_email || 'team_member', caseId).run();
       } else {
         await env.ANALYTICS_DB.prepare(
           `UPDATE cases SET status = ?, updated_at = ? WHERE case_id = ?`
         ).bind(status, now, caseId).run();
       }
     } catch (e) {
-      // Fallback without updated_at if column doesn't exist
-      console.log('Trying simple status update:', e.message);
-      await env.ANALYTICS_DB.prepare(
-        `UPDATE cases SET status = ? WHERE case_id = ?`
-      ).bind(status, caseId).run();
+      // Fallback without resolved_by if column doesn't exist
+      try {
+        if (status === 'completed' && oldStatus !== 'completed') {
+          await env.ANALYTICS_DB.prepare(
+            `UPDATE cases SET status = ?, updated_at = ?, resolved_at = ? WHERE case_id = ?`
+          ).bind(status, now, now, caseId).run();
+        } else {
+          await env.ANALYTICS_DB.prepare(
+            `UPDATE cases SET status = ?, updated_at = ? WHERE case_id = ?`
+          ).bind(status, now, caseId).run();
+        }
+      } catch (e2) {
+        // Fallback without updated_at if column doesn't exist
+        await env.ANALYTICS_DB.prepare(
+          `UPDATE cases SET status = ? WHERE case_id = ?`
+        ).bind(status, caseId).run();
+      }
     }
 
     // Try to log activity (table might not exist)
