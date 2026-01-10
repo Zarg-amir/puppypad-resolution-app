@@ -1256,6 +1256,12 @@ export default {
         return await handleHubAddComment(request, caseId, env, corsHeaders);
       }
 
+      // Hub API - Case activity timeline
+      if (pathname.startsWith('/hub/api/case/') && pathname.endsWith('/activity') && request.method === 'GET') {
+        const caseId = pathname.split('/hub/api/case/')[1].replace('/activity', '');
+        return await handleHubCaseActivity(caseId, env, corsHeaders);
+      }
+
       // Hub API - Sessions list
       if (pathname === '/hub/api/sessions' && request.method === 'GET') {
         return await handleHubSessions(request, env, corsHeaders);
@@ -8700,6 +8706,30 @@ async function handleHubAddComment(request, caseId, env, corsHeaders) {
   }
 }
 
+async function handleHubCaseActivity(caseId, env, corsHeaders) {
+  try {
+    const activities = await env.ANALYTICS_DB.prepare(
+      `SELECT id, case_id, activity_type, field_name, old_value, new_value, actor, actor_email, source, created_at
+       FROM case_activity
+       WHERE case_id = ?
+       ORDER BY created_at DESC
+       LIMIT 50`
+    ).bind(caseId).all();
+
+    return Response.json({
+      success: true,
+      activities: activities.results || []
+    }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Hub case activity error:', error);
+    // If table doesn't exist, return empty array
+    if (error.message?.includes('no such table')) {
+      return Response.json({ success: true, activities: [] }, { headers: corsHeaders });
+    }
+    return Response.json({ error: 'Failed to load activity' }, { status: 500, headers: corsHeaders });
+  }
+}
+
 async function handleHubSessions(request, env, corsHeaders) {
   try {
     const url = new URL(request.url);
@@ -9308,6 +9338,10 @@ function getResolutionHubHTML() {
     .nav-arrow.prev .nav-preview { right: 0; margin-top: 8px; }
     .nav-arrow.next .nav-preview { left: 0; margin-top: 8px; }
     .nav-arrow:hover .nav-preview { display: block; }
+    .copy-url-btn { background: rgba(255,255,255,0.1); border: none; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .copy-url-btn:hover { background: rgba(255,255,255,0.2); }
+    .copy-url-btn.copied { background: rgba(34,197,94,0.3); }
+    .copy-url-btn svg { width: 18px; height: 18px; }
     .modal-close { background: rgba(255,255,255,0.1); border: none; width: 40px; height: 40px; border-radius: 10px; font-size: 24px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
     .modal-close:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
     .quick-actions { display: flex; flex-direction: column; gap: 10px; }
@@ -9338,12 +9372,17 @@ function getResolutionHubHTML() {
     .comment-input:focus { outline: none; border-color: var(--brand-navy); box-shadow: 0 0 0 3px rgba(30,58,95,0.1); }
     .comment-submit { padding: 12px 20px; background: var(--brand-navy); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
     .comment-submit:hover { background: #3d5a80; }
-    .timeline-item { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--gray-100); }
+    .timeline-card { border: 1px solid var(--gray-200); border-radius: 10px; }
+    .timeline-item { display: flex; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--gray-100); transition: background 0.15s; }
+    .timeline-item:hover { background: var(--gray-50); }
     .timeline-item:last-child { border-bottom: none; }
-    .timeline-dot { width: 10px; height: 10px; background: var(--brand-navy); border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
-    .timeline-content { flex: 1; }
-    .timeline-label { font-size: 12px; color: var(--gray-500); margin-bottom: 2px; }
-    .timeline-value { font-size: 13px; font-weight: 500; }
+    .timeline-dot { width: 10px; height: 10px; background: var(--brand-navy); border-radius: 50%; margin-top: 5px; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(30,64,175,0.1); }
+    .timeline-content { flex: 1; min-width: 0; }
+    .timeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 8px; }
+    .timeline-label { font-size: 12px; color: var(--gray-600); font-weight: 600; }
+    .timeline-time { font-size: 11px; color: var(--gray-400); flex-shrink: 0; }
+    .timeline-value { font-size: 13px; font-weight: 500; color: var(--gray-700); word-break: break-word; }
+    .timeline-actor { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
     @media (max-width: 900px) { .modal-grid { grid-template-columns: 1fr; } .modal-sidebar { border-top: 1px solid var(--gray-100); } }
 
     /* Performance Dashboard Styles */
@@ -9458,6 +9497,9 @@ function getResolutionHubHTML() {
           <button class="nav-arrow next" id="nextCaseBtn" onclick="navigateCase('next')" title="Next case">
             <span class="nav-preview" id="nextCasePreview"></span>
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+          <button class="copy-url-btn" onclick="copyCaseUrl()" title="Copy case URL">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
           </button>
           <button class="modal-close" onclick="closeModal()">&times;</button>
         </div>
@@ -9637,30 +9679,37 @@ function getResolutionHubHTML() {
 
             <!-- Timeline -->
             <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Timeline
+              <div class="modal-section-title" style="justify-content:space-between;">
+                <span style="display:flex;align-items:center;gap:8px;">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  Activity Timeline
+                </span>
+                <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="loadCaseActivity()" title="Refresh activity">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                </button>
               </div>
-              <div class="detail-card" style="padding:16px;">
-                <div class="timeline-item">
-                  <div class="timeline-dot"></div>
-                  <div class="timeline-content">
-                    <div class="timeline-label">Case Created</div>
-                    <div class="timeline-value" id="timelineCreated">-</div>
+              <div class="detail-card timeline-card" style="padding:0;max-height:300px;overflow-y:auto;">
+                <div id="activityTimeline">
+                  <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                      <div class="timeline-label">Case Created</div>
+                      <div class="timeline-value" id="timelineCreated">-</div>
+                    </div>
                   </div>
-                </div>
-                <div class="timeline-item" id="timelineFirstResponseRow" style="display:none;">
-                  <div class="timeline-dot" style="background:#059669;"></div>
-                  <div class="timeline-content">
-                    <div class="timeline-label">First Response</div>
-                    <div class="timeline-value" id="timelineFirstResponse">-</div>
+                  <div class="timeline-item" id="timelineFirstResponseRow" style="display:none;">
+                    <div class="timeline-dot" style="background:#059669;"></div>
+                    <div class="timeline-content">
+                      <div class="timeline-label">First Response</div>
+                      <div class="timeline-value" id="timelineFirstResponse">-</div>
+                    </div>
                   </div>
-                </div>
-                <div class="timeline-item" id="timelineResolvedRow" style="display:none;">
-                  <div class="timeline-dot" style="background:#10b981;"></div>
-                  <div class="timeline-content">
-                    <div class="timeline-label">Resolved</div>
-                    <div class="timeline-value" id="timelineResolved">-</div>
+                  <div class="timeline-item" id="timelineResolvedRow" style="display:none;">
+                    <div class="timeline-dot" style="background:#10b981;"></div>
+                    <div class="timeline-content">
+                      <div class="timeline-label">Resolved</div>
+                      <div class="timeline-value" id="timelineResolved">-</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -9964,6 +10013,11 @@ function getResolutionHubHTML() {
         }
 
         view.innerHTML = '<div class="cases-filters" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">'+
+          '<div class="search-input-wrapper" style="position:relative;flex:1;min-width:200px;max-width:400px;">'+
+            '<svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--gray-400);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>'+
+            '<input type="text" id="caseSearchInput" placeholder="Search cases, emails, orders, notes..." oninput="debounceSearch()" style="width:100%;padding:8px 12px 8px 36px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;"/>'+
+            '<button id="clearSearchBtn" onclick="clearCaseSearch()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px;line-height:1;">&times;</button>'+
+          '</div>'+
           '<select id="caseStatusFilter" onchange="applyCaseFilters()" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;">'+
             '<option value="all">All Statuses</option>'+
             '<option value="pending">Pending</option>'+
@@ -9982,6 +10036,7 @@ function getResolutionHubHTML() {
             '<option value="due_soonest">Due Soonest</option>'+
             '<option value="amount_high">Highest Amount</option>'+
           '</select>'+
+          '<span id="searchResultsCount" style="font-size:13px;color:var(--gray-500);"></span>'+
         '</div>'+
         '<div class="cases-card"><table class="cases-table"><thead><tr><th>Case ID</th><th>Customer</th><th>Type</th><th>Status</th><th>Due</th><th>Resolution</th><th>Created</th></tr></thead><tbody id="casesTableBody">'+
           (casesList.length ? casesList.map(renderCaseRow).join('') : '<tr><td colspan="7" class="empty-state">No cases found</td></tr>')+
@@ -9993,11 +10048,47 @@ function getResolutionHubHTML() {
       } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load cases</div>'; }
     }
 
+    let searchDebounceTimer = null;
+    function debounceSearch() {
+      const input = document.getElementById('caseSearchInput');
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (clearBtn) clearBtn.style.display = input.value ? 'block' : 'none';
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => applyCaseFilters(), 200);
+    }
+
+    function clearCaseSearch() {
+      const input = document.getElementById('caseSearchInput');
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (input) input.value = '';
+      if (clearBtn) clearBtn.style.display = 'none';
+      applyCaseFilters();
+    }
+
     function applyCaseFilters() {
+      const searchTerm = (document.getElementById('caseSearchInput')?.value || '').toLowerCase().trim();
       const statusFilter = document.getElementById('caseStatusFilter').value;
       const dueFilter = document.getElementById('caseDueFilter').value;
       const sortBy = document.getElementById('caseSortBy').value;
       let filtered = [...(window.allCases || [])];
+
+      // Search filter - searches across multiple fields
+      if (searchTerm) {
+        filtered = filtered.filter(c => {
+          const searchFields = [
+            c.case_id,
+            c.customer_name,
+            c.customer_email,
+            c.order_number,
+            c.resolution,
+            c.refund_reason,
+            c.notes,
+            c.case_type,
+            c.status
+          ].filter(Boolean).map(f => String(f).toLowerCase());
+          return searchFields.some(field => field.includes(searchTerm));
+        });
+      }
 
       // Status filter
       if (statusFilter !== 'all') filtered = filtered.filter(c => c.status === statusFilter);
@@ -10028,6 +10119,17 @@ function getResolutionHubHTML() {
         if (sortBy === 'amount_high') return (parseFloat(b.refund_amount)||0) - (parseFloat(a.refund_amount)||0);
         return 0;
       });
+
+      // Update results count
+      const countEl = document.getElementById('searchResultsCount');
+      const total = window.allCases?.length || 0;
+      if (countEl) {
+        if (searchTerm || statusFilter !== 'all' || dueFilter !== 'all') {
+          countEl.textContent = filtered.length + ' of ' + total + ' cases';
+        } else {
+          countEl.textContent = '';
+        }
+      }
 
       const tbody = document.getElementById('casesTableBody');
       tbody.innerHTML = filtered.length ? filtered.map(window.renderCaseRow).join('') : '<tr><td colspan="7" class="empty-state">No cases match filters</td></tr>';
@@ -10585,6 +10687,88 @@ function getResolutionHubHTML() {
     function timeAgo(d) { if(!d)return'-'; const s=Math.floor((Date.now()-new Date(d))/1000); if(s<60)return'Just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
     function formatDate(d) { if(!d)return'-'; return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
 
+    async function loadCaseActivity() {
+      if (!currentCase) return;
+      const container = document.getElementById('activityTimeline');
+      if (!container) return;
+
+      try {
+        const r = await fetch(API + '/hub/api/case/' + currentCase.case_id + '/activity');
+        const data = await r.json();
+
+        if (!data.success || !data.activities?.length) {
+          // Keep showing the basic timeline
+          return;
+        }
+
+        // Build enhanced timeline with activities
+        let html = '';
+
+        // Sort activities by timestamp descending (newest first)
+        const activities = data.activities.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        activities.forEach(activity => {
+          const activityConfig = getActivityConfig(activity.activity_type);
+          html += '<div class="timeline-item">' +
+            '<div class="timeline-dot" style="background:' + activityConfig.color + ';"></div>' +
+            '<div class="timeline-content">' +
+              '<div class="timeline-header">' +
+                '<span class="timeline-label">' + activityConfig.label + '</span>' +
+                '<span class="timeline-time">' + timeAgo(activity.created_at) + '</span>' +
+              '</div>' +
+              '<div class="timeline-value">' + formatActivityDetails(activity) + '</div>' +
+              (activity.actor ? '<div class="timeline-actor">by ' + (activity.actor_email || activity.actor) + '</div>' : '') +
+            '</div>' +
+          '</div>';
+        });
+
+        // Add case created as first event (at the bottom since we're sorted newest first)
+        html += '<div class="timeline-item">' +
+          '<div class="timeline-dot" style="background:var(--brand-navy);"></div>' +
+          '<div class="timeline-content">' +
+            '<div class="timeline-header">' +
+              '<span class="timeline-label">Case Created</span>' +
+              '<span class="timeline-time">' + timeAgo(currentCase.created_at) + '</span>' +
+            '</div>' +
+            '<div class="timeline-value">' + formatDate(currentCase.created_at) + '</div>' +
+          '</div>' +
+        '</div>';
+
+        container.innerHTML = html;
+      } catch (e) {
+        console.error('Failed to load activity:', e);
+      }
+    }
+
+    function getActivityConfig(type) {
+      const configs = {
+        'status_change': { label: 'Status Changed', color: '#3b82f6' },
+        'note_added': { label: 'Note Added', color: '#8b5cf6' },
+        'comment_added': { label: 'Comment Added', color: '#8b5cf6' },
+        'assigned': { label: 'Assigned', color: '#f59e0b' },
+        'unassigned': { label: 'Unassigned', color: '#6b7280' },
+        'resolution_updated': { label: 'Resolution Updated', color: '#10b981' },
+        'clickup_created': { label: 'ClickUp Task Created', color: '#7c3aed' },
+        'checklist_completed': { label: 'Checklist Completed', color: '#10b981' },
+        'webhook_update': { label: 'External Update', color: '#06b6d4' }
+      };
+      return configs[type] || { label: type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Activity', color: '#6b7280' };
+    }
+
+    function formatActivityDetails(activity) {
+      if (activity.activity_type === 'status_change') {
+        return (activity.old_value || 'unknown') + ' → ' + (activity.new_value || 'unknown');
+      }
+      if (activity.activity_type === 'note_added' || activity.activity_type === 'comment_added') {
+        const note = activity.new_value || '';
+        return note.length > 100 ? note.substring(0, 100) + '...' : note;
+      }
+      if (activity.field_name) {
+        return activity.field_name + ': ' + (activity.new_value || '-');
+      }
+      return activity.new_value || '-';
+    }
+
     // Build detailed case breakdown HTML for modal - plain English bullet points
     function buildCaseDetailsHtml(c) {
       const bullets = [];
@@ -10968,6 +11152,9 @@ function getResolutionHubHTML() {
 
         // Load comments
         loadComments(caseId);
+
+        // Load activity timeline
+        loadCaseActivity();
       } catch(e) {
         console.error(e);
         document.getElementById('modalCustomerName').textContent = 'Error loading case';
@@ -10975,6 +11162,23 @@ function getResolutionHubHTML() {
     }
 
     function closeModal() { document.getElementById('caseModal').classList.remove('active'); currentCase = null; currentCaseIndex = -1; }
+
+    function copyCaseUrl() {
+      if (!currentCase) return;
+      const url = window.location.origin + '/hub?case=' + currentCase.case_id;
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = document.querySelector('.copy-url-btn');
+        if (btn) {
+          btn.classList.add('copied');
+          btn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>';
+          }, 2000);
+        }
+        showToast('Case URL copied to clipboard', 'success');
+      });
+    }
 
     // Case navigation functions
     function updateNavigationButtons() {
