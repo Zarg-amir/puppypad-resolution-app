@@ -1033,6 +1033,59 @@ export default {
         return await handleGetAuditLog(request, env, corsHeaders);
       }
 
+      // ============================================
+      // BULK ACTIONS ENDPOINTS
+      // ============================================
+
+      // Bulk update status
+      if (pathname === '/hub/api/bulk/status' && request.method === 'POST') {
+        return await handleBulkUpdateStatus(request, env, corsHeaders);
+      }
+
+      // Bulk assign (Admin only)
+      if (pathname === '/hub/api/bulk/assign' && request.method === 'POST') {
+        return await handleBulkAssign(request, env, corsHeaders);
+      }
+
+      // Bulk add comment
+      if (pathname === '/hub/api/bulk/comment' && request.method === 'POST') {
+        return await handleBulkAddComment(request, env, corsHeaders);
+      }
+
+      // Export cases to CSV
+      if (pathname === '/hub/api/bulk/export' && request.method === 'POST') {
+        return await handleExportCases(request, env, corsHeaders);
+      }
+
+      // ============================================
+      // ASSIGNMENT SYSTEM ENDPOINTS (Admin Only)
+      // ============================================
+
+      // Get assignment queue
+      if (pathname === '/hub/api/assignment-queue' && request.method === 'GET') {
+        return await handleGetAssignmentQueue(request, env, corsHeaders);
+      }
+
+      // Update assignment queue
+      if (pathname === '/hub/api/assignment-queue' && request.method === 'POST') {
+        return await handleUpdateAssignmentQueue(request, env, corsHeaders);
+      }
+
+      // Get next assignee (round robin)
+      if (pathname === '/hub/api/assignment/next' && request.method === 'GET') {
+        return await handleGetNextAssignee(request, env, corsHeaders);
+      }
+
+      // Auto-assign case (round robin)
+      if (pathname === '/hub/api/assignment/auto' && request.method === 'POST') {
+        return await handleAutoAssign(request, env, corsHeaders);
+      }
+
+      // Recalculate assignment loads
+      if (pathname === '/hub/api/assignment/recalculate' && request.method === 'POST') {
+        return await handleRecalculateLoads(request, env, corsHeaders);
+      }
+
       // Dashboard data (protected)
       if (pathname === '/admin/api/dashboard' && request.method === 'GET') {
         return await handleDashboardData(request, env, corsHeaders);
@@ -5529,6 +5582,419 @@ async function handleGetAuditLog(request, env, corsHeaders) {
   } catch (e) {
     console.error('Get audit log error:', e);
     return Response.json({ error: 'Failed to get audit log' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// BULK ACTIONS
+// ============================================
+
+// Bulk update case status
+async function handleBulkUpdateStatus(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { caseIds, status } = await request.json();
+
+    if (!caseIds || !Array.isArray(caseIds) || caseIds.length === 0) {
+      return Response.json({ error: 'Case IDs are required' }, { status: 400, headers: corsHeaders });
+    }
+
+    const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return Response.json({ error: 'Invalid status' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Limit bulk operations
+    if (caseIds.length > 100) {
+      return Response.json({ error: 'Maximum 100 cases per bulk operation' }, { status: 400, headers: corsHeaders });
+    }
+
+    const placeholders = caseIds.map(() => '?').join(',');
+    const timestamp = status === 'completed' ? ', resolved_at = CURRENT_TIMESTAMP' : '';
+
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE cases SET status = ?, updated_at = CURRENT_TIMESTAMP ${timestamp} WHERE case_id IN (${placeholders})
+    `).bind(status, ...caseIds).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'bulk_status_update', 'cases', 'case', null,
+      { caseIds, newStatus: status, count: caseIds.length }, null, status, request);
+
+    return Response.json({
+      success: true,
+      message: `${caseIds.length} case(s) updated to ${status}`,
+      updatedCount: caseIds.length
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Bulk update status error:', e);
+    return Response.json({ error: 'Failed to update cases: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Bulk assign cases
+async function handleBulkAssign(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { caseIds, assignToUserId } = await request.json();
+
+    if (!caseIds || !Array.isArray(caseIds) || caseIds.length === 0) {
+      return Response.json({ error: 'Case IDs are required' }, { status: 400, headers: corsHeaders });
+    }
+
+    if (caseIds.length > 100) {
+      return Response.json({ error: 'Maximum 100 cases per bulk operation' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Get assignee info
+    let assigneeName = null;
+    if (assignToUserId) {
+      const assignee = await env.ANALYTICS_DB.prepare(`
+        SELECT name FROM admin_users WHERE id = ? AND is_active = 1
+      `).bind(assignToUserId).first();
+      if (!assignee) {
+        return Response.json({ error: 'Assignee not found or inactive' }, { status: 400, headers: corsHeaders });
+      }
+      assigneeName = assignee.name;
+    }
+
+    const placeholders = caseIds.map(() => '?').join(',');
+
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE cases SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP WHERE case_id IN (${placeholders})
+    `).bind(assigneeName, ...caseIds).run();
+
+    // Update assignment queue load
+    if (assignToUserId) {
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE assignment_queue SET current_load = current_load + ?, last_assigned_at = CURRENT_TIMESTAMP WHERE user_id = ?
+      `).bind(caseIds.length, assignToUserId).run();
+    }
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'bulk_assignment', 'cases', 'case', null,
+      { caseIds, assignedTo: assigneeName, count: caseIds.length }, null, assigneeName, request);
+
+    return Response.json({
+      success: true,
+      message: assigneeName ? `${caseIds.length} case(s) assigned to ${assigneeName}` : `${caseIds.length} case(s) unassigned`,
+      updatedCount: caseIds.length
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Bulk assign error:', e);
+    return Response.json({ error: 'Failed to assign cases: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Bulk add comment
+async function handleBulkAddComment(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { caseIds, comment } = await request.json();
+
+    if (!caseIds || !Array.isArray(caseIds) || caseIds.length === 0) {
+      return Response.json({ error: 'Case IDs are required' }, { status: 400, headers: corsHeaders });
+    }
+
+    if (!comment || comment.trim().length === 0) {
+      return Response.json({ error: 'Comment is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    if (caseIds.length > 50) {
+      return Response.json({ error: 'Maximum 50 cases per bulk comment operation' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Insert comments for each case
+    for (const caseId of caseIds) {
+      await env.ANALYTICS_DB.prepare(`
+        INSERT INTO case_comments (case_id, author, author_email, comment)
+        VALUES (?, ?, ?, ?)
+      `).bind(caseId, auth.user.name, auth.user.username, comment.trim()).run();
+    }
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'bulk_comment', 'cases', 'case', null,
+      { caseIds, commentPreview: comment.substring(0, 50), count: caseIds.length }, null, null, request);
+
+    return Response.json({
+      success: true,
+      message: `Comment added to ${caseIds.length} case(s)`,
+      updatedCount: caseIds.length
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Bulk add comment error:', e);
+    return Response.json({ error: 'Failed to add comments: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Export cases to CSV
+async function handleExportCases(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { caseIds } = await request.json();
+
+    let query = `SELECT * FROM cases`;
+    const params = [];
+
+    if (caseIds && Array.isArray(caseIds) && caseIds.length > 0) {
+      const placeholders = caseIds.map(() => '?').join(',');
+      query += ` WHERE case_id IN (${placeholders})`;
+      params.push(...caseIds);
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT 1000`;
+
+    const cases = await env.ANALYTICS_DB.prepare(query).bind(...params).all();
+
+    // Convert to CSV
+    const headers = ['case_id', 'case_type', 'resolution', 'status', 'customer_email', 'customer_name', 'order_number', 'refund_amount', 'assigned_to', 'created_at', 'resolved_at'];
+    const csvRows = [headers.join(',')];
+
+    for (const c of (cases.results || [])) {
+      const row = headers.map(h => {
+        const val = c[h] || '';
+        // Escape commas and quotes
+        if (String(val).includes(',') || String(val).includes('"')) {
+          return `"${String(val).replace(/"/g, '""')}"`;
+        }
+        return val;
+      });
+      csvRows.push(row.join(','));
+    }
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'export_cases', 'cases', 'case', null,
+      { count: cases.results?.length || 0, filtered: !!caseIds }, null, null, request);
+
+    return new Response(csvRows.join('\n'), {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="cases-export-${new Date().toISOString().split('T')[0]}.csv"`
+      }
+    });
+  } catch (e) {
+    console.error('Export cases error:', e);
+    return Response.json({ error: 'Failed to export cases: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// ASSIGNMENT SYSTEM (Admin Only)
+// ============================================
+
+// Get assignment queue
+async function handleGetAssignmentQueue(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const queue = await env.ANALYTICS_DB.prepare(`
+      SELECT aq.*, au.name as user_name, au.username, au.is_active as user_active
+      FROM assignment_queue aq
+      JOIN admin_users au ON aq.user_id = au.id
+      ORDER BY aq.sort_order ASC, aq.created_at ASC
+    `).all();
+
+    return Response.json({ success: true, queue: queue.results || [] }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get assignment queue error:', e);
+    return Response.json({ error: 'Failed to get assignment queue' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Update assignment queue
+async function handleUpdateAssignmentQueue(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { userId, caseType, isActive, maxLoad, sortOrder } = await request.json();
+
+    if (!userId) {
+      return Response.json({ error: 'User ID is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Check if entry exists
+    const existing = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM assignment_queue WHERE user_id = ? AND (case_type = ? OR (case_type IS NULL AND ? IS NULL))
+    `).bind(userId, caseType, caseType).first();
+
+    if (existing) {
+      // Update existing
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE assignment_queue SET is_active = ?, max_load = ?, sort_order = ? WHERE id = ?
+      `).bind(isActive ? 1 : 0, maxLoad || 10, sortOrder || 0, existing.id).run();
+    } else {
+      // Insert new
+      await env.ANALYTICS_DB.prepare(`
+        INSERT INTO assignment_queue (user_id, case_type, is_active, max_load, sort_order)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(userId, caseType, isActive ? 1 : 0, maxLoad || 10, sortOrder || 0).run();
+    }
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'assignment_queue_updated', 'system', 'assignment_queue', userId,
+      { caseType, isActive, maxLoad, sortOrder }, null, null, request);
+
+    return Response.json({ success: true, message: 'Assignment queue updated' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Update assignment queue error:', e);
+    return Response.json({ error: 'Failed to update assignment queue: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Round robin assignment - get next assignee
+async function handleGetNextAssignee(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const caseType = url.searchParams.get('caseType');
+
+    // Get next available user in round robin (least recently assigned, under max load, active)
+    const nextAssignee = await env.ANALYTICS_DB.prepare(`
+      SELECT aq.*, au.name as user_name, au.username
+      FROM assignment_queue aq
+      JOIN admin_users au ON aq.user_id = au.id
+      WHERE aq.is_active = 1
+        AND au.is_active = 1
+        AND aq.current_load < aq.max_load
+        AND (aq.case_type IS NULL OR aq.case_type = ?)
+      ORDER BY aq.last_assigned_at ASC NULLS FIRST, aq.sort_order ASC
+      LIMIT 1
+    `).bind(caseType).first();
+
+    if (!nextAssignee) {
+      return Response.json({
+        success: true,
+        assignee: null,
+        message: 'No available assignees in queue'
+      }, { headers: corsHeaders });
+    }
+
+    return Response.json({
+      success: true,
+      assignee: {
+        userId: nextAssignee.user_id,
+        name: nextAssignee.user_name,
+        username: nextAssignee.username,
+        currentLoad: nextAssignee.current_load,
+        maxLoad: nextAssignee.max_load
+      }
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get next assignee error:', e);
+    return Response.json({ error: 'Failed to get next assignee' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Auto-assign case via round robin
+async function handleAutoAssign(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { caseId, caseType } = await request.json();
+
+    if (!caseId) {
+      return Response.json({ error: 'Case ID is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Get next available user
+    const nextAssignee = await env.ANALYTICS_DB.prepare(`
+      SELECT aq.*, au.name as user_name
+      FROM assignment_queue aq
+      JOIN admin_users au ON aq.user_id = au.id
+      WHERE aq.is_active = 1
+        AND au.is_active = 1
+        AND aq.current_load < aq.max_load
+        AND (aq.case_type IS NULL OR aq.case_type = ?)
+      ORDER BY aq.last_assigned_at ASC NULLS FIRST, aq.sort_order ASC
+      LIMIT 1
+    `).bind(caseType).first();
+
+    if (!nextAssignee) {
+      return Response.json({ error: 'No available assignees in queue' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Assign case
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE cases SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP WHERE case_id = ?
+    `).bind(nextAssignee.user_name, caseId).run();
+
+    // Update queue
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE assignment_queue SET current_load = current_load + 1, last_assigned_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).bind(nextAssignee.id).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'auto_assignment', 'cases', 'case', caseId,
+      { assignedTo: nextAssignee.user_name, method: 'round_robin' }, null, nextAssignee.user_name, request);
+
+    return Response.json({
+      success: true,
+      message: `Case assigned to ${nextAssignee.user_name}`,
+      assignee: nextAssignee.user_name
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Auto assign error:', e);
+    return Response.json({ error: 'Failed to auto-assign case: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Recalculate assignment loads (for maintenance)
+async function handleRecalculateLoads(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    // Get all users in assignment queue
+    const queueUsers = await env.ANALYTICS_DB.prepare(`
+      SELECT aq.id, aq.user_id, au.name FROM assignment_queue aq JOIN admin_users au ON aq.user_id = au.id
+    `).all();
+
+    for (const qu of (queueUsers.results || [])) {
+      // Count open cases assigned to this user
+      const openCases = await env.ANALYTICS_DB.prepare(`
+        SELECT COUNT(*) as count FROM cases WHERE assigned_to = ? AND status IN ('pending', 'in_progress')
+      `).bind(qu.name).first();
+
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE assignment_queue SET current_load = ? WHERE id = ?
+      `).bind(openCases?.count || 0, qu.id).run();
+    }
+
+    return Response.json({ success: true, message: 'Assignment loads recalculated' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Recalculate loads error:', e);
+    return Response.json({ error: 'Failed to recalculate loads' }, { status: 500, headers: corsHeaders });
   }
 }
 
