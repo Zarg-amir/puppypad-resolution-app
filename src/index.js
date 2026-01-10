@@ -8823,13 +8823,14 @@ function getResolutionHubHTML() {
       }
 
       // SUBSCRIPTION CASES - use resolution to determine display, not actionType
+      // NOTE: These are INSTRUCTIONS for the team - actions that need to be performed
       else if (c.case_type === 'subscription') {
         // Determine the actual outcome based on resolution
         const resolution = c.resolution || '';
 
         // PAUSE SUBSCRIPTION
         if (resolution === 'subscription_paused') {
-          bullets.push('Customer <strong>paused</strong> their subscription.');
+          bullets.push('<strong>ACTION:</strong> Pause subscription');
 
           if (extra.subscriptionProductName) {
             bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
@@ -8838,17 +8839,21 @@ function getResolutionHubHTML() {
             bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
           }
           if (extra.pauseDuration) {
-            bullets.push('Pause duration: <strong>' + extra.pauseDuration + ' days</strong>');
+            bullets.push('Pause for: <strong>' + extra.pauseDuration + ' days</strong>');
           }
           if (extra.pauseResumeDate) {
             const resumeDate = new Date(extra.pauseResumeDate);
-            bullets.push('Resume date: <strong>' + resumeDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) + '</strong>');
+            bullets.push('Set resume date to: <strong>' + resumeDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) + '</strong>');
           }
         }
 
-        // DISCOUNT APPLIED (customer retained with discount)
+        // DISCOUNT APPLIED (customer accepted discount offer)
         else if (resolution === 'discount_applied') {
-          bullets.push('Customer <strong>retained</strong> with discount offer.');
+          if (extra.discountPercent) {
+            bullets.push('<strong>ACTION:</strong> Apply <strong>' + extra.discountPercent + '% discount</strong> to all future shipments');
+          } else {
+            bullets.push('<strong>ACTION:</strong> Apply discount to future shipments');
+          }
 
           if (extra.subscriptionProductName) {
             bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
@@ -8856,9 +8861,7 @@ function getResolutionHubHTML() {
           if (extra.purchaseId) {
             bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
           }
-          if (extra.discountPercent) {
-            bullets.push('Discount applied: <strong>' + extra.discountPercent + '% off</strong> future shipments');
-          }
+          bullets.push('Customer accepted discount offer instead of cancelling');
           if (extra.cancelReason) {
             const cancelReasons = {
               'expensive': 'Too expensive',
@@ -8873,7 +8876,7 @@ function getResolutionHubHTML() {
 
         // FULL CANCELLATION
         else if (resolution === 'subscription_cancelled') {
-          bullets.push('Customer <strong>cancelled</strong> their subscription.');
+          bullets.push('<strong>ACTION:</strong> Cancel subscription and process refund');
 
           if (extra.subscriptionProductName) {
             bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
@@ -8894,22 +8897,23 @@ function getResolutionHubHTML() {
           if (extra.keepProduct === true) {
             bullets.push('Return required: <strong>No</strong> — customer keeps product');
           } else if (extra.keepProduct === false) {
-            bullets.push('Return required: <strong>Yes</strong> — customer must return product');
+            bullets.push('Return required: <strong>Yes</strong> — wait for return before processing refund');
           }
         }
 
         // SCHEDULE CHANGED
         else if (resolution === 'schedule_changed') {
-          bullets.push('Customer <strong>changed delivery schedule</strong>.');
+          if (extra.newFrequency) {
+            bullets.push('<strong>ACTION:</strong> Change delivery schedule to every <strong>' + extra.newFrequency + ' days</strong>');
+          } else {
+            bullets.push('<strong>ACTION:</strong> Change delivery schedule');
+          }
 
           if (extra.subscriptionProductName) {
             bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
           }
           if (extra.purchaseId) {
             bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
-          }
-          if (extra.newFrequency) {
-            bullets.push('New schedule: Every <strong>' + extra.newFrequency + ' days</strong>');
           }
           if (extra.previousFrequency) {
             bullets.push('Previous schedule: Every <strong>' + extra.previousFrequency + ' days</strong>');
@@ -8918,7 +8922,7 @@ function getResolutionHubHTML() {
 
         // ADDRESS CHANGED
         else if (resolution === 'address_changed') {
-          bullets.push('Customer <strong>updated shipping address</strong>.');
+          bullets.push('<strong>ACTION:</strong> Update shipping address');
 
           if (extra.subscriptionProductName) {
             bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
@@ -8937,12 +8941,13 @@ function getResolutionHubHTML() {
         else {
           if (extra.actionType) {
             const actionMap = {
-              'pause': 'Customer paused their subscription.',
-              'cancel': 'Customer cancelled their subscription.',
-              'changeSchedule': 'Customer changed delivery schedule.',
-              'changeAddress': 'Customer updated shipping address.',
+              'pause': 'ACTION: Pause subscription',
+              'cancel': 'ACTION: Cancel subscription',
+              'changeSchedule': 'ACTION: Change delivery schedule',
+              'changeAddress': 'ACTION: Update shipping address',
+              'discount_accepted': 'ACTION: Apply discount to future shipments',
             };
-            bullets.push(actionMap[extra.actionType] || 'Subscription action: ' + extra.actionType);
+            bullets.push('<strong>' + (actionMap[extra.actionType] || 'Subscription action: ' + extra.actionType) + '</strong>');
           }
 
           if (extra.subscriptionProductName) {
