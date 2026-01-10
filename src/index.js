@@ -2460,6 +2460,9 @@ async function handleCreateCase(request, env, corsHeaders) {
     pauseResumeDate: caseData.pauseResumeDate,
     cancelReason: caseData.cancelReason,
     discountPercent: caseData.discountPercent,
+    newFrequency: caseData.newFrequency, // For schedule changes
+    previousFrequency: caseData.previousFrequency, // For schedule changes
+    newAddress: caseData.newAddress, // For address changes
     // Other fields for extra_data
     keepProduct: caseData.keepProduct,
     issueType: caseData.issueType,
@@ -4839,6 +4842,9 @@ async function logCaseToAnalytics(env, caseData) {
     pauseResumeDate: caseData.pauseResumeDate || null,
     cancelReason: caseData.cancelReason || null,
     discountPercent: caseData.discountPercent || null,
+    newFrequency: caseData.newFrequency || null, // For schedule changes
+    previousFrequency: caseData.previousFrequency || null, // For schedule changes
+    newAddress: caseData.newAddress || null, // For address changes
     // Other fields
     intentDetails: caseData.intentDetails || null,
     keepProduct: caseData.keepProduct,
@@ -8816,47 +8822,138 @@ function getResolutionHubHTML() {
         }
       }
 
-      // SUBSCRIPTION CASES
+      // SUBSCRIPTION CASES - use resolution to determine display
       else if (c.case_type === 'subscription') {
-        const actionMap = {
-          'pause': 'Customer wants to <strong>pause</strong> their subscription.',
-          'cancel': 'Customer wants to <strong>cancel</strong> their subscription.',
-          'changeSchedule': 'Customer wants to <strong>change delivery schedule</strong>.',
-          'changeAddress': 'Customer wants to <strong>update shipping address</strong>.',
-        };
-        if (extra.actionType && actionMap[extra.actionType]) {
-          bullets.push(actionMap[extra.actionType]);
+        const resolution = c.resolution || '';
+
+        // PAUSE SUBSCRIPTION
+        if (resolution === 'subscription_paused') {
+          if (extra.pauseDuration) {
+            bullets.push('<strong>Pause subscription for ' + extra.pauseDuration + ' days</strong>');
+          } else {
+            bullets.push('<strong>Pause subscription</strong>');
+          }
+
+          if (extra.subscriptionProductName) {
+            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+          }
+          if (extra.purchaseId) {
+            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          }
+          if (extra.pauseResumeDate) {
+            const resumeDate = new Date(extra.pauseResumeDate);
+            bullets.push('Resume on: <strong>' + resumeDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) + '</strong>');
+          }
         }
 
-        // Subscription product name
-        if (extra.subscriptionProductName) {
-          bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+        // DISCOUNT APPLIED
+        else if (resolution === 'discount_applied') {
+          if (extra.discountPercent) {
+            bullets.push('<strong>Apply ' + extra.discountPercent + '% discount</strong> to all future shipments');
+          } else {
+            bullets.push('<strong>Apply discount</strong> to future shipments');
+          }
+
+          if (extra.subscriptionProductName) {
+            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+          }
+          if (extra.purchaseId) {
+            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          }
+          if (extra.cancelReason) {
+            const cancelReasons = {
+              'expensive': 'Too expensive',
+              'too_many': 'Has too many',
+              'not_working': 'Not working as described',
+              'moving': 'Moving',
+              'other': 'Other reason'
+            };
+            bullets.push('Customer wanted to cancel because: <strong>' + (cancelReasons[extra.cancelReason] || extra.cancelReason) + '</strong>');
+          }
         }
 
-        // Subscription ID (Purchase ID)
-        if (extra.purchaseId) {
-          bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+        // FULL CANCELLATION
+        else if (resolution === 'subscription_cancelled') {
+          bullets.push('<strong>Cancel subscription</strong> and process refund');
+
+          if (extra.subscriptionProductName) {
+            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+          }
+          if (extra.purchaseId) {
+            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          }
+          if (extra.cancelReason) {
+            const cancelReasons = {
+              'expensive': 'Too expensive',
+              'too_many': 'Has too many',
+              'not_working': 'Not working as described',
+              'moving': 'Moving',
+              'other': 'Other reason'
+            };
+            bullets.push('Cancel reason: <strong>' + (cancelReasons[extra.cancelReason] || extra.cancelReason) + '</strong>');
+          }
+          if (extra.keepProduct === true) {
+            bullets.push('Customer keeps product — no return needed');
+          } else if (extra.keepProduct === false) {
+            bullets.push('Wait for return before processing refund');
+          }
         }
 
-        // Pause duration and resume date
-        if (extra.pauseDuration) {
-          bullets.push('Pause duration: <strong>' + extra.pauseDuration + ' days</strong>');
-        }
-        if (extra.pauseResumeDate) {
-          const resumeDate = new Date(extra.pauseResumeDate);
-          bullets.push('Resume date: <strong>' + resumeDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) + '</strong>');
+        // SCHEDULE CHANGED
+        else if (resolution === 'schedule_changed') {
+          if (extra.newFrequency) {
+            bullets.push('<strong>Change delivery schedule</strong> to every <strong>' + extra.newFrequency + ' days</strong>');
+          } else {
+            bullets.push('<strong>Change delivery schedule</strong>');
+          }
+
+          if (extra.subscriptionProductName) {
+            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+          }
+          if (extra.purchaseId) {
+            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          }
+          if (extra.previousFrequency) {
+            bullets.push('Previous: Every ' + extra.previousFrequency + ' days');
+          }
         }
 
-        // Cancel reason
-        if (extra.cancelReason) {
-          const cancelReasons = {
-            'expensive': 'Too expensive',
-            'too_many': 'Has too many',
-            'not_working': 'Not working as described',
-            'moving': 'Moving',
-            'other': 'Other reason'
-          };
-          bullets.push('Cancel reason: <strong>' + (cancelReasons[extra.cancelReason] || extra.cancelReason) + '</strong>');
+        // ADDRESS CHANGED
+        else if (resolution === 'address_changed') {
+          bullets.push('<strong>Update shipping address</strong> for subscription');
+
+          if (extra.subscriptionProductName) {
+            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+          }
+          if (extra.purchaseId) {
+            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          }
+          if (extra.newAddress) {
+            const addr = extra.newAddress;
+            const addrStr = [addr.address1, addr.address2, addr.city, addr.state, addr.zip, addr.country].filter(Boolean).join(', ');
+            bullets.push('New address: <strong>' + addrStr + '</strong>');
+          }
+        }
+
+        // FALLBACK
+        else {
+          if (extra.actionType) {
+            const actionMap = {
+              'pause': 'Pause subscription',
+              'cancel': 'Cancel subscription',
+              'changeSchedule': 'Change delivery schedule',
+              'changeAddress': 'Update shipping address',
+              'discount_accepted': 'Apply discount to future shipments',
+            };
+            bullets.push('<strong>' + (actionMap[extra.actionType] || extra.actionType) + '</strong>');
+          }
+
+          if (extra.subscriptionProductName) {
+            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+          }
+          if (extra.purchaseId) {
+            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          }
         }
 
         // CheckoutChamp Order ID
