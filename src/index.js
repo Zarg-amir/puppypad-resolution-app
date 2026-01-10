@@ -994,6 +994,146 @@ export default {
         return await handleAdminSetup(request, env, corsHeaders);
       }
 
+      // ============================================
+      // USER MANAGEMENT ENDPOINTS
+      // ============================================
+
+      // List users (Admin only)
+      if (pathname === '/hub/api/users' && request.method === 'GET') {
+        return await handleListUsers(request, env, corsHeaders);
+      }
+
+      // Create user (Admin only)
+      if (pathname === '/hub/api/users' && request.method === 'POST') {
+        return await handleCreateUser(request, env, corsHeaders);
+      }
+
+      // Update user (Admin only)
+      if (pathname === '/hub/api/users' && request.method === 'PUT') {
+        return await handleUpdateUser(request, env, corsHeaders);
+      }
+
+      // Delete user (Admin only)
+      if (pathname.match(/^\/hub\/api\/users\/\d+$/) && request.method === 'DELETE') {
+        return await handleDeleteUser(request, env, corsHeaders);
+      }
+
+      // Get current user profile
+      if (pathname === '/hub/api/profile' && request.method === 'GET') {
+        return await handleGetProfile(request, env, corsHeaders);
+      }
+
+      // Change password
+      if (pathname === '/hub/api/change-password' && request.method === 'POST') {
+        return await handleChangePassword(request, env, corsHeaders);
+      }
+
+      // Audit log (Admin only)
+      if (pathname === '/hub/api/audit-log' && request.method === 'GET') {
+        return await handleGetAuditLog(request, env, corsHeaders);
+      }
+
+      // ============================================
+      // BULK ACTIONS ENDPOINTS
+      // ============================================
+
+      // Bulk update status
+      if (pathname === '/hub/api/bulk/status' && request.method === 'POST') {
+        return await handleBulkUpdateStatus(request, env, corsHeaders);
+      }
+
+      // Bulk assign (Admin only)
+      if (pathname === '/hub/api/bulk/assign' && request.method === 'POST') {
+        return await handleBulkAssign(request, env, corsHeaders);
+      }
+
+      // Bulk add comment
+      if (pathname === '/hub/api/bulk/comment' && request.method === 'POST') {
+        return await handleBulkAddComment(request, env, corsHeaders);
+      }
+
+      // Export cases to CSV
+      if (pathname === '/hub/api/bulk/export' && request.method === 'POST') {
+        return await handleExportCases(request, env, corsHeaders);
+      }
+
+      // ============================================
+      // ASSIGNMENT SYSTEM ENDPOINTS (Admin Only)
+      // ============================================
+
+      // Get assignment queue
+      if (pathname === '/hub/api/assignment-queue' && request.method === 'GET') {
+        return await handleGetAssignmentQueue(request, env, corsHeaders);
+      }
+
+      // Update assignment queue
+      if (pathname === '/hub/api/assignment-queue' && request.method === 'POST') {
+        return await handleUpdateAssignmentQueue(request, env, corsHeaders);
+      }
+
+      // Get next assignee (round robin)
+      if (pathname === '/hub/api/assignment/next' && request.method === 'GET') {
+        return await handleGetNextAssignee(request, env, corsHeaders);
+      }
+
+      // Auto-assign case (round robin)
+      if (pathname === '/hub/api/assignment/auto' && request.method === 'POST') {
+        return await handleAutoAssign(request, env, corsHeaders);
+      }
+
+      // Recalculate assignment loads
+      if (pathname === '/hub/api/assignment/recalculate' && request.method === 'POST') {
+        return await handleRecalculateLoads(request, env, corsHeaders);
+      }
+
+      // ============================================
+      // SAVED VIEWS ENDPOINTS
+      // ============================================
+
+      // Get saved views
+      if (pathname === '/hub/api/views' && request.method === 'GET') {
+        return await handleGetSavedViews(request, env, corsHeaders);
+      }
+
+      // Create saved view
+      if (pathname === '/hub/api/views' && request.method === 'POST') {
+        return await handleCreateSavedView(request, env, corsHeaders);
+      }
+
+      // Update saved view
+      if (pathname === '/hub/api/views' && request.method === 'PUT') {
+        return await handleUpdateSavedView(request, env, corsHeaders);
+      }
+
+      // Delete saved view
+      if (pathname.match(/^\/hub\/api\/views\/\d+$/) && request.method === 'DELETE') {
+        return await handleDeleteSavedView(request, env, corsHeaders);
+      }
+
+      // ============================================
+      // COMPLETION CHECKLIST ENDPOINTS
+      // ============================================
+
+      // Get checklist items for a case type
+      if (pathname === '/hub/api/checklist-items' && request.method === 'GET') {
+        return await handleGetChecklistItems(request, env, corsHeaders);
+      }
+
+      // Get checklist status for a specific case
+      if (pathname.match(/^\/hub\/api\/case\/[^\/]+\/checklist$/) && request.method === 'GET') {
+        return await handleGetCaseChecklistStatus(request, env, corsHeaders);
+      }
+
+      // Mark checklist item complete/incomplete
+      if (pathname === '/hub/api/checklist/complete' && request.method === 'POST') {
+        return await handleCompleteChecklistItem(request, env, corsHeaders);
+      }
+
+      // Admin: Manage checklist templates (GET/POST/PUT/DELETE)
+      if (pathname === '/hub/api/admin/checklists' || pathname.match(/^\/hub\/api\/admin\/checklists\/\d+$/)) {
+        return await handleManageChecklists(request, env, corsHeaders);
+      }
+
       // Dashboard data (protected)
       if (pathname === '/admin/api/dashboard' && request.method === 'GET') {
         return await handleDashboardData(request, env, corsHeaders);
@@ -1027,6 +1167,16 @@ export default {
       // Serve Resolution Hub
       if (pathname === '/hub' || pathname === '/hub/') {
         return await serveResolutionHub(env, corsHeaders);
+      }
+
+      // Serve Hub JavaScript
+      if (pathname === '/hub/hub-app.js') {
+        return await serveHubAsset('js', corsHeaders);
+      }
+
+      // Serve Hub CSS
+      if (pathname === '/hub/hub-styles.css') {
+        return await serveHubAsset('css', corsHeaders);
       }
 
       // Hub API - Stats
@@ -5031,6 +5181,11 @@ async function handleAdminLogin(request, env, corsHeaders) {
       return Response.json({ success: false, error: 'Invalid credentials' }, { status: 401, headers: corsHeaders });
     }
 
+    // Check if account is active
+    if (user.is_active === 0) {
+      return Response.json({ success: false, error: 'Account is disabled. Contact an administrator.' }, { status: 403, headers: corsHeaders });
+    }
+
     // Update last login
     await env.ANALYTICS_DB.prepare(`
       UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = ?
@@ -5041,7 +5196,13 @@ async function handleAdminLogin(request, env, corsHeaders) {
     return Response.json({
       success: true,
       token,
-      user: { username: user.username, name: user.name, role: user.role }
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+        mustChangePassword: user.must_change_password === 1
+      }
     }, { headers: corsHeaders });
   } catch (e) {
     console.error('Login error:', e);
@@ -5078,6 +5239,1179 @@ async function handleAdminSetup(request, env, corsHeaders) {
   } catch (e) {
     console.error('Admin setup error:', e);
     return Response.json({ error: 'Setup failed: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// USER MANAGEMENT (Admin Only)
+// ============================================
+
+// Helper: Verify token and get user with role
+async function verifyAuthAndGetUser(request, env) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { error: 'Unauthorized', status: 401 };
+  }
+
+  const token = authHeader.substring(7);
+  const payload = await verifyToken(token);
+  if (!payload) {
+    return { error: 'Invalid or expired token', status: 401 };
+  }
+
+  // Get user details from database
+  const user = await env.ANALYTICS_DB.prepare(`
+    SELECT id, username, name, role, is_active FROM admin_users WHERE username = ?
+  `).bind(payload.username).first();
+
+  if (!user) {
+    return { error: 'User not found', status: 401 };
+  }
+
+  if (user.is_active === 0) {
+    return { error: 'Account is disabled', status: 403 };
+  }
+
+  return { user };
+}
+
+// Helper: Verify admin role
+async function verifyAdmin(request, env) {
+  const result = await verifyAuthAndGetUser(request, env);
+  if (result.error) return result;
+
+  if (result.user.role !== 'admin') {
+    return { error: 'Admin access required', status: 403 };
+  }
+
+  return result;
+}
+
+// Helper: Log audit event
+async function logAudit(env, userId, userEmail, userName, actionType, actionCategory, resourceType, resourceId, details, oldValue, newValue, request) {
+  try {
+    const ip = request?.headers?.get('CF-Connecting-IP') || request?.headers?.get('X-Forwarded-For') || 'unknown';
+    const ua = request?.headers?.get('User-Agent') || 'unknown';
+
+    await env.ANALYTICS_DB.prepare(`
+      INSERT INTO audit_log (user_id, user_email, user_name, action_type, action_category, resource_type, resource_id, details, old_value, new_value, ip_address, user_agent)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      userId, userEmail, userName, actionType, actionCategory, resourceType, resourceId,
+      details ? JSON.stringify(details) : null,
+      oldValue, newValue, ip, ua
+    ).run();
+  } catch (e) {
+    console.error('Audit log error:', e);
+  }
+}
+
+// List all users (Admin only)
+async function handleListUsers(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const users = await env.ANALYTICS_DB.prepare(`
+      SELECT id, username, name, role, is_active, must_change_password, created_at, last_login, last_activity_at,
+             (SELECT name FROM admin_users WHERE id = admin_users.created_by) as created_by_name
+      FROM admin_users
+      ORDER BY created_at DESC
+    `).all();
+
+    return Response.json({ success: true, users: users.results || [] }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('List users error:', e);
+    return Response.json({ error: 'Failed to list users' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Create new user (Admin only)
+async function handleCreateUser(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { username, name, role, password } = await request.json();
+
+    if (!username || !name || !password) {
+      return Response.json({ error: 'Username, name, and password are required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Validate role
+    const validRoles = ['admin', 'user'];
+    if (!validRoles.includes(role)) {
+      return Response.json({ error: 'Invalid role. Must be admin or user' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Check if username exists
+    const existing = await env.ANALYTICS_DB.prepare(`
+      SELECT id FROM admin_users WHERE username = ?
+    `).bind(username).first();
+
+    if (existing) {
+      return Response.json({ error: 'Username already exists' }, { status: 400, headers: corsHeaders });
+    }
+
+    const passwordHash = await hashPassword(password);
+
+    // Create user
+    await env.ANALYTICS_DB.prepare(`
+      INSERT INTO admin_users (username, password_hash, name, role, is_active, must_change_password, created_by)
+      VALUES (?, ?, ?, ?, 1, 1, ?)
+    `).bind(username, passwordHash, name, role, auth.user.id).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'user_created', 'users', 'user', username, { name, role }, null, username, request);
+
+    return Response.json({
+      success: true,
+      message: `User '${username}' created successfully. They will be prompted to change their password on first login.`
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Create user error:', e);
+    return Response.json({ error: 'Failed to create user: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Update user (Admin only)
+async function handleUpdateUser(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { userId, name, role, is_active, resetPassword } = await request.json();
+
+    if (!userId) {
+      return Response.json({ error: 'User ID is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Get current user data
+    const currentUser = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM admin_users WHERE id = ?
+    `).bind(userId).first();
+
+    if (!currentUser) {
+      return Response.json({ error: 'User not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    // Prevent deactivating yourself
+    if (userId === auth.user.id && is_active === false) {
+      return Response.json({ error: 'Cannot deactivate your own account' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Build update query
+    const updates = [];
+    const values = [];
+    const changes = {};
+
+    if (name !== undefined && name !== currentUser.name) {
+      updates.push('name = ?');
+      values.push(name);
+      changes.name = { old: currentUser.name, new: name };
+    }
+
+    if (role !== undefined && role !== currentUser.role) {
+      const validRoles = ['admin', 'user'];
+      if (!validRoles.includes(role)) {
+        return Response.json({ error: 'Invalid role' }, { status: 400, headers: corsHeaders });
+      }
+      updates.push('role = ?');
+      values.push(role);
+      changes.role = { old: currentUser.role, new: role };
+    }
+
+    if (is_active !== undefined && is_active !== currentUser.is_active) {
+      updates.push('is_active = ?');
+      values.push(is_active ? 1 : 0);
+      changes.is_active = { old: currentUser.is_active, new: is_active };
+    }
+
+    if (resetPassword) {
+      // Generate a temporary password
+      const tempPassword = 'temp' + Math.random().toString(36).substring(2, 10);
+      const passwordHash = await hashPassword(tempPassword);
+      updates.push('password_hash = ?');
+      updates.push('must_change_password = 1');
+      values.push(passwordHash);
+      changes.password = { reset: true, tempPassword };
+    }
+
+    if (updates.length === 0) {
+      return Response.json({ error: 'No changes provided' }, { status: 400, headers: corsHeaders });
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(userId);
+
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE admin_users SET ${updates.join(', ')} WHERE id = ?
+    `).bind(...values).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'user_updated', 'users', 'user', currentUser.username, changes, JSON.stringify(currentUser), null, request);
+
+    const response = { success: true, message: 'User updated successfully' };
+    if (resetPassword && changes.password) {
+      response.tempPassword = changes.password.tempPassword;
+      response.message += `. Temporary password: ${changes.password.tempPassword}`;
+    }
+
+    return Response.json(response, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Update user error:', e);
+    return Response.json({ error: 'Failed to update user: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Delete user (Admin only)
+async function handleDeleteUser(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const userId = url.pathname.split('/').pop();
+
+    if (!userId) {
+      return Response.json({ error: 'User ID is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Prevent deleting yourself
+    if (parseInt(userId) === auth.user.id) {
+      return Response.json({ error: 'Cannot delete your own account' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Get user for audit
+    const user = await env.ANALYTICS_DB.prepare(`
+      SELECT username, name FROM admin_users WHERE id = ?
+    `).bind(userId).first();
+
+    if (!user) {
+      return Response.json({ error: 'User not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    await env.ANALYTICS_DB.prepare(`
+      DELETE FROM admin_users WHERE id = ?
+    `).bind(userId).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'user_deleted', 'users', 'user', user.username, { deletedUser: user.name }, user.username, null, request);
+
+    return Response.json({ success: true, message: 'User deleted successfully' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Delete user error:', e);
+    return Response.json({ error: 'Failed to delete user: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Change own password
+async function handleChangePassword(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { currentPassword, newPassword } = await request.json();
+
+    if (!newPassword || newPassword.length < 6) {
+      return Response.json({ error: 'New password must be at least 6 characters' }, { status: 400, headers: corsHeaders });
+    }
+
+    // If not must_change_password, verify current password
+    const userFull = await env.ANALYTICS_DB.prepare(`
+      SELECT password_hash, must_change_password FROM admin_users WHERE id = ?
+    `).bind(auth.user.id).first();
+
+    if (!userFull.must_change_password) {
+      if (!currentPassword) {
+        return Response.json({ error: 'Current password is required' }, { status: 400, headers: corsHeaders });
+      }
+      const currentHash = await hashPassword(currentPassword);
+      if (currentHash !== userFull.password_hash) {
+        return Response.json({ error: 'Current password is incorrect' }, { status: 400, headers: corsHeaders });
+      }
+    }
+
+    const newPasswordHash = await hashPassword(newPassword);
+
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE admin_users SET password_hash = ?, must_change_password = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).bind(newPasswordHash, auth.user.id).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'password_changed', 'auth', 'user', auth.user.username, null, null, null, request);
+
+    return Response.json({ success: true, message: 'Password changed successfully' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Change password error:', e);
+    return Response.json({ error: 'Failed to change password: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Get current user profile
+async function handleGetProfile(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const user = await env.ANALYTICS_DB.prepare(`
+      SELECT id, username, name, role, is_active, must_change_password, created_at, last_login
+      FROM admin_users WHERE id = ?
+    `).bind(auth.user.id).first();
+
+    return Response.json({ success: true, user }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get profile error:', e);
+    return Response.json({ error: 'Failed to get profile' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// AUDIT LOG (Admin Only)
+// ============================================
+
+async function handleGetAuditLog(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page')) || 1;
+    const limit = parseInt(url.searchParams.get('limit')) || 50;
+    const category = url.searchParams.get('category');
+    const userId = url.searchParams.get('userId');
+    const offset = (page - 1) * limit;
+
+    let query = `SELECT * FROM audit_log WHERE 1=1`;
+    const params = [];
+
+    if (category) {
+      query += ` AND action_category = ?`;
+      params.push(category);
+    }
+
+    if (userId) {
+      query += ` AND user_id = ?`;
+      params.push(userId);
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const logs = await env.ANALYTICS_DB.prepare(query).bind(...params).all();
+
+    // Get total count
+    let countQuery = `SELECT COUNT(*) as count FROM audit_log WHERE 1=1`;
+    const countParams = [];
+    if (category) {
+      countQuery += ` AND action_category = ?`;
+      countParams.push(category);
+    }
+    if (userId) {
+      countQuery += ` AND user_id = ?`;
+      countParams.push(userId);
+    }
+    const total = await env.ANALYTICS_DB.prepare(countQuery).bind(...countParams).first();
+
+    return Response.json({
+      success: true,
+      logs: logs.results || [],
+      pagination: {
+        page,
+        limit,
+        total: total?.count || 0,
+        totalPages: Math.ceil((total?.count || 0) / limit)
+      }
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get audit log error:', e);
+    return Response.json({ error: 'Failed to get audit log' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// BULK ACTIONS
+// ============================================
+
+// Bulk update case status
+async function handleBulkUpdateStatus(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { caseIds, status } = await request.json();
+
+    if (!caseIds || !Array.isArray(caseIds) || caseIds.length === 0) {
+      return Response.json({ error: 'Case IDs are required' }, { status: 400, headers: corsHeaders });
+    }
+
+    const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return Response.json({ error: 'Invalid status' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Limit bulk operations
+    if (caseIds.length > 100) {
+      return Response.json({ error: 'Maximum 100 cases per bulk operation' }, { status: 400, headers: corsHeaders });
+    }
+
+    const placeholders = caseIds.map(() => '?').join(',');
+    const timestamp = status === 'completed' ? ', resolved_at = CURRENT_TIMESTAMP' : '';
+
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE cases SET status = ?, updated_at = CURRENT_TIMESTAMP ${timestamp} WHERE case_id IN (${placeholders})
+    `).bind(status, ...caseIds).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'bulk_status_update', 'cases', 'case', null,
+      { caseIds, newStatus: status, count: caseIds.length }, null, status, request);
+
+    return Response.json({
+      success: true,
+      message: `${caseIds.length} case(s) updated to ${status}`,
+      updatedCount: caseIds.length
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Bulk update status error:', e);
+    return Response.json({ error: 'Failed to update cases: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Bulk assign cases
+async function handleBulkAssign(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { caseIds, assignToUserId } = await request.json();
+
+    if (!caseIds || !Array.isArray(caseIds) || caseIds.length === 0) {
+      return Response.json({ error: 'Case IDs are required' }, { status: 400, headers: corsHeaders });
+    }
+
+    if (caseIds.length > 100) {
+      return Response.json({ error: 'Maximum 100 cases per bulk operation' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Get assignee info
+    let assigneeName = null;
+    if (assignToUserId) {
+      const assignee = await env.ANALYTICS_DB.prepare(`
+        SELECT name FROM admin_users WHERE id = ? AND is_active = 1
+      `).bind(assignToUserId).first();
+      if (!assignee) {
+        return Response.json({ error: 'Assignee not found or inactive' }, { status: 400, headers: corsHeaders });
+      }
+      assigneeName = assignee.name;
+    }
+
+    const placeholders = caseIds.map(() => '?').join(',');
+
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE cases SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP WHERE case_id IN (${placeholders})
+    `).bind(assigneeName, ...caseIds).run();
+
+    // Update assignment queue load
+    if (assignToUserId) {
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE assignment_queue SET current_load = current_load + ?, last_assigned_at = CURRENT_TIMESTAMP WHERE user_id = ?
+      `).bind(caseIds.length, assignToUserId).run();
+    }
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'bulk_assignment', 'cases', 'case', null,
+      { caseIds, assignedTo: assigneeName, count: caseIds.length }, null, assigneeName, request);
+
+    return Response.json({
+      success: true,
+      message: assigneeName ? `${caseIds.length} case(s) assigned to ${assigneeName}` : `${caseIds.length} case(s) unassigned`,
+      updatedCount: caseIds.length
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Bulk assign error:', e);
+    return Response.json({ error: 'Failed to assign cases: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Bulk add comment
+async function handleBulkAddComment(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { caseIds, comment } = await request.json();
+
+    if (!caseIds || !Array.isArray(caseIds) || caseIds.length === 0) {
+      return Response.json({ error: 'Case IDs are required' }, { status: 400, headers: corsHeaders });
+    }
+
+    if (!comment || comment.trim().length === 0) {
+      return Response.json({ error: 'Comment is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    if (caseIds.length > 50) {
+      return Response.json({ error: 'Maximum 50 cases per bulk comment operation' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Insert comments for each case
+    for (const caseId of caseIds) {
+      await env.ANALYTICS_DB.prepare(`
+        INSERT INTO case_comments (case_id, author, author_email, comment)
+        VALUES (?, ?, ?, ?)
+      `).bind(caseId, auth.user.name, auth.user.username, comment.trim()).run();
+    }
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'bulk_comment', 'cases', 'case', null,
+      { caseIds, commentPreview: comment.substring(0, 50), count: caseIds.length }, null, null, request);
+
+    return Response.json({
+      success: true,
+      message: `Comment added to ${caseIds.length} case(s)`,
+      updatedCount: caseIds.length
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Bulk add comment error:', e);
+    return Response.json({ error: 'Failed to add comments: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Export cases to CSV
+async function handleExportCases(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { caseIds } = await request.json();
+
+    let query = `SELECT * FROM cases`;
+    const params = [];
+
+    if (caseIds && Array.isArray(caseIds) && caseIds.length > 0) {
+      const placeholders = caseIds.map(() => '?').join(',');
+      query += ` WHERE case_id IN (${placeholders})`;
+      params.push(...caseIds);
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT 1000`;
+
+    const cases = await env.ANALYTICS_DB.prepare(query).bind(...params).all();
+
+    // Convert to CSV
+    const headers = ['case_id', 'case_type', 'resolution', 'status', 'customer_email', 'customer_name', 'order_number', 'refund_amount', 'assigned_to', 'created_at', 'resolved_at'];
+    const csvRows = [headers.join(',')];
+
+    for (const c of (cases.results || [])) {
+      const row = headers.map(h => {
+        const val = c[h] || '';
+        // Escape commas and quotes
+        if (String(val).includes(',') || String(val).includes('"')) {
+          return `"${String(val).replace(/"/g, '""')}"`;
+        }
+        return val;
+      });
+      csvRows.push(row.join(','));
+    }
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'export_cases', 'cases', 'case', null,
+      { count: cases.results?.length || 0, filtered: !!caseIds }, null, null, request);
+
+    return new Response(csvRows.join('\n'), {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="cases-export-${new Date().toISOString().split('T')[0]}.csv"`
+      }
+    });
+  } catch (e) {
+    console.error('Export cases error:', e);
+    return Response.json({ error: 'Failed to export cases: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// ASSIGNMENT SYSTEM (Admin Only)
+// ============================================
+
+// Get assignment queue
+async function handleGetAssignmentQueue(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const queue = await env.ANALYTICS_DB.prepare(`
+      SELECT aq.*, au.name as user_name, au.username, au.is_active as user_active
+      FROM assignment_queue aq
+      JOIN admin_users au ON aq.user_id = au.id
+      ORDER BY aq.sort_order ASC, aq.created_at ASC
+    `).all();
+
+    return Response.json({ success: true, queue: queue.results || [] }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get assignment queue error:', e);
+    return Response.json({ error: 'Failed to get assignment queue' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Update assignment queue
+async function handleUpdateAssignmentQueue(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { userId, caseType, isActive, maxLoad, sortOrder } = await request.json();
+
+    if (!userId) {
+      return Response.json({ error: 'User ID is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Check if entry exists
+    const existing = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM assignment_queue WHERE user_id = ? AND (case_type = ? OR (case_type IS NULL AND ? IS NULL))
+    `).bind(userId, caseType, caseType).first();
+
+    if (existing) {
+      // Update existing
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE assignment_queue SET is_active = ?, max_load = ?, sort_order = ? WHERE id = ?
+      `).bind(isActive ? 1 : 0, maxLoad || 10, sortOrder || 0, existing.id).run();
+    } else {
+      // Insert new
+      await env.ANALYTICS_DB.prepare(`
+        INSERT INTO assignment_queue (user_id, case_type, is_active, max_load, sort_order)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(userId, caseType, isActive ? 1 : 0, maxLoad || 10, sortOrder || 0).run();
+    }
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'assignment_queue_updated', 'system', 'assignment_queue', userId,
+      { caseType, isActive, maxLoad, sortOrder }, null, null, request);
+
+    return Response.json({ success: true, message: 'Assignment queue updated' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Update assignment queue error:', e);
+    return Response.json({ error: 'Failed to update assignment queue: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Round robin assignment - get next assignee
+async function handleGetNextAssignee(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const caseType = url.searchParams.get('caseType');
+
+    // Get next available user in round robin (least recently assigned, under max load, active)
+    const nextAssignee = await env.ANALYTICS_DB.prepare(`
+      SELECT aq.*, au.name as user_name, au.username
+      FROM assignment_queue aq
+      JOIN admin_users au ON aq.user_id = au.id
+      WHERE aq.is_active = 1
+        AND au.is_active = 1
+        AND aq.current_load < aq.max_load
+        AND (aq.case_type IS NULL OR aq.case_type = ?)
+      ORDER BY aq.last_assigned_at ASC NULLS FIRST, aq.sort_order ASC
+      LIMIT 1
+    `).bind(caseType).first();
+
+    if (!nextAssignee) {
+      return Response.json({
+        success: true,
+        assignee: null,
+        message: 'No available assignees in queue'
+      }, { headers: corsHeaders });
+    }
+
+    return Response.json({
+      success: true,
+      assignee: {
+        userId: nextAssignee.user_id,
+        name: nextAssignee.user_name,
+        username: nextAssignee.username,
+        currentLoad: nextAssignee.current_load,
+        maxLoad: nextAssignee.max_load
+      }
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get next assignee error:', e);
+    return Response.json({ error: 'Failed to get next assignee' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Auto-assign case via round robin
+async function handleAutoAssign(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { caseId, caseType } = await request.json();
+
+    if (!caseId) {
+      return Response.json({ error: 'Case ID is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Get next available user
+    const nextAssignee = await env.ANALYTICS_DB.prepare(`
+      SELECT aq.*, au.name as user_name
+      FROM assignment_queue aq
+      JOIN admin_users au ON aq.user_id = au.id
+      WHERE aq.is_active = 1
+        AND au.is_active = 1
+        AND aq.current_load < aq.max_load
+        AND (aq.case_type IS NULL OR aq.case_type = ?)
+      ORDER BY aq.last_assigned_at ASC NULLS FIRST, aq.sort_order ASC
+      LIMIT 1
+    `).bind(caseType).first();
+
+    if (!nextAssignee) {
+      return Response.json({ error: 'No available assignees in queue' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Assign case
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE cases SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP WHERE case_id = ?
+    `).bind(nextAssignee.user_name, caseId).run();
+
+    // Update queue
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE assignment_queue SET current_load = current_load + 1, last_assigned_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).bind(nextAssignee.id).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'auto_assignment', 'cases', 'case', caseId,
+      { assignedTo: nextAssignee.user_name, method: 'round_robin' }, null, nextAssignee.user_name, request);
+
+    return Response.json({
+      success: true,
+      message: `Case assigned to ${nextAssignee.user_name}`,
+      assignee: nextAssignee.user_name
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Auto assign error:', e);
+    return Response.json({ error: 'Failed to auto-assign case: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Recalculate assignment loads (for maintenance)
+async function handleRecalculateLoads(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    // Get all users in assignment queue
+    const queueUsers = await env.ANALYTICS_DB.prepare(`
+      SELECT aq.id, aq.user_id, au.name FROM assignment_queue aq JOIN admin_users au ON aq.user_id = au.id
+    `).all();
+
+    for (const qu of (queueUsers.results || [])) {
+      // Count open cases assigned to this user
+      const openCases = await env.ANALYTICS_DB.prepare(`
+        SELECT COUNT(*) as count FROM cases WHERE assigned_to = ? AND status IN ('pending', 'in_progress')
+      `).bind(qu.name).first();
+
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE assignment_queue SET current_load = ? WHERE id = ?
+      `).bind(openCases?.count || 0, qu.id).run();
+    }
+
+    return Response.json({ success: true, message: 'Assignment loads recalculated' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Recalculate loads error:', e);
+    return Response.json({ error: 'Failed to recalculate loads' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// SAVED VIEWS
+// ============================================
+
+// Get saved views for current user
+async function handleGetSavedViews(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const views = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM saved_views WHERE user_id = ? ORDER BY sort_order ASC, created_at ASC
+    `).bind(auth.user.id).all();
+
+    return Response.json({ success: true, views: views.results || [] }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get saved views error:', e);
+    return Response.json({ error: 'Failed to get saved views' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Create saved view
+async function handleCreateSavedView(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { name, filters, isDefault } = await request.json();
+
+    if (!name || !filters) {
+      return Response.json({ error: 'Name and filters are required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Check limit (max 20 views per user)
+    const count = await env.ANALYTICS_DB.prepare(`
+      SELECT COUNT(*) as count FROM saved_views WHERE user_id = ?
+    `).bind(auth.user.id).first();
+
+    if (count?.count >= 20) {
+      return Response.json({ error: 'Maximum 20 saved views allowed' }, { status: 400, headers: corsHeaders });
+    }
+
+    // If setting as default, unset other defaults
+    if (isDefault) {
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE saved_views SET is_default = 0 WHERE user_id = ?
+      `).bind(auth.user.id).run();
+    }
+
+    const result = await env.ANALYTICS_DB.prepare(`
+      INSERT INTO saved_views (user_id, name, filters, is_default, sort_order)
+      VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM saved_views WHERE user_id = ?))
+    `).bind(auth.user.id, name, JSON.stringify(filters), isDefault ? 1 : 0, auth.user.id).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'view_created', 'views', 'saved_view', result.meta?.last_row_id,
+      { name, filters }, null, name, request);
+
+    return Response.json({ success: true, message: 'View saved', viewId: result.meta?.last_row_id }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Create saved view error:', e);
+    return Response.json({ error: 'Failed to create saved view: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Update saved view
+async function handleUpdateSavedView(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { viewId, name, filters, isDefault, sortOrder } = await request.json();
+
+    if (!viewId) {
+      return Response.json({ error: 'View ID is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Verify ownership
+    const view = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM saved_views WHERE id = ? AND user_id = ?
+    `).bind(viewId, auth.user.id).first();
+
+    if (!view) {
+      return Response.json({ error: 'View not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    // If setting as default, unset other defaults
+    if (isDefault) {
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE saved_views SET is_default = 0 WHERE user_id = ?
+      `).bind(auth.user.id).run();
+    }
+
+    const updates = [];
+    const values = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (filters !== undefined) {
+      updates.push('filters = ?');
+      values.push(JSON.stringify(filters));
+    }
+    if (isDefault !== undefined) {
+      updates.push('is_default = ?');
+      values.push(isDefault ? 1 : 0);
+    }
+    if (sortOrder !== undefined) {
+      updates.push('sort_order = ?');
+      values.push(sortOrder);
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(viewId);
+
+    await env.ANALYTICS_DB.prepare(`
+      UPDATE saved_views SET ${updates.join(', ')} WHERE id = ?
+    `).bind(...values).run();
+
+    return Response.json({ success: true, message: 'View updated' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Update saved view error:', e);
+    return Response.json({ error: 'Failed to update saved view: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Delete saved view
+async function handleDeleteSavedView(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const viewId = url.pathname.split('/').pop();
+
+    if (!viewId) {
+      return Response.json({ error: 'View ID is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Verify ownership
+    const view = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM saved_views WHERE id = ? AND user_id = ?
+    `).bind(viewId, auth.user.id).first();
+
+    if (!view) {
+      return Response.json({ error: 'View not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    await env.ANALYTICS_DB.prepare(`
+      DELETE FROM saved_views WHERE id = ?
+    `).bind(viewId).run();
+
+    // Log audit
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'view_deleted', 'views', 'saved_view', viewId,
+      { name: view.name }, view.name, null, request);
+
+    return Response.json({ success: true, message: 'View deleted' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Delete saved view error:', e);
+    return Response.json({ error: 'Failed to delete saved view: ' + e.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// COMPLETION CHECKLISTS
+// ============================================
+
+// Get checklist items for a case type
+async function handleGetChecklistItems(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const caseType = url.searchParams.get('caseType');
+    const resolution = url.searchParams.get('resolution');
+
+    let query = `
+      SELECT * FROM completion_checklists
+      WHERE is_active = 1 AND case_type = ?
+      AND (resolution_pattern IS NULL OR ? LIKE resolution_pattern)
+      ORDER BY sort_order ASC
+    `;
+
+    const items = await env.ANALYTICS_DB.prepare(query).bind(caseType, resolution || '').all();
+
+    return Response.json({ success: true, items: items.results || [] }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get checklist items error:', e);
+    return Response.json({ error: 'Failed to get checklist items' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Get checklist status for a specific case
+async function handleGetCaseChecklistStatus(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const caseId = url.pathname.split('/')[4]; // /hub/api/case/{caseId}/checklist
+
+    // Get case info
+    const caseInfo = await env.ANALYTICS_DB.prepare(`
+      SELECT case_type, resolution FROM cases WHERE case_id = ?
+    `).bind(caseId).first();
+
+    if (!caseInfo) {
+      return Response.json({ error: 'Case not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    // Get checklist items for this case type
+    const items = await env.ANALYTICS_DB.prepare(`
+      SELECT * FROM completion_checklists
+      WHERE is_active = 1 AND case_type = ?
+      AND (resolution_pattern IS NULL OR ? LIKE resolution_pattern)
+      ORDER BY sort_order ASC
+    `).bind(caseInfo.case_type, caseInfo.resolution || '').all();
+
+    // Get completed items for this case
+    const completions = await env.ANALYTICS_DB.prepare(`
+      SELECT cc.*, au.name as completed_by_name
+      FROM checklist_completions cc
+      LEFT JOIN admin_users au ON cc.completed_by = au.id
+      WHERE cc.case_id = ?
+    `).bind(caseId).all();
+
+    const completedIds = new Set((completions.results || []).map(c => c.checklist_item_id));
+
+    const checklistWithStatus = (items.results || []).map(item => ({
+      ...item,
+      isCompleted: completedIds.has(item.id),
+      completedBy: completions.results?.find(c => c.checklist_item_id === item.id)?.completed_by_name,
+      completedAt: completions.results?.find(c => c.checklist_item_id === item.id)?.completed_at
+    }));
+
+    return Response.json({
+      success: true,
+      checklist: checklistWithStatus,
+      allRequiredComplete: checklistWithStatus.filter(i => i.is_required).every(i => i.isCompleted)
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get case checklist status error:', e);
+    return Response.json({ error: 'Failed to get checklist status' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Mark checklist item as complete
+async function handleCompleteChecklistItem(request, env, corsHeaders) {
+  const auth = await verifyAuthAndGetUser(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { caseId, checklistItemId, completed } = await request.json();
+
+    if (!caseId || !checklistItemId) {
+      return Response.json({ error: 'Case ID and checklist item ID are required' }, { status: 400, headers: corsHeaders });
+    }
+
+    if (completed) {
+      // Mark as completed
+      await env.ANALYTICS_DB.prepare(`
+        INSERT OR REPLACE INTO checklist_completions (case_id, checklist_item_id, completed_by)
+        VALUES (?, ?, ?)
+      `).bind(caseId, checklistItemId, auth.user.id).run();
+    } else {
+      // Remove completion
+      await env.ANALYTICS_DB.prepare(`
+        DELETE FROM checklist_completions WHERE case_id = ? AND checklist_item_id = ?
+      `).bind(caseId, checklistItemId).run();
+    }
+
+    return Response.json({ success: true, message: completed ? 'Item marked complete' : 'Item marked incomplete' }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Complete checklist item error:', e);
+    return Response.json({ error: 'Failed to update checklist item' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Admin: Manage checklist templates
+async function handleManageChecklists(request, env, corsHeaders) {
+  const auth = await verifyAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    if (request.method === 'GET') {
+      const items = await env.ANALYTICS_DB.prepare(`
+        SELECT * FROM completion_checklists ORDER BY case_type, sort_order ASC
+      `).all();
+      return Response.json({ success: true, items: items.results || [] }, { headers: corsHeaders });
+    }
+
+    if (request.method === 'POST') {
+      const { caseType, resolutionPattern, checklistItem, sortOrder, isRequired } = await request.json();
+
+      if (!caseType || !checklistItem) {
+        return Response.json({ error: 'Case type and checklist item are required' }, { status: 400, headers: corsHeaders });
+      }
+
+      await env.ANALYTICS_DB.prepare(`
+        INSERT INTO completion_checklists (case_type, resolution_pattern, checklist_item, sort_order, is_required)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(caseType, resolutionPattern || null, checklistItem, sortOrder || 0, isRequired ? 1 : 0).run();
+
+      await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'checklist_item_created', 'system', 'checklist', null,
+        { caseType, checklistItem }, null, null, request);
+
+      return Response.json({ success: true, message: 'Checklist item created' }, { headers: corsHeaders });
+    }
+
+    if (request.method === 'PUT') {
+      const { id, checklistItem, sortOrder, isRequired, isActive } = await request.json();
+
+      if (!id) {
+        return Response.json({ error: 'Checklist item ID is required' }, { status: 400, headers: corsHeaders });
+      }
+
+      await env.ANALYTICS_DB.prepare(`
+        UPDATE completion_checklists SET checklist_item = ?, sort_order = ?, is_required = ?, is_active = ? WHERE id = ?
+      `).bind(checklistItem, sortOrder || 0, isRequired ? 1 : 0, isActive !== false ? 1 : 0, id).run();
+
+      return Response.json({ success: true, message: 'Checklist item updated' }, { headers: corsHeaders });
+    }
+
+    if (request.method === 'DELETE') {
+      const url = new URL(request.url);
+      const id = url.pathname.split('/').pop();
+
+      await env.ANALYTICS_DB.prepare(`
+        DELETE FROM completion_checklists WHERE id = ?
+      `).bind(id).run();
+
+      return Response.json({ success: true, message: 'Checklist item deleted' }, { headers: corsHeaders });
+    }
+
+    return Response.json({ error: 'Method not allowed' }, { status: 405, headers: corsHeaders });
+  } catch (e) {
+    console.error('Manage checklists error:', e);
+    return Response.json({ error: 'Failed to manage checklists: ' + e.message }, { status: 500, headers: corsHeaders });
   }
 }
 
@@ -5427,6 +6761,19 @@ async function serveResolutionHub(env, corsHeaders) {
     headers: {
       ...corsHeaders,
       'Content-Type': 'text/html; charset=utf-8'
+    }
+  });
+}
+
+async function serveHubAsset(type, corsHeaders) {
+  const content = type === 'js' ? getHubAppJS() : getHubStylesCSS();
+  const contentType = type === 'js' ? 'application/javascript; charset=utf-8' : 'text/css; charset=utf-8';
+
+  return new Response(content, {
+    headers: {
+      ...corsHeaders,
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=3600'
     }
   });
 }
@@ -7542,8 +8889,10 @@ function getResolutionHubHTML() {
 
     .empty-state { text-align: center; padding: 30px 20px; color: var(--gray-400); font-size: 14px; }
   </style>
+  <link rel="stylesheet" href="/hub/hub-styles.css">
 </head>
 <body>
+  <div id="toastContainer"></div>
   <div class="app-container">
     <aside class="sidebar">
       <div class="sidebar-header"><div class="sidebar-logo"><img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad"><span>Resolution Hub</span></div></div>
@@ -9226,6 +10575,39 @@ function getResolutionHubHTML() {
     function refreshData() { loadDashboard(); }
     loadDashboard();
   </script>
+
+  <!-- Bulk Actions Toolbar -->
+  <div class="bulk-actions-toolbar" id="bulkActionsToolbar">
+    <span class="selected-count" id="selectedCount">0 selected</span>
+    <button class="bulk-btn" onclick="HubBulkActions.updateStatus('pending')">Set Pending</button>
+    <button class="bulk-btn" onclick="HubBulkActions.updateStatus('in_progress')">Set In Progress</button>
+    <button class="bulk-btn" onclick="HubBulkActions.updateStatus('completed')">Set Completed</button>
+    <div class="bulk-btn-divider"></div>
+    <button class="bulk-btn admin-only" onclick="HubBulkActions.showAssignModal()">Assign</button>
+    <button class="bulk-btn" onclick="HubBulkActions.addComment()">Add Comment</button>
+    <button class="bulk-btn" onclick="HubBulkActions.exportCSV()">Export</button>
+    <button class="bulk-close" onclick="HubBulkActions.deselectAll()">&times;</button>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <!-- Hub Enhanced Features -->
+  <script src="/hub/hub-app.js"></script>
 </body>
 </html>`;
 }
+// Hub CSS Asset
+
+function getHubStylesCSS() {
+  return "/**\n * Resolution Hub Styles\n * Modern, accessible styling for the hub application\n */\n\n/* ============================================\n   CSS Variables\n   ============================================ */\n:root {\n  /* Colors */\n  --primary-50: #eff6ff;\n  --primary-100: #dbeafe;\n  --primary-500: #3b82f6;\n  --primary-600: #2563eb;\n  --primary-700: #1d4ed8;\n\n  --success-50: #ecfdf5;\n  --success-500: #10b981;\n  --success-600: #059669;\n\n  --warning-50: #fffbeb;\n  --warning-500: #f59e0b;\n  --warning-600: #d97706;\n\n  --error-50: #fef2f2;\n  --error-500: #ef4444;\n  --error-600: #dc2626;\n\n  --gray-50: #f9fafb;\n  --gray-100: #f3f4f6;\n  --gray-200: #e5e7eb;\n  --gray-300: #d1d5db;\n  --gray-400: #9ca3af;\n  --gray-500: #6b7280;\n  --gray-600: #4b5563;\n  --gray-700: #374151;\n  --gray-800: #1f2937;\n  --gray-900: #111827;\n\n  /* Spacing */\n  --spacing-xs: 4px;\n  --spacing-sm: 8px;\n  --spacing-md: 16px;\n  --spacing-lg: 24px;\n  --spacing-xl: 32px;\n\n  /* Typography */\n  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n  --font-mono: 'SF Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;\n\n  /* Shadows */\n  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);\n  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);\n  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);\n  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);\n\n  /* Borders */\n  --radius-sm: 4px;\n  --radius-md: 8px;\n  --radius-lg: 12px;\n  --radius-full: 9999px;\n\n  /* Transitions */\n  --transition-fast: 150ms ease;\n  --transition-normal: 200ms ease;\n}\n\n/* ============================================\n   Base Styles\n   ============================================ */\n*, *::before, *::after {\n  box-sizing: border-box;\n}\n\nbody {\n  font-family: var(--font-sans);\n  color: var(--gray-900);\n  background: var(--gray-50);\n  margin: 0;\n  padding: 0;\n  -webkit-font-smoothing: antialiased;\n  -moz-osx-font-smoothing: grayscale;\n}\n\n/* ============================================\n   Bulk Actions Toolbar\n   ============================================ */\n.bulk-actions-toolbar {\n  display: none;\n  position: fixed;\n  bottom: 24px;\n  left: 50%;\n  transform: translateX(-50%);\n  background: var(--gray-800);\n  color: white;\n  padding: 12px 20px;\n  border-radius: var(--radius-lg);\n  box-shadow: var(--shadow-xl);\n  align-items: center;\n  gap: 16px;\n  z-index: 100;\n  animation: slideUp 0.2s ease;\n}\n\n@keyframes slideUp {\n  from {\n    opacity: 0;\n    transform: translateX(-50%) translateY(20px);\n  }\n  to {\n    opacity: 1;\n    transform: translateX(-50%) translateY(0);\n  }\n}\n\n.bulk-actions-toolbar .selected-count {\n  font-weight: 600;\n  padding-right: 16px;\n  border-right: 1px solid var(--gray-600);\n}\n\n.bulk-actions-toolbar .bulk-btn {\n  background: transparent;\n  border: none;\n  color: white;\n  padding: 8px 12px;\n  border-radius: var(--radius-sm);\n  cursor: pointer;\n  font-size: 14px;\n  transition: background var(--transition-fast);\n}\n\n.bulk-actions-toolbar .bulk-btn:hover {\n  background: var(--gray-700);\n}\n\n.bulk-actions-toolbar .bulk-btn.danger:hover {\n  background: var(--error-600);\n}\n\n.bulk-actions-toolbar .bulk-btn-divider {\n  width: 1px;\n  height: 24px;\n  background: var(--gray-600);\n}\n\n.bulk-actions-toolbar .bulk-close {\n  background: transparent;\n  border: none;\n  color: var(--gray-400);\n  padding: 4px;\n  cursor: pointer;\n  margin-left: 8px;\n}\n\n.bulk-actions-toolbar .bulk-close:hover {\n  color: white;\n}\n\n/* ============================================\n   Saved Views Sidebar\n   ============================================ */\n.saved-views-section {\n  margin-top: 24px;\n  padding-top: 16px;\n  border-top: 1px solid var(--gray-200);\n}\n\n.saved-views-header {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 0 16px;\n  margin-bottom: 8px;\n}\n\n.saved-views-header h4 {\n  font-size: 12px;\n  font-weight: 600;\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n  color: var(--gray-500);\n  margin: 0;\n}\n\n.saved-views-header button {\n  background: none;\n  border: none;\n  color: var(--primary-600);\n  font-size: 18px;\n  cursor: pointer;\n  padding: 0;\n  line-height: 1;\n}\n\n.saved-views-header button:hover {\n  color: var(--primary-700);\n}\n\n.saved-view-item {\n  display: flex;\n  align-items: center;\n  padding: 10px 16px;\n  cursor: pointer;\n  transition: background var(--transition-fast);\n}\n\n.saved-view-item:hover {\n  background: var(--gray-100);\n}\n\n.saved-view-item.active {\n  background: var(--primary-50);\n  border-right: 3px solid var(--primary-500);\n}\n\n.saved-view-item .view-name {\n  flex: 1;\n  font-size: 14px;\n  color: var(--gray-700);\n}\n\n.saved-view-item .view-default {\n  font-size: 11px;\n  background: var(--primary-100);\n  color: var(--primary-700);\n  padding: 2px 6px;\n  border-radius: var(--radius-full);\n  margin-left: 8px;\n}\n\n.saved-view-item .view-delete {\n  opacity: 0;\n  background: none;\n  border: none;\n  color: var(--gray-400);\n  cursor: pointer;\n  padding: 2px 6px;\n  font-size: 16px;\n  transition: opacity var(--transition-fast);\n}\n\n.saved-view-item:hover .view-delete {\n  opacity: 1;\n}\n\n.saved-view-item .view-delete:hover {\n  color: var(--error-500);\n}\n\n.empty-views {\n  padding: 16px;\n  text-align: center;\n  color: var(--gray-400);\n  font-size: 13px;\n}\n\n/* ============================================\n   Completion Checklist Modal\n   ============================================ */\n.checklist-items {\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n}\n\n.checklist-item {\n  display: flex;\n  align-items: flex-start;\n  gap: 12px;\n  padding: 12px;\n  background: var(--gray-50);\n  border-radius: var(--radius-md);\n  cursor: pointer;\n  transition: background var(--transition-fast);\n}\n\n.checklist-item:hover {\n  background: var(--gray-100);\n}\n\n.checklist-item.required {\n  border-left: 3px solid var(--error-500);\n}\n\n.checklist-checkbox {\n  width: 20px;\n  height: 20px;\n  accent-color: var(--success-500);\n  cursor: pointer;\n  flex-shrink: 0;\n  margin-top: 2px;\n}\n\n.checklist-text {\n  flex: 1;\n  font-size: 14px;\n  color: var(--gray-700);\n  line-height: 1.5;\n}\n\n.required-badge {\n  display: inline-block;\n  font-size: 11px;\n  background: var(--error-100);\n  color: var(--error-700);\n  padding: 2px 6px;\n  border-radius: var(--radius-full);\n  margin-left: 8px;\n  vertical-align: middle;\n}\n\n.completed-by {\n  font-size: 12px;\n  color: var(--gray-400);\n  white-space: nowrap;\n}\n\n/* ============================================\n   Keyboard Shortcuts Modal\n   ============================================ */\n.shortcuts-section {\n  margin-bottom: 24px;\n}\n\n.shortcuts-section:last-child {\n  margin-bottom: 0;\n}\n\n.shortcuts-section h4 {\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--gray-500);\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n  margin: 0 0 12px 0;\n  padding-bottom: 8px;\n  border-bottom: 1px solid var(--gray-200);\n}\n\n.shortcut {\n  display: flex;\n  align-items: center;\n  padding: 8px 0;\n  font-size: 14px;\n  color: var(--gray-600);\n}\n\n.shortcut kbd {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  min-width: 24px;\n  height: 24px;\n  padding: 0 6px;\n  font-family: var(--font-mono);\n  font-size: 12px;\n  background: var(--gray-100);\n  border: 1px solid var(--gray-300);\n  border-radius: var(--radius-sm);\n  box-shadow: 0 1px 0 var(--gray-300);\n  margin-right: 8px;\n}\n\n/* Keyboard selection highlight */\n.cases-table tbody tr.keyboard-selected {\n  outline: 2px solid var(--primary-500);\n  outline-offset: -2px;\n  background: var(--primary-50);\n}\n\n/* ============================================\n   User Management\n   ============================================ */\n.users-list {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.user-row {\n  display: flex;\n  align-items: center;\n  padding: 12px 16px;\n  background: var(--gray-50);\n  border-radius: var(--radius-md);\n  gap: 16px;\n}\n\n.user-row-info {\n  flex: 1;\n}\n\n.user-row-name {\n  font-weight: 500;\n  color: var(--gray-900);\n}\n\n.user-row-meta {\n  font-size: 13px;\n  color: var(--gray-500);\n  margin-top: 2px;\n}\n\n.user-row-status {\n  font-size: 12px;\n  padding: 4px 8px;\n  border-radius: var(--radius-full);\n}\n\n.user-row-status.active {\n  background: var(--success-50);\n  color: var(--success-600);\n}\n\n.user-row-status.inactive {\n  background: var(--gray-100);\n  color: var(--gray-500);\n}\n\n.user-row-actions {\n  display: flex;\n  gap: 8px;\n}\n\n.btn-icon {\n  background: none;\n  border: none;\n  padding: 4px 8px;\n  font-size: 13px;\n  color: var(--primary-600);\n  cursor: pointer;\n  border-radius: var(--radius-sm);\n}\n\n.btn-icon:hover {\n  background: var(--primary-50);\n}\n\n.btn-icon.danger {\n  color: var(--error-600);\n}\n\n.btn-icon.danger:hover {\n  background: var(--error-50);\n}\n\n/* ============================================\n   Assignment Queue Table\n   ============================================ */\n.queue-table {\n  width: 100%;\n  border-collapse: collapse;\n  font-size: 14px;\n}\n\n.queue-table th {\n  text-align: left;\n  padding: 12px;\n  background: var(--gray-50);\n  border-bottom: 1px solid var(--gray-200);\n  font-weight: 600;\n  color: var(--gray-600);\n}\n\n.queue-table td {\n  padding: 12px;\n  border-bottom: 1px solid var(--gray-100);\n}\n\n.queue-table tbody tr:hover {\n  background: var(--gray-50);\n}\n\n/* ============================================\n   Audit Log Table\n   ============================================ */\n.audit-table {\n  width: 100%;\n  border-collapse: collapse;\n  font-size: 13px;\n}\n\n.audit-table th {\n  text-align: left;\n  padding: 12px 16px;\n  background: var(--gray-50);\n  border-bottom: 1px solid var(--gray-200);\n  font-weight: 600;\n  color: var(--gray-600);\n  position: sticky;\n  top: 0;\n}\n\n.audit-table td {\n  padding: 10px 16px;\n  border-bottom: 1px solid var(--gray-100);\n  vertical-align: middle;\n}\n\n.audit-table tbody tr:hover {\n  background: var(--gray-50);\n}\n\n.action-badge {\n  display: inline-block;\n  font-size: 11px;\n  padding: 3px 8px;\n  border-radius: var(--radius-full);\n  font-weight: 500;\n}\n\n.action-badge.cases {\n  background: var(--primary-100);\n  color: var(--primary-700);\n}\n\n.action-badge.users {\n  background: var(--warning-100);\n  color: var(--warning-700);\n}\n\n.action-badge.views {\n  background: var(--success-100);\n  color: var(--success-700);\n}\n\n.action-badge.auth {\n  background: var(--gray-100);\n  color: var(--gray-700);\n}\n\n.action-badge.system {\n  background: var(--error-100);\n  color: var(--error-700);\n}\n\n/* ============================================\n   Toast Notifications\n   ============================================ */\n#toastContainer {\n  position: fixed;\n  bottom: 24px;\n  right: 24px;\n  z-index: 1000;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.toast {\n  padding: 12px 20px;\n  border-radius: var(--radius-md);\n  font-size: 14px;\n  font-weight: 500;\n  box-shadow: var(--shadow-lg);\n  transform: translateX(100%);\n  opacity: 0;\n  transition: all var(--transition-normal);\n}\n\n.toast.show {\n  transform: translateX(0);\n  opacity: 1;\n}\n\n.toast-success {\n  background: var(--success-500);\n  color: white;\n}\n\n.toast-error {\n  background: var(--error-500);\n  color: white;\n}\n\n.toast-warning {\n  background: var(--warning-500);\n  color: white;\n}\n\n.toast-info {\n  background: var(--primary-500);\n  color: white;\n}\n\n/* ============================================\n   Form Elements\n   ============================================ */\n.form-group {\n  margin-bottom: 16px;\n}\n\n.form-group label {\n  display: block;\n  font-size: 13px;\n  font-weight: 500;\n  color: var(--gray-700);\n  margin-bottom: 6px;\n}\n\n.form-input {\n  width: 100%;\n  padding: 10px 12px;\n  font-size: 14px;\n  border: 1px solid var(--gray-300);\n  border-radius: var(--radius-md);\n  background: white;\n  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);\n}\n\n.form-input:focus {\n  outline: none;\n  border-color: var(--primary-500);\n  box-shadow: 0 0 0 3px var(--primary-100);\n}\n\n.form-input::placeholder {\n  color: var(--gray-400);\n}\n\n.error-message {\n  color: var(--error-600);\n  font-size: 13px;\n  margin-top: 8px;\n  padding: 8px 12px;\n  background: var(--error-50);\n  border-radius: var(--radius-sm);\n}\n\n/* ============================================\n   Buttons\n   ============================================ */\n.btn {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 10px 16px;\n  font-size: 14px;\n  font-weight: 500;\n  border-radius: var(--radius-md);\n  cursor: pointer;\n  transition: all var(--transition-fast);\n  border: none;\n  gap: 8px;\n}\n\n.btn-primary {\n  background: var(--primary-600);\n  color: white;\n}\n\n.btn-primary:hover {\n  background: var(--primary-700);\n}\n\n.btn-secondary {\n  background: var(--gray-100);\n  color: var(--gray-700);\n}\n\n.btn-secondary:hover {\n  background: var(--gray-200);\n}\n\n.btn-success {\n  background: var(--success-600);\n  color: white;\n}\n\n.btn-success:hover {\n  background: var(--success-700);\n}\n\n.btn-danger {\n  background: var(--error-600);\n  color: white;\n}\n\n.btn-danger:hover {\n  background: var(--error-700);\n}\n\n.btn:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n/* ============================================\n   Modal Styles\n   ============================================ */\n.modal-overlay {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(0, 0, 0, 0.5);\n  display: none;\n  align-items: center;\n  justify-content: center;\n  z-index: 200;\n  padding: 24px;\n}\n\n.modal-overlay.active {\n  display: flex;\n}\n\n.modal {\n  background: white;\n  border-radius: var(--radius-lg);\n  box-shadow: var(--shadow-xl);\n  max-height: 90vh;\n  overflow: hidden;\n  display: flex;\n  flex-direction: column;\n  width: 100%;\n  animation: modalIn 0.2s ease;\n}\n\n@keyframes modalIn {\n  from {\n    opacity: 0;\n    transform: scale(0.95);\n  }\n  to {\n    opacity: 1;\n    transform: scale(1);\n  }\n}\n\n.modal-header {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 16px 24px;\n  border-bottom: 1px solid var(--gray-200);\n  background: white;\n}\n\n.modal-header-content {\n  flex: 1;\n}\n\n.modal-title {\n  font-size: 16px;\n  font-weight: 600;\n  color: var(--gray-900);\n}\n\n.modal-close {\n  background: none;\n  border: none;\n  font-size: 24px;\n  color: var(--gray-400);\n  cursor: pointer;\n  padding: 0;\n  line-height: 1;\n  transition: color var(--transition-fast);\n}\n\n.modal-close:hover {\n  color: var(--gray-600);\n}\n\n.modal-body {\n  padding: 24px;\n  overflow-y: auto;\n}\n\n/* ============================================\n   Cases Table\n   ============================================ */\n.cases-table {\n  width: 100%;\n  border-collapse: collapse;\n  font-size: 14px;\n}\n\n.cases-table th {\n  text-align: left;\n  padding: 12px 16px;\n  background: var(--gray-50);\n  border-bottom: 2px solid var(--gray-200);\n  font-weight: 600;\n  color: var(--gray-600);\n  white-space: nowrap;\n}\n\n.cases-table td {\n  padding: 12px 16px;\n  border-bottom: 1px solid var(--gray-100);\n  vertical-align: middle;\n}\n\n.cases-table tbody tr {\n  cursor: pointer;\n  transition: background var(--transition-fast);\n}\n\n.cases-table tbody tr:hover {\n  background: var(--gray-50);\n}\n\n.case-checkbox {\n  width: 18px;\n  height: 18px;\n  cursor: pointer;\n  accent-color: var(--primary-500);\n}\n\n.case-id {\n  font-family: var(--font-mono);\n  font-size: 12px;\n  color: var(--gray-500);\n}\n\n.customer-info {\n  display: flex;\n  flex-direction: column;\n}\n\n.customer-name {\n  font-weight: 500;\n  color: var(--gray-900);\n}\n\n.customer-email {\n  font-size: 12px;\n  color: var(--gray-500);\n  margin-top: 2px;\n}\n\n.time-ago {\n  font-size: 13px;\n  color: var(--gray-500);\n}\n\n/* ============================================\n   Status & Type Badges\n   ============================================ */\n.status-badge {\n  display: inline-block;\n  padding: 4px 10px;\n  font-size: 12px;\n  font-weight: 500;\n  border-radius: var(--radius-full);\n}\n\n.status-badge.pending {\n  background: var(--warning-50);\n  color: var(--warning-700);\n}\n\n.status-badge.in-progress {\n  background: var(--primary-50);\n  color: var(--primary-700);\n}\n\n.status-badge.completed {\n  background: var(--success-50);\n  color: var(--success-700);\n}\n\n.type-badge {\n  display: inline-block;\n  padding: 4px 10px;\n  font-size: 12px;\n  font-weight: 500;\n  border-radius: var(--radius-full);\n  text-transform: capitalize;\n}\n\n.type-badge.shipping {\n  background: #dbeafe;\n  color: #1e40af;\n}\n\n.type-badge.refund {\n  background: #fef3c7;\n  color: #92400e;\n}\n\n.type-badge.subscription {\n  background: #e0e7ff;\n  color: #3730a3;\n}\n\n.type-badge.manual {\n  background: #f3f4f6;\n  color: #4b5563;\n}\n\n.type-badge.return {\n  background: #fce7f3;\n  color: #9d174d;\n}\n\n/* ============================================\n   Empty States\n   ============================================ */\n.empty-state {\n  text-align: center;\n  padding: 48px 24px;\n  color: var(--gray-500);\n}\n\n.empty-state-icon {\n  font-size: 48px;\n  margin-bottom: 16px;\n  opacity: 0.5;\n}\n\n.empty-state-title {\n  font-size: 16px;\n  font-weight: 500;\n  color: var(--gray-700);\n  margin-bottom: 8px;\n}\n\n.empty-state-text {\n  font-size: 14px;\n  color: var(--gray-500);\n}\n\n/* ============================================\n   Pagination\n   ============================================ */\n#casesPagination {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  gap: 16px;\n  padding: 16px;\n  border-top: 1px solid var(--gray-200);\n}\n\n#casesPagination button {\n  padding: 8px 16px;\n  font-size: 14px;\n  background: var(--gray-100);\n  border: none;\n  border-radius: var(--radius-md);\n  cursor: pointer;\n  transition: background var(--transition-fast);\n}\n\n#casesPagination button:hover {\n  background: var(--gray-200);\n}\n\n#casesPagination span {\n  font-size: 14px;\n  color: var(--gray-600);\n}\n\n/* ============================================\n   Admin-only Elements\n   ============================================ */\n.admin-only {\n  display: none;\n}\n\n/* ============================================\n   Loading Indicator\n   ============================================ */\n.loading-overlay {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(255, 255, 255, 0.8);\n  display: none;\n  align-items: center;\n  justify-content: center;\n  z-index: 500;\n}\n\n.loading-overlay.active {\n  display: flex;\n}\n\n.loading-spinner {\n  width: 40px;\n  height: 40px;\n  border: 3px solid var(--gray-200);\n  border-top-color: var(--primary-500);\n  border-radius: 50%;\n  animation: spin 0.8s linear infinite;\n}\n\n@keyframes spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n\n/* ============================================\n   Responsive Adjustments\n   ============================================ */\n@media (max-width: 768px) {\n  .bulk-actions-toolbar {\n    left: 16px;\n    right: 16px;\n    transform: none;\n    flex-wrap: wrap;\n  }\n\n  .modal {\n    margin: 16px;\n  }\n\n  .cases-table {\n    font-size: 13px;\n  }\n\n  .cases-table th,\n  .cases-table td {\n    padding: 10px 12px;\n  }\n\n  #toastContainer {\n    left: 16px;\n    right: 16px;\n    bottom: 16px;\n  }\n}\n\n/* ============================================\n   Status Cards in Case Modal\n   ============================================ */\n.status-cards {\n  display: flex;\n  gap: 12px;\n  margin-bottom: 24px;\n}\n\n.status-card {\n  flex: 1;\n  padding: 12px 16px;\n  border: 2px solid var(--gray-200);\n  border-radius: var(--radius-md);\n  text-align: center;\n  cursor: pointer;\n  transition: all var(--transition-fast);\n}\n\n.status-card:hover {\n  border-color: var(--gray-300);\n  background: var(--gray-50);\n}\n\n.status-card.active {\n  border-color: var(--primary-500);\n  background: var(--primary-50);\n}\n\n.status-card.pending.active {\n  border-color: var(--warning-500);\n  background: var(--warning-50);\n}\n\n.status-card.in-progress.active {\n  border-color: var(--primary-500);\n  background: var(--primary-50);\n}\n\n.status-card.completed.active {\n  border-color: var(--success-500);\n  background: var(--success-50);\n}\n\n.status-card-label {\n  font-size: 12px;\n  font-weight: 500;\n  color: var(--gray-500);\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n}\n\n.status-card-value {\n  font-size: 14px;\n  font-weight: 600;\n  color: var(--gray-900);\n  margin-top: 4px;\n}\n\n/* ============================================\n   Deep Link Copy Button\n   ============================================ */\n.copy-link-btn {\n  background: none;\n  border: none;\n  color: var(--gray-400);\n  cursor: pointer;\n  padding: 4px;\n  border-radius: var(--radius-sm);\n  transition: all var(--transition-fast);\n}\n\n.copy-link-btn:hover {\n  color: var(--primary-600);\n  background: var(--primary-50);\n}\n\n/* ============================================\n   Search Input Enhancements\n   ============================================ */\n.search-container {\n  position: relative;\n}\n\n.search-input {\n  width: 100%;\n  padding: 10px 12px 10px 40px;\n  font-size: 14px;\n  border: 1px solid var(--gray-200);\n  border-radius: var(--radius-md);\n  background: white;\n  transition: all var(--transition-fast);\n}\n\n.search-input:focus {\n  outline: none;\n  border-color: var(--primary-500);\n  box-shadow: 0 0 0 3px var(--primary-100);\n}\n\n.search-icon {\n  position: absolute;\n  left: 12px;\n  top: 50%;\n  transform: translateY(-50%);\n  color: var(--gray-400);\n  pointer-events: none;\n}\n\n.search-shortcut {\n  position: absolute;\n  right: 12px;\n  top: 50%;\n  transform: translateY(-50%);\n  font-size: 11px;\n  color: var(--gray-400);\n  background: var(--gray-100);\n  padding: 2px 6px;\n  border-radius: var(--radius-sm);\n}\n";
+}
+
+// Hub JS Asset
+
+function getHubAppJS() {
+  return "/**\n * Resolution Hub Application\n * Modular, maintainable hub for PuppyPad Resolution cases\n */\n\n// ============================================\n// CONFIGURATION\n// ============================================\nconst HubConfig = {\n  API_BASE: '', // Same origin\n  REFRESH_INTERVAL: 30000, // 30 seconds\n  MAX_BULK_SELECT: 100,\n  ITEMS_PER_PAGE: 50\n};\n\n// ============================================\n// STATE MANAGEMENT\n// ============================================\nconst HubState = {\n  // User\n  currentUser: null,\n  token: null,\n\n  // Cases\n  cases: [],\n  currentCase: null,\n  currentCaseIndex: -1,\n  selectedCaseIds: new Set(),\n\n  // Filters\n  currentFilter: 'all',\n  currentStatus: null,\n  currentSearch: '',\n  currentPage: 1,\n  totalPages: 1,\n\n  // Views\n  savedViews: [],\n  currentView: null,\n\n  // Assignment\n  assignmentQueue: [],\n\n  // UI\n  currentPage: 'dashboard',\n  isLoading: false,\n  keySequence: '', // For combo shortcuts like 'g' then 'd'\n  keySequenceTimeout: null\n};\n\n// ============================================\n// API CLIENT\n// ============================================\nconst HubAPI = {\n  async request(endpoint, options = {}) {\n    const headers = {\n      'Content-Type': 'application/json',\n      ...options.headers\n    };\n\n    if (HubState.token) {\n      headers['Authorization'] = `Bearer ${HubState.token}`;\n    }\n\n    const response = await fetch(`${HubConfig.API_BASE}${endpoint}`, {\n      ...options,\n      headers\n    });\n\n    if (response.status === 401) {\n      HubAuth.logout();\n      throw new Error('Session expired');\n    }\n\n    return response;\n  },\n\n  async get(endpoint) {\n    const response = await this.request(endpoint);\n    return response.json();\n  },\n\n  async post(endpoint, data) {\n    const response = await this.request(endpoint, {\n      method: 'POST',\n      body: JSON.stringify(data)\n    });\n    return response.json();\n  },\n\n  async put(endpoint, data) {\n    const response = await this.request(endpoint, {\n      method: 'PUT',\n      body: JSON.stringify(data)\n    });\n    return response.json();\n  },\n\n  async delete(endpoint) {\n    const response = await this.request(endpoint, { method: 'DELETE' });\n    return response.json();\n  }\n};\n\n// ============================================\n// AUTHENTICATION\n// ============================================\nconst HubAuth = {\n  init() {\n    const token = localStorage.getItem('hub_token');\n    const user = localStorage.getItem('hub_user');\n\n    if (token && user) {\n      HubState.token = token;\n      HubState.currentUser = JSON.parse(user);\n\n      // Check if password change required\n      if (HubState.currentUser.mustChangePassword) {\n        this.showChangePasswordModal(true);\n      }\n\n      return true;\n    }\n    return false;\n  },\n\n  async login(username, password) {\n    try {\n      const response = await fetch(`${HubConfig.API_BASE}/admin/api/login`, {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({ username, password })\n      });\n\n      const data = await response.json();\n\n      if (data.success) {\n        HubState.token = data.token;\n        HubState.currentUser = data.user;\n        localStorage.setItem('hub_token', data.token);\n        localStorage.setItem('hub_user', JSON.stringify(data.user));\n\n        if (data.user.mustChangePassword) {\n          this.showChangePasswordModal(true);\n        }\n\n        return { success: true };\n      }\n\n      return { success: false, error: data.error || 'Login failed' };\n    } catch (e) {\n      return { success: false, error: 'Network error' };\n    }\n  },\n\n  logout() {\n    HubState.token = null;\n    HubState.currentUser = null;\n    localStorage.removeItem('hub_token');\n    localStorage.removeItem('hub_user');\n    HubUI.showLoginScreen();\n  },\n\n  isAdmin() {\n    return HubState.currentUser?.role === 'admin';\n  },\n\n  showChangePasswordModal(required = false) {\n    const html = `\n      <div class=\"modal-overlay active\" id=\"changePasswordModal\">\n        <div class=\"modal\" style=\"max-width: 400px;\">\n          <div class=\"modal-header\" style=\"padding: 20px 24px;\">\n            <div class=\"modal-header-content\">\n              <div class=\"modal-title\" style=\"font-size: 18px;\">\n                ${required ? 'Password Change Required' : 'Change Password'}\n              </div>\n            </div>\n            ${!required ? '<button class=\"modal-close\" onclick=\"HubAuth.closeChangePasswordModal()\">&times;</button>' : ''}\n          </div>\n          <div class=\"modal-body\" style=\"padding: 24px;\">\n            ${required ? '<p style=\"margin-bottom: 16px; color: var(--gray-600);\">You must change your password before continuing.</p>' : ''}\n            ${!required ? `\n              <div class=\"form-group\">\n                <label>Current Password</label>\n                <input type=\"password\" id=\"currentPassword\" class=\"form-input\">\n              </div>\n            ` : ''}\n            <div class=\"form-group\">\n              <label>New Password</label>\n              <input type=\"password\" id=\"newPassword\" class=\"form-input\" placeholder=\"Minimum 6 characters\">\n            </div>\n            <div class=\"form-group\">\n              <label>Confirm New Password</label>\n              <input type=\"password\" id=\"confirmPassword\" class=\"form-input\">\n            </div>\n            <div id=\"passwordError\" class=\"error-message\" style=\"display: none;\"></div>\n            <button class=\"btn btn-primary\" style=\"width: 100%; margin-top: 16px;\" onclick=\"HubAuth.changePassword(${required})\">\n              Change Password\n            </button>\n          </div>\n        </div>\n      </div>\n    `;\n    document.body.insertAdjacentHTML('beforeend', html);\n  },\n\n  async changePassword(required) {\n    const currentPassword = document.getElementById('currentPassword')?.value;\n    const newPassword = document.getElementById('newPassword').value;\n    const confirmPassword = document.getElementById('confirmPassword').value;\n    const errorEl = document.getElementById('passwordError');\n\n    if (newPassword !== confirmPassword) {\n      errorEl.textContent = 'Passwords do not match';\n      errorEl.style.display = 'block';\n      return;\n    }\n\n    if (newPassword.length < 6) {\n      errorEl.textContent = 'Password must be at least 6 characters';\n      errorEl.style.display = 'block';\n      return;\n    }\n\n    try {\n      const result = await HubAPI.post('/hub/api/change-password', {\n        currentPassword,\n        newPassword\n      });\n\n      if (result.success) {\n        HubState.currentUser.mustChangePassword = false;\n        localStorage.setItem('hub_user', JSON.stringify(HubState.currentUser));\n        this.closeChangePasswordModal();\n        HubUI.showToast('Password changed successfully', 'success');\n      } else {\n        errorEl.textContent = result.error || 'Failed to change password';\n        errorEl.style.display = 'block';\n      }\n    } catch (e) {\n      errorEl.textContent = 'Network error';\n      errorEl.style.display = 'block';\n    }\n  },\n\n  closeChangePasswordModal() {\n    document.getElementById('changePasswordModal')?.remove();\n  }\n};\n\n// ============================================\n// BULK ACTIONS\n// ============================================\nconst HubBulkActions = {\n  toggleSelect(caseId) {\n    if (HubState.selectedCaseIds.has(caseId)) {\n      HubState.selectedCaseIds.delete(caseId);\n    } else {\n      if (HubState.selectedCaseIds.size >= HubConfig.MAX_BULK_SELECT) {\n        HubUI.showToast(`Maximum ${HubConfig.MAX_BULK_SELECT} cases can be selected`, 'warning');\n        return;\n      }\n      HubState.selectedCaseIds.add(caseId);\n    }\n    this.updateUI();\n  },\n\n  selectAll() {\n    const visibleIds = HubState.cases.slice(0, HubConfig.MAX_BULK_SELECT).map(c => c.case_id);\n    visibleIds.forEach(id => HubState.selectedCaseIds.add(id));\n    this.updateUI();\n  },\n\n  deselectAll() {\n    HubState.selectedCaseIds.clear();\n    this.updateUI();\n  },\n\n  updateUI() {\n    const count = HubState.selectedCaseIds.size;\n    const toolbar = document.getElementById('bulkActionsToolbar');\n\n    if (count > 0) {\n      toolbar.style.display = 'flex';\n      document.getElementById('selectedCount').textContent = `${count} selected`;\n    } else {\n      toolbar.style.display = 'none';\n    }\n\n    // Update checkboxes\n    document.querySelectorAll('.case-checkbox').forEach(cb => {\n      cb.checked = HubState.selectedCaseIds.has(cb.dataset.caseId);\n    });\n  },\n\n  async updateStatus(status) {\n    if (HubState.selectedCaseIds.size === 0) return;\n\n    // If completing, show checklist first\n    if (status === 'completed') {\n      this.showBulkChecklistModal();\n      return;\n    }\n\n    try {\n      HubUI.showLoading();\n      const result = await HubAPI.post('/hub/api/bulk/status', {\n        caseIds: Array.from(HubState.selectedCaseIds),\n        status\n      });\n\n      if (result.success) {\n        HubUI.showToast(result.message, 'success');\n        this.deselectAll();\n        HubCases.loadCases();\n      } else {\n        HubUI.showToast(result.error, 'error');\n      }\n    } catch (e) {\n      HubUI.showToast('Failed to update cases', 'error');\n    } finally {\n      HubUI.hideLoading();\n    }\n  },\n\n  async assign(userId) {\n    if (!HubAuth.isAdmin()) {\n      HubUI.showToast('Admin access required', 'error');\n      return;\n    }\n\n    try {\n      HubUI.showLoading();\n      const result = await HubAPI.post('/hub/api/bulk/assign', {\n        caseIds: Array.from(HubState.selectedCaseIds),\n        assignToUserId: userId\n      });\n\n      if (result.success) {\n        HubUI.showToast(result.message, 'success');\n        this.deselectAll();\n        HubCases.loadCases();\n      } else {\n        HubUI.showToast(result.error, 'error');\n      }\n    } catch (e) {\n      HubUI.showToast('Failed to assign cases', 'error');\n    } finally {\n      HubUI.hideLoading();\n    }\n  },\n\n  showAssignModal() {\n    // Will be populated with users list\n    HubUsers.showAssignModal(Array.from(HubState.selectedCaseIds));\n  },\n\n  async addComment() {\n    const comment = prompt('Enter comment to add to all selected cases:');\n    if (!comment) return;\n\n    try {\n      HubUI.showLoading();\n      const result = await HubAPI.post('/hub/api/bulk/comment', {\n        caseIds: Array.from(HubState.selectedCaseIds),\n        comment\n      });\n\n      if (result.success) {\n        HubUI.showToast(result.message, 'success');\n      } else {\n        HubUI.showToast(result.error, 'error');\n      }\n    } catch (e) {\n      HubUI.showToast('Failed to add comments', 'error');\n    } finally {\n      HubUI.hideLoading();\n    }\n  },\n\n  async exportCSV() {\n    try {\n      const response = await HubAPI.request('/hub/api/bulk/export', {\n        method: 'POST',\n        body: JSON.stringify({\n          caseIds: HubState.selectedCaseIds.size > 0 ? Array.from(HubState.selectedCaseIds) : null\n        })\n      });\n\n      const blob = await response.blob();\n      const url = URL.createObjectURL(blob);\n      const a = document.createElement('a');\n      a.href = url;\n      a.download = `cases-export-${new Date().toISOString().split('T')[0]}.csv`;\n      a.click();\n      URL.revokeObjectURL(url);\n\n      HubUI.showToast('Export downloaded', 'success');\n    } catch (e) {\n      HubUI.showToast('Failed to export', 'error');\n    }\n  },\n\n  showBulkChecklistModal() {\n    // For bulk completion, show a simple confirmation\n    const html = `\n      <div class=\"modal-overlay active\" id=\"bulkChecklistModal\">\n        <div class=\"modal\" style=\"max-width: 500px;\">\n          <div class=\"modal-header\" style=\"padding: 20px 24px;\">\n            <div class=\"modal-header-content\">\n              <div class=\"modal-title\" style=\"font-size: 18px;\">Complete ${HubState.selectedCaseIds.size} Cases</div>\n            </div>\n            <button class=\"modal-close\" onclick=\"document.getElementById('bulkChecklistModal').remove()\">&times;</button>\n          </div>\n          <div class=\"modal-body\" style=\"padding: 24px;\">\n            <p style=\"margin-bottom: 16px;\">Are you sure you want to mark ${HubState.selectedCaseIds.size} cases as completed?</p>\n            <p style=\"margin-bottom: 24px; color: var(--gray-500); font-size: 14px;\">\n              Make sure you have actioned all resolutions before completing.\n            </p>\n            <div style=\"display: flex; gap: 12px; justify-content: flex-end;\">\n              <button class=\"btn btn-secondary\" onclick=\"document.getElementById('bulkChecklistModal').remove()\">Cancel</button>\n              <button class=\"btn btn-primary\" onclick=\"HubBulkActions.confirmBulkComplete()\">Complete All</button>\n            </div>\n          </div>\n        </div>\n      </div>\n    `;\n    document.body.insertAdjacentHTML('beforeend', html);\n  },\n\n  async confirmBulkComplete() {\n    document.getElementById('bulkChecklistModal')?.remove();\n\n    try {\n      HubUI.showLoading();\n      const result = await HubAPI.post('/hub/api/bulk/status', {\n        caseIds: Array.from(HubState.selectedCaseIds),\n        status: 'completed'\n      });\n\n      if (result.success) {\n        HubUI.showToast(result.message, 'success');\n        this.deselectAll();\n        HubCases.loadCases();\n      } else {\n        HubUI.showToast(result.error, 'error');\n      }\n    } catch (e) {\n      HubUI.showToast('Failed to complete cases', 'error');\n    } finally {\n      HubUI.hideLoading();\n    }\n  }\n};\n\n// ============================================\n// SAVED VIEWS\n// ============================================\nconst HubViews = {\n  async load() {\n    try {\n      const result = await HubAPI.get('/hub/api/views');\n      if (result.success) {\n        HubState.savedViews = result.views;\n        this.renderSidebar();\n      }\n    } catch (e) {\n      console.error('Failed to load views:', e);\n    }\n  },\n\n  renderSidebar() {\n    const container = document.getElementById('savedViewsList');\n    if (!container) return;\n\n    if (HubState.savedViews.length === 0) {\n      container.innerHTML = '<div class=\"empty-views\">No saved views</div>';\n      return;\n    }\n\n    container.innerHTML = HubState.savedViews.map(view => `\n      <div class=\"saved-view-item ${HubState.currentView?.id === view.id ? 'active' : ''}\"\n           onclick=\"HubViews.apply(${view.id})\" data-view-id=\"${view.id}\">\n        <span class=\"view-name\">${this.escapeHtml(view.name)}</span>\n        ${view.is_default ? '<span class=\"view-default\">Default</span>' : ''}\n        <button class=\"view-delete\" onclick=\"event.stopPropagation(); HubViews.delete(${view.id})\" title=\"Delete view\">\n          &times;\n        </button>\n      </div>\n    `).join('');\n  },\n\n  async save() {\n    const name = prompt('Enter a name for this view:');\n    if (!name) return;\n\n    const filters = {\n      status: HubState.currentStatus,\n      caseType: HubState.currentFilter,\n      search: HubState.currentSearch\n    };\n\n    try {\n      const result = await HubAPI.post('/hub/api/views', {\n        name,\n        filters,\n        isDefault: false\n      });\n\n      if (result.success) {\n        HubUI.showToast('View saved', 'success');\n        this.load();\n      } else {\n        HubUI.showToast(result.error, 'error');\n      }\n    } catch (e) {\n      HubUI.showToast('Failed to save view', 'error');\n    }\n  },\n\n  async apply(viewId) {\n    const view = HubState.savedViews.find(v => v.id === viewId);\n    if (!view) return;\n\n    const filters = JSON.parse(view.filters);\n    HubState.currentView = view;\n    HubState.currentStatus = filters.status;\n    HubState.currentFilter = filters.caseType || 'all';\n    HubState.currentSearch = filters.search || '';\n\n    // Update UI\n    document.getElementById('searchInput').value = HubState.currentSearch;\n    this.renderSidebar();\n    HubCases.loadCases();\n  },\n\n  async delete(viewId) {\n    if (!confirm('Delete this saved view?')) return;\n\n    try {\n      const result = await HubAPI.delete(`/hub/api/views/${viewId}`);\n      if (result.success) {\n        HubUI.showToast('View deleted', 'success');\n        if (HubState.currentView?.id === viewId) {\n          HubState.currentView = null;\n        }\n        this.load();\n      } else {\n        HubUI.showToast(result.error, 'error');\n      }\n    } catch (e) {\n      HubUI.showToast('Failed to delete view', 'error');\n    }\n  },\n\n  escapeHtml(text) {\n    const div = document.createElement('div');\n    div.textContent = text;\n    return div.innerHTML;\n  }\n};\n\n// ============================================\n// COMPLETION CHECKLIST\n// ============================================\nconst HubChecklist = {\n  async showForCase(caseId) {\n    try {\n      const result = await HubAPI.get(`/hub/api/case/${caseId}/checklist`);\n\n      if (!result.success || !result.checklist || result.checklist.length === 0) {\n        // No checklist items, just complete\n        return { canComplete: true, items: [] };\n      }\n\n      return new Promise((resolve) => {\n        this.showModal(caseId, result.checklist, resolve);\n      });\n    } catch (e) {\n      console.error('Failed to get checklist:', e);\n      return { canComplete: true, items: [] };\n    }\n  },\n\n  showModal(caseId, items, resolve) {\n    const html = `\n      <div class=\"modal-overlay active\" id=\"checklistModal\">\n        <div class=\"modal\" style=\"max-width: 500px;\">\n          <div class=\"modal-header\" style=\"padding: 20px 24px; background: linear-gradient(135deg, #059669 0%, #10b981 100%);\">\n            <div class=\"modal-header-content\">\n              <div class=\"modal-title\" style=\"font-size: 18px;\">Completion Checklist</div>\n              <div style=\"font-size: 13px; opacity: 0.9; margin-top: 4px;\">Verify all items before completing</div>\n            </div>\n            <button class=\"modal-close\" onclick=\"HubChecklist.cancel()\">&times;</button>\n          </div>\n          <div class=\"modal-body\" style=\"padding: 24px;\">\n            <div class=\"checklist-items\">\n              ${items.map((item, idx) => `\n                <label class=\"checklist-item ${item.is_required ? 'required' : ''}\">\n                  <input type=\"checkbox\"\n                         class=\"checklist-checkbox\"\n                         data-item-id=\"${item.id}\"\n                         ${item.isCompleted ? 'checked' : ''}>\n                  <span class=\"checklist-text\">\n                    ${this.escapeHtml(item.checklist_item)}\n                    ${item.is_required ? '<span class=\"required-badge\">Required</span>' : ''}\n                  </span>\n                  ${item.completedBy ? `<span class=\"completed-by\">by ${this.escapeHtml(item.completedBy)}</span>` : ''}\n                </label>\n              `).join('')}\n            </div>\n            <div id=\"checklistError\" class=\"error-message\" style=\"display: none; margin-top: 16px;\"></div>\n            <div style=\"display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;\">\n              <button class=\"btn btn-secondary\" onclick=\"HubChecklist.cancel()\">Cancel</button>\n              <button class=\"btn btn-primary\" onclick=\"HubChecklist.confirm('${caseId}')\" style=\"background: #059669;\">\n                Complete Case\n              </button>\n            </div>\n          </div>\n        </div>\n      </div>\n    `;\n\n    document.body.insertAdjacentHTML('beforeend', html);\n\n    // Store resolve function\n    this._resolve = resolve;\n    this._caseId = caseId;\n  },\n\n  async confirm(caseId) {\n    const checkboxes = document.querySelectorAll('.checklist-checkbox');\n    const requiredItems = document.querySelectorAll('.checklist-item.required .checklist-checkbox');\n    const uncheckedRequired = Array.from(requiredItems).filter(cb => !cb.checked);\n\n    if (uncheckedRequired.length > 0) {\n      const errorEl = document.getElementById('checklistError');\n      errorEl.textContent = 'Please complete all required items';\n      errorEl.style.display = 'block';\n      return;\n    }\n\n    // Save checklist completions\n    for (const cb of checkboxes) {\n      await HubAPI.post('/hub/api/checklist/complete', {\n        caseId,\n        checklistItemId: parseInt(cb.dataset.itemId),\n        completed: cb.checked\n      });\n    }\n\n    document.getElementById('checklistModal')?.remove();\n\n    if (this._resolve) {\n      this._resolve({ canComplete: true });\n      this._resolve = null;\n    }\n  },\n\n  cancel() {\n    document.getElementById('checklistModal')?.remove();\n    if (this._resolve) {\n      this._resolve({ canComplete: false });\n      this._resolve = null;\n    }\n  },\n\n  escapeHtml(text) {\n    const div = document.createElement('div');\n    div.textContent = text;\n    return div.innerHTML;\n  }\n};\n\n// ============================================\n// KEYBOARD SHORTCUTS\n// ============================================\nconst HubKeyboard = {\n  init() {\n    document.addEventListener('keydown', this.handleKeydown.bind(this));\n  },\n\n  handleKeydown(e) {\n    // Ignore if typing in input\n    if (e.target.matches('input, textarea, select')) {\n      if (e.key === 'Escape') {\n        e.target.blur();\n      }\n      return;\n    }\n\n    const key = e.key.toLowerCase();\n\n    // Handle key sequences (g+d, g+c, etc.)\n    if (HubState.keySequence) {\n      this.handleSequence(HubState.keySequence + key, e);\n      HubState.keySequence = '';\n      clearTimeout(HubState.keySequenceTimeout);\n      return;\n    }\n\n    // Start sequence for 'g', 'f', 'b'\n    if (['g', 'f', 'b'].includes(key) && !e.ctrlKey && !e.metaKey) {\n      HubState.keySequence = key;\n      HubState.keySequenceTimeout = setTimeout(() => {\n        HubState.keySequence = '';\n      }, 1000);\n      return;\n    }\n\n    // Single key shortcuts\n    this.handleSingleKey(key, e);\n  },\n\n  handleSequence(seq, e) {\n    const actions = {\n      // Navigation: g + key\n      'gd': () => HubNavigation.goto('dashboard'),\n      'gc': () => HubNavigation.goto('cases'),\n      'ga': () => HubNavigation.goto('analytics'),\n      'gs': () => HubNavigation.goto('sessions'),\n      'gu': () => HubAuth.isAdmin() && HubUsers.showManagement(),\n      'gl': () => HubAuth.isAdmin() && HubAuditLog.show(),\n      'gq': () => HubAuth.isAdmin() && HubAssignment.showQueue(),\n\n      // Filters: f + key\n      'fp': () => HubCases.setStatusFilter('pending'),\n      'fi': () => HubCases.setStatusFilter('in_progress'),\n      'fc': () => HubCases.setStatusFilter('completed'),\n      'fa': () => HubCases.setStatusFilter(null),\n\n      // Bulk: b + key\n      'bs': () => HubState.selectedCaseIds.size > 0 && this.showBulkStatusMenu(),\n      'ba': () => HubState.selectedCaseIds.size > 0 && HubBulkActions.showAssignModal(),\n      'bc': () => HubState.selectedCaseIds.size > 0 && HubBulkActions.addComment(),\n      'be': () => HubBulkActions.exportCSV()\n    };\n\n    if (actions[seq]) {\n      e.preventDefault();\n      actions[seq]();\n    }\n  },\n\n  handleSingleKey(key, e) {\n    const modalOpen = document.querySelector('.modal-overlay.active');\n\n    // Global shortcuts\n    if (key === '?') {\n      e.preventDefault();\n      this.showHelp();\n      return;\n    }\n\n    if (key === '/' && !modalOpen) {\n      e.preventDefault();\n      document.getElementById('searchInput')?.focus();\n      return;\n    }\n\n    if (key === 'escape') {\n      if (modalOpen) {\n        HubUI.closeModal();\n      }\n      return;\n    }\n\n    if (key === 'r' && !modalOpen) {\n      e.preventDefault();\n      HubUI.refresh();\n      return;\n    }\n\n    // Case list shortcuts\n    if (!modalOpen && HubState.currentPage === 'cases') {\n      if (key === 'j') {\n        e.preventDefault();\n        this.selectNextCase();\n        return;\n      }\n      if (key === 'k') {\n        e.preventDefault();\n        this.selectPrevCase();\n        return;\n      }\n      if (key === 'enter') {\n        e.preventDefault();\n        this.openSelectedCase();\n        return;\n      }\n      if (key === 'x') {\n        e.preventDefault();\n        if (e.shiftKey) {\n          HubBulkActions.selectAll();\n        } else {\n          this.toggleSelectedCase();\n        }\n        return;\n      }\n    }\n\n    // Case modal shortcuts\n    if (modalOpen && HubState.currentCase) {\n      if (key === '1') {\n        e.preventDefault();\n        HubCases.updateStatus('pending');\n        return;\n      }\n      if (key === '2') {\n        e.preventDefault();\n        HubCases.updateStatus('in_progress');\n        return;\n      }\n      if (key === '3') {\n        e.preventDefault();\n        HubCases.updateStatus('completed');\n        return;\n      }\n      if (key === '[') {\n        e.preventDefault();\n        HubCases.navigateCase('prev');\n        return;\n      }\n      if (key === ']') {\n        e.preventDefault();\n        HubCases.navigateCase('next');\n        return;\n      }\n      if (key === 'c') {\n        e.preventDefault();\n        document.getElementById('commentInput')?.focus();\n        return;\n      }\n      if (key === 'e') {\n        e.preventDefault();\n        this.copyEmail();\n        return;\n      }\n      if (key === 'o') {\n        e.preventDefault();\n        HubCases.openShopifyOrder();\n        return;\n      }\n    }\n  },\n\n  selectNextCase() {\n    const rows = document.querySelectorAll('.cases-table tbody tr');\n    const currentIdx = Array.from(rows).findIndex(r => r.classList.contains('keyboard-selected'));\n    const nextIdx = Math.min(currentIdx + 1, rows.length - 1);\n\n    rows.forEach(r => r.classList.remove('keyboard-selected'));\n    rows[nextIdx]?.classList.add('keyboard-selected');\n    rows[nextIdx]?.scrollIntoView({ block: 'nearest' });\n  },\n\n  selectPrevCase() {\n    const rows = document.querySelectorAll('.cases-table tbody tr');\n    const currentIdx = Array.from(rows).findIndex(r => r.classList.contains('keyboard-selected'));\n    const prevIdx = Math.max(currentIdx - 1, 0);\n\n    rows.forEach(r => r.classList.remove('keyboard-selected'));\n    rows[prevIdx]?.classList.add('keyboard-selected');\n    rows[prevIdx]?.scrollIntoView({ block: 'nearest' });\n  },\n\n  openSelectedCase() {\n    const selected = document.querySelector('.cases-table tbody tr.keyboard-selected');\n    if (selected) {\n      selected.click();\n    }\n  },\n\n  toggleSelectedCase() {\n    const selected = document.querySelector('.cases-table tbody tr.keyboard-selected');\n    if (selected) {\n      const checkbox = selected.querySelector('.case-checkbox');\n      if (checkbox) {\n        HubBulkActions.toggleSelect(checkbox.dataset.caseId);\n      }\n    }\n  },\n\n  copyEmail() {\n    const email = HubState.currentCase?.customer_email;\n    if (email) {\n      navigator.clipboard.writeText(email);\n      HubUI.showToast('Email copied', 'success');\n    }\n  },\n\n  showHelp() {\n    const html = `\n      <div class=\"modal-overlay active\" id=\"helpModal\">\n        <div class=\"modal\" style=\"max-width: 600px;\">\n          <div class=\"modal-header\" style=\"padding: 20px 24px;\">\n            <div class=\"modal-header-content\">\n              <div class=\"modal-title\" style=\"font-size: 18px;\">Keyboard Shortcuts</div>\n            </div>\n            <button class=\"modal-close\" onclick=\"document.getElementById('helpModal').remove()\">&times;</button>\n          </div>\n          <div class=\"modal-body\" style=\"padding: 24px; max-height: 60vh; overflow-y: auto;\">\n            <div class=\"shortcuts-section\">\n              <h4>Global</h4>\n              <div class=\"shortcut\"><kbd>?</kbd> Show help</div>\n              <div class=\"shortcut\"><kbd>/</kbd> Focus search</div>\n              <div class=\"shortcut\"><kbd>R</kbd> Refresh</div>\n              <div class=\"shortcut\"><kbd>Esc</kbd> Close modal</div>\n            </div>\n            <div class=\"shortcuts-section\">\n              <h4>Navigation</h4>\n              <div class=\"shortcut\"><kbd>G</kbd> then <kbd>D</kbd> Dashboard</div>\n              <div class=\"shortcut\"><kbd>G</kbd> then <kbd>C</kbd> Cases</div>\n              <div class=\"shortcut\"><kbd>G</kbd> then <kbd>A</kbd> Analytics</div>\n            </div>\n            <div class=\"shortcuts-section\">\n              <h4>Case List</h4>\n              <div class=\"shortcut\"><kbd>J</kbd> / <kbd>K</kbd> Navigate up/down</div>\n              <div class=\"shortcut\"><kbd>Enter</kbd> Open case</div>\n              <div class=\"shortcut\"><kbd>X</kbd> Toggle select</div>\n              <div class=\"shortcut\"><kbd>Shift+X</kbd> Select all</div>\n            </div>\n            <div class=\"shortcuts-section\">\n              <h4>Case Modal</h4>\n              <div class=\"shortcut\"><kbd>1</kbd> Set Pending</div>\n              <div class=\"shortcut\"><kbd>2</kbd> Set In Progress</div>\n              <div class=\"shortcut\"><kbd>3</kbd> Set Completed</div>\n              <div class=\"shortcut\"><kbd>[</kbd> / <kbd>]</kbd> Prev/Next case</div>\n              <div class=\"shortcut\"><kbd>C</kbd> Add comment</div>\n              <div class=\"shortcut\"><kbd>E</kbd> Copy email</div>\n            </div>\n          </div>\n        </div>\n      </div>\n    `;\n    document.body.insertAdjacentHTML('beforeend', html);\n  },\n\n  showBulkStatusMenu() {\n    // Simple prompt for now\n    const status = prompt('Enter status (pending, in_progress, completed):');\n    if (status && ['pending', 'in_progress', 'completed'].includes(status)) {\n      HubBulkActions.updateStatus(status);\n    }\n  }\n};\n\n// ============================================\n// USER MANAGEMENT (Admin)\n// ============================================\nconst HubUsers = {\n  users: [],\n\n  async load() {\n    if (!HubAuth.isAdmin()) return;\n\n    try {\n      const result = await HubAPI.get('/hub/api/users');\n      if (result.success) {\n        this.users = result.users;\n      }\n    } catch (e) {\n      console.error('Failed to load users:', e);\n    }\n  },\n\n  showManagement() {\n    if (!HubAuth.isAdmin()) {\n      HubUI.showToast('Admin access required', 'error');\n      return;\n    }\n\n    this.load().then(() => {\n      const html = `\n        <div class=\"modal-overlay active\" id=\"userManagementModal\">\n          <div class=\"modal\" style=\"max-width: 700px;\">\n            <div class=\"modal-header\" style=\"padding: 20px 24px;\">\n              <div class=\"modal-header-content\">\n                <div class=\"modal-title\" style=\"font-size: 18px;\">User Management</div>\n              </div>\n              <button class=\"modal-close\" onclick=\"document.getElementById('userManagementModal').remove()\">&times;</button>\n            </div>\n            <div class=\"modal-body\" style=\"padding: 24px;\">\n              <div style=\"display: flex; justify-content: space-between; margin-bottom: 16px;\">\n                <h4>Team Members</h4>\n                <button class=\"btn btn-primary\" onclick=\"HubUsers.showCreateForm()\">Add User</button>\n              </div>\n              <div class=\"users-list\">\n                ${this.users.map(u => `\n                  <div class=\"user-row\">\n                    <div class=\"user-row-info\">\n                      <div class=\"user-row-name\">${this.escapeHtml(u.name)}</div>\n                      <div class=\"user-row-meta\">${u.username} &bull; ${u.role}</div>\n                    </div>\n                    <div class=\"user-row-status ${u.is_active ? 'active' : 'inactive'}\">\n                      ${u.is_active ? 'Active' : 'Inactive'}\n                    </div>\n                    <div class=\"user-row-actions\">\n                      <button class=\"btn-icon\" onclick=\"HubUsers.edit(${u.id})\" title=\"Edit\">Edit</button>\n                      ${u.id !== HubState.currentUser.id ? `\n                        <button class=\"btn-icon danger\" onclick=\"HubUsers.delete(${u.id})\" title=\"Delete\">Delete</button>\n                      ` : ''}\n                    </div>\n                  </div>\n                `).join('')}\n              </div>\n            </div>\n          </div>\n        </div>\n      `;\n      document.body.insertAdjacentHTML('beforeend', html);\n    });\n  },\n\n  showCreateForm() {\n    const html = `\n      <div class=\"modal-overlay active\" id=\"createUserModal\" style=\"z-index: 210;\">\n        <div class=\"modal\" style=\"max-width: 400px;\">\n          <div class=\"modal-header\" style=\"padding: 20px 24px;\">\n            <div class=\"modal-header-content\">\n              <div class=\"modal-title\" style=\"font-size: 18px;\">Create User</div>\n            </div>\n            <button class=\"modal-close\" onclick=\"document.getElementById('createUserModal').remove()\">&times;</button>\n          </div>\n          <div class=\"modal-body\" style=\"padding: 24px;\">\n            <div class=\"form-group\">\n              <label>Username (email)</label>\n              <input type=\"text\" id=\"newUsername\" class=\"form-input\" placeholder=\"user@example.com\">\n            </div>\n            <div class=\"form-group\">\n              <label>Display Name</label>\n              <input type=\"text\" id=\"newUserName\" class=\"form-input\" placeholder=\"John Doe\">\n            </div>\n            <div class=\"form-group\">\n              <label>Role</label>\n              <select id=\"newUserRole\" class=\"form-input\">\n                <option value=\"user\">User</option>\n                <option value=\"admin\">Admin</option>\n              </select>\n            </div>\n            <div class=\"form-group\">\n              <label>Initial Password</label>\n              <input type=\"password\" id=\"newUserPassword\" class=\"form-input\" placeholder=\"Minimum 6 characters\">\n            </div>\n            <div id=\"createUserError\" class=\"error-message\" style=\"display: none;\"></div>\n            <button class=\"btn btn-primary\" style=\"width: 100%; margin-top: 16px;\" onclick=\"HubUsers.create()\">\n              Create User\n            </button>\n          </div>\n        </div>\n      </div>\n    `;\n    document.body.insertAdjacentHTML('beforeend', html);\n  },\n\n  async create() {\n    const username = document.getElementById('newUsername').value;\n    const name = document.getElementById('newUserName').value;\n    const role = document.getElementById('newUserRole').value;\n    const password = document.getElementById('newUserPassword').value;\n    const errorEl = document.getElementById('createUserError');\n\n    if (!username || !name || !password) {\n      errorEl.textContent = 'All fields are required';\n      errorEl.style.display = 'block';\n      return;\n    }\n\n    try {\n      const result = await HubAPI.post('/hub/api/users', { username, name, role, password });\n\n      if (result.success) {\n        document.getElementById('createUserModal').remove();\n        HubUI.showToast(result.message, 'success');\n        // Refresh user list\n        document.getElementById('userManagementModal').remove();\n        this.showManagement();\n      } else {\n        errorEl.textContent = result.error;\n        errorEl.style.display = 'block';\n      }\n    } catch (e) {\n      errorEl.textContent = 'Failed to create user';\n      errorEl.style.display = 'block';\n    }\n  },\n\n  async delete(userId) {\n    if (!confirm('Are you sure you want to delete this user?')) return;\n\n    try {\n      const result = await HubAPI.delete(`/hub/api/users/${userId}`);\n      if (result.success) {\n        HubUI.showToast('User deleted', 'success');\n        document.getElementById('userManagementModal').remove();\n        this.showManagement();\n      } else {\n        HubUI.showToast(result.error, 'error');\n      }\n    } catch (e) {\n      HubUI.showToast('Failed to delete user', 'error');\n    }\n  },\n\n  showAssignModal(caseIds) {\n    this.load().then(() => {\n      const html = `\n        <div class=\"modal-overlay active\" id=\"assignModal\">\n          <div class=\"modal\" style=\"max-width: 400px;\">\n            <div class=\"modal-header\" style=\"padding: 20px 24px;\">\n              <div class=\"modal-header-content\">\n                <div class=\"modal-title\" style=\"font-size: 18px;\">Assign ${caseIds.length} Case(s)</div>\n              </div>\n              <button class=\"modal-close\" onclick=\"document.getElementById('assignModal').remove()\">&times;</button>\n            </div>\n            <div class=\"modal-body\" style=\"padding: 24px;\">\n              <div class=\"form-group\">\n                <label>Assign to</label>\n                <select id=\"assignToUser\" class=\"form-input\">\n                  <option value=\"\">Unassign</option>\n                  ${this.users.filter(u => u.is_active).map(u => `\n                    <option value=\"${u.id}\">${this.escapeHtml(u.name)}</option>\n                  `).join('')}\n                </select>\n              </div>\n              <div style=\"display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;\">\n                <button class=\"btn btn-secondary\" onclick=\"document.getElementById('assignModal').remove()\">Cancel</button>\n                <button class=\"btn btn-primary\" onclick=\"HubUsers.confirmAssign()\">Assign</button>\n              </div>\n            </div>\n          </div>\n        </div>\n      `;\n      document.body.insertAdjacentHTML('beforeend', html);\n    });\n  },\n\n  async confirmAssign() {\n    const userId = document.getElementById('assignToUser').value;\n    document.getElementById('assignModal').remove();\n    await HubBulkActions.assign(userId ? parseInt(userId) : null);\n  },\n\n  escapeHtml(text) {\n    const div = document.createElement('div');\n    div.textContent = text;\n    return div.innerHTML;\n  }\n};\n\n// ============================================\n// ASSIGNMENT QUEUE (Admin)\n// ============================================\nconst HubAssignment = {\n  async showQueue() {\n    if (!HubAuth.isAdmin()) {\n      HubUI.showToast('Admin access required', 'error');\n      return;\n    }\n\n    try {\n      const result = await HubAPI.get('/hub/api/assignment-queue');\n      const queue = result.queue || [];\n\n      const html = `\n        <div class=\"modal-overlay active\" id=\"assignmentQueueModal\">\n          <div class=\"modal\" style=\"max-width: 600px;\">\n            <div class=\"modal-header\" style=\"padding: 20px 24px;\">\n              <div class=\"modal-header-content\">\n                <div class=\"modal-title\" style=\"font-size: 18px;\">Assignment Queue (Round Robin)</div>\n              </div>\n              <button class=\"modal-close\" onclick=\"document.getElementById('assignmentQueueModal').remove()\">&times;</button>\n            </div>\n            <div class=\"modal-body\" style=\"padding: 24px;\">\n              <p style=\"margin-bottom: 16px; color: var(--gray-500);\">\n                Configure which team members receive auto-assigned cases.\n              </p>\n              ${queue.length > 0 ? `\n                <table class=\"queue-table\">\n                  <thead>\n                    <tr>\n                      <th>User</th>\n                      <th>Case Type</th>\n                      <th>Load</th>\n                      <th>Active</th>\n                    </tr>\n                  </thead>\n                  <tbody>\n                    ${queue.map(q => `\n                      <tr>\n                        <td>${q.user_name}</td>\n                        <td>${q.case_type || 'All'}</td>\n                        <td>${q.current_load} / ${q.max_load}</td>\n                        <td>\n                          <input type=\"checkbox\" ${q.is_active ? 'checked' : ''}\n                                 onchange=\"HubAssignment.toggleActive(${q.id}, this.checked)\">\n                        </td>\n                      </tr>\n                    `).join('')}\n                  </tbody>\n                </table>\n              ` : '<p>No users in assignment queue. Add users to enable auto-assignment.</p>'}\n              <button class=\"btn btn-secondary\" style=\"margin-top: 16px;\" onclick=\"HubAssignment.recalculate()\">\n                Recalculate Loads\n              </button>\n            </div>\n          </div>\n        </div>\n      `;\n      document.body.insertAdjacentHTML('beforeend', html);\n    } catch (e) {\n      HubUI.showToast('Failed to load assignment queue', 'error');\n    }\n  },\n\n  async toggleActive(queueId, isActive) {\n    // Implementation would update the queue entry\n  },\n\n  async recalculate() {\n    try {\n      const result = await HubAPI.post('/hub/api/assignment/recalculate', {});\n      if (result.success) {\n        HubUI.showToast('Loads recalculated', 'success');\n        document.getElementById('assignmentQueueModal').remove();\n        this.showQueue();\n      }\n    } catch (e) {\n      HubUI.showToast('Failed to recalculate', 'error');\n    }\n  }\n};\n\n// ============================================\n// AUDIT LOG (Admin)\n// ============================================\nconst HubAuditLog = {\n  async show() {\n    if (!HubAuth.isAdmin()) {\n      HubUI.showToast('Admin access required', 'error');\n      return;\n    }\n\n    try {\n      const result = await HubAPI.get('/hub/api/audit-log?limit=50');\n      const logs = result.logs || [];\n\n      const html = `\n        <div class=\"modal-overlay active\" id=\"auditLogModal\">\n          <div class=\"modal\" style=\"max-width: 800px;\">\n            <div class=\"modal-header\" style=\"padding: 20px 24px;\">\n              <div class=\"modal-header-content\">\n                <div class=\"modal-title\" style=\"font-size: 18px;\">Audit Log</div>\n              </div>\n              <button class=\"modal-close\" onclick=\"document.getElementById('auditLogModal').remove()\">&times;</button>\n            </div>\n            <div class=\"modal-body\" style=\"padding: 0; max-height: 60vh; overflow-y: auto;\">\n              <table class=\"audit-table\">\n                <thead>\n                  <tr>\n                    <th>Time</th>\n                    <th>User</th>\n                    <th>Action</th>\n                    <th>Details</th>\n                  </tr>\n                </thead>\n                <tbody>\n                  ${logs.map(log => `\n                    <tr>\n                      <td>${this.formatTime(log.created_at)}</td>\n                      <td>${log.user_name || log.user_email || '-'}</td>\n                      <td><span class=\"action-badge ${log.action_category}\">${log.action_type}</span></td>\n                      <td>${log.resource_type ? `${log.resource_type}: ${log.resource_id || ''}` : '-'}</td>\n                    </tr>\n                  `).join('')}\n                </tbody>\n              </table>\n            </div>\n          </div>\n        </div>\n      `;\n      document.body.insertAdjacentHTML('beforeend', html);\n    } catch (e) {\n      HubUI.showToast('Failed to load audit log', 'error');\n    }\n  },\n\n  formatTime(timestamp) {\n    return new Date(timestamp).toLocaleString();\n  }\n};\n\n// ============================================\n// CASES\n// ============================================\nconst HubCases = {\n  async loadCases(page = 1) {\n    HubUI.showLoading();\n\n    try {\n      let url = `/hub/api/cases?page=${page}&limit=${HubConfig.ITEMS_PER_PAGE}`;\n\n      if (HubState.currentFilter && HubState.currentFilter !== 'all') {\n        url += `&type=${HubState.currentFilter}`;\n      }\n      if (HubState.currentStatus) {\n        url += `&status=${HubState.currentStatus}`;\n      }\n      if (HubState.currentSearch) {\n        url += `&search=${encodeURIComponent(HubState.currentSearch)}`;\n      }\n\n      const result = await HubAPI.get(url);\n      HubState.cases = result.cases || [];\n      HubState.currentPage = page;\n      HubState.totalPages = result.totalPages || 1;\n\n      this.renderCasesList();\n    } catch (e) {\n      console.error('Failed to load cases:', e);\n      HubUI.showToast('Failed to load cases', 'error');\n    } finally {\n      HubUI.hideLoading();\n    }\n  },\n\n  renderCasesList() {\n    const container = document.getElementById('casesTableBody');\n    if (!container) return;\n\n    if (HubState.cases.length === 0) {\n      container.innerHTML = `\n        <tr>\n          <td colspan=\"7\" class=\"empty-state\">No cases found</td>\n        </tr>\n      `;\n      return;\n    }\n\n    container.innerHTML = HubState.cases.map((c, idx) => `\n      <tr onclick=\"HubCases.openCase('${c.case_id}')\" class=\"${idx === 0 ? 'keyboard-selected' : ''}\">\n        <td>\n          <input type=\"checkbox\" class=\"case-checkbox\" data-case-id=\"${c.case_id}\"\n                 onclick=\"event.stopPropagation(); HubBulkActions.toggleSelect('${c.case_id}')\"\n                 ${HubState.selectedCaseIds.has(c.case_id) ? 'checked' : ''}>\n        </td>\n        <td class=\"case-id\">${c.case_id}</td>\n        <td>\n          <div class=\"customer-info\">\n            <span class=\"customer-name\">${this.escapeHtml(c.customer_name || 'Unknown')}</span>\n            <span class=\"customer-email\">${this.escapeHtml(c.customer_email || '-')}</span>\n          </div>\n        </td>\n        <td><span class=\"type-badge ${c.case_type}\">${c.case_type}</span></td>\n        <td><span class=\"status-badge ${c.status.replace('_', '-')}\">${this.formatStatus(c.status)}</span></td>\n        <td>${c.assigned_to || '-'}</td>\n        <td class=\"time-ago\">${this.timeAgo(c.created_at)}</td>\n      </tr>\n    `).join('');\n\n    this.renderPagination();\n  },\n\n  renderPagination() {\n    const container = document.getElementById('casesPagination');\n    if (!container) return;\n\n    let html = '';\n\n    if (HubState.currentPage > 1) {\n      html += `<button onclick=\"HubCases.loadCases(${HubState.currentPage - 1})\">Previous</button>`;\n    }\n\n    html += `<span>Page ${HubState.currentPage} of ${HubState.totalPages}</span>`;\n\n    if (HubState.currentPage < HubState.totalPages) {\n      html += `<button onclick=\"HubCases.loadCases(${HubState.currentPage + 1})\">Next</button>`;\n    }\n\n    container.innerHTML = html;\n  },\n\n  async openCase(caseId) {\n    try {\n      const result = await HubAPI.get(`/hub/api/case/${caseId}`);\n      if (result.case) {\n        HubState.currentCase = result.case;\n        HubState.currentCaseIndex = HubState.cases.findIndex(c => c.case_id === caseId);\n        HubUI.showCaseModal(result.case);\n      }\n    } catch (e) {\n      HubUI.showToast('Failed to load case', 'error');\n    }\n  },\n\n  async updateStatus(status) {\n    if (!HubState.currentCase) return;\n\n    // If completing, show checklist first\n    if (status === 'completed') {\n      const result = await HubChecklist.showForCase(HubState.currentCase.case_id);\n      if (!result.canComplete) return;\n    }\n\n    try {\n      const result = await HubAPI.put(`/hub/api/case/${HubState.currentCase.case_id}/status`, { status });\n\n      if (result.success) {\n        HubState.currentCase.status = status;\n        HubUI.updateCaseModalStatus(status);\n        HubUI.showToast(`Status updated to ${status}`, 'success');\n\n        // Refresh cases list\n        this.loadCases(HubState.currentPage);\n      } else {\n        HubUI.showToast(result.error, 'error');\n      }\n    } catch (e) {\n      HubUI.showToast('Failed to update status', 'error');\n    }\n  },\n\n  navigateCase(direction) {\n    const newIndex = direction === 'prev'\n      ? HubState.currentCaseIndex - 1\n      : HubState.currentCaseIndex + 1;\n\n    if (newIndex >= 0 && newIndex < HubState.cases.length) {\n      this.openCase(HubState.cases[newIndex].case_id);\n    }\n  },\n\n  setStatusFilter(status) {\n    HubState.currentStatus = status;\n    this.loadCases(1);\n  },\n\n  openShopifyOrder() {\n    if (HubState.currentCase?.order_url) {\n      window.open(HubState.currentCase.order_url, '_blank');\n    }\n  },\n\n  formatStatus(status) {\n    return status.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());\n  },\n\n  timeAgo(timestamp) {\n    const seconds = Math.floor((Date.now() - new Date(timestamp)) / 1000);\n\n    if (seconds < 60) return 'Just now';\n    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;\n    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;\n    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;\n\n    return new Date(timestamp).toLocaleDateString();\n  },\n\n  escapeHtml(text) {\n    if (!text) return '';\n    const div = document.createElement('div');\n    div.textContent = text;\n    return div.innerHTML;\n  }\n};\n\n// ============================================\n// NAVIGATION\n// ============================================\nconst HubNavigation = {\n  goto(page, filter = null) {\n    HubState.currentPage = page;\n\n    // Update nav items\n    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));\n    const selector = filter\n      ? `.nav-item[data-page=\"${page}\"][data-filter=\"${filter}\"]`\n      : `.nav-item[data-page=\"${page}\"]`;\n    document.querySelector(selector)?.classList.add('active');\n\n    // Update page title\n    const titles = {\n      dashboard: 'Dashboard',\n      cases: 'Cases',\n      sessions: 'Sessions',\n      events: 'Event Log',\n      analytics: 'Performance'\n    };\n    document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';\n\n    // Show/hide views\n    ['dashboard', 'cases', 'sessions', 'events', 'analytics'].forEach(v => {\n      const el = document.getElementById(v + 'View');\n      if (el) el.style.display = v === page ? 'block' : 'none';\n    });\n\n    // Load data\n    if (page === 'cases') {\n      HubState.currentFilter = filter || 'all';\n      HubCases.loadCases();\n    } else if (page === 'dashboard') {\n      HubDashboard.load();\n    }\n  }\n};\n\n// ============================================\n// DASHBOARD\n// ============================================\nconst HubDashboard = {\n  async load() {\n    try {\n      const result = await HubAPI.get('/hub/api/stats');\n\n      document.getElementById('statPending').textContent = result.pending || 0;\n      document.getElementById('statInProgress').textContent = result.inProgress || 0;\n      document.getElementById('statCompletedToday').textContent = result.completedToday || 0;\n      document.getElementById('statAvgTime').textContent = result.avgTime || '-';\n\n      // Update sidebar counts\n      ['all', 'shipping', 'refund', 'subscription', 'manual'].forEach(type => {\n        const el = document.getElementById((type === 'all' ? 'allCases' : type) + 'Count');\n        if (el) el.textContent = result[type] || 0;\n      });\n    } catch (e) {\n      console.error('Failed to load dashboard:', e);\n    }\n  }\n};\n\n// ============================================\n// UI UTILITIES\n// ============================================\nconst HubUI = {\n  init() {\n    // Setup event listeners\n    document.querySelectorAll('.nav-item').forEach(item => {\n      item.addEventListener('click', () => {\n        HubNavigation.goto(item.dataset.page, item.dataset.filter);\n      });\n    });\n\n    // Search\n    const searchInput = document.getElementById('searchInput');\n    if (searchInput) {\n      let searchTimeout;\n      searchInput.addEventListener('input', (e) => {\n        clearTimeout(searchTimeout);\n        searchTimeout = setTimeout(() => {\n          HubState.currentSearch = e.target.value;\n          if (HubState.currentPage === 'cases') {\n            HubCases.loadCases(1);\n          }\n        }, 300);\n      });\n    }\n\n    // Modal close on overlay click\n    document.getElementById('caseModal')?.addEventListener('click', (e) => {\n      if (e.target.id === 'caseModal') this.closeModal();\n    });\n  },\n\n  showLoginScreen() {\n    document.getElementById('loginScreen').style.display = 'flex';\n    document.getElementById('appContainer').style.display = 'none';\n  },\n\n  showApp() {\n    document.getElementById('loginScreen').style.display = 'none';\n    document.getElementById('appContainer').style.display = 'flex';\n\n    // Update user info in sidebar\n    const userName = HubState.currentUser?.name || 'User';\n    const userRole = HubState.currentUser?.role || 'user';\n\n    document.querySelector('.user-name').textContent = userName;\n    document.querySelector('.user-role').textContent = userRole === 'admin' ? 'Administrator' : 'Team Member';\n    document.querySelector('.user-avatar').textContent = userName.charAt(0).toUpperCase();\n\n    // Show/hide admin nav items\n    document.querySelectorAll('.admin-only').forEach(el => {\n      el.style.display = HubAuth.isAdmin() ? 'block' : 'none';\n    });\n  },\n\n  showCaseModal(caseData) {\n    // Implementation would render the full case modal\n    // This is a simplified version\n    const modal = document.getElementById('caseModal');\n    if (modal) {\n      modal.classList.add('active');\n      // Populate modal with case data...\n    }\n  },\n\n  closeModal() {\n    document.querySelectorAll('.modal-overlay.active').forEach(m => {\n      m.classList.remove('active');\n    });\n    HubState.currentCase = null;\n  },\n\n  updateCaseModalStatus(status) {\n    document.querySelectorAll('.status-card').forEach(card => {\n      card.classList.remove('active');\n      if (card.classList.contains(status.replace('_', '-'))) {\n        card.classList.add('active');\n      }\n    });\n  },\n\n  showLoading() {\n    HubState.isLoading = true;\n    // Show loading indicator\n  },\n\n  hideLoading() {\n    HubState.isLoading = false;\n    // Hide loading indicator\n  },\n\n  showToast(message, type = 'info') {\n    const toast = document.createElement('div');\n    toast.className = `toast toast-${type}`;\n    toast.textContent = message;\n\n    const container = document.getElementById('toastContainer') || document.body;\n    container.appendChild(toast);\n\n    setTimeout(() => toast.classList.add('show'), 10);\n    setTimeout(() => {\n      toast.classList.remove('show');\n      setTimeout(() => toast.remove(), 300);\n    }, 3000);\n  },\n\n  refresh() {\n    if (HubState.currentPage === 'dashboard') {\n      HubDashboard.load();\n    } else if (HubState.currentPage === 'cases') {\n      HubCases.loadCases(HubState.currentPage);\n    }\n    HubUI.showToast('Refreshed', 'success');\n  },\n\n  copyToClipboard(text) {\n    navigator.clipboard.writeText(text).then(() => {\n      this.showToast('Copied to clipboard', 'success');\n    });\n  }\n};\n\n// ============================================\n// INITIALIZATION\n// ============================================\nconst HubApp = {\n  async init() {\n    // Check authentication\n    if (HubAuth.init()) {\n      HubUI.showApp();\n      HubUI.init();\n      HubKeyboard.init();\n      HubDashboard.load();\n      HubViews.load();\n\n      // Check URL for case deep link\n      this.handleDeepLink();\n    } else {\n      HubUI.showLoginScreen();\n    }\n  },\n\n  handleDeepLink() {\n    const params = new URLSearchParams(window.location.search);\n    const caseId = params.get('case');\n\n    if (caseId) {\n      HubNavigation.goto('cases');\n      setTimeout(() => HubCases.openCase(caseId), 500);\n    }\n  }\n};\n\n// Auto-initialize when DOM is ready\nif (document.readyState === 'loading') {\n  document.addEventListener('DOMContentLoaded', () => HubApp.init());\n} else {\n  HubApp.init();\n}\n\n// Export for global access\nwindow.HubApp = HubApp;\nwindow.HubAuth = HubAuth;\nwindow.HubCases = HubCases;\nwindow.HubBulkActions = HubBulkActions;\nwindow.HubViews = HubViews;\nwindow.HubChecklist = HubChecklist;\nwindow.HubUsers = HubUsers;\nwindow.HubAssignment = HubAssignment;\nwindow.HubAuditLog = HubAuditLog;\nwindow.HubUI = HubUI;\nwindow.HubNavigation = HubNavigation;\nwindow.HubKeyboard = HubKeyboard;\n";
+}
+
