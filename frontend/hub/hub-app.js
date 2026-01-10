@@ -321,7 +321,9 @@ const HubBulkActions = {
       HubUI.showLoading();
       const result = await HubAPI.post('/hub/api/bulk/status', {
         caseIds: Array.from(HubState.selectedCaseIds),
-        status
+        status,
+        actor: HubState.currentUser?.name || 'team_member',
+        actor_email: HubState.currentUser?.email || ''
       });
 
       if (result.success) {
@@ -461,7 +463,9 @@ const HubBulkActions = {
       HubUI.showLoading();
       const result = await HubAPI.post('/hub/api/bulk/status', {
         caseIds: Array.from(HubState.selectedCaseIds),
-        status: 'completed'
+        status: 'completed',
+        actor: HubState.currentUser?.name || 'team_member',
+        actor_email: HubState.currentUser?.email || ''
       });
 
       if (result.success) {
