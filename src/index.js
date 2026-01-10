@@ -10158,6 +10158,13 @@ function getResolutionHubHTML() {
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
+    // Global error handler for debugging
+    window.onerror = function(msg, url, line, col, error) {
+      console.error('[Global Error]', msg, 'at line', line, ':', error);
+      return false;
+    };
+    console.log('[Hub] Script starting...');
+
     const API = '';
     let currentCase = null;
     let currentFilter = 'all';
@@ -10205,6 +10212,7 @@ function getResolutionHubHTML() {
     }
 
     function showAppAfterLogin(user) {
+      console.log('[showAppAfterLogin] Showing app for user:', user);
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('appContainer').style.display = 'flex';
 
@@ -10212,6 +10220,7 @@ function getResolutionHubHTML() {
       if (typeof HubState !== 'undefined') {
         HubState.currentUser = user;
         HubState.token = localStorage.getItem('hub_token');
+        console.log('[showAppAfterLogin] Updated HubState with user and token');
       }
 
       // Update user info in sidebar
@@ -10231,6 +10240,7 @@ function getResolutionHubHTML() {
       }
 
       // Load dashboard data, then handle URL params
+      console.log('[showAppAfterLogin] Loading dashboard...');
       loadDashboard();
       handleUrlParams();
     }
@@ -10361,14 +10371,18 @@ function getResolutionHubHTML() {
 
     // Check for existing session on page load
     function checkExistingSession() {
+      console.log('[checkExistingSession] Checking for existing session...');
       const token = localStorage.getItem('hub_token');
       const userStr = localStorage.getItem('hub_user');
+      console.log('[checkExistingSession] Token exists:', !!token, 'User exists:', !!userStr);
       if (token && userStr) {
         try {
           const user = JSON.parse(userStr);
+          console.log('[checkExistingSession] Parsed user:', user);
           showAppAfterLogin(user);
           return true;
         } catch (e) {
+          console.error('[checkExistingSession] Error parsing user:', e);
           localStorage.removeItem('hub_token');
           localStorage.removeItem('hub_user');
         }
@@ -10478,7 +10492,11 @@ function getResolutionHubHTML() {
 
     async function loadDashboard() {
       try {
-        const r = await fetch(API+'/hub/api/stats'); const d = await r.json();
+        console.log('[loadDashboard] Fetching stats...');
+        const r = await fetch(API+'/hub/api/stats');
+        console.log('[loadDashboard] Stats response status:', r.status);
+        const d = await r.json();
+        console.log('[loadDashboard] Stats:', d);
         document.getElementById('statPending').textContent = d.pending||0;
         document.getElementById('statInProgress').textContent = d.inProgress||0;
         document.getElementById('statCompletedToday').textContent = d.completedToday||0;
@@ -10502,7 +10520,11 @@ function getResolutionHubHTML() {
 
     async function loadRecentCases() {
       try {
-        const r = await fetch(API+'/hub/api/cases?limit=10'); const d = await r.json();
+        console.log('[loadRecentCases] Fetching cases...');
+        const r = await fetch(API+'/hub/api/cases?limit=10');
+        console.log('[loadRecentCases] Response status:', r.status);
+        const d = await r.json();
+        console.log('[loadRecentCases] Got', d.cases?.length || 0, 'cases');
         const tbody = document.getElementById('recentCasesBody');
         if (!d.cases?.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No cases yet</td></tr>'; return; }
         casesList = d.cases || []; // Populate casesList for navigation
@@ -10515,7 +10537,11 @@ function getResolutionHubHTML() {
       view.innerHTML = '<div class="spinner"></div>';
       try {
         const url = currentFilter==='all' ? API+'/hub/api/cases?limit=50' : API+'/hub/api/cases?limit=50&filter='+currentFilter;
-        const r = await fetch(url); const d = await r.json();
+        console.log('[loadCasesView] Fetching from:', url);
+        const r = await fetch(url);
+        console.log('[loadCasesView] Response status:', r.status);
+        const d = await r.json();
+        console.log('[loadCasesView] Got', d.cases?.length || 0, 'cases');
         casesList = d.cases || [];
 
         // Calculate due date status
@@ -11627,6 +11653,7 @@ function getResolutionHubHTML() {
     }
 
     async function openCase(caseId) {
+      console.log('[openCase] Opening case:', caseId);
       document.getElementById('caseModal').classList.add('active');
       document.getElementById('modalCaseId').textContent = caseId;
       document.getElementById('modalCustomerName').textContent = 'Loading...';
@@ -11643,8 +11670,16 @@ function getResolutionHubHTML() {
 
       try {
         const r = await fetch(API+'/hub/api/case/'+caseId);
+        console.log('[openCase] Fetch response status:', r.status);
+        if (!r.ok) {
+          throw new Error('API returned status ' + r.status);
+        }
         const data = await r.json();
+        console.log('[openCase] API response:', data);
         const c = data.case;
+        if (!c) {
+          throw new Error('No case data in response');
+        }
         currentCase = c;
 
         // Header section
@@ -11752,8 +11787,9 @@ function getResolutionHubHTML() {
         // Load activity timeline
         loadCaseActivity();
       } catch(e) {
-        console.error(e);
-        document.getElementById('modalCustomerName').textContent = 'Error loading case';
+        console.error('[openCase] Error loading case:', e);
+        document.getElementById('modalCustomerName').textContent = 'Error: ' + e.message;
+        document.getElementById('modalCaseType').innerHTML = '<span class="type-badge error">Error</span>';
       }
     }
 
