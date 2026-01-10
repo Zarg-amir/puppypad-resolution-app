@@ -10208,47 +10208,20 @@ function getResolutionHubHTML() {
       applyCaseFilters();
     }
 
-    // Bulk selection state
-    window.selectedCaseIds = new Set();
-
+    // Bulk selection - use HubState from hub-app.js
     function toggleCaseSelect(caseId) {
-      if (window.selectedCaseIds.has(caseId)) {
-        window.selectedCaseIds.delete(caseId);
-      } else {
-        window.selectedCaseIds.add(caseId);
+      if (typeof HubBulkActions !== 'undefined') {
+        HubBulkActions.toggleSelect(caseId);
       }
-      updateBulkToolbar();
     }
 
     function toggleSelectAll(checked) {
-      const checkboxes = document.querySelectorAll('.case-checkbox');
-      checkboxes.forEach(cb => {
-        cb.checked = checked;
-        const caseId = cb.dataset.caseId;
+      if (typeof HubBulkActions !== 'undefined') {
         if (checked) {
-          window.selectedCaseIds.add(caseId);
+          HubBulkActions.selectAll();
         } else {
-          window.selectedCaseIds.delete(caseId);
+          HubBulkActions.deselectAll();
         }
-      });
-      updateBulkToolbar();
-    }
-
-    function updateBulkToolbar() {
-      const toolbar = document.getElementById('bulkActionsToolbar');
-      const count = window.selectedCaseIds.size;
-      if (count > 0) {
-        toolbar.classList.add('visible');
-        document.getElementById('selectedCount').textContent = count + ' selected';
-      } else {
-        toolbar.classList.remove('visible');
-      }
-      // Update select all checkbox state
-      const selectAll = document.getElementById('selectAllCases');
-      const checkboxes = document.querySelectorAll('.case-checkbox');
-      if (selectAll && checkboxes.length > 0) {
-        selectAll.checked = count === checkboxes.length;
-        selectAll.indeterminate = count > 0 && count < checkboxes.length;
       }
     }
 
