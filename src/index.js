@@ -10163,7 +10163,30 @@ function getResolutionHubHTML() {
       console.error('[Global Error]', msg, 'at line', line, ':', error);
       return false;
     };
+    window.addEventListener('unhandledrejection', function(event) {
+      console.error('[Unhandled Promise Rejection]', event.reason);
+    });
     console.log('[Hub] Script starting...');
+
+    // Test function to verify JS is working (call from browser console: testOpenCase())
+    window.testOpenCase = function() {
+      console.log('[TEST] testOpenCase called');
+      console.log('[TEST] casesList has', casesList.length, 'cases');
+      if (casesList.length > 0) {
+        console.log('[TEST] First case:', casesList[0]);
+        console.log('[TEST] Calling openCase with:', casesList[0].case_id);
+        openCase(casesList[0].case_id);
+      } else {
+        console.log('[TEST] No cases in casesList - trying API fetch directly');
+        fetch('/hub/api/cases?limit=1').then(r => r.json()).then(d => {
+          console.log('[TEST] Direct API response:', d);
+          if (d.cases && d.cases[0]) {
+            console.log('[TEST] Calling openCase with:', d.cases[0].case_id);
+            openCase(d.cases[0].case_id);
+          }
+        }).catch(e => console.error('[TEST] API error:', e));
+      }
+    };
 
     const API = '';
     let currentCase = null;
