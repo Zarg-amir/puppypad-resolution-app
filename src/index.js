@@ -5318,9 +5318,9 @@ async function verifyAuthAndGetUser(request, env) {
     return { error: 'Invalid or expired token', status: 401 };
   }
 
-  // Get user details from database
+  // Get user details from database (IFNULL for columns that may not exist)
   const user = await env.ANALYTICS_DB.prepare(`
-    SELECT id, username, name, role, is_active FROM admin_users WHERE username = ?
+    SELECT id, username, name, role, IFNULL(is_active, 1) as is_active FROM admin_users WHERE username = ?
   `).bind(payload.username).first();
 
   if (!user) {
@@ -5374,8 +5374,10 @@ async function handleListUsers(request, env, corsHeaders) {
 
   try {
     const users = await env.ANALYTICS_DB.prepare(`
-      SELECT id, username, name, role, is_active, must_change_password, created_at, last_login, last_activity_at,
-             (SELECT name FROM admin_users WHERE id = admin_users.created_by) as created_by_name
+      SELECT id, username, name, role,
+             IFNULL(is_active, 1) as is_active,
+             IFNULL(must_change_password, 0) as must_change_password,
+             created_at, last_login
       FROM admin_users
       ORDER BY created_at DESC
     `).all();
@@ -5418,11 +5420,11 @@ async function handleCreateUser(request, env, corsHeaders) {
 
     const passwordHash = await hashPassword(password);
 
-    // Create user
+    // Create user (basic columns only - compatible with schema without migration)
     await env.ANALYTICS_DB.prepare(`
-      INSERT INTO admin_users (username, password_hash, name, role, is_active, must_change_password, created_by)
-      VALUES (?, ?, ?, ?, 1, 1, ?)
-    `).bind(username, passwordHash, name, role, auth.user.id).run();
+      INSERT INTO admin_users (username, password_hash, name, role)
+      VALUES (?, ?, ?, ?)
+    `).bind(username, passwordHash, name, role).run();
 
     // Log audit
     await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'user_created', 'users', 'user', username, { name, role }, null, username, request);
@@ -10558,13 +10560,21 @@ function getResolutionHubHTML() {
       } catch(e) { console.error(e); }
     }
 
+    let casesLoadRequestId = 0;
     async function loadCasesView() {
       const view = document.getElementById('casesView');
       view.innerHTML = '<div class="spinner"></div>';
+      const requestId = ++casesLoadRequestId;
+      const filterAtRequest = currentFilter;
       try {
-        const url = currentFilter==='all' ? API+'/hub/api/cases?limit=50' : API+'/hub/api/cases?limit=50&filter='+currentFilter;
-        console.log('[loadCasesView] Fetching from:', url);
+        const url = filterAtRequest==='all' ? API+'/hub/api/cases?limit=50' : API+'/hub/api/cases?limit=50&filter='+filterAtRequest;
+        console.log('[loadCasesView] Fetching from:', url, 'requestId:', requestId);
         const r = await fetch(url);
+        // Check if this request is still current (user may have navigated away)
+        if (requestId !== casesLoadRequestId) {
+          console.log('[loadCasesView] Stale request', requestId, 'ignored, current is', casesLoadRequestId);
+          return;
+        }
         console.log('[loadCasesView] Response status:', r.status);
         const d = await r.json();
         console.log('[loadCasesView] Got', d.cases?.length || 0, 'cases');
@@ -10573,15 +10583,19 @@ function getResolutionHubHTML() {
         // Calculate due date status
         function getDueStatus(c) {
           if (!c.created_at) return { text: '-', class: '' };
-          const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
-          const now = Date.now();
-          const timeLeft = dueDate.getTime() - now;
-          if (c.status === 'completed') return { text: '✓ Done', class: 'due-done' };
-          if (timeLeft < 0) return { text: 'Overdue', class: 'due-overdue' };
-          const hoursLeft = Math.floor(timeLeft / (60*60*1000));
-          if (hoursLeft < 1) return { text: '<1h left', class: 'due-urgent' };
-          if (hoursLeft < 6) return { text: hoursLeft + 'h left', class: 'due-warning' };
-          return { text: hoursLeft + 'h left', class: 'due-ok' };
+          try {
+            const createdDate = new Date(c.created_at);
+            if (isNaN(createdDate.getTime())) return { text: '-', class: '' };
+            const dueDate = new Date(createdDate.getTime() + 24*60*60*1000);
+            const now = Date.now();
+            const timeLeft = dueDate.getTime() - now;
+            if (c.status === 'completed') return { text: '✓ Done', class: 'due-done' };
+            if (timeLeft < 0) return { text: 'Overdue', class: 'due-overdue' };
+            const hoursLeft = Math.floor(timeLeft / (60*60*1000));
+            if (hoursLeft < 1) return { text: '<1h left', class: 'due-urgent' };
+            if (hoursLeft < 6) return { text: hoursLeft + 'h left', class: 'due-warning' };
+            return { text: hoursLeft + 'h left', class: 'due-ok' };
+          } catch(e) { return { text: '-', class: '' }; }
         }
 
         function renderCaseRow(c) {
