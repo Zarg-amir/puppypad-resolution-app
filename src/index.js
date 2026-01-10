@@ -10614,7 +10614,10 @@ function getResolutionHubHTML() {
         }
 
         function renderCaseRow(c) {
+          console.log('[renderCaseRow] Rendering case:', c.case_id, 'created_at:', c.created_at, 'resolution:', c.resolution);
           const due = getDueStatus(c);
+          const res = formatResolution(c.resolution, c.refund_amount);
+          console.log('[renderCaseRow] Due result:', due, 'Resolution result:', res);
           return '<tr>'+
             '<td onclick="event.stopPropagation()"><input type="checkbox" class="case-checkbox" data-case-id="'+c.case_id+'" onchange="toggleCaseSelect(\\''+c.case_id+'\\')" style="width:16px;height:16px;cursor:pointer;"></td>'+
             '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="case-id">'+c.case_id+'</span></td>'+
@@ -10622,7 +10625,7 @@ function getResolutionHubHTML() {
             '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td>'+
             '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td>'+
             '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="due-badge '+due.class+'">'+due.text+'</span></td>'+
-            '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+formatResolution(c.resolution, c.refund_amount)+'</td>'+
+            '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+res+'</td>'+
             '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;" class="time-ago">'+timeAgo(c.created_at)+'</td>'+
           '</tr>';
         }
