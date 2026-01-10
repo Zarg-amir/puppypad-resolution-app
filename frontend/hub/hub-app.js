@@ -1682,6 +1682,688 @@ const HubApp = {
   }
 };
 
+// ============================================
+// PHASE 2: SOP LINK MANAGEMENT (Admin)
+// ============================================
+const HubSOPLinks = {
+  links: [],
+
+  async show() {
+    if (!HubAuth.isAdmin()) {
+      HubUI.showToast('Admin access required', 'error');
+      return;
+    }
+
+    await this.load();
+
+    const caseTypes = [...new Set(this.links.map(l => l.case_type))];
+
+    const html = `
+      <div class="modal-overlay active" id="sopManagementModal">
+        <div class="modal" style="max-width: 900px;">
+          <div class="modal-header" style="padding: 20px 24px;">
+            <div class="modal-header-content">
+              <div class="modal-title" style="font-size: 18px;">SOP Link Management</div>
+              <div style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
+                Configure Standard Operating Procedure links for each case scenario
+              </div>
+            </div>
+            <button class="modal-close" onclick="document.getElementById('sopManagementModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 0; max-height: 70vh; overflow-y: auto;">
+            <div style="padding: 16px 24px; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; gap: 12px;">
+                <select id="sopCaseTypeFilter" class="form-input" style="width: 150px;" onchange="HubSOPLinks.filterByType(this.value)">
+                  <option value="">All Types</option>
+                  ${['refund', 'return', 'shipping', 'subscription', 'manual'].map(t =>
+                    `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
+                  ).join('')}
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="HubSOPLinks.showCreateForm()">Add SOP Link</button>
+            </div>
+            <table class="sop-table" style="width: 100%;">
+              <thead>
+                <tr>
+                  <th style="padding: 12px 24px;">Scenario</th>
+                  <th>Case Type</th>
+                  <th>URL</th>
+                  <th>Status</th>
+                  <th style="width: 100px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="sopLinksTableBody">
+                ${this.renderRows(this.links)}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  renderRows(links) {
+    if (links.length === 0) {
+      return '<tr><td colspan="5" class="empty-state">No SOP links configured</td></tr>';
+    }
+
+    return links.map(link => `
+      <tr data-case-type="${link.case_type}">
+        <td style="padding: 12px 24px;">
+          <div style="font-weight: 500;">${this.escapeHtml(link.scenario_name)}</div>
+          <div style="font-size: 12px; color: var(--gray-500);">${link.scenario_key}</div>
+        </td>
+        <td><span class="type-badge ${link.case_type}">${link.case_type}</span></td>
+        <td>
+          <a href="${link.sop_url}" target="_blank" style="color: var(--primary-600); text-decoration: none; max-width: 250px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            ${this.escapeHtml(link.sop_url)}
+          </a>
+        </td>
+        <td>
+          <span class="status-badge ${link.is_active ? 'completed' : 'pending'}">
+            ${link.is_active ? 'Active' : 'Inactive'}
+          </span>
+        </td>
+        <td>
+          <button class="btn-icon" onclick="HubSOPLinks.edit(${link.id})">Edit</button>
+          <button class="btn-icon danger" onclick="HubSOPLinks.delete(${link.id})">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  },
+
+  async load() {
+    try {
+      const result = await HubAPI.get('/hub/api/admin/sop-links');
+      if (result.success) {
+        this.links = result.links;
+      }
+    } catch (e) {
+      console.error('Failed to load SOP links:', e);
+    }
+  },
+
+  filterByType(caseType) {
+    const rows = document.querySelectorAll('#sopLinksTableBody tr[data-case-type]');
+    rows.forEach(row => {
+      if (!caseType || row.dataset.caseType === caseType) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  },
+
+  showCreateForm() {
+    const html = `
+      <div class="modal-overlay active" id="sopFormModal" style="z-index: 210;">
+        <div class="modal" style="max-width: 500px;">
+          <div class="modal-header" style="padding: 20px 24px;">
+            <div class="modal-header-content">
+              <div class="modal-title">Add SOP Link</div>
+            </div>
+            <button class="modal-close" onclick="document.getElementById('sopFormModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px;">
+            <div class="form-group">
+              <label>Scenario Key</label>
+              <input type="text" id="sopScenarioKey" class="form-input" placeholder="e.g., refund_partial, shipping_lost">
+              <div style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">Unique identifier (lowercase, underscores)</div>
+            </div>
+            <div class="form-group">
+              <label>Scenario Name</label>
+              <input type="text" id="sopScenarioName" class="form-input" placeholder="e.g., Partial Refund">
+            </div>
+            <div class="form-group">
+              <label>Case Type</label>
+              <select id="sopCaseType" class="form-input">
+                <option value="refund">Refund</option>
+                <option value="return">Return</option>
+                <option value="shipping">Shipping</option>
+                <option value="subscription">Subscription</option>
+                <option value="manual">Manual</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>SOP URL</label>
+              <input type="url" id="sopUrl" class="form-input" placeholder="https://docs.example.com/sop/...">
+            </div>
+            <div class="form-group">
+              <label>Description (optional)</label>
+              <textarea id="sopDescription" class="form-input" rows="2" placeholder="Brief description of this SOP"></textarea>
+            </div>
+            <div id="sopFormError" class="error-message" style="display: none;"></div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+              <button class="btn btn-secondary" onclick="document.getElementById('sopFormModal').remove()">Cancel</button>
+              <button class="btn btn-primary" onclick="HubSOPLinks.create()">Create</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  async create() {
+    const scenarioKey = document.getElementById('sopScenarioKey').value.trim();
+    const scenarioName = document.getElementById('sopScenarioName').value.trim();
+    const caseType = document.getElementById('sopCaseType').value;
+    const sopUrl = document.getElementById('sopUrl').value.trim();
+    const description = document.getElementById('sopDescription').value.trim();
+    const errorEl = document.getElementById('sopFormError');
+
+    if (!scenarioKey || !scenarioName || !sopUrl) {
+      errorEl.textContent = 'Please fill in all required fields';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      const result = await HubAPI.post('/hub/api/admin/sop-links', {
+        scenarioKey,
+        scenarioName,
+        caseType,
+        sopUrl,
+        description
+      });
+
+      if (result.success) {
+        document.getElementById('sopFormModal').remove();
+        HubUI.showToast('SOP link created', 'success');
+        // Refresh the list
+        document.getElementById('sopManagementModal').remove();
+        this.show();
+      } else {
+        errorEl.textContent = result.error;
+        errorEl.style.display = 'block';
+      }
+    } catch (e) {
+      errorEl.textContent = 'Failed to create SOP link';
+      errorEl.style.display = 'block';
+    }
+  },
+
+  edit(id) {
+    const link = this.links.find(l => l.id === id);
+    if (!link) return;
+
+    const html = `
+      <div class="modal-overlay active" id="sopFormModal" style="z-index: 210;">
+        <div class="modal" style="max-width: 500px;">
+          <div class="modal-header" style="padding: 20px 24px;">
+            <div class="modal-header-content">
+              <div class="modal-title">Edit SOP Link</div>
+            </div>
+            <button class="modal-close" onclick="document.getElementById('sopFormModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px;">
+            <div class="form-group">
+              <label>Scenario Key</label>
+              <input type="text" class="form-input" value="${this.escapeHtml(link.scenario_key)}" disabled style="background: var(--gray-100);">
+            </div>
+            <div class="form-group">
+              <label>Scenario Name</label>
+              <input type="text" id="sopScenarioName" class="form-input" value="${this.escapeHtml(link.scenario_name)}">
+            </div>
+            <div class="form-group">
+              <label>SOP URL</label>
+              <input type="url" id="sopUrl" class="form-input" value="${this.escapeHtml(link.sop_url)}">
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea id="sopDescription" class="form-input" rows="2">${this.escapeHtml(link.description || '')}</textarea>
+            </div>
+            <div class="form-group">
+              <label style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="sopIsActive" ${link.is_active ? 'checked' : ''}>
+                Active
+              </label>
+            </div>
+            <div id="sopFormError" class="error-message" style="display: none;"></div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+              <button class="btn btn-secondary" onclick="document.getElementById('sopFormModal').remove()">Cancel</button>
+              <button class="btn btn-primary" onclick="HubSOPLinks.update(${id})">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  async update(id) {
+    const scenarioName = document.getElementById('sopScenarioName').value.trim();
+    const sopUrl = document.getElementById('sopUrl').value.trim();
+    const description = document.getElementById('sopDescription').value.trim();
+    const isActive = document.getElementById('sopIsActive').checked;
+    const errorEl = document.getElementById('sopFormError');
+
+    try {
+      const result = await HubAPI.put(`/hub/api/admin/sop-links/${id}`, {
+        scenarioName,
+        sopUrl,
+        description,
+        isActive
+      });
+
+      if (result.success) {
+        document.getElementById('sopFormModal').remove();
+        HubUI.showToast('SOP link updated', 'success');
+        document.getElementById('sopManagementModal').remove();
+        this.show();
+      } else {
+        errorEl.textContent = result.error;
+        errorEl.style.display = 'block';
+      }
+    } catch (e) {
+      errorEl.textContent = 'Failed to update SOP link';
+      errorEl.style.display = 'block';
+    }
+  },
+
+  async delete(id) {
+    if (!confirm('Are you sure you want to delete this SOP link?')) return;
+
+    try {
+      const result = await HubAPI.delete(`/hub/api/admin/sop-links/${id}`);
+      if (result.success) {
+        HubUI.showToast('SOP link deleted', 'success');
+        document.getElementById('sopManagementModal').remove();
+        this.show();
+      } else {
+        HubUI.showToast(result.error, 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to delete SOP link', 'error');
+    }
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+};
+
+// ============================================
+// PHASE 2: ENHANCED AUDIT LOG (Admin)
+// ============================================
+const HubEnhancedAuditLog = {
+  currentPage: 1,
+  filters: {},
+  availableFilters: { categories: [], actionTypes: [] },
+
+  async show() {
+    if (!HubAuth.isAdmin()) {
+      HubUI.showToast('Admin access required', 'error');
+      return;
+    }
+
+    const result = await this.load(1);
+
+    const html = `
+      <div class="modal-overlay active" id="enhancedAuditModal">
+        <div class="modal" style="max-width: 1000px;">
+          <div class="modal-header" style="padding: 20px 24px;">
+            <div class="modal-header-content">
+              <div class="modal-title" style="font-size: 18px;">Audit Log</div>
+              <div style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
+                Complete activity history for compliance and security
+              </div>
+            </div>
+            <button class="modal-close" onclick="document.getElementById('enhancedAuditModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 0;">
+            <!-- Filters -->
+            <div style="padding: 16px 24px; border-bottom: 1px solid var(--gray-200); display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+              <select id="auditCategoryFilter" class="form-input" style="width: 140px;" onchange="HubEnhancedAuditLog.applyFilters()">
+                <option value="">All Categories</option>
+                ${this.availableFilters.categories.map(c =>
+                  `<option value="${c}">${c}</option>`
+                ).join('')}
+              </select>
+              <select id="auditActionFilter" class="form-input" style="width: 180px;" onchange="HubEnhancedAuditLog.applyFilters()">
+                <option value="">All Actions</option>
+                ${this.availableFilters.actionTypes.map(a =>
+                  `<option value="${a}">${a.replace(/_/g, ' ')}</option>`
+                ).join('')}
+              </select>
+              <input type="date" id="auditStartDate" class="form-input" style="width: 140px;" onchange="HubEnhancedAuditLog.applyFilters()">
+              <input type="date" id="auditEndDate" class="form-input" style="width: 140px;" onchange="HubEnhancedAuditLog.applyFilters()">
+              <input type="text" id="auditSearch" class="form-input" style="width: 180px;" placeholder="Search..." onkeyup="HubEnhancedAuditLog.debounceSearch(this.value)">
+              <div style="margin-left: auto;">
+                <button class="btn btn-secondary" onclick="HubEnhancedAuditLog.export()">Export CSV</button>
+              </div>
+            </div>
+            <!-- Table -->
+            <div style="max-height: 50vh; overflow-y: auto;">
+              <table class="audit-table">
+                <thead>
+                  <tr>
+                    <th style="padding: 12px 24px; position: sticky; top: 0; background: var(--gray-50);">Time</th>
+                    <th style="position: sticky; top: 0; background: var(--gray-50);">User</th>
+                    <th style="position: sticky; top: 0; background: var(--gray-50);">Action</th>
+                    <th style="position: sticky; top: 0; background: var(--gray-50);">Resource</th>
+                    <th style="position: sticky; top: 0; background: var(--gray-50);">Details</th>
+                  </tr>
+                </thead>
+                <tbody id="auditLogTableBody">
+                  ${this.renderRows(result.logs)}
+                </tbody>
+              </table>
+            </div>
+            <!-- Pagination -->
+            <div id="auditPagination" style="padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: center; align-items: center; gap: 16px;">
+              ${this.renderPagination(result.pagination)}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  renderRows(logs) {
+    if (!logs || logs.length === 0) {
+      return '<tr><td colspan="5" class="empty-state">No audit entries found</td></tr>';
+    }
+
+    return logs.map(log => `
+      <tr>
+        <td style="padding: 10px 24px; white-space: nowrap;">${this.formatTime(log.created_at)}</td>
+        <td>
+          <div style="font-weight: 500;">${log.user_name || 'System'}</div>
+          <div style="font-size: 12px; color: var(--gray-500);">${log.user_email || ''}</div>
+        </td>
+        <td>
+          <span class="action-badge ${log.action_category}">${log.action_type.replace(/_/g, ' ')}</span>
+        </td>
+        <td>
+          ${log.resource_type ? `<span style="font-size: 12px; color: var(--gray-600);">${log.resource_type}</span>` : '-'}
+          ${log.resource_id ? `<br><span style="font-size: 11px; font-family: monospace; color: var(--gray-500);">${log.resource_id}</span>` : ''}
+        </td>
+        <td style="max-width: 200px;">
+          ${log.old_value || log.new_value ? `
+            <button class="btn-icon" onclick="HubEnhancedAuditLog.showDetails(${JSON.stringify(log).replace(/"/g, '&quot;')})">
+              View
+            </button>
+          ` : '-'}
+        </td>
+      </tr>
+    `).join('');
+  },
+
+  renderPagination(pagination) {
+    if (!pagination) return '';
+
+    let html = '';
+    if (pagination.page > 1) {
+      html += `<button class="btn btn-secondary" onclick="HubEnhancedAuditLog.goToPage(${pagination.page - 1})">Previous</button>`;
+    }
+    html += `<span>Page ${pagination.page} of ${pagination.totalPages} (${pagination.total} entries)</span>`;
+    if (pagination.page < pagination.totalPages) {
+      html += `<button class="btn btn-secondary" onclick="HubEnhancedAuditLog.goToPage(${pagination.page + 1})">Next</button>`;
+    }
+    return html;
+  },
+
+  async load(page = 1) {
+    try {
+      let url = `/hub/api/admin/audit-log?page=${page}&limit=50`;
+
+      if (this.filters.category) url += `&category=${this.filters.category}`;
+      if (this.filters.actionType) url += `&actionType=${this.filters.actionType}`;
+      if (this.filters.startDate) url += `&startDate=${this.filters.startDate}`;
+      if (this.filters.endDate) url += `&endDate=${this.filters.endDate}`;
+      if (this.filters.search) url += `&search=${encodeURIComponent(this.filters.search)}`;
+
+      const result = await HubAPI.get(url);
+
+      if (result.success) {
+        this.currentPage = page;
+        this.availableFilters = result.filters;
+        return result;
+      }
+      return { logs: [], pagination: { page: 1, total: 0, totalPages: 1 } };
+    } catch (e) {
+      console.error('Failed to load audit log:', e);
+      return { logs: [], pagination: { page: 1, total: 0, totalPages: 1 } };
+    }
+  },
+
+  async applyFilters() {
+    this.filters = {
+      category: document.getElementById('auditCategoryFilter').value,
+      actionType: document.getElementById('auditActionFilter').value,
+      startDate: document.getElementById('auditStartDate').value,
+      endDate: document.getElementById('auditEndDate').value,
+      search: document.getElementById('auditSearch').value
+    };
+
+    const result = await this.load(1);
+    document.getElementById('auditLogTableBody').innerHTML = this.renderRows(result.logs);
+    document.getElementById('auditPagination').innerHTML = this.renderPagination(result.pagination);
+  },
+
+  debounceSearch: (function() {
+    let timeout;
+    return function(value) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        HubEnhancedAuditLog.filters.search = value;
+        HubEnhancedAuditLog.applyFilters();
+      }, 300);
+    };
+  })(),
+
+  async goToPage(page) {
+    const result = await this.load(page);
+    document.getElementById('auditLogTableBody').innerHTML = this.renderRows(result.logs);
+    document.getElementById('auditPagination').innerHTML = this.renderPagination(result.pagination);
+  },
+
+  showDetails(log) {
+    const html = `
+      <div class="modal-overlay active" id="auditDetailModal" style="z-index: 210;">
+        <div class="modal" style="max-width: 600px;">
+          <div class="modal-header" style="padding: 20px 24px;">
+            <div class="modal-title">Audit Details</div>
+            <button class="modal-close" onclick="document.getElementById('auditDetailModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px;">
+            <div style="display: grid; gap: 16px;">
+              <div>
+                <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Action</div>
+                <div style="font-weight: 500;">${log.action_type.replace(/_/g, ' ')}</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">User</div>
+                <div>${log.user_name || 'System'} ${log.user_email ? `(${log.user_email})` : ''}</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Time</div>
+                <div>${new Date(log.created_at).toLocaleString()}</div>
+              </div>
+              ${log.old_value ? `
+                <div>
+                  <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Previous Value</div>
+                  <pre style="background: var(--gray-50); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px;">${this.formatJSON(log.old_value)}</pre>
+                </div>
+              ` : ''}
+              ${log.new_value ? `
+                <div>
+                  <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">New Value</div>
+                  <pre style="background: var(--gray-50); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px;">${this.formatJSON(log.new_value)}</pre>
+                </div>
+              ` : ''}
+              ${log.ip_address ? `
+                <div>
+                  <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">IP Address</div>
+                  <div style="font-family: monospace;">${log.ip_address}</div>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  formatJSON(str) {
+    try {
+      return JSON.stringify(JSON.parse(str), null, 2);
+    } catch {
+      return str;
+    }
+  },
+
+  async export() {
+    try {
+      const startDate = document.getElementById('auditStartDate').value ||
+        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = document.getElementById('auditEndDate').value ||
+        new Date().toISOString().split('T')[0];
+
+      const response = await HubAPI.request(`/hub/api/admin/audit-log/export?startDate=${startDate}&endDate=${endDate}`);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-log-${startDate}-to-${endDate}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      HubUI.showToast('Audit log exported', 'success');
+    } catch (e) {
+      HubUI.showToast('Failed to export audit log', 'error');
+    }
+  },
+
+  formatTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+};
+
+// ============================================
+// PHASE 2: RESOLUTION VALIDATION
+// ============================================
+const HubValidation = {
+  async validateBeforeComplete(caseData) {
+    try {
+      const result = await HubAPI.post('/hub/api/validate-resolution', {
+        caseId: caseData.case_id,
+        caseType: caseData.case_type,
+        resolution: caseData.resolution,
+        refundAmount: caseData.refund_amount,
+        orderTotal: caseData.order_total
+      });
+
+      if (!result.valid) {
+        this.showValidationModal(result);
+        return false;
+      }
+
+      if (result.warnings && result.warnings.length > 0) {
+        return await this.showWarningsModal(result.warnings);
+      }
+
+      return true;
+    } catch (e) {
+      console.error('Validation error:', e);
+      // Allow to proceed if validation fails
+      return true;
+    }
+  },
+
+  showValidationModal(result) {
+    const html = `
+      <div class="modal-overlay active" id="validationModal">
+        <div class="modal" style="max-width: 500px;">
+          <div class="modal-header" style="padding: 20px 24px; background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white;">
+            <div class="modal-header-content">
+              <div class="modal-title" style="font-size: 18px; color: white;">Cannot Complete Case</div>
+            </div>
+            <button class="modal-close" style="color: white;" onclick="document.getElementById('validationModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px;">
+            <p style="margin-bottom: 16px;">Please resolve the following issues before completing this case:</p>
+            <ul style="margin: 0; padding-left: 20px;">
+              ${result.errors.map(e => `<li style="margin-bottom: 8px; color: var(--error-600);">${e}</li>`).join('')}
+            </ul>
+            ${result.warnings && result.warnings.length > 0 ? `
+              <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200);">
+                <p style="font-weight: 500; margin-bottom: 8px;">Warnings:</p>
+                <ul style="margin: 0; padding-left: 20px;">
+                  ${result.warnings.map(w => `<li style="margin-bottom: 8px; color: var(--warning-600);">${w}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+            <button class="btn btn-primary" style="width: 100%; margin-top: 24px;" onclick="document.getElementById('validationModal').remove()">
+              Understood
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  showWarningsModal(warnings) {
+    return new Promise((resolve) => {
+      const html = `
+        <div class="modal-overlay active" id="warningsModal">
+          <div class="modal" style="max-width: 500px;">
+            <div class="modal-header" style="padding: 20px 24px; background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%); color: white;">
+              <div class="modal-header-content">
+                <div class="modal-title" style="font-size: 18px; color: white;">Review Warnings</div>
+              </div>
+              <button class="modal-close" style="color: white;" onclick="HubValidation.resolveWarnings(false)">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+              <p style="margin-bottom: 16px;">Please review these warnings before proceeding:</p>
+              <ul style="margin: 0; padding-left: 20px;">
+                ${warnings.map(w => `<li style="margin-bottom: 8px; color: var(--warning-700);">${w}</li>`).join('')}
+              </ul>
+              <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button class="btn btn-secondary" style="flex: 1;" onclick="HubValidation.resolveWarnings(false)">
+                  Cancel
+                </button>
+                <button class="btn btn-primary" style="flex: 1;" onclick="HubValidation.resolveWarnings(true)">
+                  Proceed Anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', html);
+
+      this._warningsResolve = resolve;
+    });
+  },
+
+  resolveWarnings(proceed) {
+    document.getElementById('warningsModal')?.remove();
+    if (this._warningsResolve) {
+      this._warningsResolve(proceed);
+      this._warningsResolve = null;
+    }
+  }
+};
+
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => HubApp.init());
@@ -1702,3 +2384,7 @@ window.HubAuditLog = HubAuditLog;
 window.HubUI = HubUI;
 window.HubNavigation = HubNavigation;
 window.HubKeyboard = HubKeyboard;
+// Phase 2 exports
+window.HubSOPLinks = HubSOPLinks;
+window.HubEnhancedAuditLog = HubEnhancedAuditLog;
+window.HubValidation = HubValidation;
