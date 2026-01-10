@@ -17,9 +17,11 @@ const HubConfig = {
 // STATE MANAGEMENT
 // ============================================
 const HubState = {
-  // User
-  currentUser: null,
-  token: null,
+  // User - Initialize from localStorage immediately so bulk actions work
+  currentUser: (() => {
+    try { return JSON.parse(localStorage.getItem('hub_user')); } catch { return null; }
+  })(),
+  token: localStorage.getItem('hub_token'),
 
   // Cases
   cases: [],
@@ -266,7 +268,9 @@ const HubBulkActions = {
   },
 
   selectAll() {
-    const visibleIds = HubState.cases.slice(0, HubConfig.MAX_BULK_SELECT).map(c => c.case_id);
+    // Use HubState.cases first, fallback to window.allCases or window.casesList (inline script sources)
+    const cases = HubState.cases.length > 0 ? HubState.cases : (window.allCases || window.casesList || []);
+    const visibleIds = cases.slice(0, HubConfig.MAX_BULK_SELECT).map(c => c.case_id);
     visibleIds.forEach(id => HubState.selectedCaseIds.add(id));
     this.updateUI();
   },
@@ -317,7 +321,8 @@ const HubBulkActions = {
         HubUI.showToast(result.error, 'error');
       }
     } catch (e) {
-      HubUI.showToast('Failed to update cases', 'error');
+      console.error('Bulk update error:', e);
+      HubUI.showToast('Failed to update cases: ' + (e.message || 'Unknown error'), 'error');
     } finally {
       HubUI.hideLoading();
     }
