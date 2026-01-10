@@ -1243,7 +1243,7 @@ export default {
       }
 
       // Hub API - Single case
-      if (pathname.startsWith('/hub/api/case/') && request.method === 'GET' && !pathname.includes('/comments') && !pathname.includes('/status')) {
+      if (pathname.startsWith('/hub/api/case/') && request.method === 'GET' && !pathname.includes('/comments') && !pathname.includes('/status') && !pathname.includes('/activity')) {
         const caseId = pathname.split('/hub/api/case/')[1];
         return await handleHubGetCase(caseId, env, corsHeaders);
       }
@@ -5373,9 +5373,9 @@ async function handleListUsers(request, env, corsHeaders) {
   }
 
   try {
+    // Simple query first - avoid complex subqueries that might fail
     const users = await env.ANALYTICS_DB.prepare(`
-      SELECT id, username, name, role, is_active, must_change_password, created_at, last_login, last_activity_at,
-             (SELECT name FROM admin_users u2 WHERE u2.id = admin_users.created_by) as created_by_name
+      SELECT id, username, name, role, is_active, must_change_password, created_at, last_login, last_activity_at, created_by
       FROM admin_users
       ORDER BY created_at DESC
     `).all();
@@ -5383,7 +5383,7 @@ async function handleListUsers(request, env, corsHeaders) {
     return Response.json({ success: true, users: users.results || [] }, { headers: corsHeaders });
   } catch (e) {
     console.error('List users error:', e);
-    return Response.json({ error: 'Failed to list users' }, { status: 500, headers: corsHeaders });
+    return Response.json({ error: 'Failed to list users: ' + e.message }, { status: 500, headers: corsHeaders });
   }
 }
 
