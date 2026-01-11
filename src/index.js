@@ -9434,10 +9434,16 @@ function getResolutionHubHTML() {
 
     /* Header */
     .cd-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 28px; background: white; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 100; }
-    .cd-header-left { display: flex; align-items: center; gap: 16px; }
+    .cd-header-left { display: flex; align-items: center; gap: 20px; }
     .cd-header-right { display: flex; align-items: center; gap: 12px; }
     .cd-back-btn { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: transparent; border: 1px solid var(--gray-300); border-radius: 8px; color: var(--gray-700); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
     .cd-back-btn:hover { background: var(--gray-50); border-color: var(--gray-400); }
+    /* Case Navigation */
+    .cd-nav-buttons { display: flex; align-items: center; gap: 8px; }
+    .cd-nav-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: white; border: 1px solid var(--gray-300); border-radius: 6px; color: var(--gray-600); cursor: pointer; transition: all 0.15s; }
+    .cd-nav-btn:hover:not(:disabled) { background: var(--gray-50); border-color: var(--gray-400); color: var(--gray-800); }
+    .cd-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .cd-nav-counter { font-size: 13px; color: var(--gray-500); font-weight: 500; min-width: 60px; text-align: center; }
     .cd-type-badge { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; text-transform: capitalize; }
     .cd-type-badge.refund { background: #fef3c7; color: #b45309; }
     .cd-type-badge.return { background: #e0e7ff; color: #4338ca; }
@@ -9474,11 +9480,18 @@ function getResolutionHubHTML() {
     /* Main Content Column */
     .cd-main { padding: 24px 28px; background: #f8fafc; overflow-y: auto; }
     .cd-section { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .cd-section.cd-section-compact { padding: 20px; }
     .cd-section:last-child { margin-bottom: 0; }
-    .cd-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--gray-100); }
-    .cd-section-title { font-size: 15px; font-weight: 600; color: var(--gray-800); margin: 0; }
+    .cd-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--gray-100); }
+    .cd-section-title { font-size: 14px; font-weight: 600; color: var(--gray-800); margin: 0; text-transform: uppercase; letter-spacing: 0.3px; }
     .cd-sop-link { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #3b82f6; text-decoration: none; font-weight: 500; }
     .cd-sop-link:hover { text-decoration: underline; }
+
+    /* Issue Summary (Case Details) */
+    .cd-issue-summary { font-size: 15px; line-height: 1.7; color: var(--gray-700); }
+    .cd-issue-summary p { margin: 0 0 12px 0; }
+    .cd-issue-summary p:last-child { margin-bottom: 0; }
+    .cd-issue-summary strong { color: var(--gray-900); }
 
     /* Case Details List */
     .cd-details-list { list-style: none; padding: 0; margin: 0; }
@@ -9491,13 +9504,22 @@ function getResolutionHubHTML() {
     .cd-evidence-title { font-size: 13px; font-weight: 600; color: var(--gray-500); margin-bottom: 12px; }
     .cd-evidence-links { display: flex; gap: 10px; flex-wrap: wrap; }
 
-    /* Action Required Box */
-    .cd-resolution-box { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 10px; padding: 18px 20px; font-size: 15px; font-weight: 500; color: var(--gray-800); line-height: 1.6; }
-    .cd-resolution-box .action-step { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
-    .cd-resolution-box .action-step:last-child { border-bottom: none; padding-bottom: 0; }
-    .cd-resolution-box .action-step:first-child { padding-top: 0; }
-    .cd-resolution-box .action-num { width: 24px; height: 24px; border-radius: 50%; background: var(--brand-navy); color: white; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .cd-resolution-box .action-text { flex: 1; }
+    /* Activity List */
+    .cd-activity-list { }
+    .cd-activity-item { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--gray-100); }
+    .cd-activity-item:last-child { border-bottom: none; }
+    .cd-activity-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .cd-activity-icon.note { background: #eff6ff; color: #3b82f6; }
+    .cd-activity-icon.status { background: #f0fdf4; color: #16a34a; }
+    .cd-activity-icon.assignee { background: #fef3c7; color: #d97706; }
+    .cd-activity-icon.action { background: #f3e8ff; color: #7c3aed; }
+    .cd-activity-icon.system { background: var(--gray-100); color: var(--gray-500); }
+    .cd-activity-content { flex: 1; min-width: 0; }
+    .cd-activity-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .cd-activity-author { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+    .cd-activity-time { font-size: 12px; color: var(--gray-400); }
+    .cd-activity-text { font-size: 14px; color: var(--gray-600); line-height: 1.5; }
+    .cd-activity-text.system-text { font-style: italic; color: var(--gray-500); }
 
     /* Notes Section */
     .cd-notes-count { background: var(--gray-200); color: var(--gray-600); font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px; }
@@ -9794,6 +9816,15 @@ function getResolutionHubHTML() {
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                   Cases
                 </button>
+                <div class="cd-nav-buttons">
+                  <button class="cd-nav-btn" id="prevCaseBtn" onclick="navigateToPrevCase()" title="Previous Case">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                  </button>
+                  <span class="cd-nav-counter" id="caseNavCounter">1 of 10</span>
+                  <button class="cd-nav-btn" id="nextCaseBtn" onclick="navigateToNextCase()" title="Next Case">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  </button>
+                </div>
               </div>
               <div class="cd-header-right">
                 <span class="cd-type-badge" id="detailTypeBadge">Loading</span>
@@ -9834,14 +9865,14 @@ function getResolutionHubHTML() {
             <div class="cd-two-col">
               <!-- Left Column - Main Content -->
               <div class="cd-main">
-                <!-- Case Details Section -->
-                <div class="cd-section">
+                <!-- Case Details Section - What the customer's issue is -->
+                <div class="cd-section cd-section-compact">
                   <div class="cd-section-header">
                     <h3 class="cd-section-title">Case Details</h3>
                   </div>
-                  <ul class="cd-details-list" id="detailResolutionDetails">
-                    <!-- Populated by buildCaseDetailsHtml -->
-                  </ul>
+                  <div class="cd-issue-summary" id="detailIssueSummary">
+                    <!-- Shows what the customer's issue/problem is -->
+                  </div>
                   <!-- Evidence Links -->
                   <div class="cd-evidence" id="detailEvidenceSection" style="display:none;">
                     <div class="cd-evidence-title">Attached Evidence</div>
@@ -9849,32 +9880,32 @@ function getResolutionHubHTML() {
                   </div>
                 </div>
 
-                <!-- Action Required Section -->
-                <div class="cd-section">
+                <!-- Resolution Section - What actions to take -->
+                <div class="cd-section cd-section-compact">
                   <div class="cd-section-header">
-                    <h3 class="cd-section-title">Action Required</h3>
-                    <a class="cd-sop-link" id="detailSOPLink" href="#" target="_blank">
+                    <h3 class="cd-section-title">Resolution</h3>
+                    <a class="cd-sop-link" id="detailSOPLink" href="#" target="_blank" onclick="logActivity('sop_viewed', 'Viewed SOP document')">
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                       View SOP
                     </a>
                   </div>
-                  <div class="cd-resolution-box" id="detailResolutionSummary">
-                    Loading resolution...
-                  </div>
+                  <ul class="cd-details-list" id="detailResolutionSteps">
+                    <!-- Bullet point action steps populated by buildCaseDetailsHtml -->
+                  </ul>
                 </div>
 
-                <!-- Team Notes Section -->
+                <!-- Activity Section - Notes + System Logs -->
                 <div class="cd-section">
                   <div class="cd-section-header">
-                    <h3 class="cd-section-title">Team Notes</h3>
-                    <span class="cd-notes-count" id="detailCommentsCount">0</span>
+                    <h3 class="cd-section-title">Activity</h3>
+                    <span class="cd-notes-count" id="detailActivityCount">0</span>
                   </div>
                   <div class="cd-notes-input">
-                    <textarea class="cd-notes-textarea" id="detailCommentInput" placeholder="Add a note..." rows="2"></textarea>
+                    <textarea class="cd-notes-textarea" id="detailCommentInput" placeholder="Add a note or comment..." rows="2"></textarea>
                     <button class="cd-notes-submit" onclick="addCommentFromDetail()">Post</button>
                   </div>
-                  <div class="cd-notes-list" id="detailCommentsList">
-                    <div class="cd-notes-empty">No notes yet</div>
+                  <div class="cd-activity-list" id="detailActivityList">
+                    <div class="cd-notes-empty">No activity yet</div>
                   </div>
                 </div>
               </div>
@@ -11709,6 +11740,100 @@ function getResolutionHubHTML() {
       return activity.new_value || '-';
     }
 
+    // Build issue summary HTML - explains what the customer's problem is
+    function buildIssueSummaryHtml(c) {
+      let extra = {};
+      try {
+        if (c.extra_data) extra = typeof c.extra_data === 'string' ? JSON.parse(c.extra_data) : c.extra_data;
+      } catch(e) {}
+
+      const caseType = c.case_type || 'manual';
+      const issueType = c.issue_type || '';
+      let summary = '';
+
+      // Issue type descriptions
+      const issueDescriptions = {
+        'damaged': 'Customer received a <strong>damaged product</strong> and is requesting a resolution.',
+        'missing_items': 'Customer reports <strong>missing items</strong> from their order.',
+        'wrong_item': 'Customer received the <strong>wrong item</strong> in their order.',
+        'not_met_expectations': 'Product <strong>did not meet customer expectations</strong>.',
+        'lost_package': 'Package was <strong>lost in transit</strong> and never delivered.',
+        'delivered_not_received': 'Tracking shows <strong>delivered but customer never received</strong> the package.',
+        'charged_unexpectedly': 'Customer was <strong>charged unexpectedly</strong> and is disputing the charge.',
+        'quality_difference': 'Customer received <strong>Original material pads</strong> instead of the newer PuppyPad 2.0.',
+        'no_tracking': 'Customer has <strong>no tracking information</strong> available for their order.',
+        'stuck_in_transit': 'Package is <strong>stuck in transit</strong> with no movement.',
+        'pending_too_long': 'Order has been <strong>pending for too long</strong> without shipping.'
+      };
+
+      // Case type descriptions (fallback)
+      const caseTypeDescriptions = {
+        'refund': 'Customer is requesting a <strong>refund</strong> for their order.',
+        'shipping': 'Customer has a <strong>shipping issue</strong> with their order.',
+        'subscription': 'Customer needs help with their <strong>subscription</strong>.',
+        'return': 'Customer wants to <strong>return</strong> their purchase.',
+        'manual': 'This case requires <strong>manual review</strong>.'
+      };
+
+      // Get the issue description
+      if (issueType && issueDescriptions[issueType]) {
+        summary = '<p>' + issueDescriptions[issueType] + '</p>';
+      } else if (caseTypeDescriptions[caseType]) {
+        summary = '<p>' + caseTypeDescriptions[caseType] + '</p>';
+      } else {
+        summary = '<p>Customer needs assistance with their order.</p>';
+      }
+
+      // Add customer's own words if available
+      if (extra.intentDetails) {
+        summary += '<p><strong>Customer said:</strong> <em>"' + escapeHtml(extra.intentDetails) + '"</em></p>';
+      }
+
+      // Add cancellation reason if subscription
+      if (caseType === 'subscription' && extra.cancelReason) {
+        const cancelReasons = {
+          'expensive': 'too expensive',
+          'too_many': 'they have too many',
+          'not_working': 'it\'s not working as described',
+          'moving': 'they are moving',
+          'other': 'other reasons'
+        };
+        const reason = cancelReasons[extra.cancelReason] || extra.cancelReason;
+        summary += '<p>Customer wants to make changes because <strong>' + reason + '</strong>.</p>';
+      }
+
+      return summary || '<p>Review case details in Shopify.</p>';
+    }
+
+    // Case navigation functions
+    function updateCaseNavigation() {
+      const counter = document.getElementById('caseNavCounter');
+      const prevBtn = document.getElementById('prevCaseBtn');
+      const nextBtn = document.getElementById('nextCaseBtn');
+      if (!counter || !prevBtn || !nextBtn) return;
+
+      const total = casesList.length;
+      const current = currentCaseIndex + 1;
+      counter.textContent = current + ' of ' + total;
+
+      prevBtn.disabled = currentCaseIndex <= 0;
+      nextBtn.disabled = currentCaseIndex >= total - 1;
+    }
+
+    function navigateToPrevCase() {
+      if (currentCaseIndex > 0) {
+        const prevCase = casesList[currentCaseIndex - 1];
+        if (prevCase) openCase(prevCase.case_id);
+      }
+    }
+
+    function navigateToNextCase() {
+      if (currentCaseIndex < casesList.length - 1) {
+        const nextCase = casesList[currentCaseIndex + 1];
+        if (nextCase) openCase(nextCase.case_id);
+      }
+    }
+
     // Build detailed case breakdown HTML for modal - plain English bullet points
     function buildCaseDetailsHtml(c) {
       const bullets = [];
@@ -12146,20 +12271,21 @@ function getResolutionHubHTML() {
         }
       }
 
-      // Resolution summary (Action Required section)
-      const resolutionSummary = document.getElementById('detailResolutionSummary');
-      if (resolutionSummary) {
-        resolutionSummary.textContent = formatResolution(c.resolution, c.refund_amount);
+      // Case Details section - Show what the customer's issue is
+      const issueSummary = document.getElementById('detailIssueSummary');
+      if (issueSummary) {
+        issueSummary.innerHTML = buildIssueSummaryHtml(c);
       }
 
-      // Case Details - use buildCaseDetailsHtml for comprehensive bullet points
-      const detailsList = document.getElementById('detailResolutionDetails');
-      if (detailsList) {
-        const detailsHtml = buildCaseDetailsHtml(c);
-        // buildCaseDetailsHtml returns HTML string with <ul> already, extract li items
-        // Or just put the HTML directly
-        detailsList.innerHTML = detailsHtml || '<li>Review case details in Shopify</li>';
+      // Resolution section - Bullet points of what actions to take
+      const resolutionSteps = document.getElementById('detailResolutionSteps');
+      if (resolutionSteps) {
+        const stepsHtml = buildCaseDetailsHtml(c);
+        resolutionSteps.innerHTML = stepsHtml || '<li>Review case details and take appropriate action</li>';
       }
+
+      // Update case navigation counter
+      updateCaseNavigation();
 
       // WHAT - Evidence links
       const evidenceSection = document.getElementById('detailEvidenceSection');
@@ -12364,18 +12490,50 @@ function getResolutionHubHTML() {
     }
 
     function copyEmailTemplate() {
-      const subjectEl = document.getElementById('emailTemplateSubject');
-      const bodyEl = document.getElementById('emailTemplateBody');
-
-      const subject = subjectEl.textContent.replace('Subject: ', '');
-      const body = bodyEl.textContent;
-      const fullEmail = subject + '\\n\\n' + body;
+      if (!currentCase) {
+        showToast('No case selected', 'error');
+        return;
+      }
+      // Get the email template based on case type
+      const template = generateEmailTemplate(currentCase);
+      const fullEmail = template.subject + '\n\n' + template.body;
 
       navigator.clipboard.writeText(fullEmail).then(() => {
-        showToast('Template copied! Remember to review and personalize before sending.', 'success');
+        showToast('Email template copied! Review and personalize before sending.', 'success');
+        // Log to activity
+        const user = JSON.parse(localStorage.getItem('hub_user') || '{}');
+        logActivity('action', 'Email template copied by ' + (user.name || 'Admin'));
       }).catch(() => {
         showToast('Failed to copy template', 'error');
       });
+    }
+
+    function generateEmailTemplate(c) {
+      const customerName = c.customer_name || c.customer_email?.split('@')[0] || 'Valued Customer';
+      const firstName = customerName.split(' ')[0];
+
+      // Default template
+      let subject = 'Update on Your PuppyPad Order';
+      let body = 'Hi ' + firstName + ',\n\nThank you for reaching out to us.\n\n';
+
+      if (c.case_type === 'refund') {
+        subject = 'Your PuppyPad Refund Has Been Processed';
+        body += 'We have processed your refund' + (c.refund_amount ? ' of $' + parseFloat(c.refund_amount).toFixed(2) : '') + '. ';
+        body += 'Please allow 5-10 business days for the amount to appear in your account.\n\n';
+      } else if (c.case_type === 'subscription') {
+        subject = 'Your PuppyPad Subscription Update';
+        body += 'We have made the requested changes to your subscription. ';
+        body += 'You can view your subscription details in your account at any time.\n\n';
+      } else if (c.case_type === 'shipping') {
+        subject = 'Update on Your PuppyPad Shipment';
+        body += 'We wanted to update you on the status of your order. ';
+        body += 'If you have any questions, please don\'t hesitate to reach out.\n\n';
+      }
+
+      body += 'If you have any other questions or concerns, we\'re here to help!\n\n';
+      body += 'Best regards,\nThe PuppyPad Team';
+
+      return { subject, body };
     }
 
     // Comment @mention functions
@@ -12570,28 +12728,64 @@ function getResolutionHubHTML() {
       try {
         const r = await fetch(API + '/hub/api/case/' + caseId + '/comments');
         const d = await r.json();
-        const list = document.getElementById('detailCommentsList');
-        const countEl = document.getElementById('detailCommentsCount');
+        const list = document.getElementById('detailActivityList');
+        const countEl = document.getElementById('detailActivityCount');
         const count = d.comments?.length || 0;
-        countEl.textContent = count;
+        if (countEl) countEl.textContent = count;
+        if (!list) return;
         if (!count) {
-          list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px;">No comments yet. Be the first to add one!</div>';
+          list.innerHTML = '<div class="cd-notes-empty">No activity yet. Add a note or comment to get started.</div>';
           return;
         }
         list.innerHTML = d.comments.map(c => {
           const isSystem = c.author_name === 'System' || c.is_system;
+          const activityType = c.activity_type || (isSystem ? 'system' : 'note');
+          const iconClass = getActivityIconClass(activityType);
+          const iconSvg = getActivityIcon(activityType);
           const authorInitial = (c.author_name || 'T').charAt(0).toUpperCase();
-          // Highlight @mentions in content
           const contentWithMentions = escapeHtml(c.content).replace(/@(\w+)/g, '<span class="mention">@$1</span>');
-          return '<div class="comment-item-v2' + (isSystem ? ' system' : '') + '">' +
-            '<div class="comment-header-v2">' +
-            '<div class="comment-author-v2">' +
-            '<div class="comment-author-avatar-v2' + (isSystem ? ' system' : '') + '">' + (isSystem ? '🔄' : authorInitial) + '</div>' +
-            '<span class="comment-author-name-v2">' + escapeHtml(c.author_name || 'Team') + '</span></div>' +
-            '<span class="comment-time-v2">' + timeAgo(c.created_at) + '</span></div>' +
-            '<div class="comment-body-v2">' + contentWithMentions + '</div></div>';
+          return '<div class="cd-activity-item">' +
+            '<div class="cd-activity-icon ' + iconClass + '">' + (isSystem ? iconSvg : authorInitial) + '</div>' +
+            '<div class="cd-activity-content">' +
+            '<div class="cd-activity-header">' +
+            '<span class="cd-activity-author">' + escapeHtml(c.author_name || 'Team') + '</span>' +
+            '<span class="cd-activity-time">' + timeAgo(c.created_at) + '</span></div>' +
+            '<div class="cd-activity-text' + (isSystem ? ' system-text' : '') + '">' + contentWithMentions + '</div></div></div>';
         }).join('');
       } catch(e) { console.error(e); }
+    }
+
+    function getActivityIconClass(type) {
+      const map = { 'status': 'status', 'assignee': 'assignee', 'note': 'note', 'action': 'action', 'system': 'system' };
+      return map[type] || 'note';
+    }
+
+    function getActivityIcon(type) {
+      const icons = {
+        'status': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+        'assignee': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>',
+        'action': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>',
+        'system': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+      };
+      return icons[type] || icons['system'];
+    }
+
+    async function logActivity(activityType, description) {
+      if (!currentCase) return;
+      try {
+        const user = JSON.parse(localStorage.getItem('hub_user') || '{}');
+        await fetch(API + '/hub/api/case/' + currentCase.case_id + '/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: description,
+            author_name: 'System',
+            is_system: true,
+            activity_type: activityType
+          })
+        });
+        loadCommentsForDetail(currentCase.case_id);
+      } catch(e) { console.error('Failed to log activity:', e); }
     }
 
     async function addCommentFromDetail() {
@@ -12829,10 +13023,19 @@ function getResolutionHubHTML() {
           }
 
           // Update case data
+          const oldAssignee = currentCase.assigned_to_name;
           currentCase.assigned_to_name = userName;
           currentCase.assigned_to_id = userId;
 
           showToast(userName ? 'Case assigned to ' + userName : 'Case unassigned', 'success');
+
+          // Log assignee change to activity
+          const currentUser = JSON.parse(localStorage.getItem('hub_user') || '{}');
+          if (userName) {
+            logActivity('assignee', 'Assigned to ' + userName + ' by ' + (currentUser.name || 'Admin'));
+          } else {
+            logActivity('assignee', 'Unassigned by ' + (currentUser.name || 'Admin') + (oldAssignee ? ' (was ' + oldAssignee + ')' : ''));
+          }
 
           // Refresh cases list
           if (typeof loadCasesView === 'function') loadCasesView();
@@ -12883,12 +13086,16 @@ function getResolutionHubHTML() {
         console.error('No current case to update');
         return;
       }
+      const oldStatus = currentCase.status || 'pending';
+      if (oldStatus === newStatus) return; // No change
+
       try {
         // Optimistically update UI first
         document.querySelectorAll('.status-card').forEach(card => card.classList.remove('active'));
         const statusClass = newStatus.replace('_','-');
         document.querySelector('.status-card.'+statusClass)?.classList.add('active');
-        document.getElementById('modalStatusBadge').innerHTML = '<span class="status-badge '+statusClass+'">'+newStatus.replace('_',' ')+'</span>';
+        const modalBadge = document.getElementById('modalStatusBadge');
+        if (modalBadge) modalBadge.innerHTML = '<span class="status-badge '+statusClass+'">'+newStatus.replace('_',' ')+'</span>';
 
         const r = await fetch(API+'/hub/api/case/'+currentCase.case_id+'/status', {
           method: 'PUT',
@@ -12901,13 +13108,17 @@ function getResolutionHubHTML() {
           const idx = casesList.findIndex(c => c.case_id === currentCase.case_id);
           if(idx >= 0) casesList[idx].status = newStatus;
           loadDashboard();
+
+          // Log status change to activity
+          const statusNames = { 'pending': 'Pending', 'in_progress': 'In Progress', 'completed': 'Completed' };
+          const user = JSON.parse(localStorage.getItem('hub_user') || '{}');
+          logActivity('status', 'Status changed from ' + (statusNames[oldStatus] || oldStatus) + ' to ' + (statusNames[newStatus] || newStatus) + ' by ' + (user.name || 'Admin'));
         } else {
           // Revert on failure
-          const oldStatus = currentCase.status || 'pending';
           const oldClass = oldStatus.replace('_','-');
           document.querySelectorAll('.status-card').forEach(card => card.classList.remove('active'));
           document.querySelector('.status-card.'+oldClass)?.classList.add('active');
-          document.getElementById('modalStatusBadge').innerHTML = '<span class="status-badge '+oldClass+'">'+oldStatus.replace('_',' ')+'</span>';
+          if (modalBadge) modalBadge.innerHTML = '<span class="status-badge '+oldClass+'">'+oldStatus.replace('_',' ')+'</span>';
           alert('Failed to update status');
         }
       } catch(e) {
