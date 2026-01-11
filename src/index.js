@@ -2385,6 +2385,9 @@ async function handleCreateCase(request, env, corsHeaders) {
     correctedAddress: caseData.correctedAddress,
     notes: caseData.notes,
     intentDetails: caseData.intentDetails,
+    // Dog info (for dog_not_using cases)
+    dogs: caseData.dogs,
+    methodsTried: caseData.methodsTried,
   });
 
   return Response.json({
@@ -4747,6 +4750,9 @@ async function logCaseToAnalytics(env, caseData) {
     qualityDetails: caseData.qualityDetails || null,
     correctedAddress: caseData.correctedAddress || null,
     notes: caseData.notes || null,
+    // Dog info (for dog_not_using cases)
+    dogs: caseData.dogs || null,
+    methodsTried: caseData.methodsTried || null,
   });
 
   // Try full insert first with extra_data, fall back to basic insert if columns don't exist
@@ -11890,6 +11896,19 @@ function getResolutionHubHTML() {
           else if (qd.itemsUsed === false) bullets.push('<strong>Items Used:</strong> <span style="color:#10b981">No (unused)</span>');
         }
 
+        // Dog not using specific - show dog details
+        if ((intent === 'dog_not_using' || issueType === 'dog_not_using') && extra.dogs && extra.dogs.length) {
+          extra.dogs.forEach(function(dog, i) {
+            let dogInfo = (dog.name || 'Dog ' + (i+1));
+            if (dog.breed) dogInfo += ' (' + dog.breed + ')';
+            if (dog.age) dogInfo += ', ' + dog.age;
+            bullets.push('<strong>Dog:</strong> ' + escapeHtml(dogInfo));
+          });
+          if (extra.methodsTried) {
+            bullets.push('<strong>Methods Tried:</strong> ' + escapeHtml(extra.methodsTried));
+          }
+        }
+
         // Refund details
         if (c.refund_amount) bullets.push('<strong>Refund Amount:</strong> $' + parseFloat(c.refund_amount).toFixed(2));
         if (extra.refundPercent) bullets.push('<strong>Refund:</strong> ' + extra.refundPercent + '% of order');
@@ -11908,6 +11927,9 @@ function getResolutionHubHTML() {
               if (dog.age) dogInfo += ', ' + dog.age;
               bullets.push('<strong>Dog:</strong> ' + escapeHtml(dogInfo));
             });
+          }
+          if (extra.methodsTried) {
+            bullets.push('<strong>Methods Tried:</strong> ' + escapeHtml(extra.methodsTried));
           }
         } else if (intent === 'other') {
           html = '<p class="cd-issue-headline"><strong>Other Issue</strong></p>';
