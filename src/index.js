@@ -10526,30 +10526,13 @@ function getResolutionHubHTML() {
     document.querySelectorAll('.nav-item').forEach(i => i.addEventListener('click', () => navigateTo(i.dataset.page, i.dataset.filter)));
     document.getElementById('caseModal').addEventListener('click', e => { if(e.target.id === 'caseModal') closeModal(); });
 
-    // Handle browser back/forward buttons
-    window.addEventListener('popstate', (e) => {
-      if (e.state) {
-        navigateTo(e.state.page || 'dashboard', e.state.filter, true);
-        if (e.state.caseId) openCase(e.state.caseId);
-      }
-    });
-
-    function navigateTo(page, filter, skipPushState = false) {
-      console.log('[navigateTo] page:', page, 'filter:', filter, 'skipPushState:', skipPushState);
+    function navigateTo(page, filter) {
+      console.log('[navigateTo] page:', page, 'filter:', filter);
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       const sel = filter ? '.nav-item[data-page="'+page+'"][data-filter="'+filter+'"]' : '.nav-item[data-page="'+page+'"]';
       document.querySelector(sel)?.classList.add('active');
       document.getElementById('pageTitle').textContent = {dashboard:'Dashboard',cases:'Cases',sessions:'Sessions',events:'Event Log',issues:'Issue Reports',analytics:'Performance',audit:'Audit Log',users:'User Management'}[page]||'Dashboard';
       ['dashboard','cases','sessions','events','issues','analytics','audit','users'].forEach(v => document.getElementById(v+'View').style.display = v===page?'block':'none');
-
-      // Update URL without page reload
-      if (!skipPushState) {
-        const params = new URLSearchParams();
-        if (page && page !== 'dashboard') params.set('page', page);
-        if (filter) params.set('filter', filter);
-        const newUrl = params.toString() ? '/hub?' + params.toString() : '/hub';
-        history.pushState({ page, filter }, '', newUrl);
-      }
 
       if(page==='cases') {
         currentFilter = filter||'all';
@@ -10564,19 +10547,9 @@ function getResolutionHubHTML() {
       if(page==='users' && typeof HubUsers !== 'undefined') HubUsers.show();
     }
 
-    // Read URL params on page load
+    // Always start on dashboard (URL param navigation removed)
     function handleUrlParams() {
-      const params = new URLSearchParams(window.location.search);
-      const page = params.get('page') || 'dashboard';
-      const filter = params.get('filter');
-      const caseId = params.get('case');
-
-      if (page !== 'dashboard' || filter) {
-        navigateTo(page, filter, true);
-      }
-      if (caseId) {
-        setTimeout(() => openCase(caseId), 500);
-      }
+      // No-op - always start on dashboard
     }
 
     async function loadDashboard() {
