@@ -12246,7 +12246,7 @@ function getResolutionHubHTML() {
       // Show full page view instead of modal
       hideAllViews();
       document.getElementById('caseDetailView').style.display = 'block';
-      document.getElementById('detailCaseId').textContent = caseId;
+      document.getElementById('detailCaseTitle').textContent = 'Loading...';
       document.getElementById('detailCustomerName').textContent = 'Loading...';
 
       // Update URL with case ID
