@@ -9785,6 +9785,158 @@ function getResolutionHubHTML() {
       .case-detail-grid { grid-template-columns: 1fr; }
       .case-detail-sidebar { border-left: none; border-top: 1px solid var(--gray-200); }
     }
+
+    /* ===== HYBRID A+C CASE DETAIL STYLES ===== */
+    .case-detail-page-v2 { padding: 0; background: #f8fafc; min-height: 100vh; }
+    .case-detail-header-v2 { display: flex; justify-content: space-between; align-items: center; padding: 16px 32px; background: white; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 10; }
+    .case-detail-header-left-v2 { display: flex; align-items: center; gap: 20px; }
+    .case-detail-title-v2 { font-size: 18px; font-weight: 600; color: var(--brand-navy); border-bottom: 3px solid var(--brand-navy); padding-bottom: 4px; }
+    .case-detail-due-v2 { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--gray-600); background: var(--gray-100); padding: 8px 14px; border-radius: 8px; }
+    .case-detail-due-v2.urgent { background: #fef2f2; color: #dc2626; }
+    .case-detail-due-v2 svg { width: 16px; height: 16px; }
+    .case-detail-content-v2 { max-width: 900px; margin: 0 auto; padding: 28px 32px; }
+
+    /* WHO Section */
+    .who-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+    .who-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
+    .who-info-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
+    .who-customer { display: flex; align-items: center; gap: 12px; }
+    .who-customer-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-teal); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 16px; }
+    .who-customer-details { }
+    .who-customer-name { font-size: 15px; font-weight: 600; color: var(--gray-800); }
+    .who-customer-email { font-size: 13px; color: #3b82f6; }
+    .who-order { display: flex; align-items: center; gap: 8px; }
+    .who-order-icon { font-size: 18px; }
+    .who-order-details { }
+    .who-order-number { font-size: 14px; font-weight: 600; color: var(--gray-800); }
+    .who-order-date { font-size: 12px; color: var(--gray-500); }
+    .who-total { text-align: right; }
+    .who-total-icon { font-size: 18px; }
+    .who-total-amount { font-size: 18px; font-weight: 700; color: var(--gray-800); }
+    .who-total-label { font-size: 12px; color: var(--gray-500); }
+    .who-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .who-action-btn { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: white; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--gray-700); cursor: pointer; transition: all 0.2s; text-decoration: none; }
+    .who-action-btn:hover { background: var(--gray-50); border-color: var(--brand-navy); color: var(--brand-navy); }
+    .who-action-btn svg { width: 16px; height: 16px; }
+
+    /* Assignee & Timeline Row */
+    .assignee-timeline-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .section-box { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 20px; }
+    .section-box-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
+    .assignee-content { display: flex; align-items: center; gap: 12px; }
+    .assignee-avatar-lg { width: 48px; height: 48px; border-radius: 50%; background: var(--accent-teal); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 18px; flex-shrink: 0; }
+    .assignee-avatar-lg.unassigned { background: var(--gray-300); color: var(--gray-500); }
+    .assignee-details { flex: 1; }
+    .assignee-name-lg { font-size: 15px; font-weight: 600; color: var(--gray-800); }
+    .assignee-role-lg { font-size: 12px; color: var(--gray-500); }
+    .assignee-date { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+    .btn-reassign { margin-top: 12px; width: 100%; }
+    .timeline-content { }
+    .timeline-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
+    .timeline-item:last-child { border-bottom: none; }
+    .timeline-item-label { font-size: 13px; color: var(--gray-500); display: flex; align-items: center; gap: 6px; }
+    .timeline-item-label svg { width: 14px; height: 14px; }
+    .timeline-item-value { font-size: 13px; font-weight: 500; color: var(--gray-700); }
+    .timeline-item-value.urgent { color: #dc2626; font-weight: 600; }
+    .timeline-item-value.warning { color: #f59e0b; }
+
+    /* WHAT Section */
+    .what-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+    .what-section.highlight { background: linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(5,150,105,0.06) 100%); border: 2px solid #10b981; }
+    .what-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
+    .what-resolution { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 700; color: #047857; margin-bottom: 16px; }
+    .what-resolution-icon { font-size: 24px; }
+    .what-details { list-style: none; padding: 0; margin: 0; }
+    .what-details li { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 14px; color: var(--gray-700); line-height: 1.5; }
+    .what-details li::before { content: "•"; color: var(--gray-400); font-weight: bold; }
+    .what-evidence { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200); }
+    .what-evidence-title { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-bottom: 10px; }
+    .what-evidence-links { display: flex; gap: 10px; flex-wrap: wrap; }
+    .evidence-link { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 6px; font-size: 12px; color: #3b82f6; text-decoration: none; transition: all 0.2s; }
+    .evidence-link:hover { background: #eff6ff; border-color: #3b82f6; }
+    .evidence-link svg { width: 14px; height: 14px; }
+
+    /* HOW Section */
+    .how-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+    .how-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
+    .how-steps { display: flex; gap: 16px; align-items: stretch; }
+    .how-step { flex: 1; background: var(--gray-50); border: 2px solid var(--gray-200); border-radius: 10px; padding: 16px; position: relative; transition: all 0.2s; }
+    .how-step.completed { background: #ecfdf5; border-color: #10b981; }
+    .how-step-number { font-size: 11px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; margin-bottom: 8px; }
+    .how-step-title { font-size: 14px; font-weight: 600; color: var(--gray-800); margin-bottom: 8px; }
+    .how-step-desc { font-size: 12px; color: var(--gray-600); line-height: 1.4; margin-bottom: 12px; }
+    .how-step-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .how-step-status.done { background: #10b981; color: white; }
+    .how-step-status.todo { background: var(--gray-200); color: var(--gray-600); }
+    .how-step-status.todo:hover { background: var(--gray-300); }
+    .how-step-arrow { position: absolute; right: -20px; top: 50%; transform: translateY(-50%); color: var(--gray-300); font-size: 20px; }
+    .how-step:last-child .how-step-arrow { display: none; }
+
+    /* Complete Case Button */
+    .complete-case-section { background: white; border: 2px dashed var(--gray-300); border-radius: 12px; padding: 24px; margin-bottom: 20px; text-align: center; transition: all 0.2s; }
+    .complete-case-section:hover { border-color: #10b981; background: #f0fdf4; }
+    .complete-case-section.ready { border-style: solid; border-color: #10b981; background: linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(5,150,105,0.1) 100%); }
+    .complete-case-btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 28px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .complete-case-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16,185,129,0.3); }
+    .complete-case-btn:disabled { background: var(--gray-300); cursor: not-allowed; transform: none; box-shadow: none; }
+    .complete-case-btn svg { width: 20px; height: 20px; }
+    .complete-case-hint { font-size: 13px; color: var(--gray-500); margin-top: 10px; }
+
+    /* Email Template Section */
+    .email-template-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+    .email-template-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
+    .email-template-select { width: 100%; padding: 12px 14px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; margin-bottom: 14px; cursor: pointer; }
+    .email-template-preview { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; padding: 16px; margin-bottom: 14px; max-height: 200px; overflow-y: auto; }
+    .email-template-preview-subject { font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--gray-200); }
+    .email-template-preview-body { font-size: 13px; color: var(--gray-600); line-height: 1.6; white-space: pre-wrap; }
+    .email-copy-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; background: var(--brand-navy); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .email-copy-btn:hover { background: #2d4a6f; }
+    .email-copy-btn svg { width: 16px; height: 16px; }
+    .email-disclaimer { margin-top: 14px; padding: 12px 14px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; display: flex; align-items: flex-start; gap: 10px; }
+    .email-disclaimer-icon { color: #f59e0b; font-size: 18px; flex-shrink: 0; }
+    .email-disclaimer-text { font-size: 12px; color: #92400e; line-height: 1.5; }
+    .email-disclaimer-text strong { font-weight: 600; }
+
+    /* Comments Section */
+    .comments-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; }
+    .comments-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
+    .comments-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); }
+    .comments-add-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--gray-100); border: none; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--gray-600); cursor: pointer; transition: all 0.2s; }
+    .comments-add-btn:hover { background: var(--gray-200); }
+    .comment-input-wrapper { position: relative; margin-bottom: 16px; }
+    .comment-input-hint { font-size: 11px; color: var(--gray-400); margin-bottom: 8px; }
+    .comment-textarea { width: 100%; padding: 14px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; resize: none; min-height: 80px; transition: all 0.2s; }
+    .comment-textarea:focus { border-color: var(--brand-navy); outline: none; box-shadow: 0 0 0 3px rgba(30,58,95,0.1); }
+    .mention-dropdown { position: absolute; bottom: 100%; left: 0; right: 0; background: white; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); max-height: 200px; overflow-y: auto; display: none; z-index: 100; }
+    .mention-dropdown.active { display: block; }
+    .mention-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; transition: all 0.15s; }
+    .mention-item:hover, .mention-item.selected { background: var(--gray-100); }
+    .mention-item-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-teal); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 600; }
+    .mention-item-name { font-size: 13px; font-weight: 500; color: var(--gray-800); }
+    .mention-item-role { font-size: 11px; color: var(--gray-500); }
+    .comment-submit-row { display: flex; justify-content: flex-end; }
+    .comment-submit-btn { padding: 10px 20px; background: var(--brand-navy); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .comment-submit-btn:hover { background: #2d4a6f; }
+    .comments-list-v2 { display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto; }
+    .comment-item-v2 { padding: 14px; background: var(--gray-50); border-radius: 10px; }
+    .comment-item-v2.system { background: #f0f9ff; border-left: 3px solid #3b82f6; }
+    .comment-header-v2 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .comment-author-v2 { display: flex; align-items: center; gap: 8px; }
+    .comment-author-avatar-v2 { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-teal); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 600; }
+    .comment-author-avatar-v2.system { background: #3b82f6; }
+    .comment-author-name-v2 { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+    .comment-time-v2 { font-size: 11px; color: var(--gray-400); }
+    .comment-body-v2 { font-size: 13px; color: var(--gray-700); line-height: 1.5; }
+    .comment-body-v2 .mention { color: #3b82f6; font-weight: 500; }
+
+    @media (max-width: 768px) {
+      .assignee-timeline-row { grid-template-columns: 1fr; }
+      .how-steps { flex-direction: column; }
+      .how-step-arrow { display: none; }
+      .who-info-row { flex-direction: column; align-items: flex-start; }
+      .who-actions { width: 100%; }
+      .who-action-btn { flex: 1; justify-content: center; }
+    }
   </style>
   <link rel="stylesheet" href="/hub/hub-styles.css">
   <style>
@@ -9860,212 +10012,207 @@ function getResolutionHubHTML() {
         <div id="auditView" style="display:none"></div>
         <div id="usersView" style="display:none"></div>
 
-        <!-- Case Detail Full Page View -->
+        <!-- Case Detail Full Page View - HYBRID A+C -->
         <div id="caseDetailView" style="display:none">
-          <div class="case-detail-page">
-            <!-- Header with navigation -->
-            <div class="case-detail-header">
-              <div class="case-detail-header-left">
-                <button class="btn btn-secondary" onclick="closeCaseDetail()" style="margin-right:16px;">
+          <div class="case-detail-page-v2">
+            <!-- Header -->
+            <div class="case-detail-header-v2">
+              <div class="case-detail-header-left-v2">
+                <button class="btn btn-secondary" onclick="closeCaseDetail()" style="padding:8px 14px;">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                  Back to Cases
+                  Cases
                 </button>
-                <div class="case-detail-id" id="detailCaseId">Loading...</div>
-                <div class="case-detail-meta">
-                  <span id="detailCaseType" class="type-badge">-</span>
-                  <span id="detailStatusBadge" class="status-badge">-</span>
-                </div>
+                <div class="case-detail-title-v2" id="detailCaseTitle">Loading...</div>
               </div>
-              <div class="case-detail-header-right">
-                <button class="nav-arrow prev" id="prevCaseDetailBtn" onclick="navigateCaseDetail('prev')" title="Previous case">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                </button>
-                <button class="nav-arrow next" id="nextCaseDetailBtn" onclick="navigateCaseDetail('next')" title="Next case">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                </button>
-                <button class="copy-url-btn" onclick="copyCaseUrl()" title="Copy case URL">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-                </button>
+              <div class="case-detail-due-v2" id="detailDueBadge">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span id="detailDueText">-</span>
               </div>
             </div>
 
-            <!-- Main content grid -->
-            <div class="case-detail-grid">
-              <!-- Main column -->
-              <div class="case-detail-main">
-                <!-- Customer Info Card -->
-                <div class="case-section-card">
-                  <div class="case-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                    Customer Information
+            <!-- Main Content -->
+            <div class="case-detail-content-v2">
+              <!-- WHO Section -->
+              <div class="who-section">
+                <div class="who-section-title">WHO</div>
+                <div class="who-info-row">
+                  <div class="who-customer">
+                    <div class="who-customer-avatar" id="detailCustomerAvatar">?</div>
+                    <div class="who-customer-details">
+                      <div class="who-customer-name" id="detailCustomerName">-</div>
+                      <div class="who-customer-email" id="detailCustomerEmail">-</div>
+                    </div>
                   </div>
-                  <div class="info-grid-2col">
-                    <div class="info-item">
-                      <div class="info-label">Customer Name</div>
-                      <div class="info-value" id="detailCustomerName">-</div>
+                  <div class="who-order">
+                    <div class="who-order-icon">📦</div>
+                    <div class="who-order-details">
+                      <div class="who-order-number" id="detailOrderNumber">-</div>
+                      <div class="who-order-date" id="detailOrderDate">-</div>
                     </div>
-                    <div class="info-item">
-                      <div class="info-label">Email</div>
-                      <div class="info-value email" id="detailCustomerEmail">-</div>
-                    </div>
-                    <div class="info-item">
-                      <div class="info-label">Order Number</div>
-                      <div class="info-value" id="detailOrderNumber">-</div>
-                    </div>
-                    <div class="info-item">
-                      <div class="info-label">Order Date</div>
-                      <div class="info-value" id="detailOrderDate">-</div>
-                    </div>
+                  </div>
+                  <div class="who-total">
+                    <div class="who-total-icon">💰</div>
+                    <div class="who-total-amount" id="detailOrderTotal">-</div>
+                    <div class="who-total-label">Total</div>
                   </div>
                 </div>
-
-                <!-- Resolution Summary Card -->
-                <div class="case-section-card highlight-card">
-                  <div class="case-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                    Resolution Summary
-                  </div>
-                  <div class="resolution-summary" id="detailResolutionSummary">-</div>
-                </div>
-
-                <!-- Case Details Card (Full Breakdown) -->
-                <div class="case-section-card">
-                  <div class="case-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-                    Case Details
-                  </div>
-                  <div class="case-details-breakdown" id="detailCaseDetails">
-                    <!-- Populated dynamically with all case-specific info -->
-                  </div>
-                </div>
-
-                <!-- Update Status Card -->
-                <div class="case-section-card">
-                  <div class="case-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Update Status
-                  </div>
-                  <div class="status-cards-row">
-                    <button class="status-card-lg pending" onclick="updateStatusFromDetail('pending')">
-                      <div class="status-card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-                      <div class="status-card-text">Pending</div>
-                    </button>
-                    <button class="status-card-lg in-progress" onclick="updateStatusFromDetail('in_progress')">
-                      <div class="status-card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div>
-                      <div class="status-card-text">In Progress</div>
-                    </button>
-                    <button class="status-card-lg completed" onclick="showCompletionChecklist()">
-                      <div class="status-card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-                      <div class="status-card-text">Complete Case</div>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Team Comments Card -->
-                <div class="case-section-card">
-                  <div class="case-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                    Team Comments
-                    <span class="comments-badge" id="detailCommentsCount">0</span>
-                  </div>
-                  <div class="comments-container">
-                    <div class="comments-list" id="detailCommentsList"></div>
-                    <div class="comment-form-inline">
-                      <textarea class="comment-input" id="detailCommentInput" placeholder="Add a note or comment..." rows="2"></textarea>
-                      <button class="btn btn-primary" onclick="addCommentFromDetail()">Post Comment</button>
-                    </div>
-                  </div>
+                <div class="who-actions">
+                  <a class="who-action-btn" id="detailRichpanelLink" href="#" target="_blank" style="display:none;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                    View conversation
+                  </a>
+                  <a class="who-action-btn" id="detailShopifyLink" href="#" target="_blank" style="display:none;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                    View Shopify order
+                  </a>
+                  <a class="who-action-btn" id="detailReplayLink" href="#" target="_blank" style="display:none;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+                    View session recording
+                  </a>
+                  <a class="who-action-btn" id="detailSOPLink" href="#" target="_blank">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    View SOP guide
+                  </a>
                 </div>
               </div>
 
-              <!-- Sidebar column -->
-              <div class="case-detail-sidebar">
-                <!-- Quick Actions Card -->
-                <div class="case-section-card">
-                  <div class="case-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                    Quick Actions
-                  </div>
-                  <div class="quick-actions-list">
-                    <a class="quick-action-item" id="detailReplayLink" href="#" target="_blank" style="display:none;">
-                      <div class="quick-action-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg></div>
-                      <div class="quick-action-text">Watch Session Recording</div>
-                      <svg class="quick-action-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                    </a>
-                    <a class="quick-action-item" id="detailRichpanelLink" href="#" target="_blank" style="display:none;">
-                      <div class="quick-action-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg></div>
-                      <div class="quick-action-text">View Conversation</div>
-                      <svg class="quick-action-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                    </a>
-                    <a class="quick-action-item" id="detailShopifyLink" href="#" target="_blank" style="display:none;">
-                      <div class="quick-action-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg></div>
-                      <div class="quick-action-text">View Shopify Order</div>
-                      <svg class="quick-action-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                    </a>
-                    <a class="quick-action-item" id="detailSOPLink" href="#" target="_blank">
-                      <div class="quick-action-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg></div>
-                      <div class="quick-action-text">View SOP Guide</div>
-                      <svg class="quick-action-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                    </a>
-                  </div>
-                </div>
-
-                <!-- Assigned To Card -->
-                <div class="case-section-card">
-                  <div class="case-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                    Assigned To
-                  </div>
-                  <div class="assignee-display">
-                    <div class="assignee-avatar" id="detailAssigneeAvatar">?</div>
-                    <div class="assignee-info">
-                      <div class="assignee-name" id="detailAssigneeName">Unassigned</div>
-                      <div class="assignee-role" id="detailAssigneeRole">Click to assign</div>
+              <!-- ASSIGNEE & TIMELINE Row -->
+              <div class="assignee-timeline-row">
+                <!-- Assignee Box -->
+                <div class="section-box">
+                  <div class="section-box-title">ASSIGNEE</div>
+                  <div class="assignee-content">
+                    <div class="assignee-avatar-lg" id="detailAssigneeAvatar">?</div>
+                    <div class="assignee-details">
+                      <div class="assignee-name-lg" id="detailAssigneeName">Unassigned</div>
+                      <div class="assignee-role-lg" id="detailAssigneeRole">-</div>
+                      <div class="assignee-date" id="detailAssigneeDate">-</div>
                     </div>
                   </div>
-                  <button class="btn btn-secondary" style="width:100%;margin-top:12px;" onclick="showAssignModal()">
+                  <button class="btn btn-secondary btn-reassign" onclick="showAssignModal()">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                    Assign / Reassign
+                    Reassign
                   </button>
                 </div>
 
-                <!-- Timestamps Card -->
-                <div class="case-section-card">
-                  <div class="case-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Timeline
+                <!-- Timeline Box -->
+                <div class="section-box">
+                  <div class="section-box-title">TIMELINE</div>
+                  <div class="timeline-content">
+                    <div class="timeline-item">
+                      <span class="timeline-item-label">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        Created
+                      </span>
+                      <span class="timeline-item-value" id="detailCreatedAt">-</span>
+                    </div>
+                    <div class="timeline-item">
+                      <span class="timeline-item-label">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Due
+                      </span>
+                      <span class="timeline-item-value" id="detailDueDate">-</span>
+                    </div>
+                    <div class="timeline-item">
+                      <span class="timeline-item-label">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        Last Updated
+                      </span>
+                      <span class="timeline-item-value" id="detailUpdatedAt">-</span>
+                    </div>
                   </div>
-                  <div class="timeline-list">
-                    <div class="timeline-row">
-                      <span class="timeline-label">Created</span>
-                      <span class="timeline-value" id="detailCreatedAt">-</span>
-                    </div>
-                    <div class="timeline-row">
-                      <span class="timeline-label">Due Date</span>
-                      <span class="timeline-value" id="detailDueDate">-</span>
-                    </div>
-                    <div class="timeline-row">
-                      <span class="timeline-label">Last Updated</span>
-                      <span class="timeline-value" id="detailUpdatedAt">-</span>
-                    </div>
-                    <div class="timeline-row" id="detailResolvedRow" style="display:none;">
-                      <span class="timeline-label">Resolved</span>
-                      <span class="timeline-value" id="detailResolvedAt">-</span>
-                    </div>
-                  </div>
+                  <button class="btn btn-secondary btn-reassign" onclick="showEditDueDateModal()" style="margin-top:12px;">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    Edit Due Date
+                  </button>
                 </div>
+              </div>
 
-                <!-- Additional IDs Card (for subscription/order tracking) -->
-                <div class="case-section-card" id="detailIDsCard" style="display:none;">
-                  <div class="case-section-title">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
-                    Reference IDs
-                  </div>
-                  <div class="ids-list" id="detailIDsList">
-                    <!-- Populated dynamically with order IDs, subscription IDs, etc -->
+              <!-- WHAT Section -->
+              <div class="what-section highlight" id="whatSection">
+                <div class="what-section-title">WHAT</div>
+                <div class="what-resolution" id="detailResolutionSummary">
+                  <span class="what-resolution-icon">🎯</span>
+                  <span>Loading resolution...</span>
+                </div>
+                <ul class="what-details" id="detailResolutionDetails">
+                  <!-- Populated dynamically -->
+                </ul>
+                <!-- Evidence Links -->
+                <div class="what-evidence" id="detailEvidenceSection" style="display:none;">
+                  <div class="what-evidence-title">Attached Evidence</div>
+                  <div class="what-evidence-links" id="detailEvidenceLinks">
+                    <!-- Populated dynamically -->
                   </div>
                 </div>
               </div>
+
+              <!-- HOW Section (Completion Steps) -->
+              <div class="how-section">
+                <div class="how-section-title">HOW (Complete these steps)</div>
+                <div class="how-steps" id="detailHowSteps">
+                  <!-- Populated dynamically based on case type -->
+                </div>
+              </div>
+
+              <!-- Email Template Section -->
+              <div class="email-template-section">
+                <div class="email-template-title">EMAIL TEMPLATE</div>
+                <select class="email-template-select" id="emailTemplateSelect" onchange="updateEmailTemplatePreview()">
+                  <option value="">Select a template...</option>
+                  <option value="initial">Initial Response</option>
+                  <option value="request_info">Request More Information</option>
+                  <option value="refund_confirm">Refund Confirmation</option>
+                  <option value="replacement">Replacement Shipped</option>
+                  <option value="resolution">Resolution Offer</option>
+                  <option value="closed">Case Closed</option>
+                </select>
+                <div class="email-template-preview" id="emailTemplatePreview" style="display:none;">
+                  <div class="email-template-preview-subject" id="emailTemplateSubject">Subject line here</div>
+                  <div class="email-template-preview-body" id="emailTemplateBody">Email body here...</div>
+                </div>
+                <button class="email-copy-btn" onclick="copyEmailTemplate()" id="emailCopyBtn" style="display:none;">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                  Copy Template
+                </button>
+                <div class="email-disclaimer">
+                  <div class="email-disclaimer-icon">⚠️</div>
+                  <div class="email-disclaimer-text">
+                    <strong>IMPORTANT:</strong> This template is a starting point only. Always review and personalize before sending. Small tweaks may be needed based on the specific situation. <strong>Never send without reading first.</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Complete Case Section -->
+              <div class="complete-case-section" id="completeCaseSection">
+                <button class="complete-case-btn" onclick="showCompletionChecklist()" id="completeCaseBtn">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  COMPLETE THIS CASE
+                </button>
+                <div class="complete-case-hint">(Finish all steps first)</div>
+              </div>
+
+              <!-- Comments Section -->
+              <div class="comments-section">
+                <div class="comments-section-header">
+                  <div class="comments-section-title">COMMENTS <span class="comments-badge" id="detailCommentsCount">0</span></div>
+                  <button class="comments-add-btn" onclick="focusCommentInput()">+ Add</button>
+                </div>
+                <div class="comment-input-wrapper">
+                  <div class="comment-input-hint">Type @ to mention a team member</div>
+                  <textarea class="comment-textarea" id="detailCommentInput" placeholder="Add a comment..." rows="3" oninput="handleCommentInput(event)" onkeydown="handleCommentKeydown(event)"></textarea>
+                  <div class="mention-dropdown" id="mentionDropdown">
+                    <!-- Populated dynamically with hub users -->
+                  </div>
+                  <div class="comment-submit-row">
+                    <button class="comment-submit-btn" onclick="addCommentFromDetail()">Post Comment</button>
+                  </div>
+                </div>
+                <div class="comments-list-v2" id="detailCommentsList">
+                  <!-- Comments populated dynamically -->
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -12143,83 +12290,53 @@ function getResolutionHubHTML() {
       const customerName = c.customer_name || c.customer_email?.split('@')[0] || 'Customer';
       const statusClass = (c.status||'pending').replace('_','-');
 
-      // Header
-      document.getElementById('detailCaseId').textContent = c.case_id;
-      document.getElementById('detailCaseType').className = 'type-badge ' + c.case_type;
-      document.getElementById('detailCaseType').textContent = c.case_type;
-      document.getElementById('detailStatusBadge').className = 'status-badge ' + statusClass;
-      document.getElementById('detailStatusBadge').textContent = (c.status||'pending').replace('_',' ');
+      // Header - Case Title
+      const titleEl = document.getElementById('detailCaseTitle');
+      if (titleEl) {
+        titleEl.textContent = customerName + "'s " + (c.case_type || 'Case').charAt(0).toUpperCase() + (c.case_type || 'case').slice(1) + " Case";
+      }
 
-      // Customer info
+      // Due badge in header
+      const dueBadge = document.getElementById('detailDueBadge');
+      const dueText = document.getElementById('detailDueText');
+      if (c.created_at && dueBadge && dueText) {
+        const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
+        const now = Date.now();
+        const hoursLeft = Math.max(0, Math.round((dueDate.getTime() - now) / (1000*60*60)));
+        if (c.status === 'completed') {
+          dueText.textContent = 'Completed';
+          dueBadge.classList.remove('urgent');
+        } else if (now > dueDate.getTime()) {
+          dueText.textContent = 'OVERDUE';
+          dueBadge.classList.add('urgent');
+        } else if (hoursLeft <= 4) {
+          dueText.textContent = 'Due in ' + hoursLeft + ' hours';
+          dueBadge.classList.add('urgent');
+        } else {
+          dueText.textContent = 'Due in ' + hoursLeft + ' hours';
+          dueBadge.classList.remove('urgent');
+        }
+      }
+
+      // WHO Section - Customer info
       document.getElementById('detailCustomerName').textContent = customerName;
       document.getElementById('detailCustomerEmail').textContent = c.customer_email || '-';
-      document.getElementById('detailOrderNumber').textContent = c.order_number || '-';
+      const customerAvatar = document.getElementById('detailCustomerAvatar');
+      if (customerAvatar) {
+        customerAvatar.textContent = customerName.charAt(0).toUpperCase();
+      }
+
+      // WHO - Order info
+      document.getElementById('detailOrderNumber').textContent = c.order_number ? 'Order #' + c.order_number : '-';
       document.getElementById('detailOrderDate').textContent = formatDate(c.order_date || c.created_at);
 
-      // Resolution summary
-      document.getElementById('detailResolutionSummary').textContent = formatResolution(c.resolution, c.refund_amount);
-
-      // Case details breakdown
-      document.getElementById('detailCaseDetails').innerHTML = buildCaseDetailsHtml(c);
-
-      // Status cards - highlight current
-      document.querySelectorAll('.status-card-lg').forEach(card => card.classList.remove('active'));
-      document.querySelector('.status-card-lg.' + statusClass)?.classList.add('active');
-
-      // Assignee
-      const assigneeName = c.assigned_to_name || c.assigned_to || null;
-      const assigneeAvatar = document.getElementById('detailAssigneeAvatar');
-      const assigneeNameEl = document.getElementById('detailAssigneeName');
-      const assigneeRoleEl = document.getElementById('detailAssigneeRole');
-      if (assigneeName) {
-        assigneeAvatar.textContent = assigneeName.charAt(0).toUpperCase();
-        assigneeAvatar.classList.remove('unassigned');
-        assigneeNameEl.textContent = assigneeName;
-        assigneeRoleEl.textContent = c.assigned_to_role || 'Team Member';
-      } else {
-        assigneeAvatar.textContent = '?';
-        assigneeAvatar.classList.add('unassigned');
-        assigneeNameEl.textContent = 'Unassigned';
-        assigneeRoleEl.textContent = 'Click to assign';
+      // WHO - Order total
+      const orderTotal = document.getElementById('detailOrderTotal');
+      if (orderTotal) {
+        orderTotal.textContent = c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '-';
       }
 
-      // Timestamps
-      document.getElementById('detailCreatedAt').textContent = formatDate(c.created_at);
-      document.getElementById('detailUpdatedAt').textContent = formatDate(c.updated_at || c.created_at);
-
-      // Due date
-      const dueEl = document.getElementById('detailDueDate');
-      if (c.created_at) {
-        const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
-        const isOverdue = Date.now() > dueDate.getTime() && c.status !== 'completed';
-        const dueDateStr = dueDate.toLocaleDateString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-        if (c.status === 'completed') {
-          dueEl.innerHTML = '<span style="color:#10b981;">Completed</span>';
-        } else if (isOverdue) {
-          dueEl.innerHTML = '<span style="color:#ef4444;font-weight:600;">OVERDUE</span>';
-        } else {
-          dueEl.textContent = dueDateStr;
-        }
-      } else {
-        dueEl.textContent = '-';
-      }
-
-      // Resolved date
-      if (c.resolved_at) {
-        document.getElementById('detailResolvedRow').style.display = 'flex';
-        document.getElementById('detailResolvedAt').textContent = formatDate(c.resolved_at);
-      } else {
-        document.getElementById('detailResolvedRow').style.display = 'none';
-      }
-
-      // Quick action links
-      if (c.session_replay_url) {
-        document.getElementById('detailReplayLink').href = c.session_replay_url;
-        document.getElementById('detailReplayLink').style.display = 'flex';
-      } else {
-        document.getElementById('detailReplayLink').style.display = 'none';
-      }
-
+      // WHO - Quick action links
       if (c.richpanel_conversation_no) {
         document.getElementById('detailRichpanelLink').href = 'https://app.richpanel.com/conversations?viewId=search&conversationNo=' + c.richpanel_conversation_no;
         document.getElementById('detailRichpanelLink').style.display = 'flex';
@@ -12234,6 +12351,13 @@ function getResolutionHubHTML() {
         document.getElementById('detailShopifyLink').style.display = 'none';
       }
 
+      if (c.session_replay_url) {
+        document.getElementById('detailReplayLink').href = c.session_replay_url;
+        document.getElementById('detailReplayLink').style.display = 'flex';
+      } else {
+        document.getElementById('detailReplayLink').style.display = 'none';
+      }
+
       // SOP link - based on case type
       const sopUrls = {
         'refund': 'https://docs.google.com/document/d/YOUR_REFUND_SOP_DOC_ID/edit',
@@ -12244,12 +12368,418 @@ function getResolutionHubHTML() {
       };
       document.getElementById('detailSOPLink').href = sopUrls[c.case_type] || sopUrls['default'];
 
-      // Reference IDs section (for subscription/order tracking)
-      buildReferenceIDsSection(c);
+      // ASSIGNEE Section
+      const assigneeName = c.assigned_to_name || c.assigned_to || null;
+      const assigneeAvatar = document.getElementById('detailAssigneeAvatar');
+      const assigneeNameEl = document.getElementById('detailAssigneeName');
+      const assigneeRoleEl = document.getElementById('detailAssigneeRole');
+      const assigneeDateEl = document.getElementById('detailAssigneeDate');
+      if (assigneeName) {
+        if (assigneeAvatar) {
+          assigneeAvatar.textContent = assigneeName.charAt(0).toUpperCase();
+          assigneeAvatar.classList.remove('unassigned');
+        }
+        if (assigneeNameEl) assigneeNameEl.textContent = assigneeName;
+        if (assigneeRoleEl) assigneeRoleEl.textContent = c.assigned_to_role || 'Team Member';
+        if (assigneeDateEl) assigneeDateEl.textContent = c.assigned_at ? 'Assigned: ' + formatDate(c.assigned_at) : '';
+      } else {
+        if (assigneeAvatar) {
+          assigneeAvatar.textContent = '?';
+          assigneeAvatar.classList.add('unassigned');
+        }
+        if (assigneeNameEl) assigneeNameEl.textContent = 'Unassigned';
+        if (assigneeRoleEl) assigneeRoleEl.textContent = 'Click to assign';
+        if (assigneeDateEl) assigneeDateEl.textContent = '';
+      }
+
+      // TIMELINE Section
+      document.getElementById('detailCreatedAt').textContent = formatDate(c.created_at);
+      document.getElementById('detailUpdatedAt').textContent = formatDate(c.updated_at || c.created_at);
+
+      // Due date in timeline
+      const dueEl = document.getElementById('detailDueDate');
+      if (c.created_at && dueEl) {
+        const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
+        const isOverdue = Date.now() > dueDate.getTime() && c.status !== 'completed';
+        const dueDateStr = dueDate.toLocaleDateString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        if (c.status === 'completed') {
+          dueEl.innerHTML = '<span style="color:#10b981;">Completed</span>';
+          dueEl.classList.remove('urgent', 'warning');
+        } else if (isOverdue) {
+          dueEl.innerHTML = '<span>OVERDUE</span>';
+          dueEl.classList.add('urgent');
+          dueEl.classList.remove('warning');
+        } else {
+          dueEl.textContent = dueDateStr;
+          const hoursLeft = Math.round((dueDate.getTime() - Date.now()) / (1000*60*60));
+          if (hoursLeft <= 4) {
+            dueEl.classList.add('warning');
+          } else {
+            dueEl.classList.remove('urgent', 'warning');
+          }
+        }
+      }
+
+      // WHAT Section - Resolution summary
+      const resolutionSummary = document.getElementById('detailResolutionSummary');
+      if (resolutionSummary) {
+        resolutionSummary.innerHTML = '<span class="what-resolution-icon">🎯</span><span>' + escapeHtml(formatResolution(c.resolution, c.refund_amount)) + '</span>';
+      }
+
+      // WHAT - Resolution details
+      const detailsList = document.getElementById('detailResolutionDetails');
+      if (detailsList) {
+        const details = buildResolutionDetailsList(c);
+        detailsList.innerHTML = details.map(d => '<li>' + escapeHtml(d) + '</li>').join('');
+      }
+
+      // WHAT - Evidence links
+      const evidenceSection = document.getElementById('detailEvidenceSection');
+      const evidenceLinks = document.getElementById('detailEvidenceLinks');
+      let extra = {};
+      try {
+        if (c.extra_data) extra = typeof c.extra_data === 'string' ? JSON.parse(c.extra_data) : c.extra_data;
+      } catch(e) {}
+
+      const images = extra.image_urls || extra.images || [];
+      if (images.length > 0 && evidenceSection && evidenceLinks) {
+        evidenceSection.style.display = 'block';
+        evidenceLinks.innerHTML = images.map((url, i) =>
+          '<a href="' + escapeHtml(url) + '" target="_blank" class="evidence-link">' +
+          '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>' +
+          'Image ' + (i + 1) + '</a>'
+        ).join('');
+      } else if (evidenceSection) {
+        evidenceSection.style.display = 'none';
+      }
+
+      // HOW Section - Completion steps
+      buildHowSteps(c);
 
       // Update navigation buttons
       updateDetailNavigationButtons();
     }
+
+    // Build resolution details list
+    function buildResolutionDetailsList(c) {
+      const details = [];
+      if (c.product_name) details.push(c.product_name);
+      if (c.reason) details.push(c.reason);
+      if (c.refund_amount) details.push('Amount: $' + parseFloat(c.refund_amount).toFixed(2));
+      if (c.case_type === 'refund') {
+        details.push('Within return policy window');
+        details.push('Customer keeps product (no return needed)');
+      }
+      if (c.case_type === 'shipping') {
+        details.push('Tracking update required');
+      }
+      if (c.case_type === 'subscription') {
+        details.push('Subscription status check required');
+      }
+      return details.length ? details : ['Review case details above'];
+    }
+
+    // Build HOW steps based on case type
+    function buildHowSteps(c) {
+      const stepsContainer = document.getElementById('detailHowSteps');
+      if (!stepsContainer) return;
+
+      let steps = [];
+      const caseType = c.case_type || 'manual';
+
+      if (caseType === 'refund') {
+        steps = [
+          { num: 1, title: 'REFUND', desc: 'Process $' + (c.refund_amount || '0.00') + ' in Shopify', action: 'refund' },
+          { num: 2, title: 'EMAIL', desc: 'Send customer confirmation', action: 'email' },
+          { num: 3, title: 'CLOSE', desc: 'Close ticket in Richpanel', action: 'close' }
+        ];
+      } else if (caseType === 'shipping') {
+        steps = [
+          { num: 1, title: 'INVESTIGATE', desc: 'Check tracking status', action: 'investigate' },
+          { num: 2, title: 'UPDATE', desc: 'Update customer on status', action: 'email' },
+          { num: 3, title: 'CLOSE', desc: 'Close ticket in Richpanel', action: 'close' }
+        ];
+      } else if (caseType === 'subscription') {
+        steps = [
+          { num: 1, title: 'VERIFY', desc: 'Check subscription status', action: 'verify' },
+          { num: 2, title: 'ACTION', desc: 'Cancel/modify as requested', action: 'action' },
+          { num: 3, title: 'CONFIRM', desc: 'Email confirmation to customer', action: 'email' }
+        ];
+      } else {
+        steps = [
+          { num: 1, title: 'REVIEW', desc: 'Review case details', action: 'review' },
+          { num: 2, title: 'RESOLVE', desc: 'Take appropriate action', action: 'resolve' },
+          { num: 3, title: 'CLOSE', desc: 'Close the case', action: 'close' }
+        ];
+      }
+
+      // Get completion status from case or local storage
+      let completedSteps = [];
+      try {
+        const saved = localStorage.getItem('case_steps_' + c.case_id);
+        if (saved) completedSteps = JSON.parse(saved);
+      } catch(e) {}
+
+      stepsContainer.innerHTML = steps.map((step, i) => {
+        const isComplete = completedSteps.includes(step.action);
+        return '<div class="how-step' + (isComplete ? ' completed' : '') + '" data-step="' + step.action + '">' +
+          '<div class="how-step-number">' + step.num + '. ' + step.title + '</div>' +
+          '<div class="how-step-desc">' + step.desc + '</div>' +
+          '<button class="how-step-status ' + (isComplete ? 'done' : 'todo') + '" onclick="toggleStepComplete(\'' + c.case_id + '\', \'' + step.action + '\')">' +
+          (isComplete ? '✓ Done' : '☐ To Do') +
+          '</button>' +
+          (i < steps.length - 1 ? '<span class="how-step-arrow">→</span>' : '') +
+          '</div>';
+      }).join('');
+
+      // Update complete button state
+      updateCompleteCaseButton(completedSteps.length >= steps.length);
+    }
+
+    // Toggle step completion
+    function toggleStepComplete(caseId, stepAction) {
+      let completedSteps = [];
+      try {
+        const saved = localStorage.getItem('case_steps_' + caseId);
+        if (saved) completedSteps = JSON.parse(saved);
+      } catch(e) {}
+
+      const idx = completedSteps.indexOf(stepAction);
+      if (idx === -1) {
+        completedSteps.push(stepAction);
+      } else {
+        completedSteps.splice(idx, 1);
+      }
+
+      localStorage.setItem('case_steps_' + caseId, JSON.stringify(completedSteps));
+
+      // Re-render steps
+      if (currentCase) buildHowSteps(currentCase);
+    }
+
+    // Update complete case button state
+    function updateCompleteCaseButton(allDone) {
+      const section = document.getElementById('completeCaseSection');
+      const btn = document.getElementById('completeCaseBtn');
+      if (section && btn) {
+        if (allDone) {
+          section.classList.add('ready');
+          btn.disabled = false;
+        } else {
+          section.classList.remove('ready');
+          // Button still enabled but visual cue
+        }
+      }
+    }
+
+    // Email template functions
+    const emailTemplates = {
+      initial: {
+        subject: 'Re: Your PuppyPad Order - We\'re Here to Help',
+        body: 'Hi {{customer_name}},\n\nThank you for reaching out to us. We\'ve received your message and are looking into this right away.\n\nWe\'ll get back to you within 24 hours with an update.\n\nBest regards,\nThe PuppyPad Team'
+      },
+      request_info: {
+        subject: 'Re: Your PuppyPad Order - Additional Information Needed',
+        body: 'Hi {{customer_name}},\n\nThank you for contacting us about your order.\n\nTo better assist you, could you please provide:\n- Your order number\n- A brief description of the issue\n- Any photos that might help us understand the situation\n\nOnce we have this information, we\'ll be able to resolve this quickly for you.\n\nBest regards,\nThe PuppyPad Team'
+      },
+      refund_confirm: {
+        subject: 'Your Refund Has Been Processed - Order #{{order_number}}',
+        body: 'Hi {{customer_name}},\n\nGreat news! We\'ve processed your refund of {{refund_amount}} for your PuppyPad order.\n\nPlease allow 5-10 business days for the credit to appear in your account, depending on your bank.\n\nWe\'re sorry the product didn\'t meet your expectations, and we hope to serve you again in the future.\n\nBest regards,\nThe PuppyPad Team'
+      },
+      replacement: {
+        subject: 'Your Replacement Has Been Shipped - Order #{{order_number}}',
+        body: 'Hi {{customer_name}},\n\nWe\'re happy to let you know that your replacement has been shipped!\n\nYou should receive tracking information shortly. The package is expected to arrive within 5-7 business days.\n\nThank you for your patience and understanding.\n\nBest regards,\nThe PuppyPad Team'
+      },
+      resolution: {
+        subject: 'Resolution for Your PuppyPad Order #{{order_number}}',
+        body: 'Hi {{customer_name}},\n\nThank you for bringing this to our attention. After reviewing your case, we\'d like to offer the following resolution:\n\n{{resolution}}\n\nPlease let us know if this works for you, or if you\'d prefer a different solution.\n\nBest regards,\nThe PuppyPad Team'
+      },
+      closed: {
+        subject: 'Your Support Case Has Been Resolved',
+        body: 'Hi {{customer_name}},\n\nWe\'re pleased to confirm that your support case has been resolved.\n\nIf you have any other questions or need further assistance, please don\'t hesitate to reach out.\n\nThank you for being a valued PuppyPad customer!\n\nBest regards,\nThe PuppyPad Team'
+      }
+    };
+
+    function updateEmailTemplatePreview() {
+      const select = document.getElementById('emailTemplateSelect');
+      const preview = document.getElementById('emailTemplatePreview');
+      const copyBtn = document.getElementById('emailCopyBtn');
+      const subjectEl = document.getElementById('emailTemplateSubject');
+      const bodyEl = document.getElementById('emailTemplateBody');
+
+      const templateKey = select.value;
+      if (!templateKey || !emailTemplates[templateKey]) {
+        preview.style.display = 'none';
+        copyBtn.style.display = 'none';
+        return;
+      }
+
+      const template = emailTemplates[templateKey];
+      const c = currentCase || {};
+
+      // Replace placeholders
+      let subject = template.subject
+        .replace('{{customer_name}}', c.customer_name || 'Customer')
+        .replace('{{order_number}}', c.order_number || 'N/A')
+        .replace('{{refund_amount}}', c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '$0.00');
+
+      let body = template.body
+        .replace(/\{\{customer_name\}\}/g, c.customer_name || 'Customer')
+        .replace(/\{\{order_number\}\}/g, c.order_number || 'N/A')
+        .replace(/\{\{refund_amount\}\}/g, c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '$0.00')
+        .replace(/\{\{resolution\}\}/g, formatResolution(c.resolution, c.refund_amount));
+
+      subjectEl.textContent = 'Subject: ' + subject;
+      bodyEl.textContent = body;
+      preview.style.display = 'block';
+      copyBtn.style.display = 'flex';
+    }
+
+    function copyEmailTemplate() {
+      const subjectEl = document.getElementById('emailTemplateSubject');
+      const bodyEl = document.getElementById('emailTemplateBody');
+
+      const subject = subjectEl.textContent.replace('Subject: ', '');
+      const body = bodyEl.textContent;
+      const fullEmail = subject + '\n\n' + body;
+
+      navigator.clipboard.writeText(fullEmail).then(() => {
+        showToast('Template copied! Remember to review and personalize before sending.', 'success');
+      }).catch(() => {
+        showToast('Failed to copy template', 'error');
+      });
+    }
+
+    // Comment @mention functions
+    let mentionUsers = [];
+    let mentionSelectedIndex = 0;
+    let mentionSearchStart = -1;
+
+    async function loadMentionUsers() {
+      try {
+        const r = await fetch(API + '/hub/api/users');
+        const d = await r.json();
+        mentionUsers = (d.users || []).map(u => ({
+          id: u.id,
+          name: u.name || u.username,
+          username: u.username,
+          role: u.role || 'Team Member'
+        }));
+      } catch(e) {
+        console.error('Failed to load users for mentions:', e);
+      }
+    }
+
+    function handleCommentInput(event) {
+      const textarea = event.target;
+      const text = textarea.value;
+      const cursorPos = textarea.selectionStart;
+
+      // Find @ symbol before cursor
+      const textBeforeCursor = text.substring(0, cursorPos);
+      const atIndex = textBeforeCursor.lastIndexOf('@');
+
+      if (atIndex !== -1 && (atIndex === 0 || /\s/.test(text[atIndex - 1]))) {
+        const searchTerm = textBeforeCursor.substring(atIndex + 1).toLowerCase();
+        mentionSearchStart = atIndex;
+
+        // Filter users
+        const filtered = mentionUsers.filter(u =>
+          u.name.toLowerCase().includes(searchTerm) ||
+          u.username.toLowerCase().includes(searchTerm)
+        ).slice(0, 5);
+
+        if (filtered.length > 0) {
+          showMentionDropdown(filtered);
+        } else {
+          hideMentionDropdown();
+        }
+      } else {
+        hideMentionDropdown();
+      }
+    }
+
+    function handleCommentKeydown(event) {
+      const dropdown = document.getElementById('mentionDropdown');
+      if (!dropdown.classList.contains('active')) return;
+
+      const items = dropdown.querySelectorAll('.mention-item');
+      if (!items.length) return;
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        mentionSelectedIndex = Math.min(mentionSelectedIndex + 1, items.length - 1);
+        updateMentionSelection(items);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        mentionSelectedIndex = Math.max(mentionSelectedIndex - 1, 0);
+        updateMentionSelection(items);
+      } else if (event.key === 'Enter' && dropdown.classList.contains('active')) {
+        event.preventDefault();
+        const selected = items[mentionSelectedIndex];
+        if (selected) selectMention(selected.dataset.username, selected.dataset.name);
+      } else if (event.key === 'Escape') {
+        hideMentionDropdown();
+      }
+    }
+
+    function showMentionDropdown(users) {
+      const dropdown = document.getElementById('mentionDropdown');
+      mentionSelectedIndex = 0;
+
+      dropdown.innerHTML = users.map((u, i) =>
+        '<div class="mention-item' + (i === 0 ? ' selected' : '') + '" data-username="' + escapeHtml(u.username) + '" data-name="' + escapeHtml(u.name) + '" onclick="selectMention(\'' + escapeHtml(u.username) + '\', \'' + escapeHtml(u.name) + '\')">' +
+        '<div class="mention-item-avatar">' + u.name.charAt(0).toUpperCase() + '</div>' +
+        '<div><div class="mention-item-name">@' + escapeHtml(u.username) + '</div><div class="mention-item-role">' + escapeHtml(u.name) + ' - ' + escapeHtml(u.role) + '</div></div></div>'
+      ).join('');
+
+      dropdown.classList.add('active');
+    }
+
+    function hideMentionDropdown() {
+      const dropdown = document.getElementById('mentionDropdown');
+      dropdown.classList.remove('active');
+      mentionSearchStart = -1;
+    }
+
+    function updateMentionSelection(items) {
+      items.forEach((item, i) => {
+        item.classList.toggle('selected', i === mentionSelectedIndex);
+      });
+    }
+
+    function selectMention(username, name) {
+      const textarea = document.getElementById('detailCommentInput');
+      const text = textarea.value;
+      const cursorPos = textarea.selectionStart;
+
+      if (mentionSearchStart !== -1) {
+        const before = text.substring(0, mentionSearchStart);
+        const after = text.substring(cursorPos);
+        textarea.value = before + '@' + username + ' ' + after;
+        const newPos = mentionSearchStart + username.length + 2;
+        textarea.setSelectionRange(newPos, newPos);
+      }
+
+      hideMentionDropdown();
+      textarea.focus();
+    }
+
+    function focusCommentInput() {
+      const input = document.getElementById('detailCommentInput');
+      if (input) {
+        input.focus();
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function showEditDueDateModal() {
+      // Placeholder for due date editing modal
+      showToast('Due date editing coming soon!', 'info');
+    }
+
+    // Load mention users on page load
+    loadMentionUsers();
 
     function buildReferenceIDsSection(c) {
       let extra = {};
@@ -12313,16 +12843,22 @@ function getResolutionHubHTML() {
         const count = d.comments?.length || 0;
         countEl.textContent = count;
         if (!count) {
-          list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px;">No comments yet</div>';
+          list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px;">No comments yet. Be the first to add one!</div>';
           return;
         }
-        list.innerHTML = d.comments.map(c =>
-          '<div class="comment-item" style="padding:12px 0;border-bottom:1px solid var(--gray-100);">' +
-          '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">' +
-          '<span style="font-weight:600;font-size:13px;color:var(--gray-700);">' + (c.author_name || 'Team') + '</span>' +
-          '<span style="font-size:12px;color:var(--gray-400);">' + timeAgo(c.created_at) + '</span></div>' +
-          '<div style="font-size:14px;color:var(--gray-600);line-height:1.5;">' + escapeHtml(c.content) + '</div></div>'
-        ).join('');
+        list.innerHTML = d.comments.map(c => {
+          const isSystem = c.author_name === 'System' || c.is_system;
+          const authorInitial = (c.author_name || 'T').charAt(0).toUpperCase();
+          // Highlight @mentions in content
+          const contentWithMentions = escapeHtml(c.content).replace(/@(\w+)/g, '<span class="mention">@$1</span>');
+          return '<div class="comment-item-v2' + (isSystem ? ' system' : '') + '">' +
+            '<div class="comment-header-v2">' +
+            '<div class="comment-author-v2">' +
+            '<div class="comment-author-avatar-v2' + (isSystem ? ' system' : '') + '">' + (isSystem ? '🔄' : authorInitial) + '</div>' +
+            '<span class="comment-author-name-v2">' + escapeHtml(c.author_name || 'Team') + '</span></div>' +
+            '<span class="comment-time-v2">' + timeAgo(c.created_at) + '</span></div>' +
+            '<div class="comment-body-v2">' + contentWithMentions + '</div></div>';
+        }).join('');
       } catch(e) { console.error(e); }
     }
 
