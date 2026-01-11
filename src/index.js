@@ -9450,19 +9450,22 @@ function getResolutionHubHTML() {
     .cd-status-badge.on-time { background: #ecfdf5; color: #059669; }
 
     /* Customer Card */
-    .cd-customer-card { display: flex; align-items: center; justify-content: space-between; padding: 20px 28px; background: white; border-bottom: 1px solid var(--gray-100); }
+    .cd-customer-card { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 20px 28px; background: white; border-bottom: 1px solid var(--gray-100); }
     .cd-customer-left { display: flex; align-items: center; gap: 14px; }
     .cd-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 18px; flex-shrink: 0; }
     .cd-customer-info { }
     .cd-customer-name { font-size: 17px; font-weight: 600; color: var(--gray-900); margin-bottom: 2px; }
     .cd-customer-email { font-size: 14px; color: #3b82f6; text-decoration: none; }
     .cd-customer-email:hover { text-decoration: underline; }
-    .cd-order-info { text-align: center; }
+    .cd-order-info { text-align: center; padding: 0 20px; border-left: 1px solid var(--gray-200); border-right: 1px solid var(--gray-200); }
     .cd-order-number { font-size: 15px; font-weight: 600; color: var(--gray-800); font-family: monospace; }
     .cd-order-meta { font-size: 13px; color: var(--gray-500); margin-top: 2px; }
-    .cd-actions-row { display: flex; gap: 8px; }
-    .cd-action-link { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; background: var(--gray-100); color: var(--gray-600); transition: all 0.2s; }
-    .cd-action-link:hover { background: var(--brand-navy); color: white; }
+    @media (max-width: 900px) { .cd-customer-card { flex-direction: column; align-items: flex-start; } .cd-order-info { border: none; padding: 0; } .cd-quick-links { width: 100%; } }
+    /* Quick Links with Labels */
+    .cd-quick-links { display: flex; gap: 12px; flex-wrap: wrap; }
+    .cd-quick-link { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: white; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--gray-700); text-decoration: none; transition: all 0.2s; white-space: nowrap; }
+    .cd-quick-link:hover { background: var(--gray-50); border-color: var(--brand-navy); color: var(--brand-navy); }
+    .cd-quick-link svg { flex-shrink: 0; }
 
     /* Two Column Layout */
     .cd-two-col { display: grid; grid-template-columns: 1fr 320px; gap: 0; min-height: calc(100vh - 140px); }
@@ -9488,8 +9491,13 @@ function getResolutionHubHTML() {
     .cd-evidence-title { font-size: 13px; font-weight: 600; color: var(--gray-500); margin-bottom: 12px; }
     .cd-evidence-links { display: flex; gap: 10px; flex-wrap: wrap; }
 
-    /* Resolution Box */
-    .cd-resolution-box { background: linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(5,150,105,0.08) 100%); border: 1px solid #10b981; border-radius: 10px; padding: 18px 20px; font-size: 15px; font-weight: 600; color: #047857; line-height: 1.5; }
+    /* Action Required Box */
+    .cd-resolution-box { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 10px; padding: 18px 20px; font-size: 15px; font-weight: 500; color: var(--gray-800); line-height: 1.6; }
+    .cd-resolution-box .action-step { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+    .cd-resolution-box .action-step:last-child { border-bottom: none; padding-bottom: 0; }
+    .cd-resolution-box .action-step:first-child { padding-top: 0; }
+    .cd-resolution-box .action-num { width: 24px; height: 24px; border-radius: 50%; background: var(--brand-navy); color: white; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .cd-resolution-box .action-text { flex: 1; }
 
     /* Notes Section */
     .cd-notes-count { background: var(--gray-200); color: var(--gray-600); font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px; }
@@ -9514,18 +9522,25 @@ function getResolutionHubHTML() {
     .cd-sidebar-section:last-child { margin-bottom: 0; }
     .cd-sidebar-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 14px; }
 
-    /* Status Options */
-    .cd-status-options { display: flex; flex-direction: column; gap: 10px; }
-    .cd-status-option { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--gray-50); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-    .cd-status-option:hover { background: var(--gray-100); }
+    /* Status Options - Clickable Cards */
+    .cd-status-options { display: flex; flex-direction: column; gap: 8px; }
+    .cd-status-option { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: white; border: 2px solid var(--gray-200); border-radius: 10px; cursor: pointer; transition: all 0.15s ease; }
+    .cd-status-option:hover { border-color: var(--gray-400); background: var(--gray-50); transform: translateY(-1px); }
+    .cd-status-option:active { transform: translateY(0); }
     .cd-status-option input { display: none; }
-    .cd-status-radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--gray-300); position: relative; flex-shrink: 0; transition: all 0.2s; }
-    .cd-status-radio::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); width: 8px; height: 8px; border-radius: 50%; background: currentColor; transition: transform 0.2s; }
+    .cd-status-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--gray-300); position: relative; flex-shrink: 0; transition: all 0.15s; }
+    .cd-status-radio::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); width: 10px; height: 10px; border-radius: 50%; background: currentColor; transition: transform 0.15s; }
     .cd-status-option input:checked + .cd-status-radio::after { transform: translate(-50%, -50%) scale(1); }
+    /* Pending State */
+    .cd-status-option:has(input[value="pending"]:checked) { border-color: #f59e0b; background: #fffbeb; }
     .cd-status-option input:checked + .cd-status-radio.pending { border-color: #f59e0b; color: #f59e0b; }
+    /* In Progress State */
+    .cd-status-option:has(input[value="in_progress"]:checked) { border-color: #3b82f6; background: #eff6ff; }
     .cd-status-option input:checked + .cd-status-radio.in-progress { border-color: #3b82f6; color: #3b82f6; }
+    /* Completed State */
+    .cd-status-option:has(input[value="completed"]:checked) { border-color: #10b981; background: #ecfdf5; }
     .cd-status-option input:checked + .cd-status-radio.completed { border-color: #10b981; color: #10b981; }
-    .cd-status-label { font-size: 14px; font-weight: 500; color: var(--gray-700); }
+    .cd-status-label { font-size: 14px; font-weight: 500; color: var(--gray-700); flex: 1; }
 
     /* Assignee */
     .cd-assignee { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--gray-50); border-radius: 10px; margin-bottom: 12px; }
@@ -9799,15 +9814,18 @@ function getResolutionHubHTML() {
                 <div class="cd-order-number" id="detailOrderNumber">-</div>
                 <div class="cd-order-meta" id="detailOrderDate">-</div>
               </div>
-              <div class="cd-actions-row">
-                <a class="cd-action-link" id="detailShopifyLink" href="#" target="_blank" title="View in Shopify">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+              <div class="cd-quick-links">
+                <a class="cd-quick-link" id="detailShopifyLink" href="#" target="_blank">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                  View Shopify Order
                 </a>
-                <a class="cd-action-link" id="detailRichpanelLink" href="#" target="_blank" title="View Conversation">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                <a class="cd-quick-link" id="detailRichpanelLink" href="#" target="_blank">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                  View Richpanel Conversation
                 </a>
-                <a class="cd-action-link" id="detailReplayLink" href="#" target="_blank" title="Watch Recording">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+                <a class="cd-quick-link" id="detailReplayLink" href="#" target="_blank">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+                  View Session Recording
                 </a>
               </div>
             </div>
@@ -10715,18 +10733,18 @@ function getResolutionHubHTML() {
         'full_refund_quality_used': 'Process refund - Items used, no return needed',
         'full_refund_quality_return': 'Wait for return - Process refund after received',
         'return_refund': 'Send return label - Refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' after return',
-        // Subscription resolutions
-        'subscription_paused': 'Subscription paused',
-        'subscription_cancelled': 'Subscription cancelled',
-        'subscription_resumed': 'Subscription resumed',
-        'subscription_modified': 'Subscription modified',
-        'subscription_address_updated': 'Address updated',
-        'subscription_schedule_changed': 'Schedule changed',
-        'subscription_skip_next': 'Next shipment skipped',
-        'subscription_unskip': 'Shipment unskipped',
-        'discount_applied': 'Discount Applied',
-        'address_changed': 'Address Changed',
-        'schedule_changed': 'Schedule Changed'
+        // Subscription resolutions - ACTION ORIENTED
+        'subscription_paused': 'Pause subscription in CheckoutChamp (see Case Details for duration)',
+        'subscription_cancelled': 'Cancel subscription in CheckoutChamp and process refund if applicable',
+        'subscription_resumed': 'Resume subscription in CheckoutChamp',
+        'subscription_modified': 'Modify subscription in CheckoutChamp per case details',
+        'subscription_address_updated': 'Update shipping address in CheckoutChamp subscription',
+        'subscription_schedule_changed': 'Update delivery schedule in CheckoutChamp',
+        'subscription_skip_next': 'Skip next shipment in CheckoutChamp',
+        'subscription_unskip': 'Unskip shipment in CheckoutChamp',
+        'discount_applied': 'Apply discount to subscription in CheckoutChamp (see Case Details for %)',
+        'address_changed': 'Update subscription address in CheckoutChamp',
+        'schedule_changed': 'Change delivery frequency in CheckoutChamp (see Case Details)'
       };
       // Check for dynamic patterns
       const partialMatch = code.match(/^partial_(\\d+)$/);
