@@ -10416,6 +10416,67 @@ function getResolutionHubHTML() {
       return false;
     }
 
+    // Version marker for debugging - check with: console.log(window.HUB_VERSION)
+    window.HUB_VERSION = '2026-01-11-v2';
+
+    // Resolution code to human-readable text (MUST be defined before renderCaseRow)
+    function formatResolution(code, amount) {
+      if (!code) return '-';
+      const amountStr = amount ? '$' + parseFloat(amount).toFixed(2) : '';
+      const map = {
+        // Standard refunds
+        'full_refund': 'Process full refund' + (amountStr ? ' (' + amountStr + ')' : ' (calculate amount)'),
+        'partial_20': 'Process 20% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' - Customer keeps product',
+        'partial_30': 'Process 30% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' - Customer keeps product',
+        'partial_40': 'Process 40% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' - Customer keeps product',
+        'partial_50': 'Process 50% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' - Customer keeps product',
+        'partial_75': 'Process 75% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' - Customer keeps product',
+        'store_credit': 'Issue store credit',
+        'replacement': 'Ship replacement',
+        'exchange': 'Process exchange - Send return label, ship replacement after return',
+        'reship': 'Reship order',
+        'partial_20_reship': 'Process 20% refund + Reship order',
+        'partial_50_reship': 'Process 50% refund + Reship order',
+        'refund_missing_item': 'Calculate & refund missing item value',
+        'reship_missing_item': 'Ship missing item',
+        'reship_missing_item_bonus': 'Ship missing item + bonus for inconvenience',
+        'replacement_damaged': 'Ship replacement for damaged item',
+        'partial_missing': 'Process partial refund for missing item',
+        'apology_note': 'Send apology note',
+        'training_tips': 'Provide training tips',
+        'manual_assistance': 'Manual review required',
+        'manual_order_not_found': 'Manual review - Order not found in system',
+        'escalate': 'Escalate to team',
+        'no_action': 'No action required',
+        // Quality difference resolutions
+        'upgrade_keep_originals': 'Send $20/pad checkout link - Ship PuppyPad 2.0 after payment',
+        'return_upgrade_enhanced': 'Wait for return - Send checkout link - Ship PuppyPad 2.0',
+        'reship_quality_upgrade': 'Ship FREE PuppyPad 2.0 (customer keeps Originals)',
+        'full_refund_quality': 'Process refund - Customer keeps Originals',
+        'full_refund_quality_used': 'Process refund - Items used, no return needed',
+        'full_refund_quality_return': 'Wait for return - Process refund after received',
+        'return_refund': 'Send return label - Refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' after return',
+        // Subscription resolutions
+        'subscription_paused': 'Subscription paused',
+        'subscription_cancelled': 'Subscription cancelled',
+        'subscription_resumed': 'Subscription resumed',
+        'subscription_modified': 'Subscription modified',
+        'subscription_address_updated': 'Address updated',
+        'subscription_schedule_changed': 'Schedule changed',
+        'subscription_skip_next': 'Next shipment skipped',
+        'subscription_unskip': 'Shipment unskipped',
+        'discount_applied': 'Discount Applied',
+        'address_changed': 'Address Changed',
+        'schedule_changed': 'Schedule Changed'
+      };
+      // Check for dynamic patterns
+      const partialMatch = code.match(/^partial_(\\d+)$/);
+      if (partialMatch) return 'Process ' + partialMatch[1] + '% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' - Customer keeps product';
+      const partialReshipMatch = code.match(/^partial_(\\d+)_reship$/);
+      if (partialReshipMatch) return 'Process ' + partialReshipMatch[1] + '% refund + Reship order';
+      return map[code] || code.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());
+    }
+
     // Calculate due date status for a case (24h from creation)
     function getDueStatus(caseItem) {
       if (!caseItem || !caseItem.created_at) {
@@ -10447,72 +10508,13 @@ function getResolutionHubHTML() {
       return '<tr>'+
         '<td onclick="event.stopPropagation()"><input type="checkbox" class="case-checkbox" data-case-id="'+c.case_id+'" onchange="toggleCaseSelect(\\''+c.case_id+'\\')" style="width:16px;height:16px;cursor:pointer;"></td>'+
         '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="case-id">'+c.case_id+'</span></td>'+
-        '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer_email">'+(c.customer_email||'')+'</span></div></td>'+
+        '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td>'+
         '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td>'+
         '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td>'+
         '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="due-badge '+due.class+'">'+due.text+'</span></td>'+
         '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+res+'</td>'+
         '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;" class="time-ago">'+timeAgo(c.created_at)+'</td>'+
       '</tr>';
-    }
-
-    // Resolution code to human-readable text
-    function formatResolution(code, amount) {
-      if (!code) return '-';
-      const amountStr = amount ? '$' + parseFloat(amount).toFixed(2) : '';
-      const map = {
-        // Standard refunds
-        'full_refund': 'Process full refund' + (amountStr ? ' (' + amountStr + ')' : ' (calculate amount)'),
-        'partial_20': 'Process 20% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
-        'partial_30': 'Process 30% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
-        'partial_40': 'Process 40% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
-        'partial_50': 'Process 50% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
-        'partial_75': 'Process 75% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product',
-        'store_credit': 'Issue store credit',
-        'replacement': 'Ship replacement',
-        'exchange': 'Process exchange → Send return label, ship replacement after return',
-        'reship': 'Reship order',
-        'partial_20_reship': 'Process 20% refund + Reship order',
-        'partial_50_reship': 'Process 50% refund + Reship order',
-        'refund_missing_item': 'Calculate & refund missing item value',
-        'reship_missing_item': 'Ship missing item',
-        'reship_missing_item_bonus': 'Ship missing item + bonus for inconvenience',
-        'replacement_damaged': 'Ship replacement for damaged item',
-        'partial_missing': 'Process partial refund for missing item',
-        'apology_note': 'Send apology note',
-        'training_tips': 'Provide training tips',
-        'manual_assistance': 'Manual review required',
-        'manual_order_not_found': 'Manual review → Order not found in system',
-        'escalate': 'Escalate to team',
-        'no_action': 'No action required',
-
-        // Quality difference resolutions - ACTION-ORIENTED
-        'upgrade_keep_originals': 'Send $20/pad checkout link → Ship PuppyPad 2.0 after payment (customer keeps Originals)',
-        'return_upgrade_enhanced': 'Wait for return tracking → Send $20/pad checkout link → Ship PuppyPad 2.0 after payment',
-        'reship_quality_upgrade': 'Ship FREE PuppyPad 2.0 (customer keeps Originals) — We absorb cost',
-        'full_refund_quality': 'Process refund (calculate amount) → Customer keeps Originals',
-        'full_refund_quality_used': 'Process refund (calculate amount) → Items used, no return needed',
-        'full_refund_quality_return': 'Wait for return → Process refund after received (calculate amount)',
-
-        // Return flow
-        'return_refund': 'Send return label → Refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' after return received',
-
-        // Subscription resolutions
-        'subscription_paused': 'Subscription paused',
-        'subscription_cancelled': 'Subscription cancelled',
-        'subscription_resumed': 'Subscription resumed',
-        'subscription_modified': 'Subscription modified',
-        'subscription_address_updated': 'Address updated',
-        'subscription_schedule_changed': 'Schedule changed',
-        'subscription_skip_next': 'Next shipment skipped',
-        'subscription_unskip': 'Shipment unskipped'
-      };
-      // Check for dynamic patterns
-      const partialMatch = code.match(/^partial_(\\d+)$/);
-      if (partialMatch) return 'Process ' + partialMatch[1] + '% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' → Customer keeps product';
-      const partialReshipMatch = code.match(/^partial_(\\d+)_reship$/);
-      if (partialReshipMatch) return 'Process ' + partialReshipMatch[1] + '% refund + Reship order';
-      return map[code] || code.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());
     }
 
     document.querySelectorAll('.nav-item').forEach(i => i.addEventListener('click', () => navigateTo(i.dataset.page, i.dataset.filter)));
