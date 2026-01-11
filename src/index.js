@@ -4743,7 +4743,17 @@ async function logCaseToAnalytics(env, caseData) {
     newFrequency: caseData.newFrequency || null, // For schedule changes
     previousFrequency: caseData.previousFrequency || null, // For schedule changes
     newAddress: caseData.newAddress || null, // For address changes
+    // Shipping fields
+    trackingStatus: caseData.trackingStatus || null,
+    trackingNumber: caseData.trackingNumber || null,
+    carrierName: caseData.carrierName || null,
+    daysInTransit: caseData.daysInTransit || null,
+    carrierIssue: caseData.carrierIssue || null,
+    shippingAddress: caseData.shippingAddress || null,
+    addressChanged: caseData.addressChanged || null,
+    refundPercent: caseData.refundPercent || null,
     // Other fields
+    intent: caseData.resolution || null, // Store resolution as intent for case details
     intentDetails: caseData.intentDetails || null,
     keepProduct: caseData.keepProduct,
     issueType: caseData.issueType || null,
@@ -11853,6 +11863,11 @@ function getResolutionHubHTML() {
         } else if (issueType === 'pending_too_long') {
           html = '<p class="cd-issue-headline"><strong>Order Pending Too Long</strong></p>';
           html += '<p>Customer\\'s order has been <strong>pending for too long</strong> without being shipped.</p>';
+        } else if (issueType === 'shipping_partial_refund_reship') {
+          const refundPct = extra.refundPercent || c.resolution?.match(/partial_(\\d+)/)?.[1] || '20';
+          const refundAmt = c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '';
+          html = '<p class="cd-issue-headline"><strong>Partial Refund + Reship Requested</strong></p>';
+          html += '<p>Customer\\'s order was <strong>delayed in transit' + (daysInTransit ? ' (' + daysInTransit + ' days)' : '') + '</strong> and they accepted a <strong>' + refundPct + '% refund' + (refundAmt ? ' (' + refundAmt + ')' : '') + ' plus free reship</strong>.</p>';
         } else {
           // Provide more specific context based on available data
           const orderNum = c.order_number || extra.orderNumber || '';
@@ -12101,6 +12116,24 @@ function getResolutionHubHTML() {
           }
           actions.push('Provide new tracking number to customer');
           notes.push('If original package arrives later, customer may keep both (goodwill)');
+        }
+
+        else if (resolution.includes('partial_') && resolution.includes('_reship')) {
+          // Partial refund + reship (e.g., partial_20_reship)
+          const refundPct = extra.refundPercent || resolution.match(/partial_(\\d+)/)?.[1] || '';
+          const refundAmt = c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '';
+          actions.push('<strong>Process ' + refundPct + '% partial refund</strong>' + (refundAmt ? ': ' + refundAmt : '') + ' in Shopify');
+          actions.push('<strong>Create replacement shipment</strong> with same items');
+          if (extra.addressChanged) {
+            const addr = extra.shippingAddress;
+            if (addr) {
+              const addrStr = [addr.address1, addr.address2, addr.city, addr.province, addr.zip].filter(Boolean).join(', ');
+              actions.push('<span style="color:#f59e0b"><strong>NEW ADDRESS:</strong></span> ' + escapeHtml(addrStr));
+            }
+          }
+          actions.push('Provide new tracking number to customer');
+          notes.push('Customer accepted partial refund + reship offer for delayed package');
+          if (extra.daysInTransit) notes.push('Original package was in transit for ' + extra.daysInTransit + ' days');
         }
 
         else if (resolution.includes('investigation')) {

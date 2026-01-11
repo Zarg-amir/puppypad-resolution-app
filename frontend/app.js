@@ -5684,6 +5684,7 @@ async function processShippingOfferWithAddress(address) {
     refundAmount: amount,
     carrierName: tracking.carrier || 'Unknown',
     trackingNumber: tracking.trackingNumber || '',
+    trackingStatus: tracking.status || 'in_transit',
     daysInTransit: tracking.daysInTransit || 0,
     addressChanged: addressChanged,
     shippingAddress: address,
