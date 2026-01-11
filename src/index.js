@@ -9523,6 +9523,8 @@ function getResolutionHubHTML() {
     .time-ago { font-size: 13px; color: var(--gray-500); }
     .spinner { width: 32px; height: 32px; border: 3px solid var(--gray-200); border-top-color: var(--brand-navy); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 40px auto; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: translateY(10px); } }
     .empty-state { text-align: center; padding: 60px 20px; color: var(--gray-500); }
     @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .main-content { margin-left: 0; } }
@@ -9587,9 +9589,9 @@ function getResolutionHubHTML() {
     .status-card.active .status-card-check { display: flex; }
     /* Modal Navigation */
     .modal-nav { display: flex; align-items: center; gap: 8px; margin-left: 16px; }
-    .nav-arrow { background: rgba(255,255,255,0.1); border: none; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; position: relative; }
-    .nav-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.2); }
-    .nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
+    .nav-arrow { background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.3); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; position: relative; }
+    .nav-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.5); }
+    .nav-arrow:disabled { opacity: 0.4; cursor: not-allowed; background: rgba(255,255,255,0.1); }
     .nav-arrow svg { width: 18px; height: 18px; }
     .nav-preview { display: none; position: absolute; top: 100%; padding: 8px 12px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 11px; color: var(--gray-700); white-space: nowrap; z-index: 10; }
     .nav-arrow.prev .nav-preview { right: 0; margin-top: 8px; }
@@ -10246,6 +10248,31 @@ function getResolutionHubHTML() {
     let issuesList = [];
     let currentIssueIndex = -1;
     let currentIssue = null;
+
+    // Toast notification function
+    function showToast(message, type = 'info') {
+      const existing = document.getElementById('toastNotification');
+      if (existing) existing.remove();
+
+      const colors = {
+        success: { bg: '#10b981', icon: '✓' },
+        error: { bg: '#ef4444', icon: '✕' },
+        warning: { bg: '#f59e0b', icon: '⚠' },
+        info: { bg: '#3b82f6', icon: 'ℹ' }
+      };
+      const c = colors[type] || colors.info;
+
+      const toast = document.createElement('div');
+      toast.id = 'toastNotification';
+      toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:'+c.bg+';color:white;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;display:flex;align-items:center;gap:10px;animation:slideIn 0.3s ease;';
+      toast.innerHTML = '<span style="font-size:16px;">'+c.icon+'</span><span>'+message+'</span>';
+
+      document.body.appendChild(toast);
+      setTimeout(function() {
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(function() { toast.remove(); }, 300);
+      }, 3000);
+    }
 
     // Login handler
     async function handleLogin(event) {
