@@ -6,21 +6,14 @@
 import { ADMIN_CONFIG } from '../config/constants.js';
 
 /**
- * Hash a string using SHA-256
+ * Hash a password with the secret using SHA-256
  */
-async function sha256(str) {
+export async function hashPassword(password) {
   const encoder = new TextEncoder();
-  const data = encoder.encode(str);
+  const data = encoder.encode(password + ADMIN_CONFIG.tokenSecret);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-/**
- * Hash a password with the secret
- */
-export async function hashPassword(password) {
-  return await sha256(password + ADMIN_CONFIG.tokenSecret);
 }
 
 /**
@@ -29,11 +22,14 @@ export async function hashPassword(password) {
 export async function generateToken(username) {
   const payload = {
     username,
-    exp: Date.now() + ADMIN_CONFIG.tokenExpiryHours * 60 * 60 * 1000
+    exp: Date.now() + (ADMIN_CONFIG.tokenExpiryHours * 60 * 60 * 1000)
   };
-  const payloadStr = btoa(JSON.stringify(payload));
-  const signature = await sha256(payloadStr + ADMIN_CONFIG.tokenSecret);
-  return `${payloadStr}.${signature}`;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(JSON.stringify(payload) + ADMIN_CONFIG.tokenSecret);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return btoa(JSON.stringify(payload)) + '.' + signature;
 }
 
 /**
@@ -44,19 +40,26 @@ export async function verifyToken(token) {
   if (!token) return null;
 
   try {
-    const [payloadStr, signature] = token.split('.');
-    if (!payloadStr || !signature) return null;
+    const [payloadB64, signature] = token.split('.');
+    if (!payloadB64 || !signature) return null;
 
-    // Verify signature
-    const expectedSig = await sha256(payloadStr + ADMIN_CONFIG.tokenSecret);
-    if (signature !== expectedSig) return null;
+    const payload = JSON.parse(atob(payloadB64));
 
-    // Decode and check expiry
-    const payload = JSON.parse(atob(payloadStr));
-    if (payload.exp < Date.now()) return null;
+    if (payload.exp < Date.now()) {
+      return null; // Token expired
+    }
 
-    return payload;
-  } catch {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(JSON.stringify(payload) + ADMIN_CONFIG.tokenSecret);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const expectedSignature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    if (signature === expectedSignature) {
+      return payload;
+    }
+    return null;
+  } catch (e) {
     return null;
   }
 }
