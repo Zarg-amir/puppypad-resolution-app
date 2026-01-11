@@ -2524,14 +2524,14 @@ window.HubValidation = HubValidation;
 // These provide backwards compatibility with HTML onclick handlers
 // ============================================
 
-// Navigation
-window.showPage = (page, filter) => HubNavigation.goto(page, filter);
-window.navigateTo = (page, filter) => HubNavigation.goto(page, filter);
+// Navigation - Don't override inline script's navigateTo which handles view structure
+// window.showPage = (page, filter) => HubNavigation.goto(page, filter);
+// window.navigateTo = (page, filter) => HubNavigation.goto(page, filter);
 
-// Cases
+// Cases - Don't override loadCasesView which creates the table structure
 window.openCase = (caseId) => HubCases.openCase(caseId);
 window.closeCase = () => HubCases.closeDetail();
-window.loadCasesView = () => HubCases.loadCases();
+// window.loadCasesView = () => HubCases.loadCases();  // Inline script creates full table HTML
 window.updateCaseStatus = (status) => HubCases.updateStatus(status);
 window.navigateCase = (direction) => HubCases.navigateCase(direction);
 
