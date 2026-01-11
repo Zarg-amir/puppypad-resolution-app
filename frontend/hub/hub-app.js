@@ -1665,27 +1665,13 @@ const HubDashboard = {
 // ============================================
 const HubUI = {
   init() {
-    // Setup event listeners
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.addEventListener('click', () => {
-        HubNavigation.goto(item.dataset.page, item.dataset.filter);
-      });
-    });
+    // NOTE: Nav item event listeners are handled by inline script's navigateTo
+    // Do NOT add duplicate listeners here - it causes race conditions where
+    // both handlers fire and HubCases.renderCasesList overwrites the correct table
 
-    // Search
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-      let searchTimeout;
-      searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          HubState.currentSearch = e.target.value;
-          if (HubState.currentPage === 'cases') {
-            HubCases.loadCases(1);
-          }
-        }, 300);
-      });
-    }
+    // NOTE: Search is handled by inline script's caseSearchInput and debounceSearch
+    // The inline script has a different search input (caseSearchInput) that works
+    // with the correct table structure
 
     // Modal close on overlay click
     document.getElementById('caseModal')?.addEventListener('click', (e) => {
@@ -2528,10 +2514,13 @@ window.HubValidation = HubValidation;
 // window.showPage = (page, filter) => HubNavigation.goto(page, filter);
 // window.navigateTo = (page, filter) => HubNavigation.goto(page, filter);
 
-// Cases - Don't override loadCasesView which creates the table structure
-window.openCase = (caseId) => HubCases.openCase(caseId);
-window.closeCase = () => HubCases.closeDetail();
-// window.loadCasesView = () => HubCases.loadCases();  // Inline script creates full table HTML
+// Cases - Don't override inline script functions
+// The inline script's openCase shows full-page detail view (not modal)
+// The inline script's loadCasesView creates correct table structure with 8 columns
+// HubCases functions have different column structure (includes case_id, missing Due/Resolution)
+// window.openCase = (caseId) => HubCases.openCase(caseId);  // Inline uses full-page view
+// window.closeCase = () => HubCases.closeDetail();
+// window.loadCasesView = () => HubCases.loadCases();
 window.updateCaseStatus = (status) => HubCases.updateStatus(status);
 window.navigateCase = (direction) => HubCases.navigateCase(direction);
 
