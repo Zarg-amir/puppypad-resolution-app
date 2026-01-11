@@ -4749,7 +4749,7 @@ async function handleOnTheWay(tracking, statusType) {
     let message = `Your order is currently <strong>in transit</strong> and has been shipping for ${daysInTransit} day${daysInTransit !== 1 ? 's' : ''}.`;
 
     if (isInternational) {
-      message += ` Since this is shipping from our international warehouse, delivery typically takes 10-20 business days.`;
+      message += ` Since this is shipping from our international warehouse, it can sometimes take an additional 5 business days.`;
     } else {
       message += ` Delivery typically takes 5-10 business days.`;
     }
@@ -5201,7 +5201,9 @@ async function showSarahVoiceNote(tracking, isInternational = false) {
         <div class="voice-note-duration" id="audioDuration">0:00</div>
       </div>
     </div>
-    <audio id="voiceNote" src="/audio/Sarah%20USA%20In%20Transit%20Shipping%20Update.mp3"></audio>
+    <audio id="voiceNote" preload="metadata">
+      <source src="/audio/Sarah%20USA%20In%20Transit%20Shipping%20Update.mp3" type="audio/mpeg">
+    </audio>
   `;
 
   addInteractiveContent(audioHtml);
@@ -5212,7 +5214,7 @@ async function showSarahVoiceNote(tracking, isInternational = false) {
 
   let followUpMessage = "Your package is still on its way and we're keeping an eye on it.";
   if (isInternational) {
-    followUpMessage += " International shipments can sometimes take 10-20 business days, but rest assured it's moving.";
+    followUpMessage += " International shipments can sometimes take an additional 5 business days, but rest assured it's moving.";
   }
   followUpMessage += " Is there anything specific you'd like me to help with while you wait?";
 
@@ -5230,6 +5232,7 @@ function playAudio() {
   const durationEl = document.getElementById('audioDuration');
   const playIcon = document.querySelector('.play-icon');
   const pauseIcon = document.querySelector('.pause-icon');
+  const playerEl = document.getElementById('audioPlayer');
 
   // Format time as M:SS
   const formatTime = (seconds) => {
@@ -5238,10 +5241,24 @@ function playAudio() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Handle audio errors
+  audio.onerror = () => {
+    console.error('[Audio] Failed to load audio file');
+    if (durationEl) durationEl.textContent = 'Unavailable';
+    if (playerEl) {
+      playerEl.style.opacity = '0.6';
+      playerEl.title = 'Audio not available';
+    }
+  };
+
   if (audio.paused) {
-    audio.play();
-    if (playIcon) playIcon.style.display = 'none';
-    if (pauseIcon) pauseIcon.style.display = 'block';
+    audio.play().then(() => {
+      if (playIcon) playIcon.style.display = 'none';
+      if (pauseIcon) pauseIcon.style.display = 'block';
+    }).catch((err) => {
+      console.error('[Audio] Playback failed:', err.message);
+      if (durationEl) durationEl.textContent = 'Unavailable';
+    });
 
     audio.ontimeupdate = () => {
       const percent = (audio.currentTime / audio.duration) * 100;
