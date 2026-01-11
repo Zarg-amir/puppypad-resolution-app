@@ -11794,7 +11794,7 @@ function getResolutionHubHTML() {
         const cancelReasons = {
           'expensive': 'too expensive',
           'too_many': 'they have too many',
-          'not_working': 'it\'s not working as described',
+          'not_working': 'it\\'s not working as described',
           'moving': 'they are moving',
           'other': 'other reasons'
         };
@@ -12496,7 +12496,7 @@ function getResolutionHubHTML() {
       }
       // Get the email template based on case type
       const template = generateEmailTemplate(currentCase);
-      const fullEmail = template.subject + '\n\n' + template.body;
+      const fullEmail = template.subject + '\\n\\n' + template.body;
 
       navigator.clipboard.writeText(fullEmail).then(() => {
         showToast('Email template copied! Review and personalize before sending.', 'success');
@@ -12514,24 +12514,24 @@ function getResolutionHubHTML() {
 
       // Default template
       let subject = 'Update on Your PuppyPad Order';
-      let body = 'Hi ' + firstName + ',\n\nThank you for reaching out to us.\n\n';
+      let body = 'Hi ' + firstName + ',\\n\\nThank you for reaching out to us.\\n\\n';
 
       if (c.case_type === 'refund') {
         subject = 'Your PuppyPad Refund Has Been Processed';
         body += 'We have processed your refund' + (c.refund_amount ? ' of $' + parseFloat(c.refund_amount).toFixed(2) : '') + '. ';
-        body += 'Please allow 5-10 business days for the amount to appear in your account.\n\n';
+        body += 'Please allow 5-10 business days for the amount to appear in your account.\\n\\n';
       } else if (c.case_type === 'subscription') {
         subject = 'Your PuppyPad Subscription Update';
         body += 'We have made the requested changes to your subscription. ';
-        body += 'You can view your subscription details in your account at any time.\n\n';
+        body += 'You can view your subscription details in your account at any time.\\n\\n';
       } else if (c.case_type === 'shipping') {
         subject = 'Update on Your PuppyPad Shipment';
         body += 'We wanted to update you on the status of your order. ';
-        body += 'If you have any questions, please don\'t hesitate to reach out.\n\n';
+        body += 'If you have any questions, please don\\'t hesitate to reach out.\\n\\n';
       }
 
-      body += 'If you have any other questions or concerns, we\'re here to help!\n\n';
-      body += 'Best regards,\nThe PuppyPad Team';
+      body += 'If you have any other questions or concerns, we\\'re here to help!\\n\\n';
+      body += 'Best regards,\\nThe PuppyPad Team';
 
       return { subject, body };
     }
