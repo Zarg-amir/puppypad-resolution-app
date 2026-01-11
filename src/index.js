@@ -2,90 +2,104 @@
  * PuppyPad Resolution Worker
  * Backend API for the Resolution App
  *
- * CONFIGURATION GUIDE:
- * - All easy-to-modify settings are at the TOP of this file
- * - Search for "EASY CONFIG" to find customizable sections
- * - See CODING_GUIDELINES.md for modification rules
+ * This worker handles both:
+ * 1. Resolution App (customer-facing self-service)
+ * 2. Resolution Hub (admin dashboard for case management)
+ *
+ * Module Structure:
+ * - src/config/constants.js - Policy, admin, carrier configs
+ * - src/config/clickup.js - ClickUp field IDs and mappings
+ * - src/services/shopify.js - Shopify API interactions
+ * - src/services/tracking.js - ParcelPanel tracking
+ * - src/services/clickup.js - ClickUp task management
+ * - src/utils/auth.js - Authentication utilities
+ * - src/utils/cors.js - CORS headers
+ * - src/utils/db.js - Database operations
+ * - src/utils/formatters.js - Date, currency, text formatting
  */
 
 // ============================================
-// EASY CONFIG: POLICY SETTINGS
+// MODULE IMPORTS
 // ============================================
-const POLICY_CONFIG = {
-  guaranteeDays: 90,              // Money-back guarantee period
-  fulfillmentCutoffHours: 10,     // Hours before fulfillment check applies
-};
+import {
+  POLICY_CONFIG,
+  ADMIN_CONFIG,
+  RICHPANEL_CONFIG,
+  CHINA_CARRIERS,
+  SOP_URLS,
+  isChinaCarrier,
+  isTestMode
+} from './config/constants.js';
 
-// ============================================
-// EASY CONFIG: ADMIN SETTINGS
-// ============================================
-const ADMIN_CONFIG = {
-  tokenSecret: 'puppypad-admin-secret-2025',  // Change in production!
-  setupKey: 'puppypad-setup-2025',            // One-time setup key
-  tokenExpiryHours: 24,
-};
+import {
+  CLICKUP_CONFIG,
+  getClickUpListId,
+  getCasePrefix
+} from './config/clickup.js';
 
-// ============================================
-// EASY CONFIG: RICHPANEL INTEGRATION
-// Note: testMode is determined by env.RICHPANEL_TEST_MODE or env.APP_ENV
-// Set RICHPANEL_TEST_MODE=false in production, or APP_ENV=production
-// ============================================
-const RICHPANEL_CONFIG = {
-  testEmail: 'zarg.business@gmail.com',        // Test mode routes all emails here
-  supportEmail: 'help@teampuppypad.com',       // Production support email
-};
+import {
+  lookupOrders,
+  processLineItems,
+  extractClientOrderId,
+  fetchClientOrderIdFromMetafields,
+  getCountryNameFromCode
+} from './services/shopify.js';
 
-// ============================================
-// EASY CONFIG: CHINA/INTERNATIONAL CARRIERS
-// These carriers should be hidden from customers
-// Show "our international warehouse" instead
-// ============================================
-const CHINA_CARRIERS = [
-  'yunexpress', 'yun express',
-  'yanwen', 'yanwen express',
-  '4px', '4px express', '4px worldwide express',
-  'cne', 'cne express', 'cnexps',
-  'cainiao', 'cainiao super economy',
-  'china post', 'china ems', 'epacket',
-  'sf express', 'sf international',
-  'sto express', 'shentong',
-  'yto express', 'yuantong',
-  'zto express', 'zhongtong',
-  'best express', 'best inc',
-  'jd logistics', 'jingdong',
-  'sunyou', 'sun you',
-  'anjun', 'anjun logistics',
-  'winit', 'wan b',
-  'flyt express', 'flytexpress',
-  'equick', 'equick china',
-  'ubi logistics', 'ubi smart parcel',
-  'toll', 'toll priority', 'toll ipec',
-  'speedpak',
-];
+import {
+  lookupTracking
+} from './services/tracking.js';
 
-// Helper to check if a carrier is a China/international carrier
-function isChinaCarrier(carrierName) {
-  if (!carrierName) return false;
-  const lowerName = carrierName.toLowerCase();
-  return CHINA_CARRIERS.some(china => lowerName.includes(china));
-}
+import {
+  ClickUpClient,
+  createCaseTask,
+  updateConversationUrl,
+  addTaskComment
+} from './services/clickup.js';
 
-// Helper to check if we're in test mode (reads from env)
-function isTestMode(env) {
-  // Explicit RICHPANEL_TEST_MODE takes priority
-  if (env.RICHPANEL_TEST_MODE !== undefined) {
-    return env.RICHPANEL_TEST_MODE === 'true' || env.RICHPANEL_TEST_MODE === true;
-  }
-  // Otherwise check APP_ENV
-  if (env.APP_ENV === 'production') {
-    return false;
-  }
-  // Default to test mode for safety (prevents accidental production emails)
-  return true;
-}
+import {
+  hashPassword,
+  generateToken,
+  verifyToken,
+  extractToken,
+  requireAuth
+} from './utils/auth.js';
+
+import {
+  getCorsHeaders,
+  handleOptions as handleOptionsResponse,
+  jsonResponse,
+  errorResponse
+} from './utils/cors.js';
+
+import {
+  runMigrations,
+  generateCaseId,
+  generateSessionId,
+  logEvent,
+  logCase,
+  updateCaseStatus,
+  getCaseById,
+  checkExistingCase
+} from './utils/db.js';
+
+import {
+  formatDate,
+  formatDateTime,
+  timeAgo,
+  formatCurrency,
+  formatDollarAmount,
+  toTitleCase,
+  escapeHtml,
+  cleanPhoneNumber,
+  cleanOrderNumber,
+  formatResolution,
+  formatTrackingStatus
+} from './utils/formatters.js';
 
 // ============================================
 // EASY CONFIG: PERSONA PROMPTS (Amy, Claudia)
+// Note: POLICY_CONFIG, ADMIN_CONFIG, RICHPANEL_CONFIG, CHINA_CARRIERS,
+// isChinaCarrier, isTestMode are now imported from ./config/constants.js
 // Modify these to change AI personality/responses
 // ============================================
 const PERSONA_PROMPTS = {
