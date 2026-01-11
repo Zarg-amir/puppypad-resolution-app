@@ -9523,6 +9523,8 @@ function getResolutionHubHTML() {
     .time-ago { font-size: 13px; color: var(--gray-500); }
     .spinner { width: 32px; height: 32px; border: 3px solid var(--gray-200); border-top-color: var(--brand-navy); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 40px auto; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: translateY(10px); } }
     .empty-state { text-align: center; padding: 60px 20px; color: var(--gray-500); }
     @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .main-content { margin-left: 0; } }
@@ -9587,9 +9589,9 @@ function getResolutionHubHTML() {
     .status-card.active .status-card-check { display: flex; }
     /* Modal Navigation */
     .modal-nav { display: flex; align-items: center; gap: 8px; margin-left: 16px; }
-    .nav-arrow { background: rgba(255,255,255,0.1); border: none; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; position: relative; }
-    .nav-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.2); }
-    .nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
+    .nav-arrow { background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.3); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; position: relative; }
+    .nav-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.5); }
+    .nav-arrow:disabled { opacity: 0.4; cursor: not-allowed; background: rgba(255,255,255,0.1); }
     .nav-arrow svg { width: 18px; height: 18px; }
     .nav-preview { display: none; position: absolute; top: 100%; padding: 8px 12px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 11px; color: var(--gray-700); white-space: nowrap; z-index: 10; }
     .nav-arrow.prev .nav-preview { right: 0; margin-top: 8px; }
@@ -9700,6 +9702,89 @@ function getResolutionHubHTML() {
     .breakdown-item-count { font-size: 16px; font-weight: 700; color: var(--brand-navy); background: var(--gray-50); padding: 4px 12px; border-radius: 8px; flex-shrink: 0; }
 
     .empty-state { text-align: center; padding: 30px 20px; color: var(--gray-400); font-size: 14px; }
+
+    /* Case Detail Full Page Styles */
+    .case-detail-page { padding: 0; }
+    .case-detail-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 28px; background: white; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 10; }
+    .case-detail-header-left { display: flex; align-items: center; gap: 16px; }
+    .case-detail-header-right { display: flex; align-items: center; gap: 8px; }
+    .case-detail-id { font-family: monospace; font-size: 16px; font-weight: 600; color: var(--brand-navy); background: rgba(30,58,95,0.1); padding: 6px 14px; border-radius: 8px; }
+    .case-detail-meta { display: flex; align-items: center; gap: 12px; }
+    .case-detail-grid { display: grid; grid-template-columns: 1fr 360px; gap: 0; min-height: calc(100vh - 140px); }
+    .case-detail-main { padding: 28px; background: #f8fafc; overflow-y: auto; }
+    .case-detail-sidebar { padding: 28px 24px; background: white; border-left: 1px solid var(--gray-200); overflow-y: auto; }
+    .case-section-card { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .case-section-card:last-child { margin-bottom: 0; }
+    .case-section-card.highlight-card { background: linear-gradient(135deg, rgba(102,126,234,0.08) 0%, rgba(118,75,162,0.08) 100%); border: 2px solid #667eea; }
+    .case-section-title { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 16px; letter-spacing: 0.5px; }
+    .case-section-title svg { color: #94a3b8; flex-shrink: 0; }
+    .info-grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .info-item { }
+    .info-label { font-size: 12px; color: var(--gray-500); margin-bottom: 4px; }
+    .info-value { font-size: 14px; font-weight: 500; color: var(--gray-800); }
+    .info-value.email { color: #3b82f6; word-break: break-all; }
+    .resolution-summary { font-size: 15px; font-weight: 600; color: #1a1a2e; line-height: 1.6; }
+    .case-details-breakdown { font-size: 14px; line-height: 1.7; color: var(--gray-700); }
+    .case-details-breakdown ul { margin: 0; padding-left: 20px; }
+    .case-details-breakdown li { margin-bottom: 10px; }
+    .case-details-breakdown li:last-child { margin-bottom: 0; }
+    .status-cards-row { display: flex; gap: 12px; }
+    .status-card-lg { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 16px; background: white; border: 2px solid var(--gray-200); border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+    .status-card-lg:hover { border-color: var(--gray-300); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .status-card-lg.active { border-width: 3px; transform: scale(1.02); }
+    .status-card-lg .status-card-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+    .status-card-lg .status-card-icon svg { width: 22px; height: 22px; }
+    .status-card-lg .status-card-text { font-size: 14px; font-weight: 600; }
+    .status-card-lg.pending .status-card-icon { background: #fef3c7; color: #b45309; }
+    .status-card-lg.pending .status-card-text { color: #b45309; }
+    .status-card-lg.pending.active { border-color: #f59e0b; background: #fffbeb; }
+    .status-card-lg.in-progress .status-card-icon { background: #dbeafe; color: #1d4ed8; }
+    .status-card-lg.in-progress .status-card-text { color: #1d4ed8; }
+    .status-card-lg.in-progress.active { border-color: #3b82f6; background: #eff6ff; }
+    .status-card-lg.completed .status-card-icon { background: #d1fae5; color: #047857; }
+    .status-card-lg.completed .status-card-text { color: #047857; }
+    .status-card-lg.completed.active { border-color: #10b981; background: #ecfdf5; }
+    .comments-badge { background: var(--gray-200); color: var(--gray-600); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-left: auto; }
+    .comments-container { max-height: 400px; overflow-y: auto; }
+    .comment-form-inline { display: flex; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200); }
+    .comment-form-inline textarea { flex: 1; resize: none; }
+    .quick-actions-list { display: flex; flex-direction: column; gap: 8px; }
+    .quick-action-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 10px; text-decoration: none; color: var(--gray-700); transition: all 0.2s; cursor: pointer; }
+    .quick-action-item:hover { background: white; border-color: var(--brand-navy); color: var(--brand-navy); transform: translateX(4px); }
+    .quick-action-icon { width: 32px; height: 32px; background: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .quick-action-icon svg { width: 16px; height: 16px; }
+    .quick-action-text { flex: 1; font-size: 13px; font-weight: 500; }
+    .quick-action-arrow { width: 16px; height: 16px; color: var(--gray-400); flex-shrink: 0; }
+    .assignee-display { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--gray-50); border-radius: 10px; }
+    .assignee-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-teal); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: white; flex-shrink: 0; }
+    .assignee-avatar.unassigned { background: var(--gray-300); color: var(--gray-500); }
+    .assignee-info { flex: 1; }
+    .assignee-name { font-size: 14px; font-weight: 600; color: var(--gray-800); }
+    .assignee-role { font-size: 12px; color: var(--gray-500); }
+    .timeline-list { display: flex; flex-direction: column; gap: 12px; }
+    .timeline-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    .timeline-label { color: var(--gray-500); }
+    .timeline-value { color: var(--gray-700); font-weight: 500; }
+    .ids-list { display: flex; flex-direction: column; gap: 10px; }
+    .id-row { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: var(--gray-50); border-radius: 8px; }
+    .id-label { font-size: 11px; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; }
+    .id-value { font-size: 13px; font-weight: 600; font-family: monospace; color: var(--gray-800); }
+
+    /* Completion Checklist Styles */
+    .checklist-container { display: flex; flex-direction: column; gap: 12px; }
+    .checklist-item { display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; background: var(--gray-50); border-radius: 10px; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
+    .checklist-item:hover { background: var(--gray-100); }
+    .checklist-item.checked { background: #ecfdf5; border-color: #10b981; }
+    .checklist-item.required { border-left: 4px solid #ef4444; }
+    .checklist-checkbox { width: 22px; height: 22px; border: 2px solid var(--gray-300); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; transition: all 0.2s; }
+    .checklist-item.checked .checklist-checkbox { background: #10b981; border-color: #10b981; color: white; }
+    .checklist-content { flex: 1; }
+    .checklist-text { font-size: 14px; color: var(--gray-700); line-height: 1.5; }
+    .checklist-required { display: inline-block; font-size: 10px; background: #fef2f2; color: #dc2626; padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: 600; }
+    @media (max-width: 1024px) {
+      .case-detail-grid { grid-template-columns: 1fr; }
+      .case-detail-sidebar { border-left: none; border-top: 1px solid var(--gray-200); }
+    }
   </style>
   <link rel="stylesheet" href="/hub/hub-styles.css">
   <style>
@@ -9774,8 +9859,243 @@ function getResolutionHubHTML() {
         <div id="analyticsView" style="display:none"></div>
         <div id="auditView" style="display:none"></div>
         <div id="usersView" style="display:none"></div>
+
+        <!-- Case Detail Full Page View -->
+        <div id="caseDetailView" style="display:none">
+          <div class="case-detail-page">
+            <!-- Header with navigation -->
+            <div class="case-detail-header">
+              <div class="case-detail-header-left">
+                <button class="btn btn-secondary" onclick="closeCaseDetail()" style="margin-right:16px;">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                  Back to Cases
+                </button>
+                <div class="case-detail-id" id="detailCaseId">Loading...</div>
+                <div class="case-detail-meta">
+                  <span id="detailCaseType" class="type-badge">-</span>
+                  <span id="detailStatusBadge" class="status-badge">-</span>
+                </div>
+              </div>
+              <div class="case-detail-header-right">
+                <button class="nav-arrow prev" id="prevCaseDetailBtn" onclick="navigateCaseDetail('prev')" title="Previous case">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <button class="nav-arrow next" id="nextCaseDetailBtn" onclick="navigateCaseDetail('next')" title="Next case">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <button class="copy-url-btn" onclick="copyCaseUrl()" title="Copy case URL">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Main content grid -->
+            <div class="case-detail-grid">
+              <!-- Main column -->
+              <div class="case-detail-main">
+                <!-- Customer Info Card -->
+                <div class="case-section-card">
+                  <div class="case-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    Customer Information
+                  </div>
+                  <div class="info-grid-2col">
+                    <div class="info-item">
+                      <div class="info-label">Customer Name</div>
+                      <div class="info-value" id="detailCustomerName">-</div>
+                    </div>
+                    <div class="info-item">
+                      <div class="info-label">Email</div>
+                      <div class="info-value email" id="detailCustomerEmail">-</div>
+                    </div>
+                    <div class="info-item">
+                      <div class="info-label">Order Number</div>
+                      <div class="info-value" id="detailOrderNumber">-</div>
+                    </div>
+                    <div class="info-item">
+                      <div class="info-label">Order Date</div>
+                      <div class="info-value" id="detailOrderDate">-</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Resolution Summary Card -->
+                <div class="case-section-card highlight-card">
+                  <div class="case-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    Resolution Summary
+                  </div>
+                  <div class="resolution-summary" id="detailResolutionSummary">-</div>
+                </div>
+
+                <!-- Case Details Card (Full Breakdown) -->
+                <div class="case-section-card">
+                  <div class="case-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    Case Details
+                  </div>
+                  <div class="case-details-breakdown" id="detailCaseDetails">
+                    <!-- Populated dynamically with all case-specific info -->
+                  </div>
+                </div>
+
+                <!-- Update Status Card -->
+                <div class="case-section-card">
+                  <div class="case-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Update Status
+                  </div>
+                  <div class="status-cards-row">
+                    <button class="status-card-lg pending" onclick="updateStatusFromDetail('pending')">
+                      <div class="status-card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                      <div class="status-card-text">Pending</div>
+                    </button>
+                    <button class="status-card-lg in-progress" onclick="updateStatusFromDetail('in_progress')">
+                      <div class="status-card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div>
+                      <div class="status-card-text">In Progress</div>
+                    </button>
+                    <button class="status-card-lg completed" onclick="showCompletionChecklist()">
+                      <div class="status-card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                      <div class="status-card-text">Complete Case</div>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Team Comments Card -->
+                <div class="case-section-card">
+                  <div class="case-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                    Team Comments
+                    <span class="comments-badge" id="detailCommentsCount">0</span>
+                  </div>
+                  <div class="comments-container">
+                    <div class="comments-list" id="detailCommentsList"></div>
+                    <div class="comment-form-inline">
+                      <textarea class="comment-input" id="detailCommentInput" placeholder="Add a note or comment..." rows="2"></textarea>
+                      <button class="btn btn-primary" onclick="addCommentFromDetail()">Post Comment</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sidebar column -->
+              <div class="case-detail-sidebar">
+                <!-- Quick Actions Card -->
+                <div class="case-section-card">
+                  <div class="case-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    Quick Actions
+                  </div>
+                  <div class="quick-actions-list">
+                    <a class="quick-action-item" id="detailReplayLink" href="#" target="_blank" style="display:none;">
+                      <div class="quick-action-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg></div>
+                      <div class="quick-action-text">Watch Session Recording</div>
+                      <svg class="quick-action-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    </a>
+                    <a class="quick-action-item" id="detailRichpanelLink" href="#" target="_blank" style="display:none;">
+                      <div class="quick-action-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg></div>
+                      <div class="quick-action-text">View Conversation</div>
+                      <svg class="quick-action-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    </a>
+                    <a class="quick-action-item" id="detailShopifyLink" href="#" target="_blank" style="display:none;">
+                      <div class="quick-action-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg></div>
+                      <div class="quick-action-text">View Shopify Order</div>
+                      <svg class="quick-action-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    </a>
+                    <a class="quick-action-item" id="detailSOPLink" href="#" target="_blank">
+                      <div class="quick-action-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg></div>
+                      <div class="quick-action-text">View SOP Guide</div>
+                      <svg class="quick-action-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    </a>
+                  </div>
+                </div>
+
+                <!-- Assigned To Card -->
+                <div class="case-section-card">
+                  <div class="case-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    Assigned To
+                  </div>
+                  <div class="assignee-display">
+                    <div class="assignee-avatar" id="detailAssigneeAvatar">?</div>
+                    <div class="assignee-info">
+                      <div class="assignee-name" id="detailAssigneeName">Unassigned</div>
+                      <div class="assignee-role" id="detailAssigneeRole">Click to assign</div>
+                    </div>
+                  </div>
+                  <button class="btn btn-secondary" style="width:100%;margin-top:12px;" onclick="showAssignModal()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                    Assign / Reassign
+                  </button>
+                </div>
+
+                <!-- Timestamps Card -->
+                <div class="case-section-card">
+                  <div class="case-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Timeline
+                  </div>
+                  <div class="timeline-list">
+                    <div class="timeline-row">
+                      <span class="timeline-label">Created</span>
+                      <span class="timeline-value" id="detailCreatedAt">-</span>
+                    </div>
+                    <div class="timeline-row">
+                      <span class="timeline-label">Due Date</span>
+                      <span class="timeline-value" id="detailDueDate">-</span>
+                    </div>
+                    <div class="timeline-row">
+                      <span class="timeline-label">Last Updated</span>
+                      <span class="timeline-value" id="detailUpdatedAt">-</span>
+                    </div>
+                    <div class="timeline-row" id="detailResolvedRow" style="display:none;">
+                      <span class="timeline-label">Resolved</span>
+                      <span class="timeline-value" id="detailResolvedAt">-</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Additional IDs Card (for subscription/order tracking) -->
+                <div class="case-section-card" id="detailIDsCard" style="display:none;">
+                  <div class="case-section-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+                    Reference IDs
+                  </div>
+                  <div class="ids-list" id="detailIDsList">
+                    <!-- Populated dynamically with order IDs, subscription IDs, etc -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
+  </div>
+
+  <!-- Completion Checklist Modal -->
+  <div class="modal-overlay" id="completionChecklistModal">
+    <div class="modal" style="max-width:500px;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+        <div class="modal-header-content">
+          <div class="modal-title" style="color: white;">Complete Case Checklist</div>
+          <div style="font-size:13px;opacity:0.9;margin-top:4px;">Please verify before marking as complete</div>
+        </div>
+        <button class="modal-close" onclick="closeCompletionChecklist()" style="color:white;">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:24px;">
+        <div class="checklist-container" id="completionChecklistItems">
+          <!-- Populated dynamically based on case type -->
+        </div>
+        <div class="checklist-footer" style="margin-top:24px;display:flex;gap:12px;">
+          <button class="btn btn-secondary" style="flex:1;" onclick="closeCompletionChecklist()">Cancel</button>
+          <button class="btn btn-success" style="flex:1;" id="confirmCompleteBtn" onclick="confirmCompleteCase()" disabled>
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Confirm Complete
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Case Detail Modal - Redesigned -->
@@ -10247,6 +10567,31 @@ function getResolutionHubHTML() {
     let currentIssueIndex = -1;
     let currentIssue = null;
 
+    // Toast notification function
+    function showToast(message, type = 'info') {
+      const existing = document.getElementById('toastNotification');
+      if (existing) existing.remove();
+
+      const colors = {
+        success: { bg: '#10b981', icon: '✓' },
+        error: { bg: '#ef4444', icon: '✕' },
+        warning: { bg: '#f59e0b', icon: '⚠' },
+        info: { bg: '#3b82f6', icon: 'ℹ' }
+      };
+      const c = colors[type] || colors.info;
+
+      const toast = document.createElement('div');
+      toast.id = 'toastNotification';
+      toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:'+c.bg+';color:white;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;display:flex;align-items:center;gap:10px;animation:slideIn 0.3s ease;';
+      toast.innerHTML = '<span style="font-size:16px;">'+c.icon+'</span><span>'+message+'</span>';
+
+      document.body.appendChild(toast);
+      setTimeout(function() {
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(function() { toast.remove(); }, 300);
+      }, 3000);
+    }
+
     // Login handler
     async function handleLogin(event) {
       event.preventDefault();
@@ -10574,13 +10919,21 @@ function getResolutionHubHTML() {
     document.querySelectorAll('.nav-item').forEach(i => i.addEventListener('click', () => navigateTo(i.dataset.page, i.dataset.filter)));
     document.getElementById('caseModal').addEventListener('click', e => { if(e.target.id === 'caseModal') closeModal(); });
 
+    function hideAllViews() {
+      ['dashboard','cases','sessions','events','issues','analytics','audit','users','caseDetail'].forEach(v => {
+        const el = document.getElementById(v+'View');
+        if (el) el.style.display = 'none';
+      });
+    }
+
     function navigateTo(page, filter) {
       console.log('[navigateTo] page:', page, 'filter:', filter);
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       const sel = filter ? '.nav-item[data-page="'+page+'"][data-filter="'+filter+'"]' : '.nav-item[data-page="'+page+'"]';
       document.querySelector(sel)?.classList.add('active');
       document.getElementById('pageTitle').textContent = {dashboard:'Dashboard',cases:'Cases',sessions:'Sessions',events:'Event Log',issues:'Issue Reports',analytics:'Performance',audit:'Audit Log',users:'User Management'}[page]||'Dashboard';
-      ['dashboard','cases','sessions','events','issues','analytics','audit','users'].forEach(v => document.getElementById(v+'View').style.display = v===page?'block':'none');
+      hideAllViews();
+      document.getElementById(page+'View').style.display = 'block';
 
       if(page==='cases') {
         currentFilter = filter||'all';
@@ -11742,9 +12095,12 @@ function getResolutionHubHTML() {
 
     async function openCase(caseId) {
       console.log('[openCase] Opening case:', caseId);
-      document.getElementById('caseModal').classList.add('active');
-      document.getElementById('modalCaseId').textContent = caseId;
-      document.getElementById('modalCustomerName').textContent = 'Loading...';
+
+      // Show full page view instead of modal
+      hideAllViews();
+      document.getElementById('caseDetailView').style.display = 'block';
+      document.getElementById('detailCaseId').textContent = caseId;
+      document.getElementById('detailCustomerName').textContent = 'Loading...';
 
       // Update URL with case ID
       const params = new URLSearchParams(window.location.search);
@@ -11770,135 +12126,329 @@ function getResolutionHubHTML() {
         }
         currentCase = c;
 
-        // Header section
-        document.getElementById('modalCaseId').textContent = c.case_id;
-        const customerName = c.customer_name || c.customer_email?.split('@')[0] || 'Customer';
-        document.getElementById('modalCustomerName').textContent = customerName;
-        document.getElementById('modalCaseType').innerHTML = '<span class="type-badge '+c.case_type+'">'+c.case_type+'</span>';
-        const statusClass = (c.status||'pending').replace('_','-');
-        document.getElementById('modalStatusBadge').innerHTML = '<span class="status-badge '+statusClass+'">'+(c.status||'pending').replace('_',' ')+'</span>';
-        document.getElementById('modalTimeAgo').textContent = timeAgo(c.created_at);
+        // Populate full page detail view
+        populateCaseDetailView(c);
 
-        // Case Reference (sidebar)
-        document.getElementById('modalCaseRef').textContent = c.case_id;
-
-        // Assignee info (sidebar)
-        const assigneeName = c.assigned_to_name || c.assigned_to || null;
-        const assigneeAvatar = document.getElementById('modalAssigneeAvatar');
-        const assigneeNameEl = document.getElementById('modalAssigneeName');
-        const assigneeRoleEl = document.getElementById('modalAssigneeRole');
-        if (assigneeName) {
-          assigneeAvatar.textContent = assigneeName.charAt(0).toUpperCase();
-          assigneeAvatar.classList.remove('unassigned');
-          assigneeNameEl.textContent = assigneeName;
-          assigneeRoleEl.textContent = c.assigned_to_role || 'Team Member';
-        } else {
-          assigneeAvatar.textContent = '?';
-          assigneeAvatar.classList.add('unassigned');
-          assigneeNameEl.textContent = 'Unassigned';
-          assigneeRoleEl.textContent = 'Click to assign';
-        }
-
-        // Customer & Order info
-        document.getElementById('modalCustomerEmail').textContent = c.customer_email||'-';
-        document.getElementById('modalOrderNumber').textContent = c.order_number||'-';
-        document.getElementById('modalOrderDate').textContent = formatDate(c.order_date||c.created_at);
-        document.getElementById('modalSessionId').textContent = c.session_id ? c.session_id.substring(0,20)+'...' : '-';
-
-        // Resolution (at-a-glance) - use formatted resolution
-        document.getElementById('modalResolution').textContent = formatResolution(c.resolution, c.refund_amount);
-        document.getElementById('modalRefundAmount').textContent = c.refund_amount ? '$'+parseFloat(c.refund_amount).toFixed(2) : '-';
-        document.getElementById('modalCreatedAt').textContent = formatDate(c.created_at);
-        document.getElementById('modalUpdatedAt').textContent = formatDate(c.updated_at||c.created_at);
-
-        // Build Case Details breakdown
-        document.getElementById('modalCaseDetails').innerHTML = buildCaseDetailsHtml(c);
-
-        // Due date - 1 day from creation (internal deadline)
-        const dueEl = document.getElementById('modalDueDate');
-        if (c.created_at) {
-          const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
-          const isOverdue = Date.now() > dueDate.getTime() && c.status !== 'completed';
-          const dueDateStr = dueDate.toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-          if (c.status === 'completed') {
-            dueEl.innerHTML = '<span style="color:#10b981;">✓ Completed</span>';
-          } else if (isOverdue) {
-            dueEl.innerHTML = '<span style="color:#ef4444;font-weight:600;">⚠ OVERDUE - ' + dueDateStr + '</span>';
-          } else {
-            dueEl.textContent = dueDateStr;
-          }
-        } else {
-          dueEl.textContent = '-';
-        }
-
-        // Status cards
-        document.querySelectorAll('.status-card').forEach(card => card.classList.remove('active'));
-        document.querySelector('.status-card.'+statusClass)?.classList.add('active');
-
-        // Quick action links
-        if(c.session_replay_url) {
-          document.getElementById('replayLink').href = c.session_replay_url;
-          document.getElementById('replayLink').style.display = 'flex';
-        } else {
-          document.getElementById('replayLink').style.display = 'none';
-        }
-
-        // Richpanel conversation link
-        if(c.richpanel_conversation_no) {
-          document.getElementById('richpanelLink').href = 'https://app.richpanel.com/conversations?viewId=search&conversationNo=' + c.richpanel_conversation_no;
-          document.getElementById('richpanelLink').style.display = 'flex';
-        } else {
-          document.getElementById('richpanelLink').style.display = 'none';
-        }
-
-        if(c.clickup_task_url) {
-          document.getElementById('clickupLink').href = c.clickup_task_url;
-          document.getElementById('clickupLink').style.display = 'flex';
-        } else {
-          document.getElementById('clickupLink').style.display = 'none';
-        }
-        if(c.order_url) {
-          document.getElementById('shopifyLink').href = c.order_url;
-          document.getElementById('shopifyLink').style.display = 'flex';
-        } else {
-          document.getElementById('shopifyLink').style.display = 'none';
-        }
-
-        // SOP link - based on case type
-        const sopUrls = {
-          'refund': 'https://docs.google.com/document/d/YOUR_REFUND_SOP_DOC_ID/edit',
-          'shipping': 'https://docs.google.com/document/d/YOUR_SHIPPING_SOP_DOC_ID/edit',
-          'subscription': 'https://docs.google.com/document/d/YOUR_SUBSCRIPTION_SOP_DOC_ID/edit',
-          'manual': 'https://docs.google.com/document/d/YOUR_MANUAL_SOP_DOC_ID/edit',
-          'default': 'https://docs.google.com/document/d/YOUR_DEFAULT_SOP_DOC_ID/edit'
-        };
-        document.getElementById('sopLink').href = sopUrls[c.case_type] || sopUrls['default'];
-
-        // Timeline
-        document.getElementById('timelineCreated').textContent = formatDate(c.created_at);
-        if(c.first_response_at) {
-          document.getElementById('timelineFirstResponseRow').style.display = 'flex';
-          document.getElementById('timelineFirstResponse').textContent = formatDate(c.first_response_at);
-        } else {
-          document.getElementById('timelineFirstResponseRow').style.display = 'none';
-        }
-        if(c.resolved_at) {
-          document.getElementById('timelineResolvedRow').style.display = 'flex';
-          document.getElementById('timelineResolved').textContent = formatDate(c.resolved_at);
-        } else {
-          document.getElementById('timelineResolvedRow').style.display = 'none';
-        }
-
-        // Load comments
-        loadComments(caseId);
-
-        // Load activity timeline
-        loadCaseActivity();
+        // Load comments for detail view
+        loadCommentsForDetail(caseId);
       } catch(e) {
         console.error('[openCase] Error loading case:', e);
-        document.getElementById('modalCustomerName').textContent = 'Error: ' + e.message;
-        document.getElementById('modalCaseType').innerHTML = '<span class="type-badge error">Error</span>';
+        document.getElementById('detailCustomerName').textContent = 'Error: ' + e.message;
+        document.getElementById('detailCaseType').className = 'type-badge error';
+        document.getElementById('detailCaseType').textContent = 'Error';
       }
+    }
+
+    function populateCaseDetailView(c) {
+      const customerName = c.customer_name || c.customer_email?.split('@')[0] || 'Customer';
+      const statusClass = (c.status||'pending').replace('_','-');
+
+      // Header
+      document.getElementById('detailCaseId').textContent = c.case_id;
+      document.getElementById('detailCaseType').className = 'type-badge ' + c.case_type;
+      document.getElementById('detailCaseType').textContent = c.case_type;
+      document.getElementById('detailStatusBadge').className = 'status-badge ' + statusClass;
+      document.getElementById('detailStatusBadge').textContent = (c.status||'pending').replace('_',' ');
+
+      // Customer info
+      document.getElementById('detailCustomerName').textContent = customerName;
+      document.getElementById('detailCustomerEmail').textContent = c.customer_email || '-';
+      document.getElementById('detailOrderNumber').textContent = c.order_number || '-';
+      document.getElementById('detailOrderDate').textContent = formatDate(c.order_date || c.created_at);
+
+      // Resolution summary
+      document.getElementById('detailResolutionSummary').textContent = formatResolution(c.resolution, c.refund_amount);
+
+      // Case details breakdown
+      document.getElementById('detailCaseDetails').innerHTML = buildCaseDetailsHtml(c);
+
+      // Status cards - highlight current
+      document.querySelectorAll('.status-card-lg').forEach(card => card.classList.remove('active'));
+      document.querySelector('.status-card-lg.' + statusClass)?.classList.add('active');
+
+      // Assignee
+      const assigneeName = c.assigned_to_name || c.assigned_to || null;
+      const assigneeAvatar = document.getElementById('detailAssigneeAvatar');
+      const assigneeNameEl = document.getElementById('detailAssigneeName');
+      const assigneeRoleEl = document.getElementById('detailAssigneeRole');
+      if (assigneeName) {
+        assigneeAvatar.textContent = assigneeName.charAt(0).toUpperCase();
+        assigneeAvatar.classList.remove('unassigned');
+        assigneeNameEl.textContent = assigneeName;
+        assigneeRoleEl.textContent = c.assigned_to_role || 'Team Member';
+      } else {
+        assigneeAvatar.textContent = '?';
+        assigneeAvatar.classList.add('unassigned');
+        assigneeNameEl.textContent = 'Unassigned';
+        assigneeRoleEl.textContent = 'Click to assign';
+      }
+
+      // Timestamps
+      document.getElementById('detailCreatedAt').textContent = formatDate(c.created_at);
+      document.getElementById('detailUpdatedAt').textContent = formatDate(c.updated_at || c.created_at);
+
+      // Due date
+      const dueEl = document.getElementById('detailDueDate');
+      if (c.created_at) {
+        const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
+        const isOverdue = Date.now() > dueDate.getTime() && c.status !== 'completed';
+        const dueDateStr = dueDate.toLocaleDateString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        if (c.status === 'completed') {
+          dueEl.innerHTML = '<span style="color:#10b981;">Completed</span>';
+        } else if (isOverdue) {
+          dueEl.innerHTML = '<span style="color:#ef4444;font-weight:600;">OVERDUE</span>';
+        } else {
+          dueEl.textContent = dueDateStr;
+        }
+      } else {
+        dueEl.textContent = '-';
+      }
+
+      // Resolved date
+      if (c.resolved_at) {
+        document.getElementById('detailResolvedRow').style.display = 'flex';
+        document.getElementById('detailResolvedAt').textContent = formatDate(c.resolved_at);
+      } else {
+        document.getElementById('detailResolvedRow').style.display = 'none';
+      }
+
+      // Quick action links
+      if (c.session_replay_url) {
+        document.getElementById('detailReplayLink').href = c.session_replay_url;
+        document.getElementById('detailReplayLink').style.display = 'flex';
+      } else {
+        document.getElementById('detailReplayLink').style.display = 'none';
+      }
+
+      if (c.richpanel_conversation_no) {
+        document.getElementById('detailRichpanelLink').href = 'https://app.richpanel.com/conversations?viewId=search&conversationNo=' + c.richpanel_conversation_no;
+        document.getElementById('detailRichpanelLink').style.display = 'flex';
+      } else {
+        document.getElementById('detailRichpanelLink').style.display = 'none';
+      }
+
+      if (c.order_url) {
+        document.getElementById('detailShopifyLink').href = c.order_url;
+        document.getElementById('detailShopifyLink').style.display = 'flex';
+      } else {
+        document.getElementById('detailShopifyLink').style.display = 'none';
+      }
+
+      // SOP link - based on case type
+      const sopUrls = {
+        'refund': 'https://docs.google.com/document/d/YOUR_REFUND_SOP_DOC_ID/edit',
+        'shipping': 'https://docs.google.com/document/d/YOUR_SHIPPING_SOP_DOC_ID/edit',
+        'subscription': 'https://docs.google.com/document/d/YOUR_SUBSCRIPTION_SOP_DOC_ID/edit',
+        'manual': 'https://docs.google.com/document/d/YOUR_MANUAL_SOP_DOC_ID/edit',
+        'default': 'https://docs.google.com/document/d/YOUR_DEFAULT_SOP_DOC_ID/edit'
+      };
+      document.getElementById('detailSOPLink').href = sopUrls[c.case_type] || sopUrls['default'];
+
+      // Reference IDs section (for subscription/order tracking)
+      buildReferenceIDsSection(c);
+
+      // Update navigation buttons
+      updateDetailNavigationButtons();
+    }
+
+    function buildReferenceIDsSection(c) {
+      let extra = {};
+      try {
+        if (c.extra_data) extra = typeof c.extra_data === 'string' ? JSON.parse(c.extra_data) : c.extra_data;
+      } catch(e) {}
+
+      const ids = [];
+      if (c.order_number) ids.push({ label: 'Shopify Order', value: c.order_number });
+      if (extra.clientOrderId) ids.push({ label: 'CheckoutChamp Order', value: extra.clientOrderId });
+      if (extra.purchaseId) ids.push({ label: 'Subscription ID', value: extra.purchaseId });
+      if (c.session_id) ids.push({ label: 'Session ID', value: c.session_id.substring(0, 16) + '...' });
+
+      const idsCard = document.getElementById('detailIDsCard');
+      const idsList = document.getElementById('detailIDsList');
+
+      if (ids.length > 0) {
+        idsCard.style.display = 'block';
+        idsList.innerHTML = ids.map(id =>
+          '<div class="id-row"><span class="id-label">' + id.label + '</span><span class="id-value">' + id.value + '</span></div>'
+        ).join('');
+      } else {
+        idsCard.style.display = 'none';
+      }
+    }
+
+    function updateDetailNavigationButtons() {
+      const prevBtn = document.getElementById('prevCaseDetailBtn');
+      const nextBtn = document.getElementById('nextCaseDetailBtn');
+      if (prevBtn) prevBtn.disabled = currentCaseIndex <= 0;
+      if (nextBtn) nextBtn.disabled = currentCaseIndex >= casesList.length - 1;
+    }
+
+    function navigateCaseDetail(direction) {
+      if (direction === 'prev' && currentCaseIndex > 0) {
+        openCase(casesList[currentCaseIndex - 1].case_id);
+      } else if (direction === 'next' && currentCaseIndex < casesList.length - 1) {
+        openCase(casesList[currentCaseIndex + 1].case_id);
+      }
+    }
+
+    function closeCaseDetail() {
+      document.getElementById('caseDetailView').style.display = 'none';
+      currentCase = null;
+      currentCaseIndex = -1;
+      // Remove case ID from URL and go back to cases
+      const params = new URLSearchParams(window.location.search);
+      params.delete('case');
+      params.set('page', 'cases');
+      const newUrl = '/hub?' + params.toString();
+      history.pushState({ page: 'cases' }, '', newUrl);
+      navigateTo('cases', currentFilter || 'all');
+    }
+
+    async function loadCommentsForDetail(caseId) {
+      try {
+        const r = await fetch(API + '/hub/api/case/' + caseId + '/comments');
+        const d = await r.json();
+        const list = document.getElementById('detailCommentsList');
+        const countEl = document.getElementById('detailCommentsCount');
+        const count = d.comments?.length || 0;
+        countEl.textContent = count;
+        if (!count) {
+          list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px;">No comments yet</div>';
+          return;
+        }
+        list.innerHTML = d.comments.map(c =>
+          '<div class="comment-item" style="padding:12px 0;border-bottom:1px solid var(--gray-100);">' +
+          '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">' +
+          '<span style="font-weight:600;font-size:13px;color:var(--gray-700);">' + (c.author_name || 'Team') + '</span>' +
+          '<span style="font-size:12px;color:var(--gray-400);">' + timeAgo(c.created_at) + '</span></div>' +
+          '<div style="font-size:14px;color:var(--gray-600);line-height:1.5;">' + escapeHtml(c.content) + '</div></div>'
+        ).join('');
+      } catch(e) { console.error(e); }
+    }
+
+    async function addCommentFromDetail() {
+      if (!currentCase) return;
+      const input = document.getElementById('detailCommentInput');
+      const content = input.value.trim();
+      if (!content) return;
+      try {
+        const user = JSON.parse(localStorage.getItem('hub_user') || '{}');
+        const r = await fetch(API + '/hub/api/case/' + currentCase.case_id + '/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: content, author_name: user.name || 'Admin' })
+        });
+        if (r.ok) {
+          input.value = '';
+          loadCommentsForDetail(currentCase.case_id);
+        }
+      } catch(e) { console.error(e); }
+    }
+
+    async function updateStatusFromDetail(newStatus) {
+      if (!currentCase) return;
+      try {
+        // Update UI optimistically
+        const statusClass = newStatus.replace('_', '-');
+        document.querySelectorAll('.status-card-lg').forEach(card => card.classList.remove('active'));
+        document.querySelector('.status-card-lg.' + statusClass)?.classList.add('active');
+        document.getElementById('detailStatusBadge').className = 'status-badge ' + statusClass;
+        document.getElementById('detailStatusBadge').textContent = newStatus.replace('_', ' ');
+
+        const r = await fetch(API + '/hub/api/case/' + currentCase.case_id + '/status', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (r.ok) {
+          currentCase.status = newStatus;
+          const idx = casesList.findIndex(c => c.case_id === currentCase.case_id);
+          if (idx >= 0) casesList[idx].status = newStatus;
+          showToast('Status updated to ' + newStatus.replace('_', ' '), 'success');
+        } else {
+          // Revert on failure
+          populateCaseDetailView(currentCase);
+          showToast('Failed to update status', 'error');
+        }
+      } catch(e) {
+        console.error('Status update error:', e);
+        showToast('Failed to update status', 'error');
+      }
+    }
+
+    // Completion checklist functions
+    function showCompletionChecklist() {
+      if (!currentCase) return;
+
+      // Build checklist based on case type
+      const checklists = {
+        refund: [
+          { text: 'Verified refund amount is correct', required: true },
+          { text: 'Processed refund in Shopify', required: true },
+          { text: 'Sent refund confirmation email to customer', required: true },
+          { text: 'Updated ticket notes with refund details', required: false }
+        ],
+        shipping: [
+          { text: 'Verified shipping address with customer', required: true },
+          { text: 'Created new shipment or reship order', required: true },
+          { text: 'Sent tracking information to customer', required: true },
+          { text: 'Added bonus item to order (if applicable)', required: false }
+        ],
+        subscription: [
+          { text: 'Made changes in CheckoutChamp', required: true },
+          { text: 'Verified subscription status is correct', required: true },
+          { text: 'Sent confirmation email to customer', required: true },
+          { text: 'Updated internal notes', required: false }
+        ],
+        manual: [
+          { text: 'Completed all required actions', required: true },
+          { text: 'Customer has been notified of resolution', required: true },
+          { text: 'All relevant systems have been updated', required: false }
+        ],
+        'return': [
+          { text: 'Received returned items', required: true },
+          { text: 'Verified condition of returned items', required: true },
+          { text: 'Processed refund for returned items', required: true },
+          { text: 'Sent confirmation to customer', required: true }
+        ]
+      };
+
+      const items = checklists[currentCase.case_type] || checklists.manual;
+      const container = document.getElementById('completionChecklistItems');
+
+      container.innerHTML = items.map((item, idx) =>
+        '<div class="checklist-item' + (item.required ? ' required' : '') + '" onclick="toggleChecklistItem(this)" data-index="' + idx + '">' +
+        '<div class="checklist-checkbox"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>' +
+        '<div class="checklist-content"><span class="checklist-text">' + item.text + '</span>' +
+        (item.required ? '<span class="checklist-required">REQUIRED</span>' : '') +
+        '</div></div>'
+      ).join('');
+
+      // Reset confirm button
+      document.getElementById('confirmCompleteBtn').disabled = true;
+
+      // Show modal
+      document.getElementById('completionChecklistModal').classList.add('active');
+    }
+
+    function toggleChecklistItem(el) {
+      el.classList.toggle('checked');
+      validateChecklist();
+    }
+
+    function validateChecklist() {
+      const items = document.querySelectorAll('#completionChecklistItems .checklist-item.required');
+      const allChecked = Array.from(items).every(item => item.classList.contains('checked'));
+      document.getElementById('confirmCompleteBtn').disabled = !allChecked;
+    }
+
+    function closeCompletionChecklist() {
+      document.getElementById('completionChecklistModal').classList.remove('active');
+    }
+
+    async function confirmCompleteCase() {
+      closeCompletionChecklist();
+      await updateStatusFromDetail('completed');
     }
 
     function closeModal() {
