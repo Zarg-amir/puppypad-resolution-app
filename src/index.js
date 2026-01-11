@@ -12280,9 +12280,10 @@ function getResolutionHubHTML() {
         loadCommentsForDetail(caseId);
       } catch(e) {
         console.error('[openCase] Error loading case:', e);
-        document.getElementById('detailCustomerName').textContent = 'Error: ' + e.message;
-        document.getElementById('detailCaseType').className = 'type-badge error';
-        document.getElementById('detailCaseType').textContent = 'Error';
+        const nameEl = document.getElementById('detailCustomerName');
+        if (nameEl) nameEl.textContent = 'Error: ' + e.message;
+        const titleEl = document.getElementById('detailCaseTitle');
+        if (titleEl) titleEl.textContent = 'Error Loading Case';
       }
     }
 
@@ -12778,8 +12779,12 @@ function getResolutionHubHTML() {
       showToast('Due date editing coming soon!', 'info');
     }
 
-    // Load mention users on page load
-    loadMentionUsers();
+    // Load mention users when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadMentionUsers);
+    } else {
+      setTimeout(loadMentionUsers, 100);
+    }
 
     function buildReferenceIDsSection(c) {
       let extra = {};
