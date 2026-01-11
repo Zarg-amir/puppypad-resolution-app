@@ -8245,7 +8245,7 @@ function getDashboardHTML() {
       document.getElementById('dashboardScreen').classList.add('active');
       loadDashboardData();
       loadSessions();
-      loadCases();
+      // loadCases(); // REMOVED - was calling OLD rendering system that conflicts with new Cases view
       loadEvents();
     }
 
@@ -8307,6 +8307,10 @@ function getDashboardHTML() {
       \`;
     }
 
+    // OLD RENDERING SYSTEM - DEPRECATED
+    // These functions conflict with the new Cases view (loadCasesView/renderCaseRow)
+    // which has 8 columns including Due and Resolution. Keeping commented for reference.
+    /*
     async function loadCases(page = 1) {
       currentCasesPage = page;
 
@@ -8348,6 +8352,7 @@ function getDashboardHTML() {
 
       renderPagination('casesPagination', data.pagination, loadCases);
     }
+    */
 
     async function loadEvents(page = 1) {
       currentEventsPage = page;
