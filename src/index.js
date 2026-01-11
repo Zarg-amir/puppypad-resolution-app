@@ -9430,7 +9430,8 @@ function getResolutionHubHTML() {
     }
 
     /* ===== REDESIGNED CASE DETAIL STYLES ===== */
-    .cd-page { background: #f8fafc; min-height: 100vh; }
+    .cd-page { background: #f8fafc; min-height: 100vh; margin: -32px; width: calc(100% + 64px); }
+    @media (max-width: 768px) { .cd-page { margin: -16px; width: calc(100% + 32px); } }
 
     /* Header */
     .cd-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 28px; background: white; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 100; }
@@ -9492,12 +9493,31 @@ function getResolutionHubHTML() {
     .cd-issue-summary p { margin: 0 0 12px 0; }
     .cd-issue-summary p:last-child { margin-bottom: 0; }
     .cd-issue-summary strong { color: var(--gray-900); }
+    .cd-issue-summary .cd-issue-headline { font-size: 17px; margin-bottom: 8px; color: var(--gray-900); }
+    .cd-issue-summary .cd-customer-quote { background: #f8fafc; border-left: 3px solid var(--brand-navy); padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0; }
+    .cd-issue-summary .cd-customer-quote em { color: var(--gray-600); }
+    .cd-issue-summary .cd-issue-facts { list-style: none; padding: 0; margin: 16px 0 0 0; display: flex; flex-wrap: wrap; gap: 8px 20px; }
+    .cd-issue-summary .cd-issue-facts li { font-size: 14px; color: var(--gray-600); padding: 0; border: none; }
+    .cd-issue-summary .cd-issue-facts li strong { color: var(--gray-700); font-weight: 500; }
+    .cd-issue-summary .cd-issue-facts code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
 
     /* Case Details List */
     .cd-details-list { list-style: none; padding: 0; margin: 0; }
     .cd-details-list li { padding: 12px 0; border-bottom: 1px solid var(--gray-100); font-size: 14px; line-height: 1.6; color: var(--gray-700); }
     .cd-details-list li:last-child { border-bottom: none; padding-bottom: 0; }
     .cd-details-list li strong { color: var(--gray-900); }
+
+    /* Resolution List (Action Steps) */
+    .cd-resolution-list { list-style: none; padding: 0; margin: 0; counter-reset: resolution-step; }
+    .cd-resolution-list li { position: relative; padding: 10px 0 10px 32px; font-size: 14px; line-height: 1.6; color: var(--gray-700); border-bottom: 1px solid var(--gray-100); }
+    .cd-resolution-list li:last-child { border-bottom: none; }
+    .cd-resolution-list li::before { counter-increment: resolution-step; content: counter(resolution-step); position: absolute; left: 0; top: 10px; width: 22px; height: 22px; background: var(--brand-navy); color: white; border-radius: 50%; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+    .cd-resolution-list li strong { color: var(--gray-900); }
+    .cd-resolution-list li code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
+    .cd-resolution-notes { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200); }
+    .cd-resolution-notes p { margin: 0 0 8px 0; font-size: 13px; color: var(--gray-500); font-style: italic; }
+    .cd-resolution-notes p:last-child { margin-bottom: 0; }
+    .cd-resolution-empty { color: var(--gray-500); font-size: 14px; margin: 0; }
 
     /* Evidence */
     .cd-evidence { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--gray-200); }
@@ -11740,7 +11760,7 @@ function getResolutionHubHTML() {
       return activity.new_value || '-';
     }
 
-    // Build issue summary HTML - explains what the customer's problem is
+    // Build issue summary HTML - explains what the customer's problem is with rich context
     function buildIssueSummaryHtml(c) {
       let extra = {};
       try {
@@ -11749,60 +11769,176 @@ function getResolutionHubHTML() {
 
       const caseType = c.case_type || 'manual';
       const issueType = c.issue_type || '';
-      let summary = '';
+      const intent = extra.intent || '';
+      let html = '';
+      let bullets = [];
 
-      // Issue type descriptions
-      const issueDescriptions = {
-        'damaged': 'Customer received a <strong>damaged product</strong> and is requesting a resolution.',
-        'missing_items': 'Customer reports <strong>missing items</strong> from their order.',
-        'wrong_item': 'Customer received the <strong>wrong item</strong> in their order.',
-        'not_met_expectations': 'Product <strong>did not meet customer expectations</strong>.',
-        'lost_package': 'Package was <strong>lost in transit</strong> and never delivered.',
-        'delivered_not_received': 'Tracking shows <strong>delivered but customer never received</strong> the package.',
-        'charged_unexpectedly': 'Customer was <strong>charged unexpectedly</strong> and is disputing the charge.',
-        'quality_difference': 'Customer received <strong>Original material pads</strong> instead of the newer PuppyPad 2.0.',
-        'no_tracking': 'Customer has <strong>no tracking information</strong> available for their order.',
-        'stuck_in_transit': 'Package is <strong>stuck in transit</strong> with no movement.',
-        'pending_too_long': 'Order has been <strong>pending for too long</strong> without shipping.'
-      };
-
-      // Case type descriptions (fallback)
-      const caseTypeDescriptions = {
-        'refund': 'Customer is requesting a <strong>refund</strong> for their order.',
-        'shipping': 'Customer has a <strong>shipping issue</strong> with their order.',
-        'subscription': 'Customer needs help with their <strong>subscription</strong>.',
-        'return': 'Customer wants to <strong>return</strong> their purchase.',
-        'manual': 'This case requires <strong>manual review</strong>.'
-      };
-
-      // Get the issue description
-      if (issueType && issueDescriptions[issueType]) {
-        summary = '<p>' + issueDescriptions[issueType] + '</p>';
-      } else if (caseTypeDescriptions[caseType]) {
-        summary = '<p>' + caseTypeDescriptions[caseType] + '</p>';
-      } else {
-        summary = '<p>Customer needs assistance with their order.</p>';
-      }
-
-      // Add customer's own words if available
-      if (extra.intentDetails) {
-        summary += '<p><strong>Customer said:</strong> <em>"' + escapeHtml(extra.intentDetails) + '"</em></p>';
-      }
-
-      // Add cancellation reason if subscription
-      if (caseType === 'subscription' && extra.cancelReason) {
+      // ===== SUBSCRIPTION CASES =====
+      if (caseType === 'subscription') {
+        const actionType = extra.actionType || '';
         const cancelReasons = {
-          'expensive': 'too expensive',
-          'too_many': 'they have too many',
-          'not_working': 'it\\'s not working as described',
+          'expensive': 'it\\'s too expensive',
+          'too_many': 'they have too many products',
+          'not_working': 'the product isn\\'t working as expected',
           'moving': 'they are moving',
           'other': 'other reasons'
         };
-        const reason = cancelReasons[extra.cancelReason] || extra.cancelReason;
-        summary += '<p>Customer wants to make changes because <strong>' + reason + '</strong>.</p>';
+
+        if (actionType === 'cancel') {
+          html = '<p class="cd-issue-headline"><strong>Subscription Cancellation Request</strong></p>';
+          const reason = cancelReasons[extra.cancelReason] || extra.cancelReason || 'unspecified reason';
+          html += '<p>Customer wants to <strong>cancel</strong> their subscription because <strong>' + reason + '</strong>.</p>';
+          if (extra.subscriptionProductName) bullets.push('<strong>Product:</strong> ' + escapeHtml(extra.subscriptionProductName));
+          if (extra.subscriptionStatus) bullets.push('<strong>Status:</strong> ' + extra.subscriptionStatus);
+          if (extra.keepProduct !== undefined) bullets.push('<strong>Keeping items:</strong> ' + (extra.keepProduct ? 'Yes' : 'No, returning'));
+        } else if (actionType === 'pause') {
+          html = '<p class="cd-issue-headline"><strong>Subscription Pause Request</strong></p>';
+          html += '<p>Customer wants to <strong>pause</strong> their subscription';
+          if (extra.pauseDuration) html += ' for <strong>' + extra.pauseDuration + ' days</strong>';
+          html += '.</p>';
+          if (extra.subscriptionProductName) bullets.push('<strong>Product:</strong> ' + escapeHtml(extra.subscriptionProductName));
+          if (extra.pauseResumeDate) bullets.push('<strong>Resume Date:</strong> ' + new Date(extra.pauseResumeDate).toLocaleDateString());
+        } else if (actionType === 'discount_accepted') {
+          html = '<p class="cd-issue-headline"><strong>Retention Offer Accepted</strong></p>';
+          html += '<p>Customer was going to cancel but <strong>accepted a ' + (extra.discountPercent || '?') + '% discount</strong> to stay.</p>';
+          if (extra.cancelReason) {
+            const reason = cancelReasons[extra.cancelReason] || extra.cancelReason;
+            bullets.push('<strong>Original concern:</strong> ' + reason);
+          }
+          if (extra.subscriptionProductName) bullets.push('<strong>Product:</strong> ' + escapeHtml(extra.subscriptionProductName));
+        } else if (actionType === 'changeSchedule') {
+          html = '<p class="cd-issue-headline"><strong>Delivery Schedule Change</strong></p>';
+          html += '<p>Customer wants to <strong>change their delivery frequency</strong>.</p>';
+          if (extra.previousFrequency) bullets.push('<strong>Previous:</strong> Every ' + extra.previousFrequency + ' days');
+          if (extra.newFrequency) bullets.push('<strong>New:</strong> Every ' + extra.newFrequency + ' days');
+          if (extra.subscriptionProductName) bullets.push('<strong>Product:</strong> ' + escapeHtml(extra.subscriptionProductName));
+        } else if (actionType === 'changeAddress') {
+          html = '<p class="cd-issue-headline"><strong>Shipping Address Change</strong></p>';
+          html += '<p>Customer wants to <strong>update their shipping address</strong> for their subscription.</p>';
+          if (extra.subscriptionProductName) bullets.push('<strong>Product:</strong> ' + escapeHtml(extra.subscriptionProductName));
+          if (extra.newAddress) {
+            const addr = extra.newAddress;
+            const addrStr = [addr.address1, addr.address2, addr.city, addr.state, addr.zip].filter(Boolean).join(', ');
+            if (addrStr) bullets.push('<strong>New Address:</strong> ' + escapeHtml(addrStr));
+          }
+        } else {
+          html = '<p class="cd-issue-headline"><strong>Subscription Inquiry</strong></p>';
+          html += '<p>Customer needs help with their subscription.</p>';
+          if (extra.subscriptionProductName) bullets.push('<strong>Product:</strong> ' + escapeHtml(extra.subscriptionProductName));
+        }
       }
 
-      return summary || '<p>Review case details in Shopify.</p>';
+      // ===== SHIPPING CASES =====
+      else if (caseType === 'shipping' || issueType === 'stuck_in_transit' || issueType === 'lost_package' || issueType === 'delivered_not_received' || issueType === 'no_tracking' || issueType === 'pending_too_long' || intent === 'not_received') {
+        const daysInTransit = extra.daysInTransit || 0;
+
+        if (issueType === 'stuck_in_transit' || (daysInTransit > 5 && extra.trackingStatus === 'in_transit')) {
+          html = '<p class="cd-issue-headline"><strong>Package Stuck in Transit</strong>' + (daysInTransit ? ' &mdash; ' + daysInTransit + ' Days' : '') + '</p>';
+          html += '<p>Customer\\'s order has been <strong>in transit for ' + daysInTransit + ' days</strong> with no recent tracking updates.</p>';
+        } else if (issueType === 'delivered_not_received' || extra.trackingStatus === 'delivered') {
+          html = '<p class="cd-issue-headline"><strong>Delivered But Not Received</strong></p>';
+          html += '<p>Tracking shows the package was <strong>delivered</strong>, but the customer <strong>never received it</strong>.</p>';
+        } else if (issueType === 'lost_package') {
+          html = '<p class="cd-issue-headline"><strong>Lost Package</strong></p>';
+          html += '<p>Customer\\'s package appears to be <strong>lost in transit</strong> and was never delivered.</p>';
+        } else if (issueType === 'no_tracking') {
+          html = '<p class="cd-issue-headline"><strong>No Tracking Available</strong></p>';
+          html += '<p>Customer cannot track their order &mdash; <strong>no tracking information</strong> is available.</p>';
+        } else if (issueType === 'pending_too_long') {
+          html = '<p class="cd-issue-headline"><strong>Order Pending Too Long</strong></p>';
+          html += '<p>Customer\\'s order has been <strong>pending for too long</strong> without being shipped.</p>';
+        } else {
+          html = '<p class="cd-issue-headline"><strong>Shipping Issue</strong></p>';
+          html += '<p>Customer is experiencing a <strong>shipping problem</strong> with their order.</p>';
+        }
+
+        // Shipping details
+        if (extra.carrierName) bullets.push('<strong>Carrier:</strong> ' + escapeHtml(extra.carrierName));
+        if (extra.trackingNumber) bullets.push('<strong>Tracking #:</strong> <code>' + escapeHtml(extra.trackingNumber) + '</code>');
+        if (extra.trackingStatus) bullets.push('<strong>Last Status:</strong> ' + escapeHtml(extra.trackingStatus));
+        if (daysInTransit) bullets.push('<strong>Days in Transit:</strong> ' + daysInTransit);
+      }
+
+      // ===== REFUND/RETURN CASES =====
+      else if (caseType === 'refund' || caseType === 'return') {
+        const intentDescriptions = {
+          'damaged': { headline: 'Damaged Product', desc: 'Customer received a <strong>damaged product</strong> and needs a resolution.' },
+          'missing_items': { headline: 'Missing Items', desc: 'Customer is <strong>missing items</strong> from their order.' },
+          'wrong_item': { headline: 'Wrong Item Received', desc: 'Customer received the <strong>wrong item</strong> in their order.' },
+          'not_met_expectations': { headline: 'Did Not Meet Expectations', desc: 'The product <strong>did not meet the customer\\'s expectations</strong>.' },
+          'charged_unexpectedly': { headline: 'Unexpected Charge', desc: 'Customer was <strong>charged unexpectedly</strong> and doesn\\'t recognize this order.' },
+          'changed_mind': { headline: 'Changed Mind', desc: 'Customer <strong>changed their mind</strong> about the purchase.' },
+          'ordered_mistake': { headline: 'Ordered by Mistake', desc: 'Customer <strong>ordered by mistake</strong> and wants to return.' },
+          'dog_not_using': { headline: 'Dog Not Using Product', desc: 'Customer\\'s dog is <strong>not using the product</strong> as expected.' },
+          'quality_difference': { headline: 'Quality Difference (Original vs 2.0)', desc: 'Customer received <strong>Original material pads</strong> instead of PuppyPad 2.0.' }
+        };
+
+        const issueInfo = intentDescriptions[intent] || intentDescriptions[issueType] || null;
+        if (issueInfo) {
+          html = '<p class="cd-issue-headline"><strong>' + issueInfo.headline + '</strong></p>';
+          html += '<p>' + issueInfo.desc + '</p>';
+        } else {
+          html = '<p class="cd-issue-headline"><strong>' + (caseType === 'return' ? 'Return Request' : 'Refund Request') + '</strong></p>';
+          html += '<p>Customer is requesting a <strong>' + caseType + '</strong> for their order.</p>';
+        }
+
+        // Quality difference specific
+        if ((intent === 'quality_difference' || issueType === 'quality_difference') && extra.qualityDetails) {
+          const qd = extra.qualityDetails;
+          if (qd.padCount) bullets.push('<strong>Pads Affected:</strong> ' + qd.padCount);
+          if (qd.itemsUsed === true) bullets.push('<strong>Items Used:</strong> <span style="color:#f59e0b">Yes</span>');
+          else if (qd.itemsUsed === false) bullets.push('<strong>Items Used:</strong> <span style="color:#10b981">No (unused)</span>');
+        }
+
+        // Refund details
+        if (c.refund_amount) bullets.push('<strong>Refund Amount:</strong> $' + parseFloat(c.refund_amount).toFixed(2));
+        if (extra.refundPercent) bullets.push('<strong>Refund:</strong> ' + extra.refundPercent + '% of order');
+        if (extra.keepProduct !== undefined) bullets.push('<strong>Keeping Product:</strong> ' + (extra.keepProduct ? 'Yes' : 'No, returning'));
+      }
+
+      // ===== MANUAL/OTHER CASES =====
+      else {
+        if (intent === 'dog_not_using') {
+          html = '<p class="cd-issue-headline"><strong>Dog Not Using Product</strong></p>';
+          html += '<p>Customer\\'s dog is <strong>not using the PuppyPad</strong> as expected. Needs training tips or alternative solution.</p>';
+          if (extra.dogs && extra.dogs.length) {
+            extra.dogs.forEach(function(dog, i) {
+              let dogInfo = (dog.name || 'Dog ' + (i+1));
+              if (dog.breed) dogInfo += ' (' + dog.breed + ')';
+              if (dog.age) dogInfo += ', ' + dog.age;
+              bullets.push('<strong>Dog:</strong> ' + escapeHtml(dogInfo));
+            });
+          }
+        } else if (intent === 'other') {
+          html = '<p class="cd-issue-headline"><strong>Other Issue</strong></p>';
+          html += '<p>Customer has a <strong>specific concern</strong> that requires manual review.</p>';
+        } else {
+          html = '<p class="cd-issue-headline"><strong>Manual Review Required</strong></p>';
+          html += '<p>This case requires <strong>manual review</strong> by the team.</p>';
+        }
+      }
+
+      // ===== CUSTOMER'S OWN WORDS =====
+      if (extra.intentDetails) {
+        html += '<div class="cd-customer-quote"><strong>Customer said:</strong> <em>"' + escapeHtml(extra.intentDetails) + '"</em></div>';
+      }
+
+      // ===== SELECTED ITEMS =====
+      if (extra.selectedItems && extra.selectedItems.length) {
+        const itemNames = extra.selectedItems.map(function(item) {
+          return escapeHtml(item.title || item.name || 'Item') + (item.quantity > 1 ? ' (x' + item.quantity + ')' : '');
+        });
+        bullets.push('<strong>Item(s):</strong> ' + itemNames.join(', '));
+      }
+
+      // ===== BUILD BULLET LIST =====
+      if (bullets.length) {
+        html += '<ul class="cd-issue-facts">';
+        bullets.forEach(function(b) { html += '<li>' + b + '</li>'; });
+        html += '</ul>';
+      }
+
+      return html || '<p>Review case details in Shopify.</p>';
     }
 
     // Case navigation functions
@@ -11835,270 +11971,241 @@ function getResolutionHubHTML() {
     }
 
     // Build detailed case breakdown HTML for modal - plain English bullet points
+    // Build Resolution section HTML - actionable steps for what the team needs to do
     function buildCaseDetailsHtml(c) {
-      const bullets = [];
-
-      // Parse extra data if available
       let extra = {};
       try {
         if (c.extra_data) extra = typeof c.extra_data === 'string' ? JSON.parse(c.extra_data) : c.extra_data;
       } catch(e) {}
 
-      // QUALITY DIFFERENCE CASES
-      if (c.issue_type === 'quality_difference') {
-        const qd = extra.qualityDetails || {};
-        const padCount = qd.customerReportedCount || qd.padCount || 0;
+      const caseType = c.case_type || 'manual';
+      const resolution = c.resolution || '';
+      const actionType = extra.actionType || '';
+      const intent = extra.intent || '';
+      let actions = [];
+      let notes = [];
 
-        // Opening explanation
-        bullets.push('Customer received <strong>Original material pads</strong> instead of the newer <strong>PuppyPad 2.0</strong>.');
+      // ===== SUBSCRIPTION CASES =====
+      if (caseType === 'subscription') {
 
-        if (padCount > 0) {
-          bullets.push('Customer reported receiving <strong>' + padCount + ' pad' + (padCount > 1 ? 's' : '') + '</strong> of Original material.');
-        }
-
-        // Usage status
-        if (qd.itemsUsed === true) {
-          bullets.push('<span style="color:#f59e0b;font-weight:600;">Items have been USED</span> — Customer cannot return them.');
-        } else if (qd.itemsUsed === false) {
-          bullets.push('<span style="color:#10b981;font-weight:600;">Items are UNUSED</span> — Eligible for return if needed.');
-        }
-
-        // Return requirement
-        if (qd.requiresReturn === true) {
-          bullets.push('Return is <strong>REQUIRED</strong> — Customer must ship back items before resolution.');
-        } else if (qd.requiresReturn === false) {
-          bullets.push('No return needed — Customer keeps the Original pads.');
-        }
-
-        // Resolution path chosen
-        if (qd.resolutionPath === 'upgrade') {
-          bullets.push('Customer chose to <strong>upgrade to PuppyPad 2.0</strong> for $20/pad.');
-          if (qd.upgradeTotal) {
-            bullets.push('Total upgrade cost: <strong>$' + qd.upgradeTotal + '</strong>');
-          }
-        } else if (qd.resolutionPath === 'refund') {
-          bullets.push('Customer chose a <strong>full refund</strong> for the Original pads.');
-        } else if (qd.resolutionPath === 'free_upgrade') {
-          bullets.push('Customer received <strong>FREE PuppyPad 2.0 upgrade</strong> (company absorbed cost).');
-        }
-      }
-
-      // REFUND CASES
-      else if (c.case_type === 'refund' || c.issue_type) {
-        const issueDescriptions = {
-          'damaged': 'Customer received a damaged product.',
-          'missing_items': 'Customer is missing items from their order.',
-          'wrong_item': 'Customer received the wrong item.',
-          'not_met_expectations': 'Product did not meet customer expectations.',
-          'lost_package': 'Package was lost in transit.',
-          'delivered_not_received': 'Tracking shows delivered but customer never received it.',
-          'charged_unexpectedly': 'Customer was charged unexpectedly.',
-        };
-
-        if (c.issue_type && issueDescriptions[c.issue_type]) {
-          bullets.push(issueDescriptions[c.issue_type]);
-        } else if (c.issue_type) {
-          bullets.push('Issue: ' + c.issue_type.replace(/_/g, ' '));
-        }
-
-        // Refund amount
-        if (c.refund_amount) {
-          bullets.push('Refund amount: <strong>$' + parseFloat(c.refund_amount).toFixed(2) + '</strong>');
-        }
-
-        // Keep product
-        if (extra.keepProduct === true) {
-          bullets.push('Customer <strong>keeps the product</strong> — no return required.');
-        } else if (extra.keepProduct === false) {
-          bullets.push('Customer must <strong>return the product</strong> to receive refund.');
-        }
-      }
-
-      // SHIPPING CASES
-      else if (c.case_type === 'shipping') {
-        if (c.issue_type) {
-          const shippingIssues = {
-            'no_tracking': 'No tracking information available for the order.',
-            'stuck_in_transit': 'Package is stuck in transit.',
-            'pending_too_long': 'Order has been pending for too long.',
-            'delivered_not_received': 'Tracking shows delivered but customer never received it.',
-          };
-          bullets.push(shippingIssues[c.issue_type] || 'Shipping issue: ' + c.issue_type.replace(/_/g, ' '));
-        }
-
-        if (extra.correctedAddress) {
-          const addr = extra.correctedAddress;
-          const addrStr = [addr.line1, addr.line2, addr.city, addr.state, addr.zip, addr.country].filter(Boolean).join(', ');
-          bullets.push('<strong>NEW ADDRESS:</strong> ' + addrStr);
-        }
-      }
-
-      // SUBSCRIPTION CASES - use resolution to determine display
-      else if (c.case_type === 'subscription') {
-        const resolution = c.resolution || '';
-
-        // PAUSE SUBSCRIPTION
-        if (resolution === 'subscription_paused') {
-          if (extra.pauseDuration) {
-            bullets.push('<strong>Pause subscription for ' + extra.pauseDuration + ' days</strong>');
-          } else {
-            bullets.push('<strong>Pause subscription</strong>');
-          }
-
-          if (extra.subscriptionProductName) {
-            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
-          }
-          if (extra.purchaseId) {
-            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
-          }
+        // PAUSE
+        if (actionType === 'pause' || resolution === 'subscription_paused') {
+          actions.push('<strong>Pause subscription</strong> in Recharge' + (extra.pauseDuration ? ' for <strong>' + extra.pauseDuration + ' days</strong>' : ''));
           if (extra.pauseResumeDate) {
             const resumeDate = new Date(extra.pauseResumeDate);
-            bullets.push('Resume on: <strong>' + resumeDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) + '</strong>');
+            actions.push('Set resume date: <strong>' + resumeDate.toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'}) + '</strong>');
           }
+          actions.push('Send confirmation email with resume date');
+          notes.push('Mark case complete after pause is confirmed in system');
         }
 
-        // DISCOUNT APPLIED
-        else if (resolution === 'discount_applied') {
-          if (extra.discountPercent) {
-            bullets.push('<strong>Apply ' + extra.discountPercent + '% discount</strong> to all future shipments');
-          } else {
-            bullets.push('<strong>Apply discount</strong> to future shipments');
-          }
-
-          if (extra.subscriptionProductName) {
-            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
-          }
-          if (extra.purchaseId) {
-            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
-          }
-          if (extra.cancelReason) {
-            const cancelReasons = {
-              'expensive': 'Too expensive',
-              'too_many': 'Has too many',
-              'not_working': 'Not working as described',
-              'moving': 'Moving',
-              'other': 'Other reason'
-            };
-            bullets.push('Customer wanted to cancel because: <strong>' + (cancelReasons[extra.cancelReason] || extra.cancelReason) + '</strong>');
-          }
-        }
-
-        // FULL CANCELLATION
-        else if (resolution === 'subscription_cancelled') {
-          bullets.push('<strong>Cancel subscription</strong> and process refund');
-
-          if (extra.subscriptionProductName) {
-            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
-          }
-          if (extra.purchaseId) {
-            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
-          }
-          if (extra.cancelReason) {
-            const cancelReasons = {
-              'expensive': 'Too expensive',
-              'too_many': 'Has too many',
-              'not_working': 'Not working as described',
-              'moving': 'Moving',
-              'other': 'Other reason'
-            };
-            bullets.push('Cancel reason: <strong>' + (cancelReasons[extra.cancelReason] || extra.cancelReason) + '</strong>');
-          }
+        // CANCEL
+        else if (actionType === 'cancel' || resolution === 'subscription_cancelled') {
+          actions.push('<strong>Cancel subscription</strong> in Recharge portal');
           if (extra.keepProduct === true) {
-            bullets.push('Customer keeps product — no return needed');
+            actions.push('Customer keeping items &mdash; <strong>no return needed</strong>');
           } else if (extra.keepProduct === false) {
-            bullets.push('Wait for return before processing refund');
+            actions.push('<span style="color:#f59e0b"><strong>Wait for return</strong> before processing refund</span>');
           }
+          if (c.refund_amount) {
+            actions.push('Process refund: <strong>$' + parseFloat(c.refund_amount).toFixed(2) + '</strong>');
+          }
+          notes.push('Consider reaching out with discount offer before finalizing cancellation');
         }
 
-        // SCHEDULE CHANGED
-        else if (resolution === 'schedule_changed') {
+        // DISCOUNT ACCEPTED (Retention)
+        else if (actionType === 'discount_accepted' || resolution === 'discount_applied') {
+          actions.push('<strong>Apply ' + (extra.discountPercent || '?') + '% discount</strong> to all future shipments in Recharge');
+          actions.push('Update subscription with discount code');
+          actions.push('Send confirmation email about the discount');
+          notes.push('Customer was retained &mdash; no cancellation needed');
+        }
+
+        // SCHEDULE CHANGE
+        else if (actionType === 'changeSchedule' || resolution === 'schedule_changed') {
+          actions.push('<strong>Update delivery frequency</strong> in Recharge');
           if (extra.newFrequency) {
-            bullets.push('<strong>Change delivery schedule</strong> to every <strong>' + extra.newFrequency + ' days</strong>');
-          } else {
-            bullets.push('<strong>Change delivery schedule</strong>');
+            actions.push('New schedule: <strong>Every ' + extra.newFrequency + ' days</strong>');
           }
-
-          if (extra.subscriptionProductName) {
-            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
-          }
-          if (extra.purchaseId) {
-            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
-          }
-          if (extra.previousFrequency) {
-            bullets.push('Previous: Every ' + extra.previousFrequency + ' days');
-          }
+          actions.push('Send confirmation email with new schedule');
         }
 
-        // ADDRESS CHANGED
-        else if (resolution === 'address_changed') {
-          bullets.push('<strong>Update shipping address</strong> for subscription');
-
-          if (extra.subscriptionProductName) {
-            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
-          }
-          if (extra.purchaseId) {
-            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
-          }
+        // ADDRESS CHANGE
+        else if (actionType === 'changeAddress' || resolution === 'address_changed') {
+          actions.push('<strong>Update shipping address</strong> in Recharge');
           if (extra.newAddress) {
             const addr = extra.newAddress;
-            const addrStr = [addr.address1, addr.address2, addr.city, addr.state, addr.zip, addr.country].filter(Boolean).join(', ');
-            bullets.push('New address: <strong>' + addrStr + '</strong>');
+            const addrStr = [addr.address1, addr.address2, addr.city, addr.state, addr.zip].filter(Boolean).join(', ');
+            actions.push('New address: <strong>' + escapeHtml(addrStr) + '</strong>');
           }
+          actions.push('Verify address is correct for next shipment');
         }
 
         // FALLBACK
         else {
-          if (extra.actionType) {
-            const actionMap = {
-              'pause': 'Pause subscription',
-              'cancel': 'Cancel subscription',
-              'changeSchedule': 'Change delivery schedule',
-              'changeAddress': 'Update shipping address',
-              'discount_accepted': 'Apply discount to future shipments',
-            };
-            bullets.push('<strong>' + (actionMap[extra.actionType] || extra.actionType) + '</strong>');
-          }
+          actions.push('Review subscription in Recharge and take appropriate action');
+          if (extra.subscriptionProductName) notes.push('Product: ' + escapeHtml(extra.subscriptionProductName));
+        }
 
-          if (extra.subscriptionProductName) {
-            bullets.push('Product: <strong>' + extra.subscriptionProductName + '</strong>');
+        // Add subscription identifiers
+        if (extra.purchaseId) notes.push('Subscription ID: <code>' + extra.purchaseId + '</code>');
+        if (extra.clientOrderId) notes.push('CheckoutChamp Order: <code>' + extra.clientOrderId + '</code>');
+      }
+
+      // ===== SHIPPING CASES =====
+      else if (caseType === 'shipping' || resolution.includes('reship') || resolution.includes('investigation')) {
+
+        if (resolution === 'reship' || resolution === 'reship_missing_item_bonus') {
+          actions.push('<strong>Create replacement shipment</strong> with same items');
+          if (resolution === 'reship_missing_item_bonus') {
+            actions.push('Include <strong>bonus item</strong> for the inconvenience');
           }
-          if (extra.purchaseId) {
-            bullets.push('Subscription ID: <strong>' + extra.purchaseId + '</strong>');
+          actions.push('Provide new tracking number to customer');
+          notes.push('If original package arrives later, customer may keep both (goodwill)');
+        }
+
+        else if (resolution.includes('investigation')) {
+          actions.push('<strong>Open carrier investigation</strong> for missing/lost package');
+          if (extra.trackingNumber) {
+            actions.push('Reference tracking: <code>' + escapeHtml(extra.trackingNumber) + '</code>');
+          }
+          actions.push('Contact customer within 24-48 hours with investigation update');
+          if (c.issue_type === 'delivered_not_received') {
+            notes.push('Package shows delivered but customer claims not received &mdash; may need proof');
           }
         }
 
-        // CheckoutChamp Order ID
-        if (extra.clientOrderId) {
-          bullets.push('CheckoutChamp Order: <strong>' + extra.clientOrderId + '</strong>');
+        else {
+          // Generic shipping resolution
+          if (c.issue_type === 'stuck_in_transit') {
+            actions.push('Check carrier status and escalate if needed');
+            actions.push('If 10+ days with no movement, offer <strong>reship or refund</strong>');
+          } else if (c.issue_type === 'no_tracking') {
+            actions.push('Locate tracking information in Shopify/fulfillment system');
+            actions.push('Provide tracking to customer or escalate to warehouse');
+          } else if (c.issue_type === 'pending_too_long') {
+            actions.push('Check with warehouse on fulfillment status');
+            actions.push('Offer customer option to <strong>cancel</strong> or <strong>wait</strong>');
+          } else {
+            actions.push('Review shipping status and resolve appropriately');
+          }
+        }
+
+        // Add tracking info
+        if (extra.carrierName) notes.push('Carrier: ' + escapeHtml(extra.carrierName));
+        if (extra.trackingNumber && !actions.some(function(a) { return a.includes(extra.trackingNumber); })) {
+          notes.push('Tracking: <code>' + escapeHtml(extra.trackingNumber) + '</code>');
         }
       }
 
-      // ITEMS AFFECTED (all case types)
-      if (c.selected_items) {
-        let items = c.selected_items;
-        try { if (typeof items === 'string') items = JSON.parse(items); } catch(e) {}
-        if (items && items.length > 0) {
-          const itemsStr = items.map(function(item) {
-            return item.title + (item.quantity > 1 ? ' (x' + item.quantity + ')' : '');
-          }).join(', ');
-          bullets.push('<strong>Items:</strong> ' + itemsStr);
+      // ===== REFUND CASES =====
+      else if (caseType === 'refund') {
+        const refundAmt = c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : (extra.refundPercent ? extra.refundPercent + '% of order' : 'TBD');
+
+        if (resolution === 'full_refund') {
+          actions.push('<strong>Process full refund</strong>: ' + refundAmt);
+        } else if (resolution.startsWith('partial_')) {
+          actions.push('<strong>Process partial refund</strong>: ' + refundAmt);
+        } else if (resolution === 'replacement_damaged' || resolution === 'reship_wrong_item') {
+          actions.push('<strong>Send replacement</strong> for ' + (intent === 'damaged' ? 'damaged' : 'incorrect') + ' item');
+          actions.push('Create new shipment and provide tracking');
+        } else {
+          actions.push('<strong>Process refund</strong>: ' + refundAmt);
+        }
+
+        // Return requirement
+        if (extra.keepProduct === true) {
+          actions.push('Customer keeps product &mdash; <strong>no return required</strong>');
+        } else if (extra.keepProduct === false) {
+          actions.push('<span style="color:#f59e0b"><strong>Return required</strong> &mdash; wait for items before processing refund</span>');
+        }
+
+        // Specific guidance based on intent
+        if (intent === 'damaged' && extra.uploadedFiles) {
+          notes.push('Customer provided photos of damage &mdash; review in Evidence section');
+        }
+        if (intent === 'charged_unexpectedly') {
+          notes.push('Customer didn\\'t recognize charge &mdash; verify order legitimacy');
         }
       }
 
-      // CUSTOMER NOTES
-      if (extra.intentDetails) {
-        bullets.push('<strong>Customer said:</strong> <em>"' + extra.intentDetails + '"</em>');
+      // ===== RETURN CASES =====
+      else if (caseType === 'return') {
+        actions.push('<strong>Provide return shipping label</strong> to customer');
+        actions.push('Process refund once return is received and inspected');
+        if (c.refund_amount) {
+          actions.push('Refund amount: <strong>$' + parseFloat(c.refund_amount).toFixed(2) + '</strong>');
+        }
+        notes.push('Inspect returned items for condition before processing');
       }
 
-      // If no details available
-      if (bullets.length === 0) {
-        return '<p style="color:#6c757d;margin:0;font-size:14px;">No additional details available for this case.</p>';
+      // ===== QUALITY DIFFERENCE =====
+      else if (c.issue_type === 'quality_difference' || intent === 'quality_difference') {
+        const qd = extra.qualityDetails || {};
+
+        if (qd.resolutionPath === 'upgrade') {
+          actions.push('<strong>Process upgrade payment</strong> ($20/pad)');
+          if (qd.upgradeTotal) actions.push('Total: <strong>$' + qd.upgradeTotal + '</strong>');
+          actions.push('Ship PuppyPad 2.0 replacements');
+          if (qd.requiresReturn) actions.push('Wait for Original pads to be returned');
+        } else if (qd.resolutionPath === 'refund') {
+          actions.push('<strong>Process full refund</strong> for Original pads');
+          if (qd.requiresReturn) actions.push('Wait for Original pads to be returned first');
+        } else if (qd.resolutionPath === 'free_upgrade') {
+          actions.push('<strong>Ship FREE PuppyPad 2.0</strong> (company goodwill)');
+          actions.push('No charge to customer');
+        } else {
+          actions.push('Review quality issue and determine resolution');
+        }
+
+        if (qd.itemsUsed === true) {
+          notes.push('<span style="color:#f59e0b">Items have been used</span> &mdash; return may not be possible');
+        }
       }
 
-      // Build bullet list HTML
-      return '<ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7;color:#374151;">' +
-        bullets.map(function(b) { return '<li style="margin-bottom:6px;">' + b + '</li>'; }).join('') +
-        '</ul>';
+      // ===== MANUAL / DOG NOT USING =====
+      else if (caseType === 'manual' || intent === 'dog_not_using' || intent === 'other') {
+        if (intent === 'dog_not_using') {
+          actions.push('Review AI-generated training tips that were provided');
+          actions.push('Follow up with personalized advice if needed');
+          actions.push('Offer alternative solutions if training tips didn\\'t help');
+          if (extra.dogs && extra.dogs.length) {
+            const dogNames = extra.dogs.map(function(d) { return d.name || 'their dog'; }).join(', ');
+            notes.push('Dog info provided for ' + dogNames + ' &mdash; tailor advice accordingly');
+          }
+        } else {
+          actions.push('Review case details and customer message');
+          actions.push('Determine appropriate resolution based on situation');
+          actions.push('Respond to customer with solution');
+        }
+      }
+
+      // ===== FALLBACK =====
+      else {
+        actions.push('Review case details and take appropriate action');
+        actions.push('Contact customer if more information is needed');
+      }
+
+      // Build HTML
+      let html = '';
+
+      if (actions.length > 0) {
+        html += '<ul class="cd-resolution-list">';
+        actions.forEach(function(a) { html += '<li>' + a + '</li>'; });
+        html += '</ul>';
+      }
+
+      if (notes.length > 0) {
+        html += '<div class="cd-resolution-notes">';
+        notes.forEach(function(n) { html += '<p>' + n + '</p>'; });
+        html += '</div>';
+      }
+
+      if (!html) {
+        html = '<p class="cd-resolution-empty">No specific resolution steps defined. Review case and respond accordingly.</p>';
+      }
+
+      return html;
     }
 
     async function openCase(caseId) {
