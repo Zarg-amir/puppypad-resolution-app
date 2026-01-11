@@ -9429,15 +9429,129 @@ function getResolutionHubHTML() {
       .case-detail-sidebar { border-left: none; border-top: 1px solid var(--gray-200); }
     }
 
-    /* ===== HYBRID A+C CASE DETAIL STYLES ===== */
-    .case-detail-page-v2 { padding: 0; background: #f8fafc; min-height: 100vh; }
-    .case-detail-header-v2 { display: flex; justify-content: space-between; align-items: center; padding: 16px 32px; background: white; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 10; }
-    .case-detail-header-left-v2 { display: flex; align-items: center; gap: 20px; }
-    .case-detail-title-v2 { font-size: 18px; font-weight: 600; color: var(--brand-navy); border-bottom: 3px solid var(--brand-navy); padding-bottom: 4px; }
-    .case-detail-due-v2 { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--gray-600); background: var(--gray-100); padding: 8px 14px; border-radius: 8px; }
-    .case-detail-due-v2.urgent { background: #fef2f2; color: #dc2626; }
-    .case-detail-due-v2 svg { width: 16px; height: 16px; }
-    .case-detail-content-v2 { max-width: 900px; margin: 0 auto; padding: 28px 32px; }
+    /* ===== REDESIGNED CASE DETAIL STYLES ===== */
+    .cd-page { background: #f8fafc; min-height: 100vh; }
+
+    /* Header */
+    .cd-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 28px; background: white; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 100; }
+    .cd-header-left { display: flex; align-items: center; gap: 16px; }
+    .cd-header-right { display: flex; align-items: center; gap: 12px; }
+    .cd-back-btn { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: transparent; border: 1px solid var(--gray-300); border-radius: 8px; color: var(--gray-700); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .cd-back-btn:hover { background: var(--gray-50); border-color: var(--gray-400); }
+    .cd-type-badge { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; text-transform: capitalize; }
+    .cd-type-badge.refund { background: #fef3c7; color: #b45309; }
+    .cd-type-badge.return { background: #e0e7ff; color: #4338ca; }
+    .cd-type-badge.shipping { background: #dbeafe; color: #1d4ed8; }
+    .cd-type-badge.subscription { background: #f3e8ff; color: #7c3aed; }
+    .cd-type-badge.manual { background: #f1f5f9; color: #475569; }
+    .cd-status-badge { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+    .cd-status-badge.overdue { background: #fef2f2; color: #dc2626; }
+    .cd-status-badge.due-soon { background: #fffbeb; color: #b45309; }
+    .cd-status-badge.on-time { background: #ecfdf5; color: #059669; }
+
+    /* Customer Card */
+    .cd-customer-card { display: flex; align-items: center; justify-content: space-between; padding: 20px 28px; background: white; border-bottom: 1px solid var(--gray-100); }
+    .cd-customer-left { display: flex; align-items: center; gap: 14px; }
+    .cd-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 18px; flex-shrink: 0; }
+    .cd-customer-info { }
+    .cd-customer-name { font-size: 17px; font-weight: 600; color: var(--gray-900); margin-bottom: 2px; }
+    .cd-customer-email { font-size: 14px; color: #3b82f6; text-decoration: none; }
+    .cd-customer-email:hover { text-decoration: underline; }
+    .cd-order-info { text-align: center; }
+    .cd-order-number { font-size: 15px; font-weight: 600; color: var(--gray-800); font-family: monospace; }
+    .cd-order-meta { font-size: 13px; color: var(--gray-500); margin-top: 2px; }
+    .cd-actions-row { display: flex; gap: 8px; }
+    .cd-action-link { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; background: var(--gray-100); color: var(--gray-600); transition: all 0.2s; }
+    .cd-action-link:hover { background: var(--brand-navy); color: white; }
+
+    /* Two Column Layout */
+    .cd-two-col { display: grid; grid-template-columns: 1fr 320px; gap: 0; min-height: calc(100vh - 140px); }
+    @media (max-width: 1024px) { .cd-two-col { grid-template-columns: 1fr; } }
+
+    /* Main Content Column */
+    .cd-main { padding: 24px 28px; background: #f8fafc; overflow-y: auto; }
+    .cd-section { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .cd-section:last-child { margin-bottom: 0; }
+    .cd-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--gray-100); }
+    .cd-section-title { font-size: 15px; font-weight: 600; color: var(--gray-800); margin: 0; }
+    .cd-sop-link { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #3b82f6; text-decoration: none; font-weight: 500; }
+    .cd-sop-link:hover { text-decoration: underline; }
+
+    /* Case Details List */
+    .cd-details-list { list-style: none; padding: 0; margin: 0; }
+    .cd-details-list li { padding: 12px 0; border-bottom: 1px solid var(--gray-100); font-size: 14px; line-height: 1.6; color: var(--gray-700); }
+    .cd-details-list li:last-child { border-bottom: none; padding-bottom: 0; }
+    .cd-details-list li strong { color: var(--gray-900); }
+
+    /* Evidence */
+    .cd-evidence { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--gray-200); }
+    .cd-evidence-title { font-size: 13px; font-weight: 600; color: var(--gray-500); margin-bottom: 12px; }
+    .cd-evidence-links { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* Resolution Box */
+    .cd-resolution-box { background: linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(5,150,105,0.08) 100%); border: 1px solid #10b981; border-radius: 10px; padding: 18px 20px; font-size: 15px; font-weight: 600; color: #047857; line-height: 1.5; }
+
+    /* Notes Section */
+    .cd-notes-count { background: var(--gray-200); color: var(--gray-600); font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px; }
+    .cd-notes-input { display: flex; gap: 10px; margin-bottom: 16px; }
+    .cd-notes-textarea { flex: 1; padding: 12px 14px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; resize: none; transition: border-color 0.2s; }
+    .cd-notes-textarea:focus { border-color: var(--brand-navy); outline: none; }
+    .cd-notes-submit { padding: 12px 20px; background: var(--brand-navy); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+    .cd-notes-submit:hover { background: #2d4a6f; }
+    .cd-notes-list { }
+    .cd-notes-empty { text-align: center; padding: 24px; color: var(--gray-400); font-size: 14px; }
+    .cd-note-item { padding: 14px 0; border-bottom: 1px solid var(--gray-100); }
+    .cd-note-item:last-child { border-bottom: none; }
+    .cd-note-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .cd-note-author { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+    .cd-note-time { font-size: 12px; color: var(--gray-400); }
+    .cd-note-text { font-size: 14px; color: var(--gray-600); line-height: 1.5; }
+
+    /* Sidebar */
+    .cd-sidebar { padding: 24px; background: white; border-left: 1px solid var(--gray-200); overflow-y: auto; }
+    @media (max-width: 1024px) { .cd-sidebar { border-left: none; border-top: 1px solid var(--gray-200); } }
+    .cd-sidebar-section { margin-bottom: 28px; }
+    .cd-sidebar-section:last-child { margin-bottom: 0; }
+    .cd-sidebar-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 14px; }
+
+    /* Status Options */
+    .cd-status-options { display: flex; flex-direction: column; gap: 10px; }
+    .cd-status-option { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--gray-50); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+    .cd-status-option:hover { background: var(--gray-100); }
+    .cd-status-option input { display: none; }
+    .cd-status-radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--gray-300); position: relative; flex-shrink: 0; transition: all 0.2s; }
+    .cd-status-radio::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); width: 8px; height: 8px; border-radius: 50%; background: currentColor; transition: transform 0.2s; }
+    .cd-status-option input:checked + .cd-status-radio::after { transform: translate(-50%, -50%) scale(1); }
+    .cd-status-option input:checked + .cd-status-radio.pending { border-color: #f59e0b; color: #f59e0b; }
+    .cd-status-option input:checked + .cd-status-radio.in-progress { border-color: #3b82f6; color: #3b82f6; }
+    .cd-status-option input:checked + .cd-status-radio.completed { border-color: #10b981; color: #10b981; }
+    .cd-status-label { font-size: 14px; font-weight: 500; color: var(--gray-700); }
+
+    /* Assignee */
+    .cd-assignee { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--gray-50); border-radius: 10px; margin-bottom: 12px; }
+    .cd-assignee-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--gray-300); display: flex; align-items: center; justify-content: center; color: var(--gray-500); font-weight: 600; font-size: 16px; flex-shrink: 0; }
+    .cd-assignee-avatar.assigned { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .cd-assignee-name { font-size: 14px; font-weight: 500; color: var(--gray-700); }
+    .cd-assign-btn { width: 100%; padding: 10px; background: transparent; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--gray-600); cursor: pointer; transition: all 0.2s; }
+    .cd-assign-btn:hover { background: var(--gray-50); border-color: var(--brand-navy); color: var(--brand-navy); }
+
+    /* Timeline */
+    .cd-timeline { }
+    .cd-timeline-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+    .cd-timeline-row:last-child { border-bottom: none; }
+    .cd-timeline-label { font-size: 13px; color: var(--gray-500); }
+    .cd-timeline-value { font-size: 13px; font-weight: 500; color: var(--gray-700); }
+    .cd-timeline-value.overdue { color: #dc2626; font-weight: 600; }
+
+    /* Copy Email Button */
+    .cd-copy-email-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px; background: linear-gradient(135deg, var(--brand-navy) 0%, #2d4a6f 100%); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .cd-copy-email-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(30,58,95,0.25); }
+
+    /* Complete Button */
+    .cd-complete-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 16px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 20px; }
+    .cd-complete-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16,185,129,0.3); }
+
+    /* Legacy styles kept for backwards compatibility */
 
     /* WHO Section */
     .who-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
@@ -9655,207 +9769,168 @@ function getResolutionHubHTML() {
         <div id="auditView" style="display:none"></div>
         <div id="usersView" style="display:none"></div>
 
-        <!-- Case Detail Full Page View - HYBRID A+C -->
+        <!-- Case Detail Full Page View - REDESIGNED -->
         <div id="caseDetailView" style="display:none">
-          <div class="case-detail-page-v2">
+          <div class="cd-page">
             <!-- Header -->
-            <div class="case-detail-header-v2">
-              <div class="case-detail-header-left-v2">
-                <button class="btn btn-secondary" onclick="closeCaseDetail()" style="padding:8px 14px;">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            <div class="cd-header">
+              <div class="cd-header-left">
+                <button class="cd-back-btn" onclick="closeCaseDetail()">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                   Cases
                 </button>
-                <div class="case-detail-title-v2" id="detailCaseTitle">Loading...</div>
               </div>
-              <div class="case-detail-due-v2" id="detailDueBadge">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span id="detailDueText">-</span>
+              <div class="cd-header-right">
+                <span class="cd-type-badge" id="detailTypeBadge">Loading</span>
+                <span class="cd-status-badge" id="detailStatusBadge">-</span>
               </div>
             </div>
 
-            <!-- Main Content -->
-            <div class="case-detail-content-v2">
-              <!-- WHO Section -->
-              <div class="who-section">
-                <div class="who-section-title">WHO</div>
-                <div class="who-info-row">
-                  <div class="who-customer">
-                    <div class="who-customer-avatar" id="detailCustomerAvatar">?</div>
-                    <div class="who-customer-details">
-                      <div class="who-customer-name" id="detailCustomerName">-</div>
-                      <div class="who-customer-email" id="detailCustomerEmail">-</div>
-                    </div>
+            <!-- Customer Card -->
+            <div class="cd-customer-card">
+              <div class="cd-customer-left">
+                <div class="cd-avatar" id="detailCustomerAvatar">?</div>
+                <div class="cd-customer-info">
+                  <div class="cd-customer-name" id="detailCustomerName">Loading...</div>
+                  <a class="cd-customer-email" id="detailCustomerEmail" href="#">-</a>
+                </div>
+              </div>
+              <div class="cd-order-info">
+                <div class="cd-order-number" id="detailOrderNumber">-</div>
+                <div class="cd-order-meta" id="detailOrderDate">-</div>
+              </div>
+              <div class="cd-actions-row">
+                <a class="cd-action-link" id="detailShopifyLink" href="#" target="_blank" title="View in Shopify">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                </a>
+                <a class="cd-action-link" id="detailRichpanelLink" href="#" target="_blank" title="View Conversation">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                </a>
+                <a class="cd-action-link" id="detailReplayLink" href="#" target="_blank" title="Watch Recording">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+                </a>
+              </div>
+            </div>
+
+            <!-- Two Column Layout -->
+            <div class="cd-two-col">
+              <!-- Left Column - Main Content -->
+              <div class="cd-main">
+                <!-- Case Details Section -->
+                <div class="cd-section">
+                  <div class="cd-section-header">
+                    <h3 class="cd-section-title">Case Details</h3>
                   </div>
-                  <div class="who-order">
-                    <div class="who-order-icon">📦</div>
-                    <div class="who-order-details">
-                      <div class="who-order-number" id="detailOrderNumber">-</div>
-                      <div class="who-order-date" id="detailOrderDate">-</div>
-                    </div>
-                  </div>
-                  <div class="who-total">
-                    <div class="who-total-icon">💰</div>
-                    <div class="who-total-amount" id="detailOrderTotal">-</div>
-                    <div class="who-total-label">Total</div>
+                  <ul class="cd-details-list" id="detailResolutionDetails">
+                    <!-- Populated by buildCaseDetailsHtml -->
+                  </ul>
+                  <!-- Evidence Links -->
+                  <div class="cd-evidence" id="detailEvidenceSection" style="display:none;">
+                    <div class="cd-evidence-title">Attached Evidence</div>
+                    <div class="cd-evidence-links" id="detailEvidenceLinks"></div>
                   </div>
                 </div>
-                <div class="who-actions">
-                  <a class="who-action-btn" id="detailRichpanelLink" href="#" target="_blank" style="display:none;">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                    View conversation
-                  </a>
-                  <a class="who-action-btn" id="detailShopifyLink" href="#" target="_blank" style="display:none;">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-                    View Shopify order
-                  </a>
-                  <a class="who-action-btn" id="detailReplayLink" href="#" target="_blank" style="display:none;">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
-                    View session recording
-                  </a>
-                  <a class="who-action-btn" id="detailSOPLink" href="#" target="_blank">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                    View SOP guide
-                  </a>
+
+                <!-- Action Required Section -->
+                <div class="cd-section">
+                  <div class="cd-section-header">
+                    <h3 class="cd-section-title">Action Required</h3>
+                    <a class="cd-sop-link" id="detailSOPLink" href="#" target="_blank">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                      View SOP
+                    </a>
+                  </div>
+                  <div class="cd-resolution-box" id="detailResolutionSummary">
+                    Loading resolution...
+                  </div>
+                </div>
+
+                <!-- Team Notes Section -->
+                <div class="cd-section">
+                  <div class="cd-section-header">
+                    <h3 class="cd-section-title">Team Notes</h3>
+                    <span class="cd-notes-count" id="detailCommentsCount">0</span>
+                  </div>
+                  <div class="cd-notes-input">
+                    <textarea class="cd-notes-textarea" id="detailCommentInput" placeholder="Add a note..." rows="2"></textarea>
+                    <button class="cd-notes-submit" onclick="addCommentFromDetail()">Post</button>
+                  </div>
+                  <div class="cd-notes-list" id="detailCommentsList">
+                    <div class="cd-notes-empty">No notes yet</div>
+                  </div>
                 </div>
               </div>
 
-              <!-- ASSIGNEE & TIMELINE Row -->
-              <div class="assignee-timeline-row">
-                <!-- Assignee Box -->
-                <div class="section-box">
-                  <div class="section-box-title">ASSIGNEE</div>
-                  <div class="assignee-content">
-                    <div class="assignee-avatar-lg" id="detailAssigneeAvatar">?</div>
-                    <div class="assignee-details">
-                      <div class="assignee-name-lg" id="detailAssigneeName">Unassigned</div>
-                      <div class="assignee-role-lg" id="detailAssigneeRole">-</div>
-                      <div class="assignee-date" id="detailAssigneeDate">-</div>
+              <!-- Right Column - Sidebar -->
+              <div class="cd-sidebar">
+                <!-- Status Section -->
+                <div class="cd-sidebar-section">
+                  <div class="cd-sidebar-title">Status</div>
+                  <div class="cd-status-options">
+                    <label class="cd-status-option">
+                      <input type="radio" name="caseStatus" value="pending" onchange="updateStatus('pending')">
+                      <span class="cd-status-radio pending"></span>
+                      <span class="cd-status-label">Pending</span>
+                    </label>
+                    <label class="cd-status-option">
+                      <input type="radio" name="caseStatus" value="in_progress" onchange="updateStatus('in_progress')">
+                      <span class="cd-status-radio in-progress"></span>
+                      <span class="cd-status-label">In Progress</span>
+                    </label>
+                    <label class="cd-status-option">
+                      <input type="radio" name="caseStatus" value="completed" onchange="updateStatus('completed')">
+                      <span class="cd-status-radio completed"></span>
+                      <span class="cd-status-label">Completed</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Assigned Section -->
+                <div class="cd-sidebar-section">
+                  <div class="cd-sidebar-title">Assigned To</div>
+                  <div class="cd-assignee">
+                    <div class="cd-assignee-avatar" id="detailAssigneeAvatar">?</div>
+                    <div class="cd-assignee-info">
+                      <div class="cd-assignee-name" id="detailAssigneeName">Unassigned</div>
                     </div>
                   </div>
-                  <button class="btn btn-secondary btn-reassign" onclick="showAssignModal()">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                    Reassign
+                  <button class="cd-assign-btn" onclick="showAssignModal()">Assign</button>
+                </div>
+
+                <!-- Timeline Section -->
+                <div class="cd-sidebar-section">
+                  <div class="cd-sidebar-title">Timeline</div>
+                  <div class="cd-timeline">
+                    <div class="cd-timeline-row">
+                      <span class="cd-timeline-label">Created</span>
+                      <span class="cd-timeline-value" id="detailCreatedAt">-</span>
+                    </div>
+                    <div class="cd-timeline-row">
+                      <span class="cd-timeline-label">Due</span>
+                      <span class="cd-timeline-value" id="detailDueDate">-</span>
+                    </div>
+                    <div class="cd-timeline-row">
+                      <span class="cd-timeline-label">Updated</span>
+                      <span class="cd-timeline-value" id="detailUpdatedAt">-</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Quick Actions Section -->
+                <div class="cd-sidebar-section">
+                  <div class="cd-sidebar-title">Quick Actions</div>
+                  <button class="cd-copy-email-btn" onclick="copyEmailTemplate()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                    Copy Email Template
                   </button>
                 </div>
 
-                <!-- Timeline Box -->
-                <div class="section-box">
-                  <div class="section-box-title">TIMELINE</div>
-                  <div class="timeline-content">
-                    <div class="timeline-item">
-                      <span class="timeline-item-label">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        Created
-                      </span>
-                      <span class="timeline-item-value" id="detailCreatedAt">-</span>
-                    </div>
-                    <div class="timeline-item">
-                      <span class="timeline-item-label">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        Due
-                      </span>
-                      <span class="timeline-item-value" id="detailDueDate">-</span>
-                    </div>
-                    <div class="timeline-item">
-                      <span class="timeline-item-label">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        Last Updated
-                      </span>
-                      <span class="timeline-item-value" id="detailUpdatedAt">-</span>
-                    </div>
-                  </div>
-                  <button class="btn btn-secondary btn-reassign" onclick="showEditDueDateModal()" style="margin-top:12px;">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                    Edit Due Date
-                  </button>
-                </div>
-              </div>
-
-              <!-- WHAT Section -->
-              <div class="what-section highlight" id="whatSection">
-                <div class="what-section-title">WHAT</div>
-                <div class="what-resolution" id="detailResolutionSummary">
-                  <span class="what-resolution-icon">🎯</span>
-                  <span>Loading resolution...</span>
-                </div>
-                <ul class="what-details" id="detailResolutionDetails">
-                  <!-- Populated dynamically -->
-                </ul>
-                <!-- Evidence Links -->
-                <div class="what-evidence" id="detailEvidenceSection" style="display:none;">
-                  <div class="what-evidence-title">Attached Evidence</div>
-                  <div class="what-evidence-links" id="detailEvidenceLinks">
-                    <!-- Populated dynamically -->
-                  </div>
-                </div>
-              </div>
-
-              <!-- HOW Section (Completion Steps) -->
-              <div class="how-section">
-                <div class="how-section-title">HOW (Complete these steps)</div>
-                <div class="how-steps" id="detailHowSteps">
-                  <!-- Populated dynamically based on case type -->
-                </div>
-              </div>
-
-              <!-- Email Template Section -->
-              <div class="email-template-section">
-                <div class="email-template-title">EMAIL TEMPLATE</div>
-                <select class="email-template-select" id="emailTemplateSelect" onchange="updateEmailTemplatePreview()">
-                  <option value="">Select a template...</option>
-                  <option value="initial">Initial Response</option>
-                  <option value="request_info">Request More Information</option>
-                  <option value="refund_confirm">Refund Confirmation</option>
-                  <option value="replacement">Replacement Shipped</option>
-                  <option value="resolution">Resolution Offer</option>
-                  <option value="closed">Case Closed</option>
-                </select>
-                <div class="email-template-preview" id="emailTemplatePreview" style="display:none;">
-                  <div class="email-template-preview-subject" id="emailTemplateSubject">Subject line here</div>
-                  <div class="email-template-preview-body" id="emailTemplateBody">Email body here...</div>
-                </div>
-                <button class="email-copy-btn" onclick="copyEmailTemplate()" id="emailCopyBtn" style="display:none;">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-                  Copy Template
+                <!-- Complete Case Button -->
+                <button class="cd-complete-btn" onclick="showCompletionChecklist()" id="completeCaseBtn">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  Complete Case
                 </button>
-                <div class="email-disclaimer">
-                  <div class="email-disclaimer-icon">⚠️</div>
-                  <div class="email-disclaimer-text">
-                    <strong>IMPORTANT:</strong> This template is a starting point only. Always review and personalize before sending. Small tweaks may be needed based on the specific situation. <strong>Never send without reading first.</strong>
-                  </div>
-                </div>
               </div>
-
-              <!-- Complete Case Section -->
-              <div class="complete-case-section" id="completeCaseSection">
-                <button class="complete-case-btn" onclick="showCompletionChecklist()" id="completeCaseBtn">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                  COMPLETE THIS CASE
-                </button>
-                <div class="complete-case-hint">(Finish all steps first)</div>
-              </div>
-
-              <!-- Comments Section -->
-              <div class="comments-section">
-                <div class="comments-section-header">
-                  <div class="comments-section-title">COMMENTS <span class="comments-badge" id="detailCommentsCount">0</span></div>
-                  <button class="comments-add-btn" onclick="focusCommentInput()">+ Add</button>
-                </div>
-                <div class="comment-input-wrapper">
-                  <div class="comment-input-hint">Type @ to mention a team member</div>
-                  <textarea class="comment-textarea" id="detailCommentInput" placeholder="Add a comment..." rows="3" oninput="handleCommentInput(event)" onkeydown="handleCommentKeydown(event)"></textarea>
-                  <div class="mention-dropdown" id="mentionDropdown">
-                    <!-- Populated dynamically with hub users -->
-                  </div>
-                  <div class="comment-submit-row">
-                    <button class="comment-submit-btn" onclick="addCommentFromDetail()">Post Comment</button>
-                  </div>
-                </div>
-                <div class="comments-list-v2" id="detailCommentsList">
-                  <!-- Comments populated dynamically -->
-                </div>
-              </div>
-
             </div>
           </div>
         </div>
@@ -11889,7 +11964,6 @@ function getResolutionHubHTML() {
       // Show full page view instead of modal
       hideAllViews();
       document.getElementById('caseDetailView').style.display = 'block';
-      document.getElementById('detailCaseTitle').textContent = 'Loading...';
       document.getElementById('detailCustomerName').textContent = 'Loading...';
 
       // Update URL with case ID
@@ -11925,8 +11999,6 @@ function getResolutionHubHTML() {
         console.error('[openCase] Error loading case:', e);
         const nameEl = document.getElementById('detailCustomerName');
         if (nameEl) nameEl.textContent = 'Error: ' + e.message;
-        const titleEl = document.getElementById('detailCaseTitle');
-        if (titleEl) titleEl.textContent = 'Error Loading Case';
       }
     }
 
@@ -11934,33 +12006,37 @@ function getResolutionHubHTML() {
       const customerName = c.customer_name || c.customer_email?.split('@')[0] || 'Customer';
       const statusClass = (c.status||'pending').replace('_','-');
 
-      // Header - Case Title
-      const titleEl = document.getElementById('detailCaseTitle');
-      if (titleEl) {
-        titleEl.textContent = customerName + "'s " + (c.case_type || 'Case').charAt(0).toUpperCase() + (c.case_type || 'case').slice(1) + " Case";
+      // Header - Type badge
+      const typeBadge = document.getElementById('detailTypeBadge');
+      if (typeBadge) {
+        typeBadge.textContent = c.case_type || 'Case';
+        typeBadge.className = 'cd-type-badge ' + (c.case_type || 'manual');
       }
 
-      // Due badge in header
-      const dueBadge = document.getElementById('detailDueBadge');
-      const dueText = document.getElementById('detailDueText');
-      if (c.created_at && dueBadge && dueText) {
+      // Header - Status badge (due status)
+      const statusBadge = document.getElementById('detailStatusBadge');
+      if (c.created_at && statusBadge) {
         const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
         const now = Date.now();
         const hoursLeft = Math.max(0, Math.round((dueDate.getTime() - now) / (1000*60*60)));
         if (c.status === 'completed') {
-          dueText.textContent = 'Completed';
-          dueBadge.classList.remove('urgent');
+          statusBadge.textContent = 'Completed';
+          statusBadge.className = 'cd-status-badge on-time';
         } else if (now > dueDate.getTime()) {
-          dueText.textContent = 'OVERDUE';
-          dueBadge.classList.add('urgent');
+          statusBadge.textContent = 'OVERDUE';
+          statusBadge.className = 'cd-status-badge overdue';
         } else if (hoursLeft <= 4) {
-          dueText.textContent = 'Due in ' + hoursLeft + ' hours';
-          dueBadge.classList.add('urgent');
+          statusBadge.textContent = 'Due Soon';
+          statusBadge.className = 'cd-status-badge due-soon';
         } else {
-          dueText.textContent = 'Due in ' + hoursLeft + ' hours';
-          dueBadge.classList.remove('urgent');
+          statusBadge.textContent = 'On Time';
+          statusBadge.className = 'cd-status-badge on-time';
         }
       }
+
+      // Set status radio buttons
+      const statusRadio = document.querySelector('input[name="caseStatus"][value="' + (c.status || 'pending') + '"]');
+      if (statusRadio) statusRadio.checked = true;
 
       // WHO Section - Customer info
       document.getElementById('detailCustomerName').textContent = customerName;
@@ -12016,24 +12092,18 @@ function getResolutionHubHTML() {
       const assigneeName = c.assigned_to_name || c.assigned_to || null;
       const assigneeAvatar = document.getElementById('detailAssigneeAvatar');
       const assigneeNameEl = document.getElementById('detailAssigneeName');
-      const assigneeRoleEl = document.getElementById('detailAssigneeRole');
-      const assigneeDateEl = document.getElementById('detailAssigneeDate');
       if (assigneeName) {
         if (assigneeAvatar) {
           assigneeAvatar.textContent = assigneeName.charAt(0).toUpperCase();
-          assigneeAvatar.classList.remove('unassigned');
+          assigneeAvatar.classList.add('assigned');
         }
         if (assigneeNameEl) assigneeNameEl.textContent = assigneeName;
-        if (assigneeRoleEl) assigneeRoleEl.textContent = c.assigned_to_role || 'Team Member';
-        if (assigneeDateEl) assigneeDateEl.textContent = c.assigned_at ? 'Assigned: ' + formatDate(c.assigned_at) : '';
       } else {
         if (assigneeAvatar) {
           assigneeAvatar.textContent = '?';
-          assigneeAvatar.classList.add('unassigned');
+          assigneeAvatar.classList.remove('assigned');
         }
         if (assigneeNameEl) assigneeNameEl.textContent = 'Unassigned';
-        if (assigneeRoleEl) assigneeRoleEl.textContent = 'Click to assign';
-        if (assigneeDateEl) assigneeDateEl.textContent = '';
       }
 
       // TIMELINE Section
@@ -12045,36 +12115,32 @@ function getResolutionHubHTML() {
       if (c.created_at && dueEl) {
         const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
         const isOverdue = Date.now() > dueDate.getTime() && c.status !== 'completed';
-        const dueDateStr = dueDate.toLocaleDateString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        const dueDateStr = dueDate.toLocaleDateString('en-US', {month:'short',day:'numeric'});
         if (c.status === 'completed') {
-          dueEl.innerHTML = '<span style="color:#10b981;">Completed</span>';
-          dueEl.classList.remove('urgent', 'warning');
+          dueEl.textContent = 'Completed';
+          dueEl.classList.remove('overdue');
         } else if (isOverdue) {
-          dueEl.innerHTML = '<span>OVERDUE</span>';
-          dueEl.classList.add('urgent');
-          dueEl.classList.remove('warning');
+          dueEl.textContent = 'OVERDUE';
+          dueEl.classList.add('overdue');
         } else {
           dueEl.textContent = dueDateStr;
-          const hoursLeft = Math.round((dueDate.getTime() - Date.now()) / (1000*60*60));
-          if (hoursLeft <= 4) {
-            dueEl.classList.add('warning');
-          } else {
-            dueEl.classList.remove('urgent', 'warning');
-          }
+          dueEl.classList.remove('overdue');
         }
       }
 
-      // WHAT Section - Resolution summary
+      // Resolution summary (Action Required section)
       const resolutionSummary = document.getElementById('detailResolutionSummary');
       if (resolutionSummary) {
-        resolutionSummary.innerHTML = '<span class="what-resolution-icon">🎯</span><span>' + escapeHtml(formatResolution(c.resolution, c.refund_amount)) + '</span>';
+        resolutionSummary.textContent = formatResolution(c.resolution, c.refund_amount);
       }
 
-      // WHAT - Resolution details
+      // Case Details - use buildCaseDetailsHtml for comprehensive bullet points
       const detailsList = document.getElementById('detailResolutionDetails');
       if (detailsList) {
-        const details = buildResolutionDetailsList(c);
-        detailsList.innerHTML = details.map(d => '<li>' + escapeHtml(d) + '</li>').join('');
+        const detailsHtml = buildCaseDetailsHtml(c);
+        // buildCaseDetailsHtml returns HTML string with <ul> already, extract li items
+        // Or just put the HTML directly
+        detailsList.innerHTML = detailsHtml || '<li>Review case details in Shopify</li>';
       }
 
       // WHAT - Evidence links
