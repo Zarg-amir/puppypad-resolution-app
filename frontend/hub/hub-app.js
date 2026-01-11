@@ -2518,3 +2518,150 @@ window.HubKeyboard = HubKeyboard;
 window.HubSOPLinks = HubSOPLinks;
 window.HubEnhancedAuditLog = HubEnhancedAuditLog;
 window.HubValidation = HubValidation;
+
+// ============================================
+// GLOBAL WRAPPER FUNCTIONS
+// These provide backwards compatibility with HTML onclick handlers
+// ============================================
+
+// Navigation
+window.showPage = (page, filter) => HubNavigation.goto(page, filter);
+window.navigateTo = (page, filter) => HubNavigation.goto(page, filter);
+
+// Cases
+window.openCase = (caseId) => HubCases.openCase(caseId);
+window.closeCase = () => HubCases.closeDetail();
+window.loadCasesView = () => HubCases.loadCases();
+window.updateCaseStatus = (status) => HubCases.updateStatus(status);
+window.navigateCase = (direction) => HubCases.navigateCase(direction);
+
+// Bulk Actions
+window.toggleCaseSelect = (caseId) => HubBulkActions.toggleSelect(caseId);
+window.selectAllCases = () => HubBulkActions.selectAll();
+window.deselectAllCases = () => HubBulkActions.deselectAll();
+window.bulkUpdateStatus = (status) => HubBulkActions.updateStatus(status);
+
+// Auth
+window.handleLogin = (event) => {
+  event.preventDefault();
+  const username = document.getElementById('loginUsername')?.value;
+  const password = document.getElementById('loginPassword')?.value;
+  HubAuth.login(username, password).then(result => {
+    if (result.success) {
+      HubApp.init();
+    } else {
+      const errorEl = document.getElementById('loginError');
+      if (errorEl) {
+        errorEl.textContent = result.error || 'Login failed';
+        errorEl.style.display = 'block';
+      }
+    }
+  });
+};
+window.logout = () => HubAuth.logout();
+
+// UI
+window.showToast = (message, type) => HubUI.showToast(message, type);
+window.refresh = () => HubUI.refresh();
+window.closeModal = () => HubUI.closeModal();
+
+// Users
+window.showUserManagement = () => HubUsers.showManagement();
+window.assignCase = (userId, userName) => HubUsers.assignToUser(userId, userName);
+
+// Views
+window.saveView = () => HubViews.save();
+window.applyView = (viewId) => HubViews.apply(viewId);
+window.deleteView = (viewId) => HubViews.delete(viewId);
+
+// Assignment
+window.showAssignmentQueue = () => HubAssignment.showQueue();
+
+// Audit Log
+window.showAuditLog = () => HubEnhancedAuditLog.show();
+
+// Profile modal wrapper
+window.showProfileModal = () => {
+  const user = HubState.currentUser || {};
+  HubUI.showModal(`
+    <div class="modal-header" style="padding:20px 24px;">
+      <div class="modal-title" style="font-size:18px;">Edit Profile</div>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:24px;">
+      <div class="form-group">
+        <label>Display Name</label>
+        <input type="text" id="profileName" class="form-input" value="${user.name || ''}" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="profileEmail" class="form-input" value="${user.username || ''}" readonly>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:16px;" onclick="updateProfile()">Save Changes</button>
+    </div>
+  `);
+};
+
+window.updateProfile = async () => {
+  const name = document.getElementById('profileName')?.value;
+  if (name && HubState.currentUser) {
+    HubState.currentUser.name = name;
+    localStorage.setItem('hub_user', JSON.stringify(HubState.currentUser));
+    HubUI.showToast('Profile updated', 'success');
+    HubUI.closeModal();
+    // Update sidebar display
+    const userNameEl = document.querySelector('.user-name');
+    const avatarEl = document.querySelector('.user-avatar');
+    if (userNameEl) userNameEl.textContent = name;
+    if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
+  }
+};
+
+// Filter helpers
+window.filterSessions = (filter) => {
+  window.currentSessionFilter = filter;
+  // Update tab buttons
+  document.querySelectorAll('[id^="tab"]').forEach(btn => {
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-secondary');
+  });
+  const activeTab = document.getElementById('tab' + filter.charAt(0).toUpperCase() + filter.slice(1));
+  if (activeTab) {
+    activeTab.classList.remove('btn-secondary');
+    activeTab.classList.add('btn-primary');
+  }
+  // Re-render sessions with filter
+  if (typeof renderFilteredSessions === 'function') {
+    renderFilteredSessions(filter);
+  }
+};
+
+// Utility functions
+window.formatDate = (d) => {
+  if (!d) return '-';
+  try {
+    return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  } catch { return '-'; }
+};
+
+window.timeAgo = (timestamp) => {
+  if (!timestamp) return '-';
+  const now = Date.now();
+  const date = new Date(timestamp).getTime();
+  const diff = now - date;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return minutes + 'm ago';
+  if (hours < 24) return hours + 'h ago';
+  if (days < 7) return days + 'd ago';
+  return formatDate(timestamp);
+};
+
+window.escapeHtml = (text) => {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+};
