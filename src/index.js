@@ -11854,8 +11854,22 @@ function getResolutionHubHTML() {
           html = '<p class="cd-issue-headline"><strong>Order Pending Too Long</strong></p>';
           html += '<p>Customer\\'s order has been <strong>pending for too long</strong> without being shipped.</p>';
         } else {
-          html = '<p class="cd-issue-headline"><strong>Shipping Issue</strong></p>';
-          html += '<p>Customer is experiencing a <strong>shipping problem</strong> with their order.</p>';
+          // Provide more specific context based on available data
+          const orderNum = c.order_number || extra.orderNumber || '';
+          const productName = c.product_name || extra.productName || '';
+          const trackingStatus = extra.trackingStatus || '';
+
+          html = '<p class="cd-issue-headline"><strong>Shipping Issue</strong>' + (orderNum ? ' &mdash; Order ' + escapeHtml(orderNum) : '') + '</p>';
+
+          if (trackingStatus === 'in_transit') {
+            html += '<p>Customer is concerned about their order that is <strong>currently in transit</strong>. They may be asking about delivery timeframe or tracking updates.</p>';
+          } else if (trackingStatus === 'delivered') {
+            html += '<p>Tracking shows <strong>delivered</strong> but customer has concerns. Verify delivery details and resolve.</p>';
+          } else if (trackingStatus === 'pending' || trackingStatus === 'info_received') {
+            html += '<p>Customer\\'s order is <strong>awaiting shipment</strong>. Verify fulfillment status and provide update.</p>';
+          } else {
+            html += '<p>Customer needs assistance with their order shipment.' + (productName ? ' Product: <strong>' + escapeHtml(productName) + '</strong>.' : '') + '</p>';
+          }
         }
 
         // Shipping details
@@ -11863,6 +11877,7 @@ function getResolutionHubHTML() {
         if (extra.trackingNumber) bullets.push('<strong>Tracking #:</strong> <code>' + escapeHtml(extra.trackingNumber) + '</code>');
         if (extra.trackingStatus) bullets.push('<strong>Last Status:</strong> ' + escapeHtml(extra.trackingStatus));
         if (daysInTransit) bullets.push('<strong>Days in Transit:</strong> ' + daysInTransit);
+        if (c.order_number && !bullets.some(b => b.includes(c.order_number))) bullets.push('<strong>Order:</strong> ' + escapeHtml(c.order_number));
       }
 
       // ===== REFUND/RETURN CASES =====
@@ -12065,7 +12080,9 @@ function getResolutionHubHTML() {
 
         // FALLBACK
         else {
-          actions.push('Review subscription in Recharge and take appropriate action');
+          actions.push('Log into <strong>Recharge</strong> and locate customer subscription');
+          actions.push('Review subscription status and any pending orders');
+          actions.push('Address customer request and send confirmation email');
           if (extra.subscriptionProductName) notes.push('Product: ' + escapeHtml(extra.subscriptionProductName));
         }
 
@@ -12109,7 +12126,28 @@ function getResolutionHubHTML() {
             actions.push('Check with warehouse on fulfillment status');
             actions.push('Offer customer option to <strong>cancel</strong> or <strong>wait</strong>');
           } else {
-            actions.push('Review shipping status and resolve appropriately');
+            // More specific fallback based on tracking status
+            const trackingStatus = extra.trackingStatus || '';
+            if (trackingStatus === 'in_transit') {
+              actions.push('Verify tracking status in carrier portal');
+              actions.push('If delivery is delayed, <strong>update customer</strong> with expected timeframe');
+              actions.push('If package appears stuck (7+ days), offer <strong>reship or refund</strong>');
+            } else if (trackingStatus === 'delivered') {
+              actions.push('Verify delivery details (date, time, location)');
+              actions.push('Ask customer to check with neighbors/building manager');
+              actions.push('If not found, initiate <strong>carrier investigation</strong> or offer <strong>reship</strong>');
+            } else if (trackingStatus === 'pending' || trackingStatus === 'info_received') {
+              actions.push('Check fulfillment status in Shopify');
+              actions.push('Contact warehouse if order hasn\\'t shipped');
+              actions.push('Provide estimated ship date to customer');
+            } else {
+              actions.push('Check order status in <strong>Shopify</strong>');
+              actions.push('Verify tracking in carrier portal');
+              actions.push('Update customer with current status');
+              if (extra.trackingNumber) {
+                actions.push('Tracking: <code>' + escapeHtml(extra.trackingNumber) + '</code>');
+              }
+            }
           }
         }
 
@@ -12204,8 +12242,11 @@ function getResolutionHubHTML() {
 
       // ===== FALLBACK =====
       else {
-        actions.push('Review case details and take appropriate action');
-        actions.push('Contact customer if more information is needed');
+        actions.push('Review customer message and order history in <strong>Shopify</strong>');
+        actions.push('Check <strong>Richpanel conversation</strong> for full context');
+        actions.push('Respond to customer with appropriate solution');
+        if (c.order_number) notes.push('Order: <code>' + escapeHtml(c.order_number) + '</code>');
+        if (c.customer_email) notes.push('Customer: ' + escapeHtml(c.customer_email));
       }
 
       // Build HTML
