@@ -2055,7 +2055,8 @@ async function showIntentOptions() {
 
 async function handleIntent(intent) {
   state.intent = intent;
-  
+  state.issueType = intent; // Also set issueType for case submission
+
   switch (intent) {
     case 'dog_not_using':
       await handleDogNotUsing();
@@ -2226,6 +2227,10 @@ async function submitDogInfo() {
   }
 
   const methodsTried = document.getElementById('methodsTried')?.value.trim();
+
+  // Store dog info in state for case submission
+  state.dogs = dogs;
+  state.methodsTried = methodsTried;
 
   document.getElementById('dogInfoForm')?.closest('.interactive-content').remove();
 
@@ -2901,6 +2906,10 @@ async function submitCase(caseType, resolution, options = {}) {
 
     // Issue type for clear categorization
     issueType: options.issueType || state.issueType || '',
+
+    // Dog info (for dog_not_using cases)
+    dogs: options.dogs || state.dogs || null,
+    methodsTried: options.methodsTried || state.methodsTried || '',
 
     // Timestamps
     createdAt: new Date().toISOString(),
