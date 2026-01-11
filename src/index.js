@@ -11743,7 +11743,7 @@ function getResolutionHubHTML() {
         'checklist_completed': { label: 'Checklist Completed', color: '#10b981' },
         'webhook_update': { label: 'External Update', color: '#06b6d4' }
       };
-      return configs[type] || { label: type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Activity', color: '#6b7280' };
+      return configs[type] || { label: type?.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase()) || 'Activity', color: '#6b7280' };
     }
 
     function formatActivityDetails(activity) {
