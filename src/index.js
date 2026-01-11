@@ -10417,10 +10417,12 @@ function getResolutionHubHTML() {
     }
 
     // Version marker for debugging - check with: console.log(window.HUB_VERSION)
-    window.HUB_VERSION = '2026-01-11-v2';
+    window.HUB_VERSION = '2026-01-11-v3';
+    console.log('[Hub] Version:', window.HUB_VERSION);
 
     // Resolution code to human-readable text (MUST be defined before renderCaseRow)
     function formatResolution(code, amount) {
+      console.log('[formatResolution] code:', code, 'amount:', amount);
       if (!code) return '-';
       const amountStr = amount ? '$' + parseFloat(amount).toFixed(2) : '';
       const map = {
@@ -10479,7 +10481,9 @@ function getResolutionHubHTML() {
 
     // Calculate due date status for a case (24h from creation)
     function getDueStatus(caseItem) {
+      console.log('[getDueStatus] caseItem:', caseItem?.case_id, 'created_at:', caseItem?.created_at);
       if (!caseItem || !caseItem.created_at) {
+        console.log('[getDueStatus] Returning - because no created_at');
         return { text: '-', class: '' };
       }
       try {
@@ -10503,8 +10507,10 @@ function getResolutionHubHTML() {
 
     // Render a single case row for the table
     function renderCaseRow(c) {
+      console.log('[renderCaseRow] case:', c?.case_id, 'resolution:', c?.resolution, 'created_at:', c?.created_at);
       const due = getDueStatus(c);
       const res = formatResolution(c.resolution, c.refund_amount);
+      console.log('[renderCaseRow] computed - due:', due?.text, 'res:', res);
       return '<tr>'+
         '<td onclick="event.stopPropagation()"><input type="checkbox" class="case-checkbox" data-case-id="'+c.case_id+'" onchange="toggleCaseSelect(\\''+c.case_id+'\\')" style="width:16px;height:16px;cursor:pointer;"></td>'+
         '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="case-id">'+c.case_id+'</span></td>'+
@@ -10621,6 +10627,11 @@ function getResolutionHubHTML() {
           return;
         }
         const d = await r.json();
+        console.log('[loadCasesView] API returned', d.cases?.length, 'cases');
+        if (d.cases?.length > 0) {
+          console.log('[loadCasesView] Sample case keys:', Object.keys(d.cases[0]));
+          console.log('[loadCasesView] Sample case data:', JSON.stringify(d.cases[0]));
+        }
         casesList = d.cases || [];
 
         view.innerHTML = '<div class="cases-filters" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">'+
