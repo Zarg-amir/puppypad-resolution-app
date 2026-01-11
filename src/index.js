@@ -92,9 +92,9 @@ import {
   escapeHtml,
   cleanPhoneNumber,
   cleanOrderNumber,
-  formatResolution,
   formatTrackingStatus
 } from './utils/formatters.js';
+// Note: formatResolution is defined locally with more comprehensive mappings
 
 // ============================================
 // EASY CONFIG: PERSONA PROMPTS (Amy, Claudia)
@@ -789,95 +789,9 @@ const PRODUCT_DOC_MAP = {
 };
 
 // ============================================
-// CLICKUP CONFIGURATION
+// WORKER ENTRY POINT
+// Note: CLICKUP_CONFIG, SOP_URLS, runMigrations are imported from modules
 // ============================================
-const CLICKUP_CONFIG = {
-  lists: {
-    refundRequests: '901518836463',
-    returnRequests: '901519002456',
-    shippingIssues: '901519012573',
-    subscriptionManagement: '901519256086',
-    manualHelp: '901519256097'
-  },
-  fields: {
-    caseId: '8edc1dca-f349-4663-ab04-be7e1a1c6732',
-    emailAddress: '200cbfa0-5bdf-4a90-910e-986ee1fbbed1',
-    resolution: '44a77a25-2b98-4b79-b1f0-caf2a67a137a',
-    orderNumber: '5f89f376-9bf7-45dd-a06b-ffafda305260',
-    orderUrl: '71ece2eb-d082-4135-8a11-fb6a1b1c90f4',
-    conversationUrl: 'c9e884af-bfa8-4b79-bffe-fed6a8e3fa8f',
-    refundAmount: '3a85cb2e-2607-487c-9aaf-5d22b018aae2',
-    selectedItems: 'aabe9246-54fd-4b8b-b8e2-09347265aa06',
-    orderIssue: '3602bb2f-d07b-48aa-97f3-3590a06b35d4',
-    returnStatus: 'f1bc2f2f-3f5b-4b85-a316-6f74675a8e32',
-    trackingUrl: 'f443b9bd-3044-464b-a2db-ac45d09daf91',
-    carrierIssue: 'e058af04-bb11-4d65-9ade-f1810ae16b22',
-    subscriptionStatus: '05c30d78-d38b-437b-8fbb-42094dcba3ed',
-    actionType: 'a13af7b6-b656-4e9a-9e3a-663d386ad867'
-  },
-  options: {
-    returnStatus: {
-      awaitingReturn: '8fdc441c-d187-45a2-8375-d8226e86568c',
-      inTransit: '6be07ee9-2124-4325-9895-7f6fd775b1e3',
-      delivered: 'caa19b8c-c229-4390-9a49-6a2a89cbdc4c',
-      failed: 'e17dbd41-4ce3-405e-b86f-fe2390b6622d'
-    },
-    carrierIssue: {
-      addressCorrection: '61ee026a-deaa-4a36-8f4b-6fb03d26eeb2',
-      failedDelivery: '45e02527-7941-44d0-85e1-0e9d53ad0cb3',
-      exception: 'b68f8a6d-e4f2-4125-89a2-0c345325bbea',
-      expiredTracking: '6f126cd4-8382-4887-8728-d5b4f8243cb1',
-      extendedTransit: '89258fc3-145e-4610-bf2e-f2cb05467900',
-      deliveredNotReceived: '9c631d27-f8a4-495f-94f8-e278cb6ca8c6'
-    },
-    subscriptionStatus: {
-      active: 'd3cef57a-a2ac-4c42-a6ae-2b3c5eb6d615',
-      paused: 'd042ffdb-00b7-46ef-b571-d9a6064248de',
-      cancelled: '6402e72a-b4b3-48de-953c-4f976f5b6bbf'
-    },
-    actionType: {
-      pause: '1d307432-947e-4d54-b3ba-ffb1312d417e',
-      cancel: 'aba9ab01-45c0-42be-9f3d-31ecbaf31e60',
-      changeSchedule: '20da5eba-2e35-427d-9cdc-d715f168735f',
-      changeAddress: 'e33586ef-3502-4995-bb27-98f954846810'
-    }
-  }
-};
-
-// SOP URLs for each case type (placeholder URLs - update with actual SOP links)
-const SOP_URLS = {
-  refund: 'https://docs.puppypad.com/sop/refunds',
-  return: 'https://docs.puppypad.com/sop/returns',
-  shipping: 'https://docs.puppypad.com/sop/shipping-issues',
-  subscription: 'https://docs.puppypad.com/sop/subscriptions',
-  manual: 'https://docs.puppypad.com/sop/manual-assistance',
-  quality_difference: 'https://docs.puppypad.com/sop/quality-difference',
-  trouble_report: 'https://docs.puppypad.com/sop/trouble-reports'
-};
-
-// Database migrations - add missing columns
-let migrationsRun = false;
-async function runMigrations(env) {
-  if (migrationsRun || !env.ANALYTICS_DB) return;
-  migrationsRun = true;
-
-  const migrations = [
-    'ALTER TABLE cases ADD COLUMN extra_data TEXT',
-    'ALTER TABLE cases ADD COLUMN issue_type TEXT',
-  ];
-
-  for (const sql of migrations) {
-    try {
-      await env.ANALYTICS_DB.prepare(sql).run();
-      console.log('Migration success:', sql.substring(0, 50));
-    } catch (e) {
-      // Column likely already exists - ignore
-      if (!e.message.includes('duplicate column')) {
-        console.log('Migration skipped:', e.message.substring(0, 50));
-      }
-    }
-  }
-}
 
 export default {
   async fetch(request, env, ctx) {
@@ -1555,189 +1469,8 @@ async function handleLookupOrder(request, env, corsHeaders) {
   return Response.json({ orders: processedOrders }, { headers: corsHeaders });
 }
 
-// Process line items with images and product type detection
-async function processLineItems(lineItems, env) {
-  return lineItems.map(item => {
-    // Extract product type (OFFER or UPSALE)
-    const productTypeProperty = (item.properties || []).find(p =>
-      p.name === 'productType' || p.name === 'product_type'
-    );
-    const productType = productTypeProperty?.value || null;
-
-    // Determine if item is free
-    const isFree = parseFloat(item.price) === 0;
-    
-    // Check if digital (ebook)
-    const isDigital = item.requires_shipping === false || 
-      item.title?.toLowerCase().includes('ebook') ||
-      item.title?.toLowerCase().includes('e-book') ||
-      item.title?.toLowerCase().includes('digital');
-
-    return {
-      id: item.id,
-      productId: item.product_id,
-      variantId: item.variant_id,
-      title: item.title,
-      variantTitle: item.variant_title,
-      sku: item.sku,
-      quantity: item.quantity,
-      price: item.price,
-      image: item.image?.src || null,
-      fulfillmentStatus: item.fulfillment_status,
-      productType, // OFFER, UPSALE, or null
-      isFree,
-      isDigital,
-      isPuppyPad: item.title?.toLowerCase().includes('puppypad') || 
-                  item.title?.toLowerCase().includes('puppy pad') ||
-                  item.title?.toLowerCase().includes('pee pad'),
-    };
-  });
-}
-
-// Extract CheckoutChamp order ID from Shopify order - search 5 locations
-function extractClientOrderId(order) {
-  // Attribute names to search for (case-insensitive)
-  const attributeNames = [
-    'clientOrderId', 'client_order_id', 'clientorderid',
-    'checkoutchamp_order_id', 'checkoutchampOrderId',
-    'cc_order_id', 'ccOrderId',
-    'orderId', 'order_id',
-    'external_order_id', 'externalOrderId',
-    'sticky_order_id', 'stickyOrderId',
-    'purchaseId', 'purchase_id'
-  ];
-
-  // 1. Check note_attributes array (most common location)
-  const noteAttrs = order.note_attributes || [];
-  for (const attr of noteAttrs) {
-    if (attributeNames.some(name => name.toLowerCase() === attr.name?.toLowerCase())) {
-      if (attr.value) {
-        console.log('Found clientOrderId in note_attributes:', attr.value);
-        return attr.value;
-      }
-    }
-  }
-
-  // 2. Check order tags field
-  if (order.tags) {
-    const tags = order.tags.split(/[,\s]+/);
-    for (const tag of tags) {
-      // Look for patterns like "cc:E8D2D8C878" or "orderId:12345" (alphanumeric IDs)
-      const match = tag.match(/(?:cc|clientOrderId|orderId|checkoutchamp)[:\-_]?([A-Z0-9]+)/i);
-      if (match) {
-        console.log('Found clientOrderId in tags:', match[1]);
-        return match[1];
-      }
-    }
-  }
-
-  // 3. Check order note field
-  if (order.note) {
-    // Try various patterns (alphanumeric IDs like E8D2D8C878)
-    for (const attrName of attributeNames) {
-      const regex = new RegExp(`${attrName}[:\\s=]+["']?([A-Z0-9]+)["']?`, 'i');
-      const match = order.note.match(regex);
-      if (match) {
-        console.log('Found clientOrderId in note:', match[1]);
-        return match[1];
-      }
-    }
-
-    // Also try to parse JSON in note
-    try {
-      const jsonMatch = order.note.match(/\{[^}]+\}/);
-      if (jsonMatch) {
-        const noteJson = JSON.parse(jsonMatch[0]);
-        for (const attrName of attributeNames) {
-          if (noteJson[attrName]) {
-            console.log('Found clientOrderId in note JSON:', noteJson[attrName]);
-            return noteJson[attrName];
-          }
-        }
-      }
-    } catch (e) {
-      // Not valid JSON, continue
-    }
-  }
-
-  // 4. Check custom attributes on line items
-  if (order.line_items) {
-    for (const item of order.line_items) {
-      const itemProps = item.properties || [];
-      for (const prop of itemProps) {
-        if (attributeNames.some(name => name.toLowerCase() === prop.name?.toLowerCase())) {
-          if (prop.value) {
-            console.log('Found clientOrderId in line_item properties:', prop.value);
-            return prop.value;
-          }
-        }
-      }
-    }
-  }
-
-  console.log('No clientOrderId found in order:', order.name);
-  return null;
-}
-
-// Fetch clientOrderId from Shopify order metafields (separate API call)
-async function fetchClientOrderIdFromMetafields(orderId, env) {
-  const attributeNames = [
-    'clientOrderId', 'client_order_id', 'clientorderid',
-    'checkoutchamp_order_id', 'checkoutchampOrderId',
-    'cc_order_id', 'ccOrderId',
-    'orderId', 'order_id',
-    'external_order_id', 'externalOrderId',
-    'sticky_order_id', 'stickyOrderId',
-    'purchaseId', 'purchase_id'
-  ];
-
-  try {
-    const metafieldsUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders/${orderId}/metafields.json`;
-    const response = await fetch(metafieldsUrl, {
-      headers: {
-        'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      console.log('Metafields fetch failed for order:', orderId);
-      return null;
-    }
-
-    const data = await response.json();
-    const metafields = data.metafields || [];
-
-    for (const mf of metafields) {
-      // Check if the key matches any of our attribute names
-      if (attributeNames.some(name => name.toLowerCase() === mf.key?.toLowerCase())) {
-        console.log('Found clientOrderId in metafields:', mf.value);
-        return mf.value;
-      }
-
-      // Also check the value for JSON that might contain the ID
-      if (typeof mf.value === 'string' && mf.value.startsWith('{')) {
-        try {
-          const jsonValue = JSON.parse(mf.value);
-          for (const attrName of attributeNames) {
-            if (jsonValue[attrName]) {
-              console.log('Found clientOrderId in metafield JSON:', jsonValue[attrName]);
-              return jsonValue[attrName];
-            }
-          }
-        } catch (e) {
-          // Not valid JSON
-        }
-      }
-    }
-
-    console.log('No clientOrderId found in metafields for order:', orderId);
-    return null;
-  } catch (error) {
-    console.error('Error fetching metafields:', error);
-    return null;
-  }
-}
+// Note: processLineItems, extractClientOrderId, fetchClientOrderIdFromMetafields
+// are imported from ./services/shopify.js
 
 // ============================================
 // PARCEL PANEL TRACKING (API v2)
@@ -1866,49 +1599,8 @@ async function handleTracking(request, env, corsHeaders) {
   }
 }
 
-function formatTrackingStatus(status) {
-  const statusMap = {
-    'pending': 'Pending',
-    'info_received': 'Info Received',
-    'in_transit': 'In Transit',
-    'out_for_delivery': 'Out for Delivery',
-    'delivered': 'Delivered',
-    'failed_attempt': 'Failed Delivery',
-    'exception': 'Exception',
-    'expired': 'Expired',
-    'pickup': 'Ready for Pickup'
-  };
-  return statusMap[status] || status;
-}
-
-// Convert country code to full name for Shopify search
-function getCountryNameFromCode(code) {
-  const countryMap = {
-    'US': 'United States',
-    'CA': 'Canada',
-    'GB': 'United Kingdom',
-    'AU': 'Australia',
-    'DE': 'Germany',
-    'FR': 'France',
-    'IT': 'Italy',
-    'ES': 'Spain',
-    'NL': 'Netherlands',
-    'BE': 'Belgium',
-    'AT': 'Austria',
-    'CH': 'Switzerland',
-    'SE': 'Sweden',
-    'NO': 'Norway',
-    'DK': 'Denmark',
-    'FI': 'Finland',
-    'IE': 'Ireland',
-    'PT': 'Portugal',
-    'NZ': 'New Zealand',
-    'JP': 'Japan',
-    'MX': 'Mexico',
-    'BR': 'Brazil'
-  };
-  return countryMap[code] || null;
-}
+// Note: formatTrackingStatus is imported from ./utils/formatters.js
+// Note: getCountryNameFromCode is imported from ./services/shopify.js
 
 // ============================================
 // 90-DAY GUARANTEE VALIDATION
@@ -2848,27 +2540,7 @@ async function handleCreateManualCase(request, env, corsHeaders) {
   }
 }
 
-function getCasePrefix(caseType) {
-  const prefixes = {
-    'refund': 'REF',
-    'return': 'RET',
-    'shipping': 'SHP',
-    'subscription': 'SUB',
-    'manual': 'MAN',
-  };
-  return prefixes[caseType] || 'CAS';
-}
-
-function getClickUpListId(caseType) {
-  const listMap = {
-    'refund': CLICKUP_CONFIG.lists.refundRequests,
-    'return': CLICKUP_CONFIG.lists.returnRequests,
-    'shipping': CLICKUP_CONFIG.lists.shippingIssues,
-    'subscription': CLICKUP_CONFIG.lists.subscriptionManagement,
-    'manual': CLICKUP_CONFIG.lists.manualHelp,
-  };
-  return listMap[caseType] || CLICKUP_CONFIG.lists.manualHelp;
-}
+// Note: getCasePrefix and getClickUpListId are imported from ./config/clickup.js
 
 // Format resolution code to human-readable text (concise format)
 function formatResolution(resolution, caseData) {
@@ -5194,51 +4866,8 @@ async function logCaseToAnalytics(env, caseData) {
 
 // ============================================
 // ADMIN AUTHENTICATION
+// Note: hashPassword, generateToken, verifyToken are imported from ./utils/auth.js
 // ============================================
-async function hashPassword(password) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + ADMIN_CONFIG.tokenSecret);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function generateToken(username) {
-  const payload = {
-    username,
-    exp: Date.now() + (ADMIN_CONFIG.tokenExpiryHours * 60 * 60 * 1000)
-  };
-  const encoder = new TextEncoder();
-  const data = encoder.encode(JSON.stringify(payload) + ADMIN_CONFIG.tokenSecret);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return btoa(JSON.stringify(payload)) + '.' + signature;
-}
-
-async function verifyToken(token) {
-  try {
-    const [payloadB64, signature] = token.split('.');
-    const payload = JSON.parse(atob(payloadB64));
-
-    if (payload.exp < Date.now()) {
-      return null; // Token expired
-    }
-
-    const encoder = new TextEncoder();
-    const data = encoder.encode(JSON.stringify(payload) + ADMIN_CONFIG.tokenSecret);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const expectedSignature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-    if (signature === expectedSignature) {
-      return payload;
-    }
-    return null;
-  } catch (e) {
-    return null;
-  }
-}
 
 async function handleAdminLogin(request, env, corsHeaders) {
   try {
