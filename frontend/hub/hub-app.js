@@ -2189,6 +2189,7 @@ const HubAnalytics = {
 const HubDashboard = {
   async load() {
     try {
+      // Load stats
       const result = await HubAPI.get('/hub/api/stats');
 
       document.getElementById('statPending').textContent = result.pending || 0;
@@ -2201,9 +2202,78 @@ const HubDashboard = {
         const el = document.getElementById((type === 'all' ? 'allCases' : type) + 'Count');
         if (el) el.textContent = result[type] || 0;
       });
+
+      // Load recent cases
+      await this.loadRecentCases();
     } catch (e) {
       console.error('Failed to load dashboard:', e);
+      // Still try to load recent cases even if stats fail
+      await this.loadRecentCases();
     }
+  },
+
+  async loadRecentCases() {
+    try {
+      const result = await HubAPI.get('/hub/api/cases?page=1&limit=10');
+      this.renderRecentCases(result.cases || []);
+    } catch (e) {
+      console.error('Failed to load recent cases:', e);
+      const container = document.getElementById('recentCasesBody');
+      if (container) {
+        container.innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load recent cases</td></tr>';
+      }
+    }
+  },
+
+  renderRecentCases(cases) {
+    const container = document.getElementById('recentCasesBody');
+    if (!container) return;
+
+    if (cases.length === 0) {
+      container.innerHTML = '<tr><td colspan="5" class="empty-state">No recent cases</td></tr>';
+      return;
+    }
+
+    container.innerHTML = cases.map(c => {
+      const statusClass = c.status ? c.status.replace('_', '-') : 'pending';
+      return `
+        <tr onclick="HubNavigation.goto('cases', 'all'); HubCases.openCase('${c.case_id}')" style="cursor: pointer;">
+          <td class="case-id">${this.escapeHtml(c.case_id || '-')}</td>
+          <td>
+            <div class="customer-info">
+              <span class="customer-name">${this.escapeHtml(c.customer_name || 'Unknown')}</span>
+              <span class="customer-email">${this.escapeHtml(c.customer_email || '-')}</span>
+            </div>
+          </td>
+          <td><span class="type-badge ${c.case_type || ''}">${this.escapeHtml(c.case_type || '-')}</span></td>
+          <td><span class="status-badge ${statusClass}">${this.formatStatus(c.status || 'pending')}</span></td>
+          <td class="time-ago">${this.timeAgo(c.created_at)}</td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  formatStatus(status) {
+    return status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  },
+
+  timeAgo(timestamp) {
+    if (!timestamp) return '-';
+    const seconds = Math.floor((Date.now() - new Date(timestamp)) / 1000);
+
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+
+    return new Date(timestamp).toLocaleDateString();
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 };
 
