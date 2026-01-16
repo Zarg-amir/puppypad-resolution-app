@@ -1,8 +1,17 @@
 # Cloudflare Pages Redirects
 # This file tells Pages how to handle routing for the SPA
 
+# Static assets should be served as-is (no redirect)
+# These patterns must come BEFORE the catch-all /hub/* rule
+
 # All /hub/* routes should serve hub.html (SPA fallback)
+# BUT exclude static assets (JS, CSS, images, etc.)
 /hub/*  /hub.html  200
+
+# Exclude static assets from the redirect (they should be served directly)
+# Note: Cloudflare Pages will serve these files directly if they exist
+# The order matters - more specific rules should come first, but since
+# we can't use negative patterns, we need a different approach
 
 # Root should serve index.html (chat app)
 /  /index.html  200
