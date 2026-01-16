@@ -3419,11 +3419,46 @@ const HubSOP = {
     }
   },
 
+  getPlaceholderSOPs() {
+    return [
+      // Refund SOPs
+      { id: 'p1', scenario_name: 'Full Refund Process', case_type: 'refund', sop_url: '#', description: 'Step-by-step guide for processing full refunds for dissatisfied customers' },
+      { id: 'p2', scenario_name: 'Partial Refund - Product Quality Issue', case_type: 'refund', sop_url: '#', description: 'How to process partial refunds when customer reports quality issues' },
+      { id: 'p3', scenario_name: 'Partial Refund - Dog Not Using Product', case_type: 'refund', sop_url: '#', description: 'Handling refunds when the dog is not using the PuppyPad' },
+      { id: 'p4', scenario_name: 'Refund - Changed Mind', case_type: 'refund', sop_url: '#', description: 'Process for customers who simply changed their mind' },
+      
+      // Shipping SOPs
+      { id: 'p5', scenario_name: 'Missing Package - Reship Process', case_type: 'shipping', sop_url: '#', description: 'How to handle and reship missing packages' },
+      { id: 'p6', scenario_name: 'Wrong Item Received', case_type: 'shipping', sop_url: '#', description: 'Steps for when customer receives incorrect items' },
+      { id: 'p7', scenario_name: 'Damaged In Transit', case_type: 'shipping', sop_url: '#', description: 'Handling products damaged during shipping' },
+      { id: 'p8', scenario_name: 'Address Update / Redirect', case_type: 'shipping', sop_url: '#', description: 'How to update shipping address for in-transit orders' },
+      
+      // Subscription SOPs
+      { id: 'p9', scenario_name: 'Pause Subscription', case_type: 'subscription', sop_url: '#', description: 'How to pause a subscription in Checkout Champ' },
+      { id: 'p10', scenario_name: 'Cancel Subscription', case_type: 'subscription', sop_url: '#', description: 'Complete cancellation process for subscriptions' },
+      { id: 'p11', scenario_name: 'Change Delivery Frequency', case_type: 'subscription', sop_url: '#', description: 'Modifying subscription frequency (weekly, monthly, etc.)' },
+      { id: 'p12', scenario_name: 'Too Much Product - Reduce Shipment', case_type: 'subscription', sop_url: '#', description: 'Adjusting subscription for customers with excess product' },
+      
+      // Return SOPs
+      { id: 'p13', scenario_name: 'Return for Refund', case_type: 'return', sop_url: '#', description: 'Full return process with refund' },
+      { id: 'p14', scenario_name: 'Return for Exchange', case_type: 'return', sop_url: '#', description: 'Processing exchanges for different products/sizes' }
+    ];
+  },
+
   render() {
     const container = document.getElementById('sopList');
     if (!container) return;
 
-    if (this.sops.length === 0) {
+    // Use placeholder SOPs if none exist
+    const sopsToRender = this.sops.length > 0 ? this.sops : this.getPlaceholderSOPs();
+    const isPlaceholder = this.sops.length === 0;
+    
+    // Filter by category if set
+    const filteredSOPs = this.currentCategory 
+      ? sopsToRender.filter(s => s.case_type === this.currentCategory)
+      : sopsToRender;
+
+    if (filteredSOPs.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -3435,25 +3470,88 @@ const HubSOP = {
       return;
     }
 
-    container.innerHTML = this.sops.map(sop => `
-      <div class="sop-card">
-        <div class="sop-card-header">
-          <h3 class="sop-card-title">${this.escapeHtml(sop.scenario_name)}</h3>
-          <span class="sop-card-category ${sop.case_type}">${sop.case_type}</span>
+    // Group SOPs by case type
+    const grouped = {};
+    filteredSOPs.forEach(sop => {
+      if (!grouped[sop.case_type]) grouped[sop.case_type] = [];
+      grouped[sop.case_type].push(sop);
+    });
+
+    const categoryLabels = {
+      'refund': { label: 'Refund Procedures', icon: '💰', color: '#ef4444' },
+      'shipping': { label: 'Shipping & Delivery', icon: '📦', color: '#3b82f6' },
+      'subscription': { label: 'Subscription Management', icon: '🔄', color: '#8b5cf6' },
+      'return': { label: 'Returns & Exchanges', icon: '↩️', color: '#f59e0b' }
+    };
+
+    let html = '';
+    
+    if (isPlaceholder) {
+      html += `
+        <div class="sop-placeholder-banner">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>These are placeholder SOPs. Click Edit to add your actual SOP links.</span>
         </div>
-        ${sop.description ? `<p class="sop-card-description">${this.escapeHtml(sop.description)}</p>` : ''}
-        <div class="sop-card-actions">
-          <a href="${sop.sop_url}" target="_blank" class="sop-card-link" onclick="HubSOP.logClick(${sop.id}, '${this.escapeHtml(sop.scenario_name)}')">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-            Open SOP
-          </a>
-          ${HubAuth.isAdmin() ? `
-            <button class="btn btn-secondary" onclick="HubSOP.showEditModal(${sop.id})">Edit</button>
-            <button class="btn btn-secondary" style="color: var(--error-600);" onclick="HubSOP.delete(${sop.id})">Delete</button>
-          ` : ''}
+      `;
+    }
+
+    Object.entries(grouped).forEach(([caseType, sops]) => {
+      const cat = categoryLabels[caseType] || { label: caseType, icon: '📋', color: '#6b7280' };
+      html += `
+        <div class="sop-category-section">
+          <div class="sop-category-header">
+            <span class="sop-category-icon">${cat.icon}</span>
+            <span class="sop-category-title">${cat.label}</span>
+            <span class="sop-category-count">${sops.length} SOPs</span>
+          </div>
+          <div class="sop-cards-grid">
+            ${sops.map(sop => `
+              <div class="sop-card ${isPlaceholder && sop.sop_url === '#' ? 'placeholder' : ''}">
+                <div class="sop-card-header">
+                  <h3 class="sop-card-title">${this.escapeHtml(sop.scenario_name)}</h3>
+                </div>
+                ${sop.description ? `<p class="sop-card-description">${this.escapeHtml(sop.description)}</p>` : ''}
+                <div class="sop-card-actions">
+                  ${sop.sop_url !== '#' ? `
+                    <a href="${sop.sop_url}" target="_blank" class="sop-card-link" onclick="HubSOP.logClick('${sop.id}', '${this.escapeHtml(sop.scenario_name)}')">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                      Open SOP
+                    </a>
+                  ` : `
+                    <span class="sop-card-link disabled">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                      Link Not Set
+                    </span>
+                  `}
+                  ${HubAuth.isAdmin() && !isPlaceholder ? `
+                    <button class="btn btn-secondary btn-sm" onclick="HubSOP.showEditModal(${sop.id})">Edit</button>
+                    <button class="btn btn-secondary btn-sm" style="color: var(--error-600);" onclick="HubSOP.delete(${sop.id})">Delete</button>
+                  ` : ''}
+                  ${HubAuth.isAdmin() && isPlaceholder ? `
+                    <button class="btn btn-primary btn-sm" onclick="HubSOP.createFromPlaceholder('${sop.scenario_name}', '${sop.case_type}', '${this.escapeHtml(sop.description || '')}')">
+                      Add Link
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    });
+
+    container.innerHTML = html;
+  },
+
+  createFromPlaceholder(name, caseType, description) {
+    // Pre-fill the add modal with placeholder data
+    this.showAddModal();
+    setTimeout(() => {
+      document.getElementById('sopName').value = name;
+      document.getElementById('sopCaseType').value = caseType;
+      document.getElementById('sopDescription').value = description;
+      document.getElementById('sopUrl').focus();
+    }, 100);
   },
 
   filterByCategory(category) {
@@ -3682,11 +3780,210 @@ const HubEmailTemplates = {
     }
   },
 
+  getPlaceholderTemplates() {
+    return [
+      // Refund Templates
+      {
+        id: 'pt1',
+        template_name: 'Full Refund Confirmation',
+        category: 'refund',
+        subject: 'Your Refund Has Been Processed - Order {{order_number}}',
+        body: `Hi {{customer_name}},
+
+Great news! Your refund of {{refund_amount}} has been processed for order {{order_number}}.
+
+Please allow 5-10 business days for the refund to appear in your account, depending on your bank.
+
+If you have any questions, feel free to reply to this email.
+
+Thank you for your patience!
+
+Best regards,
+The PuppyPad Team`,
+        variables: ['customer_name', 'order_number', 'refund_amount']
+      },
+      {
+        id: 'pt2',
+        template_name: 'Partial Refund - Quality Issue',
+        category: 'refund',
+        subject: 'Partial Refund Processed - Order {{order_number}}',
+        body: `Hi {{customer_name}},
+
+We're sorry to hear about the quality issue you experienced with your order.
+
+We've processed a partial refund of {{refund_amount}} for order {{order_number}} as a gesture of goodwill.
+
+The refund should appear in your account within 5-10 business days.
+
+We truly appreciate your feedback as it helps us improve our products!
+
+Best regards,
+The PuppyPad Team`,
+        variables: ['customer_name', 'order_number', 'refund_amount']
+      },
+      {
+        id: 'pt3',
+        template_name: 'Partial Refund - Dog Not Using',
+        category: 'refund',
+        subject: 'We Understand - Partial Refund for Order {{order_number}}',
+        body: `Hi {{customer_name}},
+
+We understand that every pup is different, and sometimes it takes time for them to adjust to new products.
+
+As discussed, we've processed a partial refund of {{refund_amount}} for your order {{order_number}}.
+
+Here are some tips that might help:
+- Place the PuppyPad in a familiar spot
+- Use positive reinforcement when your dog shows interest
+- Give it a few more days for them to get comfortable
+
+If you have any questions, we're here to help!
+
+Best regards,
+The PuppyPad Team`,
+        variables: ['customer_name', 'order_number', 'refund_amount']
+      },
+      
+      // Shipping Templates
+      {
+        id: 'pt4',
+        template_name: 'Reship Confirmation',
+        category: 'shipping',
+        subject: 'Your Replacement Order is On the Way! - Order {{order_number}}',
+        body: `Hi {{customer_name}},
+
+Good news! We've shipped a replacement for your order {{order_number}}.
+
+You should receive tracking information within 24-48 hours once the shipment is processed by our carrier.
+
+We sincerely apologize for any inconvenience and appreciate your patience!
+
+Best regards,
+The PuppyPad Team`,
+        variables: ['customer_name', 'order_number']
+      },
+      {
+        id: 'pt5',
+        template_name: 'Missing Item - Investigation',
+        category: 'shipping',
+        subject: 'Update on Your Missing Item - Order {{order_number}}',
+        body: `Hi {{customer_name}},
+
+We're currently investigating the missing item from your order {{order_number}}.
+
+Our team is working with the carrier to locate your package. We'll provide an update within 48 hours with either tracking information or a replacement shipment.
+
+Thank you for your patience!
+
+Best regards,
+The PuppyPad Team`,
+        variables: ['customer_name', 'order_number']
+      },
+      
+      // Subscription Templates
+      {
+        id: 'pt6',
+        template_name: 'Subscription Paused',
+        category: 'subscription',
+        subject: 'Your PuppyPad Subscription Has Been Paused',
+        body: `Hi {{customer_name}},
+
+As requested, we've paused your PuppyPad subscription.
+
+Your subscription will remain paused until you're ready to resume. You can reactivate it anytime by:
+- Logging into your account at puppypad.com
+- Replying to this email
+- Contacting our support team
+
+We'll be here when you're ready to continue!
+
+Best regards,
+The PuppyPad Team`,
+        variables: ['customer_name']
+      },
+      {
+        id: 'pt7',
+        template_name: 'Subscription Cancelled',
+        category: 'subscription',
+        subject: 'Your PuppyPad Subscription Has Been Cancelled',
+        body: `Hi {{customer_name}},
+
+Your PuppyPad subscription has been cancelled as requested.
+
+We're sorry to see you go! If there's anything we could have done better, we'd love to hear your feedback.
+
+You're always welcome back - just visit puppypad.com to restart your subscription anytime.
+
+Thank you for being a PuppyPad customer!
+
+Best regards,
+The PuppyPad Team`,
+        variables: ['customer_name']
+      },
+      {
+        id: 'pt8',
+        template_name: 'Subscription Frequency Changed',
+        category: 'subscription',
+        subject: 'Your Subscription Has Been Updated',
+        body: `Hi {{customer_name}},
+
+We've updated your subscription delivery frequency as requested.
+
+Your new delivery schedule: {{resolution}}
+
+Your next shipment will be scheduled according to this new frequency.
+
+If you need any further adjustments, just let us know!
+
+Best regards,
+The PuppyPad Team`,
+        variables: ['customer_name', 'resolution']
+      },
+      
+      // Return Templates
+      {
+        id: 'pt9',
+        template_name: 'Return Instructions',
+        category: 'return',
+        subject: 'Return Instructions - Order {{order_number}}',
+        body: `Hi {{customer_name}},
+
+Your return request for order {{order_number}} has been approved!
+
+Please ship the items back to:
+PuppyPad Returns
+[Your Return Address Here]
+
+Important notes:
+- Please include your order number inside the package
+- Use a trackable shipping method
+- Items must be returned within 14 days
+
+Once we receive and process your return, your refund of {{refund_amount}} will be issued within 5-7 business days.
+
+Thank you!
+
+Best regards,
+The PuppyPad Team`,
+        variables: ['customer_name', 'order_number', 'refund_amount']
+      }
+    ];
+  },
+
   render() {
     const container = document.getElementById('emailTemplatesList');
     if (!container) return;
 
-    if (this.templates.length === 0) {
+    // Use placeholder templates if none exist
+    const templatesToRender = this.templates.length > 0 ? this.templates : this.getPlaceholderTemplates();
+    const isPlaceholder = this.templates.length === 0;
+
+    // Filter by category if set
+    const filteredTemplates = this.currentCategory 
+      ? templatesToRender.filter(t => t.category === this.currentCategory)
+      : templatesToRender;
+
+    if (filteredTemplates.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
@@ -3698,30 +3995,129 @@ const HubEmailTemplates = {
       return;
     }
 
-    container.innerHTML = this.templates.map(template => `
-      <div class="template-card">
-        <div class="template-card-header">
-          <h3 class="template-card-title">${this.escapeHtml(template.template_name)}</h3>
-          <span class="sop-card-category ${template.category}">${template.category}</span>
+    // Group templates by category
+    const grouped = {};
+    filteredTemplates.forEach(template => {
+      if (!grouped[template.category]) grouped[template.category] = [];
+      grouped[template.category].push(template);
+    });
+
+    const categoryLabels = {
+      'refund': { label: 'Refund Confirmations', icon: '💰', color: '#ef4444' },
+      'shipping': { label: 'Shipping & Delivery', icon: '📦', color: '#3b82f6' },
+      'subscription': { label: 'Subscription Updates', icon: '🔄', color: '#8b5cf6' },
+      'return': { label: 'Returns & Exchanges', icon: '↩️', color: '#f59e0b' }
+    };
+
+    let html = '';
+    
+    if (isPlaceholder) {
+      html += `
+        <div class="sop-placeholder-banner">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>These are placeholder templates with dynamic variables. Edit to customize for your brand.</span>
         </div>
-        <div class="template-card-subject">Subject: ${this.escapeHtml(template.subject)}</div>
-        <div class="template-card-preview">${this.escapeHtml(template.body.substring(0, 150))}...</div>
-        <div class="template-card-variables">
-          ${(template.variables || []).map(v => `<span class="template-variable">{{${v}}}</span>`).join('')}
+      `;
+    }
+
+    Object.entries(grouped).forEach(([category, templates]) => {
+      const cat = categoryLabels[category] || { label: category, icon: '📋', color: '#6b7280' };
+      html += `
+        <div class="template-category-section">
+          <div class="sop-category-header">
+            <span class="sop-category-icon">${cat.icon}</span>
+            <span class="sop-category-title">${cat.label}</span>
+            <span class="sop-category-count">${templates.length} templates</span>
+          </div>
+          <div class="template-cards-grid">
+            ${templates.map(template => `
+              <div class="template-card ${isPlaceholder ? 'placeholder' : ''}">
+                <div class="template-card-header">
+                  <h3 class="template-card-title">${this.escapeHtml(template.template_name)}</h3>
+                </div>
+                <div class="template-card-subject">
+                  <strong>Subject:</strong> ${this.escapeHtml(template.subject)}
+                </div>
+                <div class="template-card-preview">${this.escapeHtml(template.body.substring(0, 120))}...</div>
+                <div class="template-card-variables">
+                  <span class="variables-label">Variables:</span>
+                  ${(template.variables || []).map(v => `<span class="template-variable">{{${v}}}</span>`).join('')}
+                </div>
+                <div class="template-card-actions">
+                  <button class="btn btn-primary btn-sm" onclick="HubEmailTemplates.${isPlaceholder ? 'copyPlaceholder' : 'copyToClipboard'}('${template.id}')">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                    Copy
+                  </button>
+                  <button class="btn btn-secondary btn-sm" onclick="HubEmailTemplates.${isPlaceholder ? 'previewPlaceholder' : 'preview'}('${template.id}')">Preview</button>
+                  ${HubAuth.isAdmin() && !isPlaceholder ? `
+                    <button class="btn btn-secondary btn-sm" onclick="HubEmailTemplates.showEditModal(${template.id})">Edit</button>
+                  ` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
         </div>
-        <div class="template-card-actions">
-          <button class="btn btn-primary" onclick="HubEmailTemplates.copyToClipboard(${template.id})">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-            Copy
-          </button>
-          <button class="btn btn-secondary" onclick="HubEmailTemplates.preview(${template.id})">Preview</button>
-          ${HubAuth.isAdmin() ? `
-            <button class="btn btn-secondary" onclick="HubEmailTemplates.showEditModal(${template.id})">Edit</button>
-            <button class="btn btn-secondary" style="color: var(--error-600);" onclick="HubEmailTemplates.delete(${template.id})">Delete</button>
-          ` : ''}
+      `;
+    });
+
+    container.innerHTML = html;
+  },
+
+  copyPlaceholder(templateId) {
+    const templates = this.getPlaceholderTemplates();
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const textToCopy = `Subject: ${template.subject}\n\n${template.body}`;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      HubUI.showToast('Template copied! Variables will need to be replaced manually.', 'success');
+    }).catch(() => {
+      HubUI.showToast('Failed to copy template', 'error');
+    });
+  },
+
+  previewPlaceholder(templateId) {
+    const templates = this.getPlaceholderTemplates();
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const html = `
+      <div class="modal-overlay active" id="templatePreviewModal">
+        <div class="modal" style="max-width: 600px;">
+          <div class="modal-header">
+            <h2 class="modal-title">${this.escapeHtml(template.template_name)}</h2>
+            <button class="modal-close" onclick="document.getElementById('templatePreviewModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px;">
+            <div style="margin-bottom: 16px;">
+              <strong style="color: var(--gray-600);">Subject:</strong>
+              <div style="padding: 12px; background: var(--gray-50); border-radius: 8px; margin-top: 8px;">
+                ${this.escapeHtml(template.subject)}
+              </div>
+            </div>
+            <div>
+              <strong style="color: var(--gray-600);">Body:</strong>
+              <div style="padding: 16px; background: var(--gray-50); border-radius: 8px; margin-top: 8px; white-space: pre-wrap; font-size: 14px; line-height: 1.6;">
+${this.escapeHtml(template.body)}
+              </div>
+            </div>
+            <div style="margin-top: 16px;">
+              <strong style="color: var(--gray-600);">Dynamic Variables:</strong>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                ${(template.variables || []).map(v => `<span class="template-variable">{{${v}}}</span>`).join('')}
+              </div>
+              <p style="font-size: 12px; color: var(--gray-500); margin-top: 8px;">
+                These variables will be automatically replaced with case data when copying from a case detail page.
+              </p>
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end;">
+            <button class="btn btn-primary" onclick="HubEmailTemplates.copyPlaceholder('${template.id}'); document.getElementById('templatePreviewModal').remove();">Copy Template</button>
+          </div>
         </div>
       </div>
-    `).join('');
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
   },
 
   filterByCategory(category) {
@@ -4128,8 +4524,12 @@ const HubCaseDetail = {
             <div class="case-detail-section-header">Issue & Resolution</div>
             <div class="case-detail-section-content">
               <div class="case-info-row">
-                <div class="case-info-label">Issue Type</div>
-                <div class="case-info-value">${this.escapeHtml(c.category || c.case_type || '-')}</div>
+                <div class="case-info-label">Issue Reason</div>
+                <div class="case-info-value">${this.formatIssueReason(c)}</div>
+              </div>
+              <div class="case-info-row">
+                <div class="case-info-label">Case Type</div>
+                <div class="case-info-value"><span class="type-badge ${c.case_type}">${c.case_type}</span></div>
               </div>
               <div class="case-info-row">
                 <div class="case-info-label">Resolution</div>
@@ -4138,7 +4538,7 @@ const HubCaseDetail = {
               ${c.refund_amount ? `
               <div class="case-info-row">
                 <div class="case-info-label">Refund Amount</div>
-                <div class="case-info-value" style="font-weight: 600; color: var(--error-600);">$${parseFloat(c.refund_amount).toFixed(2)}</div>
+                <div class="case-info-value" style="font-weight: 600; color: var(--success-600);">$${parseFloat(c.refund_amount).toFixed(2)}</div>
               </div>
               ` : ''}
               ${c.selected_items && c.selected_items.length > 0 ? `
@@ -4158,15 +4558,28 @@ const HubCaseDetail = {
           </div>
 
           <!-- Activity & Comments -->
-          <div class="case-detail-section">
-            <div class="case-detail-section-header">Activity & Comments</div>
+          <div class="case-detail-section activity-section">
+            <div class="case-detail-section-header">
+              <span>Activity & Comments</span>
+              <span class="activity-count">${(this.activities.length + this.comments.length)} items</span>
+            </div>
             <div class="case-detail-section-content">
-              <div class="activity-feed">
-                ${this.renderActivities()}
+              <div class="activity-feed-redesigned">
+                ${this.renderActivitiesRedesigned()}
               </div>
-              <form class="comment-form" onsubmit="HubCaseDetail.addComment(event)">
-                <textarea id="newCommentText" placeholder="Add a comment..." rows="2"></textarea>
-                <button type="submit" class="btn btn-primary" style="align-self: flex-end;">Add Comment</button>
+              <form class="comment-form-redesigned" onsubmit="HubCaseDetail.addComment(event)">
+                <div class="comment-input-container">
+                  <div class="comment-avatar">
+                    <span>${(HubState.currentUser?.name || 'T').charAt(0).toUpperCase()}</span>
+                  </div>
+                  <textarea id="newCommentText" placeholder="Write a comment..." rows="2"></textarea>
+                </div>
+                <div class="comment-form-actions">
+                  <button type="submit" class="btn btn-primary">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    Post Comment
+                  </button>
+                </div>
               </form>
             </div>
           </div>
@@ -4212,32 +4625,20 @@ const HubCaseDetail = {
                 </a>
                 ` : ''}
                 
-                ${this.sopLink ? `
-                <a href="${this.sopLink.sop_url}" target="_blank" class="quick-action-btn primary" onclick="HubCaseDetail.logActivity('clicked_sop', {sop_name: '${this.escapeHtml(this.sopLink.scenario_name)}'})">
+                <!-- SOP Link -->
+                <a href="${this.sopLink?.sop_url || '/hub/sop'}" target="_blank" class="quick-action-btn sop-link" onclick="HubCaseDetail.logActivity('clicked_sop', {sop_name: '${this.escapeHtml(this.sopLink?.scenario_name || c.case_type)}'})">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                  View SOP: ${this.escapeHtml(this.sopLink.scenario_name)}
+                  ${this.sopLink ? `View SOP: ${this.escapeHtml(this.sopLink.scenario_name)}` : `View ${c.case_type} SOPs`}
                 </a>
-                ` : ''}
-              </div>
-            </div>
-          </div>
 
-          <!-- Email Templates -->
-          ${this.emailTemplates.length > 0 ? `
-          <div class="case-detail-section">
-            <div class="case-detail-section-header">Email Templates</div>
-            <div class="case-detail-section-content">
-              <div class="quick-actions-grid">
-                ${this.emailTemplates.map(t => `
-                  <button class="quick-action-btn" onclick="HubCaseDetail.copyEmailTemplate(${t.id}, '${this.escapeHtml(t.template_name)}')">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                    ${this.escapeHtml(t.template_name)}
-                  </button>
-                `).join('')}
+                <!-- Copy Email Template -->
+                <button class="quick-action-btn email-btn" onclick="HubCaseDetail.showEmailTemplateModal()">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                  Copy Email Template
+                </button>
               </div>
             </div>
           </div>
-          ` : ''}
 
           <!-- Case Meta -->
           <div class="case-detail-section">
@@ -4268,7 +4669,70 @@ const HubCaseDetail = {
     `;
   },
 
+  formatIssueReason(c) {
+    // Map category/case_type to human-readable issue reasons
+    const issueReasonMap = {
+      // Refund reasons
+      'quality_issue': 'Product quality issue',
+      'not_as_described': 'Product not as described',
+      'dog_not_using': 'My dog is not using the product',
+      'not_working': 'Product not working as expected',
+      'changed_mind': 'Changed my mind',
+      'found_cheaper': 'Found cheaper alternative',
+      'duplicate_order': 'Duplicate order',
+      // Shipping reasons
+      'not_received': "Haven't received my order",
+      'tracking_issue': 'Tracking not updating',
+      'wrong_address': 'Shipped to wrong address',
+      'damaged_shipping': 'Damaged during shipping',
+      'missing_item': 'Missing item from order',
+      'wrong_item': 'Received wrong item',
+      // Subscription reasons
+      'pause_subscription': 'Want to pause my subscription',
+      'cancel_subscription': 'Want to cancel subscription',
+      'change_frequency': 'Change delivery frequency',
+      'update_address': 'Update shipping address',
+      'too_much_product': 'Receiving too much product',
+      // Return reasons
+      'return_exchange': 'Want to return for exchange',
+      'return_refund': 'Want to return for refund'
+    };
+    
+    const category = c.category || '';
+    const caseType = c.case_type || '';
+    const resolution = c.resolution || '';
+    
+    // Try to find a matching reason
+    if (issueReasonMap[category]) {
+      return issueReasonMap[category];
+    }
+    
+    // Try to infer from resolution text
+    if (resolution.toLowerCase().includes('quality')) return 'Product quality issue';
+    if (resolution.toLowerCase().includes('not using')) return 'My dog is not using it';
+    if (resolution.toLowerCase().includes('pause')) return 'Want to pause subscription';
+    if (resolution.toLowerCase().includes('cancel')) return 'Want to cancel subscription';
+    if (resolution.toLowerCase().includes('missing')) return 'Missing item from order';
+    if (resolution.toLowerCase().includes('reship')) return "Haven't received my order";
+    
+    // Default based on case type
+    const defaultReasons = {
+      'refund': 'Requesting a refund',
+      'return': 'Want to return product',
+      'shipping': 'Issue with shipping/delivery',
+      'subscription': 'Subscription management request',
+      'manual': 'Requires manual review'
+    };
+    
+    return defaultReasons[caseType] || category || 'General inquiry';
+  },
+
   renderActivities() {
+    // Keep old method for backwards compatibility
+    return this.renderActivitiesRedesigned();
+  },
+
+  renderActivitiesRedesigned() {
     // Combine activities and comments, sorted by date
     const allActivities = [
       ...this.activities.map(a => ({ ...a, _type: 'activity' })),
@@ -4276,36 +4740,273 @@ const HubCaseDetail = {
     ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     if (allActivities.length === 0) {
-      return '<div style="text-align: center; color: var(--gray-400); padding: 20px;">No activity yet</div>';
+      return `
+        <div class="activity-empty-state">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="48" height="48">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+          </svg>
+          <p>No activity yet</p>
+          <span>Comments and actions will appear here</span>
+        </div>
+      `;
     }
 
     return allActivities.slice(0, 20).map(item => {
       if (item._type === 'comment') {
+        // Comments have a distinct card-like appearance
+        const initials = (item.author_name || 'TM').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
         return `
-          <div class="activity-item">
-            <div class="activity-icon" style="background: var(--primary-50);">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--primary-600);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+          <div class="activity-item comment-item">
+            <div class="comment-avatar">
+              <span>${initials}</span>
             </div>
-            <div class="activity-content">
-              <div class="activity-text"><strong>${this.escapeHtml(item.author_name || 'Team Member')}</strong> commented: ${this.escapeHtml(item.content)}</div>
-              <div class="activity-time">${this.timeAgo(item.created_at)}</div>
+            <div class="comment-bubble">
+              <div class="comment-header">
+                <span class="comment-author">${this.escapeHtml(item.author_name || 'Team Member')}</span>
+                <span class="comment-time">${this.timeAgo(item.created_at)}</span>
+              </div>
+              <div class="comment-content">${this.escapeHtml(item.content)}</div>
             </div>
           </div>
         `;
       } else {
+        // Activities are subtle, inline items
         return `
-          <div class="activity-item">
-            <div class="activity-icon">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <div class="activity-item system-activity">
+            <div class="activity-icon-small ${this.getActivityIconClass(item.activity_type)}">
+              ${this.getActivityIcon(item.activity_type)}
             </div>
-            <div class="activity-content">
-              <div class="activity-text">${this.formatActivityText(item)}</div>
-              <div class="activity-time">${this.timeAgo(item.created_at)}</div>
+            <div class="activity-text-inline">
+              ${this.formatActivityText(item)}
+              <span class="activity-time-inline">· ${this.timeAgo(item.created_at)}</span>
             </div>
           </div>
         `;
       }
     }).join('');
+  },
+
+  getActivityIconClass(type) {
+    const classes = {
+      'status_changed': 'status-change',
+      'assigned': 'assigned',
+      'viewed_shopify_order': 'view-action',
+      'viewed_session_recording': 'view-action',
+      'clicked_sop': 'view-action',
+      'copied_email_template': 'copy-action'
+    };
+    return classes[type] || '';
+  },
+
+  getActivityIcon(type) {
+    const icons = {
+      'status_changed': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+      'assigned': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>',
+      'viewed_shopify_order': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>',
+      'viewed_session_recording': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+      'clicked_sop': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>',
+      'copied_email_template': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>'
+    };
+    return icons[type] || '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12"><circle cx="12" cy="12" r="3"></circle></svg>';
+  },
+
+  showEmailTemplateModal() {
+    const c = this.caseData;
+    if (!c) return;
+
+    // Get templates for this case type
+    const templates = this.getEmailTemplatesForCase(c);
+    
+    const html = `
+      <div class="modal-overlay" id="emailTemplateModal" onclick="if(event.target.id==='emailTemplateModal')this.remove()">
+        <div class="modal-content" style="max-width: 700px;">
+          <div class="modal-header">
+            <h3>Copy Email Template</h3>
+            <button class="modal-close" onclick="document.getElementById('emailTemplateModal').remove()">×</button>
+          </div>
+          <div class="modal-body" style="max-height: 500px; overflow-y: auto;">
+            <p style="color: var(--gray-500); margin-bottom: 16px;">Select a template to copy. Variables will be replaced with case data.</p>
+            <div class="email-template-list">
+              ${templates.map(t => `
+                <div class="email-template-card">
+                  <div class="email-template-header">
+                    <span class="email-template-name">${this.escapeHtml(t.name)}</span>
+                    <span class="type-badge ${c.case_type}">${c.case_type}</span>
+                  </div>
+                  <div class="email-template-subject">
+                    <strong>Subject:</strong> ${this.escapeHtml(t.subject)}
+                  </div>
+                  <div class="email-template-preview">${this.escapeHtml(t.body.substring(0, 150))}...</div>
+                  <button class="btn btn-primary" onclick="HubCaseDetail.copyTemplate('${t.id}')">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                    Copy to Clipboard
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  getEmailTemplatesForCase(c) {
+    // Return templates based on case type and resolution
+    const baseTemplates = {
+      'refund': [
+        {
+          id: 'refund_full',
+          name: 'Full Refund Confirmation',
+          subject: 'Your Refund Has Been Processed - Order {{order_number}}',
+          body: `Hi {{customer_name}},
+
+Great news! Your refund of {{refund_amount}} has been processed for order {{order_number}}.
+
+Please allow 5-10 business days for the refund to appear in your account, depending on your bank.
+
+If you have any questions, feel free to reply to this email.
+
+Thank you for your patience!
+
+Best regards,
+The PuppyPad Team`
+        },
+        {
+          id: 'refund_partial',
+          name: 'Partial Refund Confirmation',
+          subject: 'Partial Refund Processed - Order {{order_number}}',
+          body: `Hi {{customer_name}},
+
+We've processed a partial refund of {{refund_amount}} for your order {{order_number}}.
+
+This refund was applied because: {{resolution}}
+
+Please allow 5-10 business days for the refund to appear in your account.
+
+Thank you for your understanding!
+
+Best regards,
+The PuppyPad Team`
+        }
+      ],
+      'shipping': [
+        {
+          id: 'reship_confirmation',
+          name: 'Reship Confirmation',
+          subject: 'Your Replacement Order is On the Way! - Order {{order_number}}',
+          body: `Hi {{customer_name}},
+
+Good news! We've shipped a replacement for your order {{order_number}}.
+
+You'll receive tracking information shortly once the shipment is processed.
+
+We apologize for any inconvenience and appreciate your patience!
+
+Best regards,
+The PuppyPad Team`
+        },
+        {
+          id: 'tracking_update',
+          name: 'Tracking Update',
+          subject: 'Update on Your Order {{order_number}}',
+          body: `Hi {{customer_name}},
+
+We wanted to give you an update on your order {{order_number}}.
+
+Your package is currently: {{resolution}}
+
+If you need any assistance, please don't hesitate to reach out.
+
+Best regards,
+The PuppyPad Team`
+        }
+      ],
+      'subscription': [
+        {
+          id: 'sub_paused',
+          name: 'Subscription Paused Confirmation',
+          subject: 'Your PuppyPad Subscription Has Been Paused',
+          body: `Hi {{customer_name}},
+
+As requested, we've paused your PuppyPad subscription.
+
+Your subscription will remain paused until you're ready to resume. You can reactivate it anytime from your account or by contacting us.
+
+We'll be here when you're ready to continue!
+
+Best regards,
+The PuppyPad Team`
+        },
+        {
+          id: 'sub_cancelled',
+          name: 'Subscription Cancelled Confirmation',
+          subject: 'Your PuppyPad Subscription Has Been Cancelled',
+          body: `Hi {{customer_name}},
+
+Your PuppyPad subscription has been cancelled as requested.
+
+We're sorry to see you go! If there's anything we could have done better, we'd love to hear your feedback.
+
+You're always welcome back anytime.
+
+Best regards,
+The PuppyPad Team`
+        }
+      ],
+      'return': [
+        {
+          id: 'return_approved',
+          name: 'Return Approved',
+          subject: 'Your Return Has Been Approved - Order {{order_number}}',
+          body: `Hi {{customer_name}},
+
+Your return request for order {{order_number}} has been approved!
+
+Please ship the items back to:
+PuppyPad Returns
+[Return Address]
+
+Once we receive and process your return, your refund will be issued within 5-7 business days.
+
+Thank you!
+
+Best regards,
+The PuppyPad Team`
+        }
+      ]
+    };
+
+    return baseTemplates[c.case_type] || baseTemplates['refund'];
+  },
+
+  copyTemplate(templateId) {
+    const c = this.caseData;
+    const templates = this.getEmailTemplatesForCase(c);
+    const template = templates.find(t => t.id === templateId);
+    
+    if (!template) return;
+
+    // Replace variables
+    let body = template.body
+      .replace(/\{\{customer_name\}\}/g, c.customer_name || 'Valued Customer')
+      .replace(/\{\{order_number\}\}/g, c.order_number || '')
+      .replace(/\{\{refund_amount\}\}/g, c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '')
+      .replace(/\{\{resolution\}\}/g, c.resolution || '')
+      .replace(/\{\{customer_email\}\}/g, c.customer_email || '');
+
+    let subject = template.subject
+      .replace(/\{\{order_number\}\}/g, c.order_number || '');
+
+    const fullEmail = `Subject: ${subject}\n\n${body}`;
+    
+    navigator.clipboard.writeText(fullEmail).then(() => {
+      HubUI.showToast('Email template copied to clipboard!', 'success');
+      document.getElementById('emailTemplateModal')?.remove();
+      this.logActivity('copied_email_template', { template_name: template.name });
+    }).catch(() => {
+      HubUI.showToast('Failed to copy template', 'error');
+    });
   },
 
   formatActivityText(activity) {
