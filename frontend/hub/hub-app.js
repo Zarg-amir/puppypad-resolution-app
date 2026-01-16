@@ -2339,11 +2339,33 @@ const HubNavigation = {
     // Update URL with slug
     this.updateURL(page, filter);
 
-    // Show/hide views
-    ['dashboard', 'cases', 'sessions', 'events', 'issues', 'analytics', 'audit', 'users', 'sop', 'emailTemplates', 'caseDetail'].forEach(v => {
-      const el = document.getElementById(v + 'View');
-      if (el) el.style.display = v === page ? 'block' : 'none';
+    // Show/hide views - map page names to view IDs
+    const viewMap = {
+      'dashboard': 'dashboardView',
+      'cases': 'casesView',
+      'sessions': 'sessionsView',
+      'events': 'eventsView',
+      'issues': 'issuesView',
+      'analytics': 'analyticsView',
+      'audit': 'auditView',
+      'users': 'usersView',
+      'sop': 'sopView',
+      'email-templates': 'emailTemplatesView',
+      'case-detail': 'caseDetailView'
+    };
+    
+    Object.entries(viewMap).forEach(([pageName, viewId]) => {
+      const el = document.getElementById(viewId);
+      if (el) el.style.display = pageName === page ? 'block' : 'none';
     });
+
+    // Hide header filters on pages that have their own filters or don't need them
+    const headerFilters = document.getElementById('headerFilters');
+    if (headerFilters) {
+      // Show header filters only on dashboard, hide on cases (uses inline filters) and other pages
+      const pagesWithHeaderFilters = ['dashboard'];
+      headerFilters.style.display = pagesWithHeaderFilters.includes(page) ? 'flex' : 'none';
+    }
 
     // Load data
     if (page === 'cases') {

@@ -987,8 +987,8 @@
               <div id="searchDropdown" class="search-dropdown" style="display: none;"></div>
             </div>
 
-            <!-- Filters -->
-            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <!-- Filters (hidden on pages with inline filters) -->
+            <div id="headerFilters" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
               <!-- Status Filter -->
               <select id="statusFilter" class="filter-select" onchange="HubFilters.applyFilters()">
                 <option value="">All Status</option>
