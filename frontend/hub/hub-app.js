@@ -1835,7 +1835,191 @@ const HubNavigation = {
 };
 
 // ============================================
-// ISSUES (TROUBLE REPORTS)
+// SESSIONS
+// ============================================
+const HubSessions = {
+  async load(page = 1) {
+    HubUI.showLoading();
+    try {
+      const result = await HubAPI.get(`/hub/api/sessions?page=${page}&limit=${HubConfig.ITEMS_PER_PAGE}&offset=${(page - 1) * HubConfig.ITEMS_PER_PAGE}`);
+      this.renderSessionsList(result.sessions || []);
+      this.renderPagination(result.total || 0, result.sessions?.length || 0, page, HubConfig.ITEMS_PER_PAGE);
+    } catch (e) {
+      console.error('Failed to load sessions:', e);
+      HubUI.showToast('Failed to load sessions', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
+  },
+
+  renderSessionsList(sessions) {
+    const container = document.getElementById('sessionsTableBody');
+    if (!container) return;
+
+    if (sessions.length === 0) {
+      container.innerHTML = `<tr><td colspan="6" class="empty-state">No sessions found</td></tr>`;
+      return;
+    }
+
+    container.innerHTML = sessions.map(s => {
+      const startedAt = s.started_at || s.created_at;
+      const customerName = s.customer_name || s.customer_email || 'Anonymous';
+      const orderNumber = s.order_number || 'N/A';
+      const flowType = s.flow_type || 'N/A';
+      const completed = s.ended_at ? true : false;
+      const recordingUrl = s.session_replay_url || null;
+
+      return `
+        <tr>
+          <td>${this.formatDate(startedAt)}</td>
+          <td>
+            <div class="customer-info">
+              <span class="customer-name">${this.escapeHtml(customerName)}</span>
+              ${s.customer_email ? `<span class="customer-email">${this.escapeHtml(s.customer_email)}</span>` : ''}
+            </div>
+          </td>
+          <td>${this.escapeHtml(orderNumber)}</td>
+          <td><span class="type-badge">${this.escapeHtml(flowType)}</span></td>
+          <td><span class="status-badge ${completed ? 'completed' : 'in-progress'}">${completed ? 'Completed' : 'In Progress'}</span></td>
+          <td>${recordingUrl ? `<a href="${recordingUrl}" target="_blank" class="btn-icon" style="color: var(--primary-600);">Watch</a>` : 'N/A'}</td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  renderPagination(total, currentCount, currentPage, limit) {
+    const container = document.getElementById('sessionsPagination');
+    if (!container) return;
+
+    const totalPages = Math.ceil(total / limit);
+    if (totalPages <= 1) {
+      container.innerHTML = '';
+      return;
+    }
+
+    let html = '';
+    if (currentPage > 1) {
+      html += `<button onclick="HubSessions.load(${currentPage - 1})">Previous</button>`;
+    }
+    html += `<span>Page ${currentPage} of ${totalPages}</span>`;
+    if (currentPage < totalPages) {
+      html += `<button onclick="HubSessions.load(${currentPage + 1})">Next</button>`;
+    }
+    container.innerHTML = html;
+  },
+
+  formatDate(timestamp) {
+    if (!timestamp) return '-';
+    try {
+      return new Date(timestamp).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return '-';
+    }
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+};
+
+// ============================================
+// EVENTS
+// ============================================
+const HubEvents = {
+  async load(page = 1) {
+    HubUI.showLoading();
+    try {
+      const result = await HubAPI.get(`/hub/api/events?page=${page}&limit=${HubConfig.ITEMS_PER_PAGE}&offset=${(page - 1) * HubConfig.ITEMS_PER_PAGE}`);
+      this.renderEventsList(result.events || []);
+      this.renderPagination(result.total || 0, result.events?.length || 0, page, HubConfig.ITEMS_PER_PAGE);
+    } catch (e) {
+      console.error('Failed to load events:', e);
+      HubUI.showToast('Failed to load events', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
+  },
+
+  renderEventsList(events) {
+    const container = document.getElementById('eventsTableBody');
+    if (!container) return;
+
+    if (events.length === 0) {
+      container.innerHTML = `<tr><td colspan="5" class="empty-state">No events found</td></tr>`;
+      return;
+    }
+
+    container.innerHTML = events.map(e => {
+      const eventData = e.event_data ? (typeof e.event_data === 'string' ? e.event_data : JSON.stringify(e.event_data)) : '{}';
+      const truncatedData = eventData.length > 50 ? eventData.substring(0, 50) + '...' : eventData;
+      
+      return `
+        <tr>
+          <td><code style="font-size: 12px; color: var(--gray-600);">${this.escapeHtml((e.session_id || '').substring(0, 12))}...</code></td>
+          <td><span class="type-badge">${this.escapeHtml(e.event_type || 'N/A')}</span></td>
+          <td>${this.escapeHtml(e.event_name || 'N/A')}</td>
+          <td><code style="font-size: 11px; color: var(--gray-500); max-width: 200px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(truncatedData)}</code></td>
+          <td class="time-ago">${this.formatDate(e.created_at)}</td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  renderPagination(total, currentCount, currentPage, limit) {
+    const container = document.getElementById('eventsPagination');
+    if (!container) return;
+
+    const totalPages = Math.ceil(total / limit);
+    if (totalPages <= 1) {
+      container.innerHTML = '';
+      return;
+    }
+
+    let html = '';
+    if (currentPage > 1) {
+      html += `<button onclick="HubEvents.load(${currentPage - 1})">Previous</button>`;
+    }
+    html += `<span>Page ${currentPage} of ${totalPages}</span>`;
+    if (currentPage < totalPages) {
+      html += `<button onclick="HubEvents.load(${currentPage + 1})">Next</button>`;
+    }
+    container.innerHTML = html;
+  },
+
+  formatDate(timestamp) {
+    if (!timestamp) return '-';
+    try {
+      return new Date(timestamp).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return '-';
+    }
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+};
+
+// ============================================
+// ISSUES (ISSUE REPORTS - renamed from trouble_reports)
 // ============================================
 const HubIssues = {
   async load(page = 1) {
@@ -1882,23 +2066,23 @@ const HubIssues = {
     }).join('');
   },
 
-  renderPagination(page, total) {
+  renderPagination(total, currentCount, currentPage, limit) {
     const container = document.getElementById('issuesPagination');
     if (!container) return;
 
-    const totalPages = Math.ceil(total / 50);
+    const totalPages = Math.ceil(total / limit);
     if (totalPages <= 1) {
       container.innerHTML = '';
       return;
     }
 
     let html = '';
-    if (page > 1) {
-      html += `<button onclick="HubIssues.load(${page - 1})">Previous</button>`;
+    if (currentPage > 1) {
+      html += `<button onclick="HubIssues.load(${currentPage - 1})">Previous</button>`;
     }
-    html += `<span>Page ${page} of ${totalPages}</span>`;
-    if (page < totalPages) {
-      html += `<button onclick="HubIssues.load(${page + 1})">Next</button>`;
+    html += `<span>Page ${currentPage} of ${totalPages}</span>`;
+    if (currentPage < totalPages) {
+      html += `<button onclick="HubIssues.load(${currentPage + 1})">Next</button>`;
     }
     container.innerHTML = html;
   },
