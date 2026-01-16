@@ -1,3 +1,0 @@
-# SPA routing: All /hub/* routes serve hub/index.html
-# (Static files like hub-app.js are served directly)
-/hub/*  /hub/index.html  200

@@ -4,80 +4,66 @@
 
 This app has **two separate deployments**:
 
-1. **Cloudflare Pages** - Serves static frontend files (`frontend/` directory)
+1. **Cloudflare Pages** - Serves the chat app only
    - URL: `https://your-pages-domain.pages.dev`
-   - Serves: `index.html`, `hub.html`, CSS, JS files directly
+   - Serves: `index.html` (chat app) at root `/`
+   - Simple static file serving - no redirects needed
 
-2. **Cloudflare Worker** - Serves API routes and embedded hub HTML
+2. **Cloudflare Worker** - Serves the hub app + all APIs
    - URL: `https://your-worker-domain.workers.dev`
-   - Serves: `/api/*` routes, `/hub` (embedded HTML), `/hub/api/*` routes
+   - Serves: `/hub` and all `/hub/*` routes (handles routing server-side)
+   - Serves: All `/api/*` and `/hub/api/*` routes
 
-## The Problem
+## Why This Structure?
 
-- **Pages** serves `frontend/hub.html` directly (static file)
-- **Worker** serves hub HTML from embedded function `getResolutionHubHTML()` in `src/index.js`
-- This creates duplication - you have to update both places manually
+- **Chat app** is simple static HTML → Perfect for Pages
+- **Hub app** needs server-side routing for SPA → Worker handles this perfectly
+- **No redirects needed** - each deployment serves what it's good at
 
-## The Solution
+## URLs
 
-We use a **build script** (`build-hub.js`) that automatically syncs frontend files to the Worker's embedded functions.
+- **Chat app**: `https://pages-domain.pages.dev/` (or Worker domain `/`)
+- **Hub app**: `https://worker-domain.workers.dev/hub` (or any `/hub/*` route)
 
-### How It Works
+## Build Process
+
+The `build-hub.js` script syncs frontend hub files into the Worker:
 
 1. **Source of Truth**: `frontend/` directory
-   - `frontend/hub.html` - Hub HTML
+   - `frontend/index.html` - Chat app
+   - `frontend/hub/index.html` - Hub app
    - `frontend/hub/hub-app.js` - Hub JavaScript
    - `frontend/hub/hub-styles.css` - Hub CSS
 
 2. **Build Process**: Run `node build-hub.js`
-   - Reads files from `frontend/`
-   - Embeds them into `src/index.js` functions:
-     - `getResolutionHubHTML()` ← `frontend/hub.html`
-     - `getHubAppJS()` ← `frontend/hub/hub-app.js`
-     - `getHubStylesCSS()` ← `frontend/hub/hub-styles.css`
+   - Reads `frontend/hub/index.html` and embeds it into Worker's `getResolutionHubHTML()`
+   - Reads `frontend/hub/hub-app.js` and embeds it into Worker's `getHubAppJS()`
+   - Reads `frontend/hub/hub-styles.css` and embeds it into Worker's `getHubStylesCSS()`
 
 3. **Deployment**:
-   - **Pages**: Deploys `frontend/` directory (automatic on git push)
-   - **Worker**: Deploys `src/index.js` with embedded content (run `wrangler deploy`)
+   - **Pages**: Auto-deploys `frontend/` directory on git push (serves chat app)
+   - **Worker**: Deploy manually with `wrangler deploy` (serves hub + APIs)
 
 ## Workflow
 
-### When You Update Hub Files
-
-1. **Edit files in `frontend/`** (this is your source of truth)
-2. **Run build script**: `node build-hub.js`
-3. **Commit and push**: Both deployments will be updated
-   - Pages: Auto-deploys from `frontend/` 
-   - Worker: Deploy manually with `wrangler deploy` (or set up CI/CD)
-
-### Quick Deploy Commands
-
 ```bash
-# 1. Update frontend files (hub.html, hub-app.js, hub-styles.css)
+# 1. Update frontend files
+# Edit: frontend/index.html, frontend/hub/index.html, etc.
 
-# 2. Sync to Worker
+# 2. Sync hub files to Worker
 node build-hub.js
 
-# 3. Commit changes
+# 3. Commit and push
 git add .
-git commit -m "Update hub styling"
+git commit -m "Update hub"
 git push
 
 # 4. Deploy Worker (if needed)
 wrangler deploy
 ```
 
-## Why Two Deployments?
+## Important Notes
 
-- **Pages**: Fast CDN for static assets, free tier
-- **Worker**: API routes, database access, server-side logic
-- **Hub**: Needs both - static HTML (Pages) + API routes (Worker)
-
-## Future Improvement: Unified Deployment
-
-You could configure Cloudflare to:
-- Use Pages for static files
-- Use Worker Functions (Pages Functions) for API routes
-- This would unify everything under one domain
-
-But for now, the build script keeps both in sync automatically.
+- **Hub should be accessed via Worker URL**, not Pages URL
+- Worker handles all `/hub/*` routing server-side (no redirects needed)
+- Chat app works on both Pages and Worker (simple static file)
