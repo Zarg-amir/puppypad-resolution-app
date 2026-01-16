@@ -1841,7 +1841,7 @@ const HubSessions = {
   async load(page = 1) {
     HubUI.showLoading();
     try {
-      const result = await HubAPI.get(`/hub/api/sessions?page=${page}&limit=${HubConfig.ITEMS_PER_PAGE}&offset=${(page - 1) * HubConfig.ITEMS_PER_PAGE}`);
+      const result = await HubAPI.get(`/hub/api/sessions?page=${page}&limit=${HubConfig.ITEMS_PER_PAGE}`);
       this.renderSessionsList(result.sessions || []);
       this.renderPagination(result.total || 0, result.sessions?.length || 0, page, HubConfig.ITEMS_PER_PAGE);
     } catch (e) {
