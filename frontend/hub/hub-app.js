@@ -54,6 +54,14 @@ const HubState = {
   casesPage: 1,  // Renamed from currentPage to avoid conflict with navigation
   totalPages: 1,
 
+  // Issue Reports filters
+  issuesStatus: '',
+  issuesSearch: '',
+  issuesDateRange: '',
+  issuesSortBy: 'created_desc',
+  issuesPage: 1,
+  issuesTotalPages: 1,
+
   // Views
   savedViews: [],
   currentView: null,
@@ -1451,6 +1459,9 @@ const HubSearch = {
 
     if (!searchInput) return;
 
+    // Update placeholder based on current page
+    this.updatePlaceholder();
+
     // Debounced search
     searchInput.addEventListener('input', (e) => {
       const query = e.target.value.trim();
@@ -1458,8 +1469,14 @@ const HubSearch = {
       if (query.length === 0) {
         this.hideDropdown();
         clearBtn.style.display = 'none';
-        HubState.currentSearch = '';
-        HubFilters.applyFilters();
+        const currentPage = HubState.currentPage;
+        if (currentPage === 'issues') {
+          HubState.issuesSearch = '';
+          HubIssues.load(1);
+        } else {
+          HubState.currentSearch = '';
+          HubFilters.applyFilters();
+        }
         return;
       }
 
@@ -1484,11 +1501,18 @@ const HubSearch = {
       } else if (e.key === 'Enter') {
         e.preventDefault();
         if (this.selectedIndex >= 0 && this.searchResults[this.selectedIndex]) {
-          this.selectResult(this.searchResults[this.selectedIndex]);
+          const context = HubState.currentPage === 'issues' ? 'issues' : 'cases';
+          this.selectResult(this.searchResults[this.selectedIndex], context);
         } else {
           // Apply search directly
-          HubState.currentSearch = searchInput.value.trim();
-          HubFilters.applyFilters();
+          const currentPage = HubState.currentPage;
+          if (currentPage === 'issues') {
+            HubState.issuesSearch = searchInput.value.trim();
+            HubIssues.load(1);
+          } else {
+            HubState.currentSearch = searchInput.value.trim();
+            HubFilters.applyFilters();
+          }
           this.hideDropdown();
         }
       } else if (e.key === 'Escape') {
@@ -1518,17 +1542,26 @@ const HubSearch = {
     this.selectedIndex = -1;
 
     try {
-      // Search across all fields
-      const result = await HubAPI.get(`/hub/api/cases/search?q=${encodeURIComponent(query)}&limit=10`);
-      this.searchResults = result.results || [];
-      this.renderDropdown();
+      // Context-aware search: check current page
+      const currentPage = HubState.currentPage;
+      if (currentPage === 'issues') {
+        // Search issues
+        const result = await HubAPI.get(`/hub/api/issues/search?q=${encodeURIComponent(query)}&limit=10`);
+        this.searchResults = result.results || [];
+        this.renderDropdown('issues');
+      } else {
+        // Search cases (default)
+        const result = await HubAPI.get(`/hub/api/cases/search?q=${encodeURIComponent(query)}&limit=10`);
+        this.searchResults = result.results || [];
+        this.renderDropdown('cases');
+      }
     } catch (e) {
       console.error('Search error:', e);
       dropdown.innerHTML = '<div class="search-dropdown-empty">Search failed. Try again.</div>';
     }
   },
 
-  renderDropdown() {
+  renderDropdown(context = 'cases') {
     const dropdown = document.getElementById('searchDropdown');
     if (!dropdown) return;
 
@@ -1539,31 +1572,59 @@ const HubSearch = {
 
     const query = document.getElementById('searchInput')?.value.trim().toLowerCase() || '';
     
-    dropdown.innerHTML = this.searchResults.map((item, idx) => {
-      const highlightText = (text) => {
-        if (!text || !query) return this.escapeHtml(text || '');
-        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-        return this.escapeHtml(text).replace(regex, '<span class="search-dropdown-item-highlight">$1</span>');
-      };
+    if (context === 'issues') {
+      // Render issues search results
+      dropdown.innerHTML = this.searchResults.map((item, idx) => {
+        const highlightText = (text) => {
+          if (!text || !query) return this.escapeHtml(text || '');
+          const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+          return this.escapeHtml(text).replace(regex, '<span class="search-dropdown-item-highlight">$1</span>');
+        };
 
-      return `
-        <div class="search-dropdown-item ${idx === this.selectedIndex ? 'selected' : ''}" 
-             onclick="HubSearch.selectResult(${JSON.stringify(item).replace(/"/g, '&quot;')})"
-             data-index="${idx}">
-          <div class="search-dropdown-item-header">
-            ${highlightText(item.customer_name || 'Unknown Customer')}
-            <span style="font-size: 11px; color: var(--gray-500);">${item.case_id?.substring(0, 8)}</span>
+        return `
+          <div class="search-dropdown-item ${idx === this.selectedIndex ? 'selected' : ''}" 
+               onclick="HubSearch.selectResult(${JSON.stringify(item).replace(/"/g, '&quot;')}, 'issues')"
+               data-index="${idx}">
+            <div class="search-dropdown-item-header">
+              ${highlightText(item.customer_email || 'Unknown')}
+              <span style="font-size: 11px; color: var(--gray-500);">${item.report_id?.substring(0, 8) || ''}</span>
+            </div>
+            <div class="search-dropdown-item-meta">
+              <span>${highlightText(item.issue_type || '')}</span>
+              <span>${item.status || ''}</span>
+              ${item.name ? `<span>${highlightText(item.name)}</span>` : ''}
+            </div>
           </div>
-          <div class="search-dropdown-item-meta">
-            <span>${highlightText(item.customer_email || '')}</span>
-            <span>${item.case_type || ''}</span>
-            <span>${item.status || ''}</span>
-            ${item.order_number ? `<span>Order: ${highlightText(item.order_number)}</span>` : ''}
-            ${item.resolution ? `<span>${highlightText(item.resolution.substring(0, 50))}...</span>` : ''}
+        `;
+      }).join('');
+    } else {
+      // Render cases search results (default)
+      dropdown.innerHTML = this.searchResults.map((item, idx) => {
+        const highlightText = (text) => {
+          if (!text || !query) return this.escapeHtml(text || '');
+          const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+          return this.escapeHtml(text).replace(regex, '<span class="search-dropdown-item-highlight">$1</span>');
+        };
+
+        return `
+          <div class="search-dropdown-item ${idx === this.selectedIndex ? 'selected' : ''}" 
+               onclick="HubSearch.selectResult(${JSON.stringify(item).replace(/"/g, '&quot;')}, 'cases')"
+               data-index="${idx}">
+            <div class="search-dropdown-item-header">
+              ${highlightText(item.customer_name || 'Unknown Customer')}
+              <span style="font-size: 11px; color: var(--gray-500);">${item.case_id?.substring(0, 8)}</span>
+            </div>
+            <div class="search-dropdown-item-meta">
+              <span>${highlightText(item.customer_email || '')}</span>
+              <span>${item.case_type || ''}</span>
+              <span>${item.status || ''}</span>
+              ${item.order_number ? `<span>Order: ${highlightText(item.order_number)}</span>` : ''}
+              ${item.resolution ? `<span>${highlightText(item.resolution.substring(0, 50))}...</span>` : ''}
+            </div>
           </div>
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
+    }
   },
 
   highlightSelected() {
@@ -1578,15 +1639,28 @@ const HubSearch = {
     });
   },
 
-  selectResult(result) {
-    document.getElementById('searchInput').value = result.customer_name || result.customer_email || '';
-    HubState.currentSearch = result.customer_name || result.customer_email || '';
-    this.hideDropdown();
-    HubFilters.applyFilters();
-    
-    // Optionally open the case
-    if (result.case_id) {
-      setTimeout(() => HubCases.openCase(result.case_id), 100);
+  selectResult(result, context = 'cases') {
+    const searchInput = document.getElementById('searchInput');
+    if (context === 'issues') {
+      searchInput.value = result.customer_email || result.name || '';
+      HubState.issuesSearch = result.customer_email || result.name || '';
+      this.hideDropdown();
+      HubIssues.load(1);
+      
+      // Optionally open the issue
+      if (result.report_id) {
+        setTimeout(() => HubIssues.openIssue(result.report_id), 100);
+      }
+    } else {
+      searchInput.value = result.customer_name || result.customer_email || '';
+      HubState.currentSearch = result.customer_name || result.customer_email || '';
+      this.hideDropdown();
+      HubFilters.applyFilters();
+      
+      // Optionally open the case
+      if (result.case_id) {
+        setTimeout(() => HubCases.openCase(result.case_id), 100);
+      }
     }
   },
 
@@ -1602,10 +1676,85 @@ const HubSearch = {
     const clearBtn = document.getElementById('clearSearchBtn');
     if (searchInput) {
       searchInput.value = '';
-      HubState.currentSearch = '';
+      const currentPage = HubState.currentPage;
+      if (currentPage === 'issues') {
+        HubState.issuesSearch = '';
+        HubIssues.load(1);
+      } else {
+        HubState.currentSearch = '';
+        HubFilters.applyFilters();
+      }
       clearBtn.style.display = 'none';
       this.hideDropdown();
-      HubFilters.applyFilters();
+    }
+  },
+
+  updatePlaceholder() {
+    const searchInput = document.getElementById('searchInput');
+    const assigneeFilter = document.getElementById('assigneeFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const sortBy = document.getElementById('sortBy');
+    
+    if (!searchInput) return;
+
+    const currentPage = HubState.currentPage;
+    if (currentPage === 'issues') {
+      searchInput.placeholder = 'Search issues: email, name, report ID, description...';
+      // Hide assignee filter for issues
+      if (assigneeFilter) assigneeFilter.style.display = 'none';
+      // Update status filter options for issues
+      if (statusFilter) {
+        statusFilter.innerHTML = `
+          <option value="">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="resolved">Resolved</option>
+        `;
+      }
+      // Update sort options for issues
+      if (sortBy) {
+        sortBy.innerHTML = `
+          <option value="created_desc">Newest First</option>
+          <option value="created_asc">Oldest First</option>
+          <option value="status_asc">Status (A-Z)</option>
+          <option value="status_desc">Status (Z-A)</option>
+          <option value="customer_email_asc">Email (A-Z)</option>
+          <option value="customer_email_desc">Email (Z-A)</option>
+          <option value="issue_type_asc">Issue Type (A-Z)</option>
+          <option value="issue_type_desc">Issue Type (Z-A)</option>
+        `;
+      }
+    } else {
+      searchInput.placeholder = 'Search anything: name, email, case ID, order, resolution...';
+      // Show assignee filter for cases
+      if (assigneeFilter) assigneeFilter.style.display = 'block';
+      // Update status filter options for cases
+      if (statusFilter) {
+        statusFilter.innerHTML = `
+          <option value="">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+          <option value="overdue">Overdue</option>
+        `;
+      }
+      // Update sort options for cases
+      if (sortBy) {
+        sortBy.innerHTML = `
+          <option value="created_desc">Newest First</option>
+          <option value="created_asc">Oldest First</option>
+          <option value="due_asc">Due Date (Earliest)</option>
+          <option value="due_desc">Due Date (Latest)</option>
+          <option value="customer_name_asc">Customer (A-Z)</option>
+          <option value="customer_name_desc">Customer (Z-A)</option>
+          <option value="status_asc">Status (A-Z)</option>
+          <option value="status_desc">Status (Z-A)</option>
+          <option value="case_type_asc">Type (A-Z)</option>
+          <option value="case_type_desc">Type (Z-A)</option>
+          <option value="assigned_to_asc">Assignee (A-Z)</option>
+          <option value="assigned_to_desc">Assignee (Z-A)</option>
+        `;
+      }
     }
   },
 
@@ -1640,25 +1789,48 @@ const HubFilters = {
   },
 
   applyFilters() {
-    const status = document.getElementById('statusFilter')?.value || '';
-    const assignee = document.getElementById('assigneeFilter')?.value || '';
-    const dateRange = document.getElementById('dateRangeFilter')?.value || '';
-    const sortBy = document.getElementById('sortBy')?.value || 'created_desc';
-    const search = HubState.currentSearch || '';
+    const currentPage = HubState.currentPage;
+    
+    if (currentPage === 'issues') {
+      // Apply issue filters
+      const status = document.getElementById('statusFilter')?.value || '';
+      const dateRange = document.getElementById('dateRangeFilter')?.value || '';
+      const sortBy = document.getElementById('sortBy')?.value || 'created_desc';
 
-    // Save filters
-    localStorage.setItem('hub_filters', JSON.stringify({
-      status, assignee, dateRange, sortBy
-    }));
+      // Save filters
+      localStorage.setItem('hub_issues_filters', JSON.stringify({
+        status, dateRange, sortBy
+      }));
 
-    // Update state
-    HubState.currentStatus = status;
-    HubState.currentAssignee = assignee;
-    HubState.currentDateRange = dateRange;
-    HubState.currentSortBy = sortBy;
+      // Update state
+      HubState.issuesStatus = status;
+      HubState.issuesDateRange = dateRange;
+      HubState.issuesSortBy = sortBy;
 
-    // Reload cases
-    HubCases.loadCases(1);
+      // Reload issues
+      HubIssues.load(1);
+    } else {
+      // Apply case filters (default)
+      const status = document.getElementById('statusFilter')?.value || '';
+      const assignee = document.getElementById('assigneeFilter')?.value || '';
+      const dateRange = document.getElementById('dateRangeFilter')?.value || '';
+      const sortBy = document.getElementById('sortBy')?.value || 'created_desc';
+      const search = HubState.currentSearch || '';
+
+      // Save filters
+      localStorage.setItem('hub_filters', JSON.stringify({
+        status, assignee, dateRange, sortBy
+      }));
+
+      // Update state
+      HubState.currentStatus = status;
+      HubState.currentAssignee = assignee;
+      HubState.currentDateRange = dateRange;
+      HubState.currentSortBy = sortBy;
+
+      // Reload cases
+      HubCases.loadCases(1);
+    }
   },
 
   getFilterParams() {
@@ -1985,6 +2157,11 @@ const HubNavigation = {
       pageTitleEl.textContent = pageTitle;
     }
 
+    // Update search placeholder and filter UI based on current page
+    if (HubSearch.updatePlaceholder) {
+      HubSearch.updatePlaceholder();
+    }
+
     // Update URL with slug
     this.updateURL(page, filter);
 
@@ -2263,9 +2440,28 @@ const HubIssues = {
   async load(page = 1) {
     HubUI.showLoading();
     try {
-      const result = await HubAPI.get(`/hub/api/issues?limit=50&offset=${(page - 1) * 50}`);
+      let url = `/hub/api/issues?page=${page}&limit=50`;
+
+      // Add filters
+      if (HubState.issuesStatus) {
+        url += `&status=${encodeURIComponent(HubState.issuesStatus)}`;
+      }
+      if (HubState.issuesDateRange) {
+        url += `&dateRange=${encodeURIComponent(HubState.issuesDateRange)}`;
+      }
+      if (HubState.issuesSortBy) {
+        const [field, order] = HubState.issuesSortBy.split('_');
+        url += `&sortBy=${field}&sortOrder=${order}`;
+      }
+      if (HubState.issuesSearch) {
+        url += `&search=${encodeURIComponent(HubState.issuesSearch)}`;
+      }
+
+      const result = await HubAPI.get(url);
       this.renderIssues(result.issues || []);
-      this.renderPagination(page, result.issues?.length || 0);
+      this.renderPagination(result.total || 0, result.issues?.length || 0, page, 50);
+      HubState.issuesPage = page;
+      HubState.issuesTotalPages = result.totalPages || 1;
     } catch (e) {
       console.error('Failed to load issues:', e);
       HubUI.showToast('Failed to load issues', 'error');
@@ -2323,6 +2519,20 @@ const HubIssues = {
       html += `<button onclick="HubIssues.load(${currentPage + 1})">Next</button>`;
     }
     container.innerHTML = html;
+  },
+
+  applyFilters() {
+    // Get filter values from UI
+    const statusFilter = document.getElementById('issuesStatusFilter');
+    const dateRangeFilter = document.getElementById('issuesDateRangeFilter');
+    const sortByFilter = document.getElementById('issuesSortBy');
+
+    if (statusFilter) HubState.issuesStatus = statusFilter.value || '';
+    if (dateRangeFilter) HubState.issuesDateRange = dateRangeFilter.value || '';
+    if (sortByFilter) HubState.issuesSortBy = sortByFilter.value || 'created_desc';
+
+    // Reload issues
+    this.load(1);
   },
 
   async openIssue(reportId) {
