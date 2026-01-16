@@ -2419,12 +2419,12 @@ const HubAnalytics = {
       return;
     }
 
-    container.innerHTML = types.map(r => `
-      <div style="padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
-        <div style="font-size: 13px; color: var(--gray-700); margin-bottom: 4px;">${this.escapeHtml(r.resolution || 'Unknown')}</div>
+    container.innerHTML = types.map((r, idx) => `
+      <div style="padding: 14px 16px; border-bottom: 1px solid rgba(229, 231, 235, 0.5); border-radius: 12px; margin-bottom: 8px; background: ${idx % 2 === 0 ? 'rgba(249, 250, 251, 0.5)' : 'transparent'}; transition: all 0.2s ease;">
+        <div style="font-size: 13px; font-weight: 500; color: var(--gray-700); margin-bottom: 8px; line-height: 1.4;">${this.escapeHtml(r.resolution || 'Unknown')}</div>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 16px; font-weight: 600; color: var(--gray-900);">${r.count || 0}</span>
-          ${r.total_refund ? `<span style="font-size: 12px; color: var(--gray-500);">${this.formatCurrency(r.total_refund)}</span>` : ''}
+          <span style="font-size: 20px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; color: var(--brand-navy);">${r.count || 0}</span>
+          ${r.total_refund ? `<span style="font-size: 13px; font-weight: 600; color: var(--success-600); padding: 4px 10px; background: rgba(16, 185, 129, 0.1); border-radius: 6px;">${this.formatCurrency(r.total_refund)}</span>` : ''}
         </div>
       </div>
     `).join('');
