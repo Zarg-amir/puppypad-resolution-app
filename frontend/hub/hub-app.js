@@ -25,7 +25,28 @@ const HubConfig = {
   API_BASE: getApiBase(),
   REFRESH_INTERVAL: 30000, // 30 seconds
   MAX_BULK_SELECT: 100,
-  ITEMS_PER_PAGE: 50
+  ITEMS_PER_PAGE: 15 // Changed from 50 to 15 for better pagination
+};
+
+// ============================================
+// GLOBAL HELPERS
+// ============================================
+const HubHelpers = {
+  // Format name with proper capitalization (First Last)
+  formatName(name) {
+    if (!name) return 'Unknown';
+    return name.split(' ')
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
+  },
+  
+  // Escape HTML
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
 };
 
 // ============================================
@@ -306,9 +327,139 @@ const HubBulkActions = {
     this.updateUI();
   },
 
+  updateBulkActionBar() {
+    const count = HubState.selectedCaseIds.size;
+    let bar = document.getElementById('casesBulkBar');
+    
+    if (count === 0) {
+      if (bar) bar.remove();
+      return;
+    }
+
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'casesBulkBar';
+      bar.className = 'bulk-action-bar';
+      document.body.appendChild(bar);
+    }
+
+    bar.innerHTML = `
+      <div class="bulk-action-count">${count} case${count > 1 ? 's' : ''} selected</div>
+      <div class="bulk-action-buttons">
+        <button onclick="HubBulkActions.showAssignModal()" class="bulk-btn">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          Assign
+        </button>
+        <button onclick="HubBulkActions.showStatusModal()" class="bulk-btn">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Change Status
+        </button>
+        <button onclick="HubBulkActions.exportCSV()" class="bulk-btn">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Export
+        </button>
+        <button onclick="HubBulkActions.deselectAll()" class="bulk-btn bulk-btn-cancel">Cancel</button>
+      </div>
+    `;
+  },
+
+  showStatusModal() {
+    const count = HubState.selectedCaseIds.size;
+    if (count === 0) return;
+
+    const html = `
+      <div class="modal-overlay active" id="bulkStatusModal">
+        <div class="modal" style="max-width: 400px;">
+          <div class="modal-header">
+            <h3>Change Status (${count} cases)</h3>
+            <button class="modal-close" onclick="document.getElementById('bulkStatusModal').remove()">×</button>
+          </div>
+          <div class="modal-body" style="padding: 24px;">
+            <div class="status-radio-group">
+              <label class="status-radio-item" data-status="pending">
+                <input type="radio" name="bulkStatus" value="pending">
+                <span class="status-radio-check"></span>
+                <span class="status-radio-label">Pending</span>
+              </label>
+              <label class="status-radio-item" data-status="in_progress">
+                <input type="radio" name="bulkStatus" value="in_progress">
+                <span class="status-radio-check"></span>
+                <span class="status-radio-label">In Progress</span>
+              </label>
+              <label class="status-radio-item" data-status="completed">
+                <input type="radio" name="bulkStatus" value="completed">
+                <span class="status-radio-check"></span>
+                <span class="status-radio-label">Completed</span>
+              </label>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+              <button class="btn btn-secondary" onclick="document.getElementById('bulkStatusModal').remove()">Cancel</button>
+              <button class="btn btn-primary" onclick="HubBulkActions.applyBulkStatus()">Apply</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  applyBulkStatus() {
+    const selected = document.querySelector('#bulkStatusModal input[name="bulkStatus"]:checked');
+    if (!selected) {
+      HubUI.showToast('Please select a status', 'warning');
+      return;
+    }
+    document.getElementById('bulkStatusModal')?.remove();
+    this.updateStatus(selected.value);
+  },
+
+  exportCSV() {
+    const cases = HubState.cases.filter(c => HubState.selectedCaseIds.has(c.case_id));
+    if (cases.length === 0) {
+      HubUI.showToast('No cases selected', 'warning');
+      return;
+    }
+    
+    const headers = ['Case ID', 'Customer Name', 'Customer Email', 'Type', 'Status', 'Resolution', 'Created'];
+    const rows = cases.map(c => [
+      c.case_id,
+      c.customer_name || '',
+      c.customer_email || '',
+      c.case_type || '',
+      c.status || '',
+      c.resolution || '',
+      c.created_at || ''
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cases-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    HubUI.showToast(`Exported ${cases.length} cases`, 'success');
+  },
+
   updateUI() {
     const count = HubState.selectedCaseIds.size;
     const toolbar = document.getElementById('bulkActionsToolbar');
+    
+    // Update floating bulk action bar
+    this.updateBulkActionBar();
+    
+    // Update checkboxes
+    document.querySelectorAll('.case-checkbox').forEach(cb => {
+      cb.checked = HubState.selectedCaseIds.has(cb.dataset.caseId);
+    });
+    
+    // Update select all checkbox
+    const selectAll = document.getElementById('selectAllCases');
+    if (selectAll) {
+      const allChecked = HubState.cases.length > 0 && HubState.cases.every(c => HubState.selectedCaseIds.has(c.case_id));
+      selectAll.checked = allChecked;
+    }
 
     // Add null check for toolbar
     if (toolbar) {
@@ -2119,7 +2270,7 @@ const HubCases = {
                  ${HubState.selectedCaseIds.has(c.case_id) ? 'checked' : ''}>
         </td>
         <td class="td-customer">
-          <div class="td-customer-name">${this.escapeHtml(c.customer_name || 'Unknown')}</div>
+          <div class="td-customer-name">${HubHelpers.formatName(c.customer_name)}</div>
           <div class="td-customer-email">${this.escapeHtml(c.customer_email || '-')}</div>
         </td>
         <td><span class="type-badge ${c.case_type}">${c.case_type}</span></td>
@@ -2160,17 +2311,50 @@ const HubCases = {
     const container = document.getElementById('casesPagination');
     if (!container) return;
 
-    let html = '';
-
-    if (HubState.casesPage > 1) {
-      html += `<button onclick="HubCases.loadCases(${HubState.casesPage - 1})">Previous</button>`;
+    const totalPages = HubState.totalPages;
+    const currentPage = HubState.casesPage;
+    
+    if (totalPages <= 1) {
+      container.innerHTML = '';
+      return;
     }
 
-    html += `<span>Page ${HubState.casesPage} of ${HubState.totalPages}</span>`;
-
-    if (HubState.casesPage < HubState.totalPages) {
-      html += `<button onclick="HubCases.loadCases(${HubState.casesPage + 1})">Next</button>`;
+    let html = '<div class="pagination">';
+    
+    // Previous button
+    html += `<button class="pagination-btn" onclick="HubCases.loadCases(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    </button>`;
+    
+    // Page numbers
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    
+    if (endPage - startPage < maxVisible - 1) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
     }
+
+    if (startPage > 1) {
+      html += `<button class="pagination-btn" onclick="HubCases.loadCases(1)">1</button>`;
+      if (startPage > 2) html += `<span class="pagination-info">...</span>`;
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="HubCases.loadCases(${i})">${i}</button>`;
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) html += `<span class="pagination-info">...</span>`;
+      html += `<button class="pagination-btn" onclick="HubCases.loadCases(${totalPages})">${totalPages}</button>`;
+    }
+    
+    // Next button
+    html += `<button class="pagination-btn" onclick="HubCases.loadCases(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    </button>`;
+    
+    html += '</div>';
 
     container.innerHTML = html;
   },
@@ -3292,7 +3476,7 @@ const HubAnalytics = {
             ${this.formatHours(t.avg_resolution_hours || 0)} avg
           </span>
           <span style="display: flex; align-items: center; gap: 4px; color: var(--success-600);">
-            <span style="font-weight: 600;">💰</span>
+            <span style="font-weight: 600; width: 18px; height: 18px; display: inline-flex;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8"/><path d="M12 18V6"/></svg></span>
             ${this.formatCurrency(t.total_refunds || 0)}
           </span>
         </div>
@@ -3465,10 +3649,10 @@ const HubSOP = {
     });
 
     const categoryLabels = {
-      'refund': { label: 'Refund Procedures', icon: '💰', color: '#ef4444' },
-      'shipping': { label: 'Shipping & Delivery', icon: '📦', color: '#3b82f6' },
-      'subscription': { label: 'Subscription Management', icon: '🔄', color: '#8b5cf6' },
-      'return': { label: 'Returns & Exchanges', icon: '↩️', color: '#f59e0b' }
+      'refund': { label: 'Refund Procedures', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8"/><path d="M12 18V6"/></svg>', color: '#ef4444' },
+      'shipping': { label: 'Shipping & Delivery', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>', color: '#3b82f6' },
+      'subscription': { label: 'Subscription Management', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>', color: '#8b5cf6' },
+      'return': { label: 'Returns & Exchanges', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>', color: '#f59e0b' }
     };
 
     let html = '';
@@ -3990,10 +4174,10 @@ The PuppyPad Team`,
     });
 
     const categoryLabels = {
-      'refund': { label: 'Refund Confirmations', icon: '💰', color: '#ef4444' },
-      'shipping': { label: 'Shipping & Delivery', icon: '📦', color: '#3b82f6' },
-      'subscription': { label: 'Subscription Updates', icon: '🔄', color: '#8b5cf6' },
-      'return': { label: 'Returns & Exchanges', icon: '↩️', color: '#f59e0b' }
+      'refund': { label: 'Refund Confirmations', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8"/><path d="M12 18V6"/></svg>', color: '#ef4444' },
+      'shipping': { label: 'Shipping & Delivery', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>', color: '#3b82f6' },
+      'subscription': { label: 'Subscription Updates', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>', color: '#8b5cf6' },
+      'return': { label: 'Returns & Exchanges', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>', color: '#f59e0b' }
     };
 
     let html = '';
@@ -4563,7 +4747,7 @@ const HubCaseDetail = {
       <div class="case-detail-header">
         <div class="case-detail-title">
           <div class="case-detail-customer-name">
-            ${this.escapeHtml(c.customer_name || 'Unknown Customer')}
+            ${HubHelpers.formatName(c.customer_name)}
             <span class="status-badge ${(c.status || 'pending').replace('_', '-')}">${this.formatStatus(c.status)}</span>
             <span class="type-badge ${c.case_type}">${c.case_type}</span>
           </div>
@@ -4574,7 +4758,7 @@ const HubCaseDetail = {
             </button>
           </div>
           <div class="case-detail-id-row">
-            <span>${this.escapeHtml(c.case_id)}</span>
+            <span>Case ID: ${this.escapeHtml(c.case_id)}</span>
             <button class="copy-btn" onclick="HubCaseDetail.copyToClipboard('${this.escapeHtml(c.case_id)}', this)" title="Copy case ID">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
             </button>
@@ -5334,6 +5518,9 @@ const HubDashboard = {
         if (el) el.textContent = result[type] || 0;
       });
 
+      // Load issue reports count for the badge
+      this.loadIssuesCount();
+
       // Load recent cases
       await this.loadRecentCases();
     } catch (e) {
@@ -5346,20 +5533,165 @@ const HubDashboard = {
     }
   },
 
+  async loadIssuesCount() {
+    try {
+      const result = await HubAPI.get('/hub/api/issues?page=1&limit=1&status=pending');
+      const badge = document.getElementById('issuesCount');
+      if (badge) {
+        const count = result.total || 0;
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'inline-flex' : 'none';
+      }
+    } catch (e) {
+      console.error('Failed to load issues count:', e);
+    }
+  },
+
+  recentCases: [],
+  selectedDashboardCases: new Set(),
+  
   async loadRecentCases() {
     const container = document.getElementById('recentCasesBody');
     if (!container) return;
 
     // Show loading spinner
-    container.innerHTML = '<tr><td colspan="5" class="loading-spinner"><div class="spinner"></div></td></tr>';
+    container.innerHTML = '<tr><td colspan="7" class="loading-spinner"><div class="spinner"></div></td></tr>';
 
     try {
-      const result = await HubAPI.get('/hub/api/cases?page=1&limit=10');
-      this.renderRecentCases(result.cases || []);
+      const result = await HubAPI.get('/hub/api/cases?page=1&limit=15');
+      this.recentCases = result.cases || [];
+      this.renderRecentCases(this.recentCases);
     } catch (e) {
       console.error('Failed to load recent cases:', e);
-      container.innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load recent cases</td></tr>';
+      container.innerHTML = '<tr><td colspan="7" class="empty-state">Failed to load recent cases</td></tr>';
     }
+  },
+
+  filterRecentCases() {
+    const statusFilter = document.getElementById('dashboardStatusFilter')?.value || '';
+    const typeFilter = document.getElementById('dashboardTypeFilter')?.value || '';
+    const sortFilter = document.getElementById('dashboardSortFilter')?.value || 'newest';
+
+    let filtered = [...this.recentCases];
+
+    if (statusFilter) {
+      filtered = filtered.filter(c => c.status === statusFilter);
+    }
+    if (typeFilter) {
+      filtered = filtered.filter(c => c.case_type === typeFilter);
+    }
+    
+    if (sortFilter === 'oldest') {
+      filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    } else {
+      filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
+    this.renderRecentCases(filtered);
+  },
+
+  toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('#recentCasesBody input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+      cb.checked = checkbox.checked;
+      const caseId = cb.dataset.caseId;
+      if (caseId) {
+        if (checkbox.checked) {
+          this.selectedDashboardCases.add(caseId);
+        } else {
+          this.selectedDashboardCases.delete(caseId);
+        }
+      }
+    });
+    this.updateBulkActionBar();
+  },
+
+  toggleDashboardSelect(caseId) {
+    if (this.selectedDashboardCases.has(caseId)) {
+      this.selectedDashboardCases.delete(caseId);
+    } else {
+      this.selectedDashboardCases.add(caseId);
+    }
+    this.updateBulkActionBar();
+  },
+
+  updateBulkActionBar() {
+    const count = this.selectedDashboardCases.size;
+    let bar = document.getElementById('dashboardBulkBar');
+    
+    if (count === 0) {
+      if (bar) bar.remove();
+      return;
+    }
+
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'dashboardBulkBar';
+      bar.className = 'bulk-action-bar';
+      document.body.appendChild(bar);
+    }
+
+    bar.innerHTML = `
+      <div class="bulk-action-count">${count} case${count > 1 ? 's' : ''} selected</div>
+      <div class="bulk-action-buttons">
+        <button onclick="HubDashboard.bulkAssign()" class="bulk-btn">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          Assign
+        </button>
+        <button onclick="HubDashboard.bulkStatus()" class="bulk-btn">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Change Status
+        </button>
+        <button onclick="HubDashboard.bulkExport()" class="bulk-btn">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Export
+        </button>
+        <button onclick="HubDashboard.clearSelection()" class="bulk-btn bulk-btn-cancel">Cancel</button>
+      </div>
+    `;
+  },
+
+  clearSelection() {
+    this.selectedDashboardCases.clear();
+    document.querySelectorAll('#recentCasesBody input[type="checkbox"]').forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById('dashboardSelectAll');
+    if (selectAll) selectAll.checked = false;
+    this.updateBulkActionBar();
+  },
+
+  async bulkAssign() {
+    HubBulkActions.showAssignModal(Array.from(this.selectedDashboardCases));
+  },
+
+  async bulkStatus() {
+    HubBulkActions.showStatusModal(Array.from(this.selectedDashboardCases));
+  },
+
+  async bulkExport() {
+    const cases = this.recentCases.filter(c => this.selectedDashboardCases.has(c.case_id));
+    const csv = this.exportToCSV(cases);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cases-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    HubUI.showToast(`Exported ${cases.length} cases`, 'success');
+  },
+
+  exportToCSV(cases) {
+    const headers = ['Case ID', 'Customer Name', 'Customer Email', 'Type', 'Status', 'Resolution', 'Created'];
+    const rows = cases.map(c => [
+      c.case_id,
+      c.customer_name || '',
+      c.customer_email || '',
+      c.case_type || '',
+      c.status || '',
+      c.resolution || '',
+      c.created_at || ''
+    ]);
+    return [headers, ...rows].map(r => r.map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join(',')).join('\n');
   },
 
   renderRecentCases(cases) {
@@ -5367,23 +5699,34 @@ const HubDashboard = {
     if (!container) return;
 
     if (cases.length === 0) {
-      container.innerHTML = '<tr><td colspan="5" class="empty-state">No recent cases</td></tr>';
+      container.innerHTML = '<tr><td colspan="7" class="empty-state">No recent cases</td></tr>';
       return;
     }
 
     container.innerHTML = cases.map(c => {
       const statusClass = c.status ? c.status.replace('_', '-') : 'pending';
+      const dueDate = c.due_date ? new Date(c.due_date) : null;
+      const isOverdue = c.is_overdue;
+      const hoursLeft = dueDate ? Math.max(0, Math.round((dueDate - new Date()) / (1000 * 60 * 60))) : null;
+      const dueClass = isOverdue ? 'overdue' : hoursLeft !== null && hoursLeft < 8 ? 'warning' : '';
+      
       return `
-        <tr onclick="HubNavigation.goto('cases', 'all'); HubCases.openCase('${c.case_id}')" style="cursor: pointer;">
-          <td class="case-id">${this.escapeHtml(c.case_id || '-')}</td>
+        <tr onclick="HubCases.openCase('${c.case_id}')" style="cursor: pointer;">
+          <td onclick="event.stopPropagation();">
+            <input type="checkbox" data-case-id="${c.case_id}" 
+                   onclick="HubDashboard.toggleDashboardSelect('${c.case_id}')"
+                   ${this.selectedDashboardCases.has(c.case_id) ? 'checked' : ''}>
+          </td>
           <td>
             <div class="customer-info">
-              <span class="customer-name">${this.escapeHtml(c.customer_name || 'Unknown')}</span>
+              <span class="customer-name">${HubHelpers.formatName(c.customer_name)}</span>
               <span class="customer-email">${this.escapeHtml(c.customer_email || '-')}</span>
             </div>
           </td>
           <td><span class="type-badge ${c.case_type || ''}">${this.escapeHtml(c.case_type || '-')}</span></td>
           <td><span class="status-badge ${statusClass}">${this.formatStatus(c.status || 'pending')}</span></td>
+          <td class="td-due ${dueClass}">${isOverdue ? 'Overdue' : hoursLeft !== null ? hoursLeft + 'h left' : '-'}</td>
+          <td class="td-resolution">${this.escapeHtml(c.resolution || '-')}</td>
           <td class="time-ago">${this.timeAgo(c.created_at)}</td>
         </tr>
       `;
