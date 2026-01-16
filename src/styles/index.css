@@ -1,43 +1,12 @@
+/* Import original PuppyPad styles first */
+@import './original.css';
+@import './hub-styles.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Base styles */
-:root {
-  --brand-navy: #1a365d;
-  --brand-navy-light: #2c5282;
-  --brand-navy-soft: #e8eef4;
-  --accent-teal: #4fd1c5;
-  --accent-coral: #f56565;
-}
-
-body {
-  @apply font-sans antialiased text-gray-800;
-  background: linear-gradient(135deg, #fff8e7 0%, #fff5f5 50%, #f0f7ff 100%);
-  background-attachment: fixed;
-  min-height: 100vh;
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-gray-100 rounded;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded hover:bg-gray-400;
-}
-
-/* Focus styles */
-*:focus-visible {
-  @apply outline-none ring-2 ring-brand-navy ring-offset-2;
-}
-
-/* Utility classes */
+/* Hub-specific Tailwind utilities for components using Tailwind classes */
 @layer utilities {
   .glass {
     @apply bg-white/95 backdrop-blur-xl border border-white/80;
@@ -45,181 +14,9 @@ body {
       0 8px 32px rgba(0, 0, 0, 0.08),
       0 2px 8px rgba(0, 0, 0, 0.04);
   }
-
-  .glass-hover {
-    @apply transition-all duration-300;
-  }
-
-  .glass-hover:hover {
-    box-shadow:
-      0 12px 40px rgba(0, 0, 0, 0.12),
-      0 4px 12px rgba(0, 0, 0, 0.06);
-    transform: translateY(-2px);
-  }
 }
 
-/* Animation classes */
-@layer utilities {
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-out;
-  }
-
-  .animate-slide-up {
-    animation: slideUp 0.3s ease-out;
-  }
-
-  .animate-typing-dot {
-    animation: typing 1.4s infinite;
-  }
-
-  .animate-typing-dot:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-
-  .animate-typing-dot:nth-child(3) {
-    animation-delay: 0.4s;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes typing {
-  0%,
-  60%,
-  100% {
-    opacity: 0.3;
-    transform: translateY(0);
-  }
-  30% {
-    opacity: 1;
-    transform: translateY(-4px);
-  }
-}
-
-/* Chat-specific styles */
-.chat-container {
-  max-width: 480px;
-  margin: 0 auto;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.message-bubble {
-  @apply rounded-2xl px-4 py-3 max-w-[85%] animate-slide-up;
-}
-
-.message-bubble.bot {
-  @apply bg-white shadow-sm;
-  border-bottom-left-radius: 4px;
-}
-
-.message-bubble.user {
-  @apply bg-brand-navy text-white ml-auto;
-  border-bottom-right-radius: 4px;
-}
-
-/* Button styles */
-.btn {
-  @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-medium transition-all duration-200;
-}
-
-.btn-primary {
-  @apply bg-brand-navy text-white hover:bg-brand-navy-light active:scale-[0.98];
-}
-
-.btn-secondary {
-  @apply bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 active:scale-[0.98];
-}
-
-.btn-ghost {
-  @apply text-gray-600 hover:bg-gray-100 active:scale-[0.98];
-}
-
-/* Form styles */
-.form-input {
-  @apply w-full px-4 py-3 rounded-lg border border-gray-200 text-base transition-all duration-200;
-  @apply focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 focus:outline-none;
-}
-
-.form-label {
-  @apply block text-sm font-medium text-gray-700 mb-1.5;
-}
-
-/* Card styles */
-.card {
-  @apply glass rounded-2xl overflow-hidden;
-}
-
-.card-header {
-  @apply px-6 py-4 border-b border-gray-100 bg-white/50;
-}
-
-.card-body {
-  @apply p-6;
-}
-
-/* Status badges */
-.badge {
-  @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold;
-}
-
-.badge-pending {
-  @apply bg-amber-100 text-amber-700;
-}
-
-.badge-in-progress {
-  @apply bg-blue-100 text-blue-700;
-}
-
-.badge-completed {
-  @apply bg-emerald-100 text-emerald-700;
-}
-
-.badge-cancelled {
-  @apply bg-red-100 text-red-700;
-}
-
-/* Type badges */
-.badge-refund {
-  @apply bg-red-100 text-red-700;
-}
-
-.badge-shipping {
-  @apply bg-blue-100 text-blue-700;
-}
-
-.badge-subscription {
-  @apply bg-emerald-100 text-emerald-700;
-}
-
-.badge-return {
-  @apply bg-amber-100 text-amber-700;
-}
-
-.badge-manual {
-  @apply bg-gray-100 text-gray-700;
-}
-
-/* Hub sidebar */
+/* Hub sidebar - Tailwind based */
 .sidebar {
   @apply fixed left-0 top-0 h-screen w-60 bg-slate-900 text-white flex flex-col z-50;
 }
@@ -230,10 +27,11 @@ body {
 }
 
 .sidebar-nav-item.active {
-  @apply bg-brand-navy text-white;
+  background: var(--brand-navy);
+  color: white;
 }
 
-/* Table styles */
+/* Table styles for Hub */
 .table {
   @apply w-full border-collapse;
 }
@@ -250,14 +48,14 @@ body {
   @apply border-b border-gray-100 transition-colors hover:bg-gray-50/50 cursor-pointer;
 }
 
-/* Modal styles */
+/* Modal overrides for Hub */
 .modal-overlay {
   @apply fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4;
 }
 
 .modal {
   @apply bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col;
-  animation: slideUp 0.2s ease-out;
+  animation: slideUpFade 0.2s ease-out;
 }
 
 .modal-header {
@@ -272,27 +70,10 @@ body {
   @apply flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50;
 }
 
-/* Toast notifications */
-.toast {
-  @apply fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg text-white font-medium z-50;
-  animation: slideUp 0.3s ease-out;
-}
-
-.toast-success {
-  @apply bg-emerald-500;
-}
-
-.toast-error {
-  @apply bg-red-500;
-}
-
-.toast-info {
-  @apply bg-blue-500;
-}
-
 /* Loading spinner */
 .spinner {
-  @apply w-8 h-8 border-4 border-gray-200 border-t-brand-navy rounded-full animate-spin;
+  @apply w-8 h-8 border-4 border-gray-200 rounded-full animate-spin;
+  border-top-color: var(--brand-navy);
 }
 
 /* Empty state */

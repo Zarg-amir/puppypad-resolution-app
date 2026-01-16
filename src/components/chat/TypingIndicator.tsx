@@ -1,5 +1,5 @@
 /**
- * TypingIndicator - Shows when bot is typing
+ * TypingIndicator - Shows when bot is typing (using original CSS)
  */
 
 import type { Persona } from '@shared/constants';
@@ -10,20 +10,20 @@ interface TypingIndicatorProps {
 
 export function TypingIndicator({ persona }: TypingIndicatorProps) {
   return (
-    <div className="flex gap-3 justify-start animate-fade-in">
+    <div className="message bot">
       {/* Avatar */}
       <img
         src={persona.avatar}
         alt={persona.name}
-        className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
+        className="message-avatar"
       />
 
       {/* Typing dots */}
-      <div className="message-bubble bot">
-        <div className="flex items-center gap-1 py-1">
-          <span className="w-2 h-2 rounded-full bg-gray-400 animate-typing-dot"></span>
-          <span className="w-2 h-2 rounded-full bg-gray-400 animate-typing-dot"></span>
-          <span className="w-2 h-2 rounded-full bg-gray-400 animate-typing-dot"></span>
+      <div className="message-content">
+        <div className="typing-indicator">
+          <div className="typing-dot"></div>
+          <div className="typing-dot"></div>
+          <div className="typing-dot"></div>
         </div>
       </div>
     </div>

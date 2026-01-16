@@ -33,12 +33,25 @@ export function ResolutionApp() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50/50 via-rose-50/30 to-blue-50/50">
-      {currentStep === 'welcome' ? (
-        <HomeScreen onStartFlow={handleStartFlow} />
-      ) : (
-        <ChatContainer onRestart={handleRestart} />
-      )}
-    </div>
+    <>
+      {/* Animated Gradient Background */}
+      <div className="gradient-background">
+        <div className="gradient-orb"></div>
+        <div className="gradient-orb"></div>
+        <div className="gradient-orb"></div>
+        <div className="gradient-orb"></div>
+        <div className="gradient-orb"></div>
+      </div>
+      <div className="noise-overlay"></div>
+
+      {/* App Container */}
+      <div className="app-container">
+        {currentStep === 'welcome' ? (
+          <HomeScreen onStartFlow={handleStartFlow} />
+        ) : (
+          <ChatContainer onRestart={handleRestart} />
+        )}
+      </div>
+    </>
   );
 }

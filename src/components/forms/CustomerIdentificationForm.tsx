@@ -92,123 +92,107 @@ export function CustomerIdentificationForm() {
   };
 
   return (
-    <div className="px-4 pb-4 animate-slide-up">
-      <div className="glass rounded-xl p-5">
-        {/* Method Toggle */}
-        <div className="flex gap-2 mb-5">
-          <button
-            type="button"
-            onClick={() => setIdentifyMethod('email')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              identifyMethod === 'email'
-                ? 'bg-brand-navy text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Email
-          </button>
-          <button
-            type="button"
-            onClick={() => setIdentifyMethod('phone')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              identifyMethod === 'phone'
-                ? 'bg-brand-navy text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Phone
-          </button>
+    <div className="form-container">
+      {/* Method Toggle */}
+      <div className={`toggle-container ${identifyMethod === 'phone' ? 'phone' : ''}`}>
+        <button
+          type="button"
+          onClick={() => setIdentifyMethod('email')}
+          className={`toggle-option ${identifyMethod === 'email' ? 'active' : ''}`}
+        >
+          Email
+        </button>
+        <button
+          type="button"
+          onClick={() => setIdentifyMethod('phone')}
+          className={`toggle-option ${identifyMethod === 'phone' ? 'active' : ''}`}
+        >
+          Phone
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        {/* Email or Phone */}
+        {identifyMethod === 'email' ? (
+          <div className="form-group">
+            <label htmlFor="email" className="form-label">
+              Email Address
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={customerData.email}
+              onChange={(e) => updateCustomerData({ email: e.target.value })}
+              className="form-input"
+              placeholder="you@example.com"
+              required
+              autoComplete="email"
+            />
+          </div>
+        ) : (
+          <div className="form-group">
+            <label htmlFor="phone" className="form-label">
+              Phone Number
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              value={customerData.phone}
+              onChange={(e) => updateCustomerData({ phone: e.target.value })}
+              className="form-input"
+              placeholder="+1 (555) 000-0000"
+              required
+              autoComplete="tel"
+            />
+          </div>
+        )}
+
+        {/* First Name (optional) */}
+        <div className="form-group">
+          <label htmlFor="firstName" className="form-label">
+            First Name <span className="text-gray-400">(optional)</span>
+          </label>
+          <input
+            id="firstName"
+            type="text"
+            value={customerData.firstName}
+            onChange={(e) => updateCustomerData({ firstName: e.target.value })}
+            className="form-input"
+            placeholder="Your first name"
+            autoComplete="given-name"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Email or Phone */}
-          {identifyMethod === 'email' ? (
-            <div>
-              <label htmlFor="email" className="form-label">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={customerData.email}
-                onChange={(e) => updateCustomerData({ email: e.target.value })}
-                className="form-input"
-                placeholder="you@example.com"
-                required
-                autoComplete="email"
-              />
-            </div>
-          ) : (
-            <div>
-              <label htmlFor="phone" className="form-label">
-                Phone Number
-              </label>
-              <input
-                id="phone"
-                type="tel"
-                value={customerData.phone}
-                onChange={(e) => updateCustomerData({ phone: e.target.value })}
-                className="form-input"
-                placeholder="+1 (555) 000-0000"
-                required
-                autoComplete="tel"
-              />
-            </div>
-          )}
+        {/* Order Number (optional) */}
+        <div className="form-group">
+          <label htmlFor="orderNumber" className="form-label">
+            Order Number <span className="text-gray-400">(optional)</span>
+          </label>
+          <input
+            id="orderNumber"
+            type="text"
+            value={customerData.orderNumber}
+            onChange={(e) => updateCustomerData({ orderNumber: e.target.value })}
+            className="form-input"
+            placeholder="#12345"
+          />
+        </div>
 
-          {/* First Name (optional) */}
-          <div>
-            <label htmlFor="firstName" className="form-label">
-              First Name <span className="text-gray-400">(optional)</span>
-            </label>
-            <input
-              id="firstName"
-              type="text"
-              value={customerData.firstName}
-              onChange={(e) => updateCustomerData({ firstName: e.target.value })}
-              className="form-input"
-              placeholder="Your first name"
-              autoComplete="given-name"
-            />
-          </div>
+        {/* Error */}
+        {error && (
+          <div className="validation-error">{error}</div>
+        )}
 
-          {/* Order Number (optional) */}
-          <div>
-            <label htmlFor="orderNumber" className="form-label">
-              Order Number <span className="text-gray-400">(optional)</span>
-            </label>
-            <input
-              id="orderNumber"
-              type="text"
-              value={customerData.orderNumber}
-              onChange={(e) => updateCustomerData({ orderNumber: e.target.value })}
-              className="form-input"
-              placeholder="#12345"
-            />
-          </div>
-
-          {/* Error */}
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
-
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="btn btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="spinner w-4 h-4 border-2 border-white/30 border-t-white"></span>
-                Looking up orders...
-              </span>
-            ) : (
-              'Find My Orders'
-            )}
-          </button>
-        </form>
-      </div>
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="btn btn-primary"
+          style={{ width: '100%' }}
+        >
+          {isLoading ? 'Looking up orders...' : 'Find My Orders'}
+        </button>
+      </form>
     </div>
   );
 }

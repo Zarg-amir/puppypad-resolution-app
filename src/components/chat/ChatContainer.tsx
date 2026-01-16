@@ -39,15 +39,12 @@ export function ChatContainer({ onRestart }: ChatContainerProps) {
   const persona = PERSONAS[currentPersona];
 
   return (
-    <div className="chat-container">
+    <div className="chat-container active">
       {/* Header */}
       <ChatHeader persona={persona} onRestart={onRestart} />
 
       {/* Chat Area */}
-      <div
-        ref={chatAreaRef}
-        className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
-      >
+      <div ref={chatAreaRef} className="chat-area">
         {/* Messages */}
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
@@ -57,7 +54,11 @@ export function ChatContainer({ onRestart }: ChatContainerProps) {
         {isTyping && <TypingIndicator persona={persona} />}
 
         {/* Interactive Content based on step */}
-        {!isTyping && renderStepContent(currentStep)}
+        {!isTyping && (
+          <div className="interactive-content">
+            {renderStepContent(currentStep)}
+          </div>
+        )}
       </div>
     </div>
   );

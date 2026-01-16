@@ -1,5 +1,5 @@
 /**
- * MessageBubble - Individual chat message
+ * MessageBubble - Individual chat message (using original CSS)
  */
 
 import type { Message } from '../../stores/chatStore';
@@ -14,40 +14,30 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const persona = message.persona ? PERSONAS[message.persona] : null;
 
   return (
-    <div
-      className={`flex gap-3 animate-slide-up ${
-        isBot ? 'justify-start' : 'justify-end'
-      }`}
-    >
+    <div className={`message ${isBot ? 'bot' : 'user'}`}>
       {/* Bot Avatar */}
       {isBot && persona && (
         <img
           src={persona.avatar}
           alt={persona.name}
-          className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
+          className="message-avatar"
         />
       )}
 
       {/* Message Content */}
-      <div
-        className={`message-bubble ${isBot ? 'bot' : 'user'}`}
-        style={
-          !isBot
-            ? { backgroundColor: '#1a365d' }
-            : undefined
-        }
-      >
-        {/* Bot name */}
+      <div className="message-content">
+        {/* Sender Info */}
         {isBot && persona && (
-          <p className="text-xs font-medium text-gray-500 mb-1">
-            {persona.name}
-          </p>
+          <div className="message-sender">
+            <span className="sender-name">{persona.name}</span>
+            <span className="sender-role">{persona.title}</span>
+          </div>
         )}
 
-        {/* Message text */}
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+        {/* Message Bubble */}
+        <div className="message-bubble">
           {message.content}
-        </p>
+        </div>
       </div>
     </div>
   );
