@@ -2158,6 +2158,7 @@ const HubAnalytics = {
       }
 
       // Render detailed analytics
+      console.log('Analytics data received:', result);
       this.renderAnalytics(result);
     } catch (e) {
       console.error('Failed to load analytics:', e);
@@ -2168,29 +2169,36 @@ const HubAnalytics = {
   },
 
   renderAnalytics(data) {
-    // Render Cases & Sessions Trend Chart
-    this.renderTrendChart(data);
+    console.log('Rendering analytics with data:', data);
     
-    // Render Cases by Type Donut Chart
-    this.renderDonutChart(data);
-    
-    // Render Resolution Types List
-    this.renderResolutionTypes(data);
-    
-    // Render Status Distribution
-    this.renderStatusDistribution(data);
-    
-    // Render Flow Types
-    this.renderFlowTypes(data);
-    
-    // Render Team Leaderboard
-    this.renderTeamLeaderboard(data);
-    
-    // Render Root Cause Analysis
-    this.renderRootCauseAnalysis(data);
-    
-    // Render Resolution Time Distribution
-    this.renderResolutionTimeDistribution(data);
+    try {
+      // Render Cases & Sessions Trend Chart
+      this.renderTrendChart(data);
+      
+      // Render Cases by Type Donut Chart
+      this.renderDonutChart(data);
+      
+      // Render Resolution Types List
+      this.renderResolutionTypes(data);
+      
+      // Render Status Distribution
+      this.renderStatusDistribution(data);
+      
+      // Render Flow Types
+      this.renderFlowTypes(data);
+      
+      // Render Team Leaderboard
+      this.renderTeamLeaderboard(data);
+      
+      // Render Root Cause Analysis
+      this.renderRootCauseAnalysis(data);
+      
+      // Render Resolution Time Distribution
+      this.renderResolutionTimeDistribution(data);
+    } catch (e) {
+      console.error('Error rendering analytics:', e);
+      HubUI.showToast('Error rendering analytics data', 'error');
+    }
   },
 
   renderTrendChart(data) {
@@ -2264,9 +2272,13 @@ const HubAnalytics = {
 
   renderDonutChart(data) {
     const container = document.getElementById('analyticsCasesByTypeChart');
-    if (!container) return;
+    if (!container) {
+      console.error('analyticsCasesByTypeChart container not found');
+      return;
+    }
 
     const casesByType = data.casesByType || [];
+    console.log('Rendering donut chart - casesByType:', casesByType);
     if (casesByType.length === 0) {
       container.innerHTML = '<p style="color: var(--gray-500); text-align: center; padding: 40px;">No data available</p>';
       return;
