@@ -2094,29 +2094,67 @@ const HubAnalytics = {
     try {
       const result = await HubAPI.get('/hub/api/analytics');
       
-      // Update stat cards
-      if (document.getElementById('analyticsTotalSessions')) {
-        document.getElementById('analyticsTotalSessions').textContent = result.totalSessions || 0;
+      // Update Row 1: Cases Metrics
+      if (document.getElementById('analyticsTotalCases')) {
+        document.getElementById('analyticsTotalCases').textContent = result.totalCases || 0;
+        document.getElementById('analyticsTotalCasesSub').textContent = `${result.casesToday || 0} today`;
+      }
+      if (document.getElementById('analyticsPendingCases')) {
+        const pending = result.pendingCases || 0;
+        const stale = result.staleCases || 0;
+        document.getElementById('analyticsPendingCases').textContent = pending;
+        document.getElementById('analyticsPendingCasesSub').textContent = `${stale} overdue (24h+)`;
+      }
+      if (document.getElementById('analyticsInProgress')) {
+        document.getElementById('analyticsInProgress').textContent = result.inProgressCases || 0;
       }
       if (document.getElementById('analyticsCompletedCases')) {
-        document.getElementById('analyticsCompletedCases').textContent = result.completedCases || 0;
+        const completed = result.completedCases || 0;
+        const total = result.totalCases || 0;
+        const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+        document.getElementById('analyticsCompletedCases').textContent = completed;
+        document.getElementById('analyticsCompletedSub').textContent = `${rate}% resolution rate`;
       }
+
+      // Update Row 2: Refunds & Sessions
+      if (document.getElementById('analyticsTotalRefunds')) {
+        document.getElementById('analyticsTotalRefunds').textContent = this.formatCurrency(result.totalRefunds || 0);
+      }
+      if (document.getElementById('analyticsRefunds30d')) {
+        document.getElementById('analyticsRefunds30d').textContent = this.formatCurrency(result.refundsThisMonth || 0);
+      }
+      if (document.getElementById('analyticsAvgRefund')) {
+        document.getElementById('analyticsAvgRefund').textContent = this.formatCurrency(result.avgRefund || 0);
+      }
+      if (document.getElementById('analyticsTotalSessions')) {
+        const sessions = result.totalSessions || 0;
+        const completed = result.completedSessions || 0;
+        const rate = sessions > 0 ? Math.round((completed / sessions) * 100) : 0;
+        document.getElementById('analyticsTotalSessions').textContent = sessions;
+        document.getElementById('analyticsSessionsSub').textContent = `${rate}% completion`;
+      }
+
+      // Update Row 3: Performance Metrics
       if (document.getElementById('analyticsAvgResolution')) {
-        const avgHours = result.avgResolutionHours || 0;
-        if (avgHours > 0) {
-          if (avgHours < 24) {
-            document.getElementById('analyticsAvgResolution').textContent = `${Math.round(avgHours)}h`;
-          } else {
-            document.getElementById('analyticsAvgResolution').textContent = `${Math.round(avgHours / 24)}d`;
-          }
-        } else {
-          document.getElementById('analyticsAvgResolution').textContent = '-';
-        }
+        const avg = result.avgResolutionHours || 0;
+        const min = result.minResolutionHours || 0;
+        const max = result.maxResolutionHours || 0;
+        document.getElementById('analyticsAvgResolution').textContent = this.formatHours(avg);
+        document.getElementById('analyticsResolutionSub').textContent = `Min: ${this.formatHours(min)} Max: ${this.formatHours(max)}`;
       }
-      if (document.getElementById('analyticsSatisfaction')) {
-        // Use completion rate as satisfaction proxy, or SLA compliance rate
-        const satisfaction = result.completionRate || result.slaComplianceRate || 0;
-        document.getElementById('analyticsSatisfaction').textContent = satisfaction > 0 ? `${satisfaction}%` : '-';
+      if (document.getElementById('analyticsSLACompliance')) {
+        const rate = result.slaComplianceRate || 0;
+        const compliant = result.slaCompliant || 0;
+        const breached = result.slaBreached || 0;
+        document.getElementById('analyticsSLACompliance').textContent = `${rate}%`;
+        document.getElementById('analyticsSLASub').textContent = `${compliant} met ${breached} breached (24h)`;
+      }
+      if (document.getElementById('analyticsTeamMembers')) {
+        const teamCount = new Set((result.teamPerformance || []).map(t => t.user_name)).size;
+        document.getElementById('analyticsTeamMembers').textContent = teamCount;
+      }
+      if (document.getElementById('analyticsRootCauses')) {
+        document.getElementById('analyticsRootCauses').textContent = (result.rootCauses || []).length;
       }
 
       // Render detailed analytics
@@ -2130,223 +2168,299 @@ const HubAnalytics = {
   },
 
   renderAnalytics(data) {
-    const container = document.getElementById('analyticsContent');
+    // Render Cases & Sessions Trend Chart
+    this.renderTrendChart(data);
+    
+    // Render Cases by Type Donut Chart
+    this.renderDonutChart(data);
+    
+    // Render Resolution Types List
+    this.renderResolutionTypes(data);
+    
+    // Render Status Distribution
+    this.renderStatusDistribution(data);
+    
+    // Render Flow Types
+    this.renderFlowTypes(data);
+    
+    // Render Team Leaderboard
+    this.renderTeamLeaderboard(data);
+    
+    // Render Root Cause Analysis
+    this.renderRootCauseAnalysis(data);
+    
+    // Render Resolution Time Distribution
+    this.renderResolutionTimeDistribution(data);
+  },
+
+  renderTrendChart(data) {
+    const container = document.getElementById('analyticsTrendChart');
     if (!container) return;
 
-    // Format currency
-    const formatCurrency = (amount) => {
-      if (!amount || amount === 0) return '$0.00';
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-    };
+    const casesByDay = data.casesByDay || [];
+    const sessionsByDay = data.sessionsByDay || [];
 
-    // Format hours
-    const formatHours = (hours) => {
-      if (!hours || hours === 0) return '-';
-      if (hours < 24) return `${Math.round(hours * 10) / 10}h`;
-      return `${Math.round((hours / 24) * 10) / 10}d`;
-    };
+    if (casesByDay.length === 0 && sessionsByDay.length === 0) {
+      container.innerHTML = '<p style="color: var(--gray-500); text-align: center; padding: 40px;">No data available</p>';
+      return;
+    }
 
-    // Simple bar chart rendering
-    const renderBarChart = (data, color = '#3B82F6') => {
-      if (!data || data.length === 0) return '<p style="color: var(--gray-500);">No data available</p>';
-      const maxCount = Math.max(...data.map(d => d.count || 0));
-      return data.map(item => {
-        const width = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
-        return `
-          <div style="margin-bottom: 12px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-              <span style="font-size: 13px; color: var(--gray-700);">${this.escapeHtml(item.name || item.case_type || item.reason || 'Unknown')}</span>
-              <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${item.count || 0}</span>
-            </div>
-            <div style="width: 100%; height: 8px; background: var(--gray-100); border-radius: 4px; overflow: hidden;">
-              <div style="width: ${width}%; height: 100%; background: ${color}; transition: width 0.3s ease;"></div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    };
+    // Combine and sort by date
+    const allDates = new Set([...casesByDay.map(c => c.date), ...sessionsByDay.map(s => s.date)]);
+    const sortedDates = Array.from(allDates).sort();
 
-    container.innerHTML = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
-        <!-- Cases Overview -->
-        <div class="stat-card" style="grid-column: span 2;">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Cases Overview</h3>
-          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
-            <div>
-              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Total</div>
-              <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">${data.totalCases || 0}</div>
-            </div>
-            <div>
-              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">This Month</div>
-              <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">${data.casesThisMonth || 0}</div>
-            </div>
-            <div>
-              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">This Week</div>
-              <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">${data.casesThisWeek || 0}</div>
-            </div>
-            <div>
-              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Today</div>
-              <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">${data.casesToday || 0}</div>
-            </div>
-          </div>
-        </div>
+    const maxValue = Math.max(
+      ...casesByDay.map(c => c.count || 0),
+      ...sessionsByDay.map(s => s.count || 0),
+      1
+    );
 
-        <!-- Cases by Type -->
-        <div class="stat-card">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Cases by Type</h3>
-          ${renderBarChart(data.casesByType || [], '#3B82F6')}
-        </div>
+    const chartHeight = 200;
+    const chartWidth = 600;
+    const padding = 40;
+    const barWidth = (chartWidth - padding * 2) / Math.max(sortedDates.length, 1);
 
-        <!-- Cases by Status -->
-        <div class="stat-card">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Cases by Status</h3>
-          ${renderBarChart(data.casesByStatus || [], '#10B981')}
-        </div>
+    let svg = `<svg width="100%" height="${chartHeight}" viewBox="0 0 ${chartWidth} ${chartHeight}" style="overflow: visible;">`;
+    
+    // Draw grid lines
+    for (let i = 0; i <= 5; i++) {
+      const y = padding + (chartHeight - padding * 2) * (i / 5);
+      svg += `<line x1="${padding}" y1="${y}" x2="${chartWidth - padding}" y2="${y}" stroke="var(--gray-200)" stroke-width="1"/>`;
+    }
 
-        <!-- Resolution Types -->
-        <div class="stat-card" style="grid-column: span 2;">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Resolution Types</h3>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-            ${(data.resolutionTypes || []).slice(0, 10).map(r => `
-              <div style="padding: 12px; background: var(--gray-50); border-radius: 8px;">
-                <div style="font-size: 13px; color: var(--gray-600); margin-bottom: 4px;">${this.escapeHtml(r.resolution || 'Unknown')}</div>
-                <div style="font-size: 18px; font-weight: 600; color: var(--gray-900);">${r.count || 0}</div>
-                ${r.total_refund ? `<div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">${formatCurrency(r.total_refund)}</div>` : ''}
-              </div>
-            `).join('')}
-          </div>
-        </div>
+    // Draw cases line
+    if (casesByDay.length > 0) {
+      const points = sortedDates.map((date, idx) => {
+        const caseData = casesByDay.find(c => c.date === date);
+        const x = padding + idx * barWidth + barWidth / 2;
+        const y = chartHeight - padding - ((caseData?.count || 0) / maxValue) * (chartHeight - padding * 2);
+        return `${x},${y}`;
+      }).join(' ');
+      svg += `<polyline points="${points}" fill="none" stroke="#3B82F6" stroke-width="2"/>`;
+    }
 
-        <!-- Refunds Overview -->
-        <div class="stat-card">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Refunds</h3>
-          <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div>
-              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Total</div>
-              <div style="font-size: 20px; font-weight: 700; color: var(--gray-900);">${formatCurrency(data.totalRefunds || 0)}</div>
-            </div>
-            <div>
-              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">This Month</div>
-              <div style="font-size: 18px; font-weight: 600; color: var(--gray-900);">${formatCurrency(data.refundsThisMonth || 0)}</div>
-            </div>
-            <div>
-              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Average</div>
-              <div style="font-size: 16px; font-weight: 600; color: var(--gray-900);">${formatCurrency(data.avgRefund || 0)}</div>
-            </div>
-          </div>
-        </div>
+    // Draw sessions line
+    if (sessionsByDay.length > 0) {
+      const points = sortedDates.map((date, idx) => {
+        const sessionData = sessionsByDay.find(s => s.date === date);
+        const x = padding + idx * barWidth + barWidth / 2;
+        const y = chartHeight - padding - ((sessionData?.count || 0) / maxValue) * (chartHeight - padding * 2);
+        return `${x},${y}`;
+      }).join(' ');
+      svg += `<polyline points="${points}" fill="none" stroke="#10B981" stroke-width="2"/>`;
+    }
 
-        <!-- Resolution Time Metrics -->
-        <div class="stat-card">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Resolution Time</h3>
-          <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div>
-              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Average</div>
-              <div style="font-size: 20px; font-weight: 700; color: var(--gray-900);">${formatHours(data.avgResolutionHours || 0)}</div>
-            </div>
-            <div>
-              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Min</div>
-              <div style="font-size: 16px; font-weight: 600; color: var(--gray-900);">${formatHours(data.minResolutionHours || 0)}</div>
-            </div>
-            <div>
-              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Max</div>
-              <div style="font-size: 16px; font-weight: 600; color: var(--gray-900);">${formatHours(data.maxResolutionHours || 0)}</div>
-            </div>
-          </div>
-        </div>
+    // Draw date labels
+    sortedDates.forEach((date, idx) => {
+      const x = padding + idx * barWidth + barWidth / 2;
+      const dateStr = new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      svg += `<text x="${x}" y="${chartHeight - 10}" text-anchor="middle" font-size="10" fill="var(--gray-600)">${dateStr}</text>`;
+    });
 
-        <!-- SLA Compliance -->
-        <div class="stat-card">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">SLA Compliance</h3>
-          <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div>
-              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Compliance Rate</div>
-              <div style="font-size: 24px; font-weight: 700; color: ${data.slaComplianceRate >= 80 ? '#10B981' : data.slaComplianceRate >= 60 ? '#F59E0B' : '#EF4444'};">
-                ${data.slaComplianceRate || 0}%
-              </div>
-            </div>
-            <div style="display: flex; gap: 16px;">
-              <div>
-                <div style="font-size: 11px; color: var(--gray-500);">Compliant</div>
-                <div style="font-size: 16px; font-weight: 600; color: #10B981;">${data.slaCompliant || 0}</div>
-              </div>
-              <div>
-                <div style="font-size: 11px; color: var(--gray-500);">Breached</div>
-                <div style="font-size: 16px; font-weight: 600; color: #EF4444;">${data.slaBreached || 0}</div>
-              </div>
-            </div>
-          </div>
-        </div>
+    svg += '</svg>';
 
-        <!-- Resolution Time Distribution -->
-        <div class="stat-card" style="grid-column: span 2;">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Resolution Time Distribution</h3>
-          ${renderBarChart(data.resolutionDistribution || [], '#8B5CF6')}
-        </div>
+    container.innerHTML = svg;
+  },
 
-        <!-- Team Performance -->
-        <div class="stat-card" style="grid-column: span 2;">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Team Performance (Last 30 Days)</h3>
-          ${(data.teamPerformance || []).length > 0 ? `
-            <table style="width: 100%; border-collapse: collapse;">
-              <thead>
-                <tr style="border-bottom: 1px solid var(--gray-200);">
-                  <th style="text-align: left; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Team Member</th>
-                  <th style="text-align: right; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Cases Completed</th>
-                  <th style="text-align: right; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Total Refunds</th>
-                  <th style="text-align: right; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Avg. Resolution</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${(data.teamPerformance || []).map(t => `
-                  <tr style="border-bottom: 1px solid var(--gray-100);">
-                    <td style="padding: 8px; font-size: 13px; color: var(--gray-900);">${this.escapeHtml(t.user_name || 'Unassigned')}</td>
-                    <td style="text-align: right; padding: 8px; font-size: 13px; font-weight: 600; color: var(--gray-900);">${t.cases_completed || 0}</td>
-                    <td style="text-align: right; padding: 8px; font-size: 13px; color: var(--gray-700);">${formatCurrency(t.total_refunds || 0)}</td>
-                    <td style="text-align: right; padding: 8px; font-size: 13px; color: var(--gray-700);">${formatHours(t.avg_resolution_hours || 0)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          ` : '<p style="color: var(--gray-500);">No team performance data available</p>'}
-        </div>
+  renderDonutChart(data) {
+    const container = document.getElementById('analyticsCasesByTypeChart');
+    if (!container) return;
 
-        <!-- Root Causes -->
-        <div class="stat-card" style="grid-column: span 2;">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Root Causes (Last 30 Days)</h3>
-          ${renderBarChart((data.rootCauses || []).slice(0, 10), '#F59E0B')}
-        </div>
+    const casesByType = data.casesByType || [];
+    if (casesByType.length === 0) {
+      container.innerHTML = '<p style="color: var(--gray-500); text-align: center; padding: 40px;">No data available</p>';
+      return;
+    }
 
-        <!-- High Value Refunds -->
-        ${(data.highValueRefunds || []).length > 0 ? `
-          <div class="stat-card" style="grid-column: span 2;">
-            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Recent High-Value Refunds</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <thead>
-                <tr style="border-bottom: 1px solid var(--gray-200);">
-                  <th style="text-align: left; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Case ID</th>
-                  <th style="text-align: left; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Customer</th>
-                  <th style="text-align: right; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Amount</th>
-                  <th style="text-align: left; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Resolution</th>
-                  <th style="text-align: left; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${(data.highValueRefunds || []).map(r => `
-                  <tr style="border-bottom: 1px solid var(--gray-100);">
-                    <td style="padding: 8px; font-size: 12px; font-family: monospace; color: var(--gray-700);">${this.escapeHtml(r.case_id || '-')}</td>
-                    <td style="padding: 8px; font-size: 13px; color: var(--gray-900);">${this.escapeHtml(r.customer_email || '-')}</td>
-                    <td style="text-align: right; padding: 8px; font-size: 13px; font-weight: 600; color: var(--gray-900);">${formatCurrency(r.refund_amount || 0)}</td>
-                    <td style="padding: 8px; font-size: 13px; color: var(--gray-700);">${this.escapeHtml(r.resolution || '-')}</td>
-                    <td style="padding: 8px; font-size: 12px; color: var(--gray-500);">${this.formatDate(r.created_at)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        ` : ''}
+    const total = casesByType.reduce((sum, item) => sum + (item.count || 0), 0);
+    if (total === 0) {
+      container.innerHTML = '<p style="color: var(--gray-500); text-align: center; padding: 40px;">No data available</p>';
+      return;
+    }
+
+    const colors = ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
+    const size = 150;
+    const radius = size / 2 - 10;
+    const center = size / 2;
+
+    let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display: block; margin: 0 auto;">`;
+    
+    let currentAngle = -90;
+    casesByType.forEach((item, idx) => {
+      const value = item.count || 0;
+      const percentage = (value / total) * 100;
+      const angle = (percentage / 100) * 360;
+      
+      const x1 = center + radius * Math.cos((currentAngle * Math.PI) / 180);
+      const y1 = center + radius * Math.sin((currentAngle * Math.PI) / 180);
+      const x2 = center + radius * Math.cos(((currentAngle + angle) * Math.PI) / 180);
+      const y2 = center + radius * Math.sin(((currentAngle + angle) * Math.PI) / 180);
+      
+      const largeArc = angle > 180 ? 1 : 0;
+      
+      svg += `<path d="M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${colors[idx % colors.length]}" stroke="white" stroke-width="2"/>`;
+      
+      currentAngle += angle;
+    });
+
+    // Center text
+    svg += `<text x="${center}" y="${center - 5}" text-anchor="middle" font-size="20" font-weight="700" fill="var(--gray-900)">${total}</text>`;
+    svg += `<text x="${center}" y="${center + 15}" text-anchor="middle" font-size="12" fill="var(--gray-600)">Total</text>`;
+
+    svg += '</svg>';
+
+    // Add legend
+    const legend = casesByType.map((item, idx) => `
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <div style="width: 12px; height: 12px; background: ${colors[idx % colors.length]}; border-radius: 2px;"></div>
+        <span style="font-size: 13px; color: var(--gray-700);">${this.escapeHtml(item.case_type || 'Unknown')}</span>
+        <span style="font-size: 13px; font-weight: 600; color: var(--gray-900); margin-left: auto;">${item.count || 0}</span>
       </div>
-    `;
+    `).join('');
+
+    container.innerHTML = `<div style="text-align: center;">${svg}</div><div style="margin-top: 16px;">${legend}</div>`;
+  },
+
+  renderResolutionTypes(data) {
+    const container = document.getElementById('analyticsResolutionTypes');
+    if (!container) return;
+
+    const types = (data.resolutionTypes || []).slice(0, 10);
+    if (types.length === 0) {
+      container.innerHTML = '<p style="color: var(--gray-500);">No data available</p>';
+      return;
+    }
+
+    container.innerHTML = types.map(r => `
+      <div style="padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
+        <div style="font-size: 13px; color: var(--gray-700); margin-bottom: 4px;">${this.escapeHtml(r.resolution || 'Unknown')}</div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 16px; font-weight: 600; color: var(--gray-900);">${r.count || 0}</span>
+          ${r.total_refund ? `<span style="font-size: 12px; color: var(--gray-500);">${this.formatCurrency(r.total_refund)}</span>` : ''}
+        </div>
+      </div>
+    `).join('');
+  },
+
+  renderStatusDistribution(data) {
+    const container = document.getElementById('analyticsStatusDistribution');
+    if (!container) return;
+
+    const statuses = data.casesByStatus || [];
+    if (statuses.length === 0) {
+      container.innerHTML = '<p style="color: var(--gray-500);">No data available</p>';
+      return;
+    }
+
+    const maxCount = Math.max(...statuses.map(s => s.count || 0));
+    const colors = { 'completed': '#D1FAE5', 'in_progress': '#DBEAFE', 'pending': '#FEF3C7' };
+
+    container.innerHTML = statuses.map(s => {
+      const status = s.status || 'unknown';
+      const count = s.count || 0;
+      const width = maxCount > 0 ? (count / maxCount) * 100 : 0;
+      const color = colors[status] || 'var(--gray-100)';
+      
+      return `
+        <div style="margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span style="font-size: 13px; color: var(--gray-700);">${this.escapeHtml(status)}</span>
+            <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${count}</span>
+          </div>
+          <div style="width: 100%; height: 8px; background: var(--gray-100); border-radius: 4px; overflow: hidden;">
+            <div style="width: ${width}%; height: 100%; background: ${color}; transition: width 0.3s ease;"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  renderFlowTypes(data) {
+    const container = document.getElementById('analyticsFlowTypes');
+    if (!container) return;
+
+    const flows = data.flowTypes || [];
+    if (flows.length === 0) {
+      container.innerHTML = '<p style="color: var(--gray-500);">No data available</p>';
+      return;
+    }
+
+    container.innerHTML = flows.map(f => `
+      <div style="padding: 12px 0; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between;">
+        <span style="font-size: 13px; color: var(--gray-700);">${this.escapeHtml(f.flow_type || 'Unknown')}</span>
+        <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${f.count || 0}</span>
+      </div>
+    `).join('');
+  },
+
+  renderTeamLeaderboard(data) {
+    const container = document.getElementById('analyticsTeamLeaderboard');
+    if (!container) return;
+
+    const team = data.teamPerformance || [];
+    if (team.length === 0) {
+      container.innerHTML = '<p style="color: var(--gray-500);">No data available</p>';
+      return;
+    }
+
+    container.innerHTML = team.map(t => `
+      <div style="padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${this.escapeHtml(t.user_name || 'Unassigned')}</span>
+          <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${t.cases_completed || 0}</span>
+        </div>
+        <div style="font-size: 11px; color: var(--gray-500);">
+          ${this.formatHours(t.avg_resolution_hours || 0)} avg, ${this.formatCurrency(t.total_refunds || 0)} refunds
+        </div>
+      </div>
+    `).join('');
+  },
+
+  renderRootCauseAnalysis(data) {
+    const container = document.getElementById('analyticsRootCauseAnalysis');
+    if (!container) return;
+
+    const causes = data.rootCauses || [];
+    if (causes.length === 0) {
+      container.innerHTML = '<p style="color: var(--gray-500);">No data</p>';
+      return;
+    }
+
+    container.innerHTML = causes.slice(0, 10).map(c => `
+      <div style="padding: 12px 0; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between;">
+        <span style="font-size: 13px; color: var(--gray-700);">${this.escapeHtml(c.reason || 'Unknown')}</span>
+        <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${c.count || 0}</span>
+      </div>
+    `).join('');
+  },
+
+  renderResolutionTimeDistribution(data) {
+    const container = document.getElementById('analyticsResolutionTimeDist');
+    if (!container) return;
+
+    const dist = data.resolutionDistribution || [];
+    if (dist.length === 0) {
+      container.innerHTML = '<p style="color: var(--gray-500);">No data available</p>';
+      return;
+    }
+
+    container.innerHTML = dist.map(d => `
+      <div style="padding: 12px 0; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between;">
+        <span style="font-size: 13px; color: var(--gray-700);">${this.escapeHtml(d.time_bucket || 'Unknown')}</span>
+        <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${d.count || 0}</span>
+      </div>
+    `).join('');
+  },
+
+  formatCurrency(amount) {
+    if (!amount || amount === 0) return '$0.00';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  },
+
+  formatHours(hours) {
+    if (!hours || hours === 0) return '-';
+    if (hours < 24) return `${Math.round(hours * 10) / 10}h`;
+    return `${Math.round((hours / 24) * 10) / 10}d`;
   },
 
   formatDate(timestamp) {

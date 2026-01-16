@@ -1124,31 +1124,186 @@
 
         <!-- Analytics View -->
         <div id="analyticsView" style="display: none;">
-          <div class="stats-grid" style="margin-bottom: 32px;">
+          <!-- Row 1: Cases Metrics -->
+          <div class="stats-grid" style="margin-bottom: 20px;">
+            <div class="stat-card">
+              <div class="stat-label">Total Cases</div>
+              <div class="stat-value" id="analyticsTotalCases">-</div>
+              <div class="stat-change" id="analyticsTotalCasesSub">-</div>
+            </div>
+            <div class="stat-card highlight" style="background: #FEF3C7; border-color: #FCD34D;">
+              <div class="stat-label">Pending Cases</div>
+              <div class="stat-value" id="analyticsPendingCases">-</div>
+              <div class="stat-change" id="analyticsPendingCasesSub">-</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">In Progress</div>
+              <div class="stat-value" id="analyticsInProgress">-</div>
+              <div class="stat-change">Being worked on</div>
+            </div>
+            <div class="stat-card highlight" style="background: #D1FAE5; border-color: #10B981;">
+              <div class="stat-label">Completed</div>
+              <div class="stat-value" id="analyticsCompletedCases">-</div>
+              <div class="stat-change" id="analyticsCompletedSub">-</div>
+            </div>
+          </div>
+
+          <!-- Row 2: Refunds & Sessions -->
+          <div class="stats-grid" style="margin-bottom: 20px;">
+            <div class="stat-card highlight" style="background: #1a365d; color: white; border: none;">
+              <div class="stat-label" style="color: rgba(255,255,255,0.8);">Total Refunds</div>
+              <div class="stat-value" id="analyticsTotalRefunds" style="color: white;">-</div>
+              <div class="stat-change" style="color: rgba(255,255,255,0.7);">All time</div>
+            </div>
+            <div class="stat-card highlight" style="background: #FCE7F3; border-color: #F9A8D4;">
+              <div class="stat-label">Refunds (30d)</div>
+              <div class="stat-value" id="analyticsRefunds30d">-</div>
+              <div class="stat-change">This month</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Avg. Refund</div>
+              <div class="stat-value" id="analyticsAvgRefund">-</div>
+              <div class="stat-change">Per case</div>
+            </div>
             <div class="stat-card">
               <div class="stat-label">Total Sessions</div>
               <div class="stat-value" id="analyticsTotalSessions">-</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Completed Cases</div>
-              <div class="stat-value" id="analyticsCompletedCases">-</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Avg. Resolution Time</div>
-              <div class="stat-value" id="analyticsAvgResolution">-</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Customer Satisfaction</div>
-              <div class="stat-value" id="analyticsSatisfaction">-</div>
+              <div class="stat-change" id="analyticsSessionsSub">-</div>
             </div>
           </div>
-          <div class="cases-card">
-            <div class="cases-header">
-              <h2 class="cases-title">Performance Metrics</h2>
+
+          <!-- Row 3: Performance Metrics -->
+          <div class="stats-grid" style="margin-bottom: 32px;">
+            <div class="stat-card">
+              <div class="stat-label">Avg Resolution Time</div>
+              <div class="stat-value" id="analyticsAvgResolution">-</div>
+              <div class="stat-change" id="analyticsResolutionSub">-</div>
             </div>
-            <div style="padding: 24px;">
-              <div id="analyticsContent">
-                <div class="loading-spinner"><div class="spinner"></div></div>
+            <div class="stat-card highlight" style="background: #D1FAE5; border-color: #10B981;">
+              <div class="stat-label">SLA Compliance</div>
+              <div class="stat-value" id="analyticsSLACompliance">-</div>
+              <div class="stat-change" id="analyticsSLASub">-</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Active Team Members</div>
+              <div class="stat-value" id="analyticsTeamMembers">-</div>
+              <div class="stat-change">Last 30 days</div>
+            </div>
+            <div class="stat-card highlight" style="background: #FEE2E2; border-color: #FCA5A5;">
+              <div class="stat-label">Root Cause Categories</div>
+              <div class="stat-value" id="analyticsRootCauses">-</div>
+              <div class="stat-change">Last 30 days</div>
+            </div>
+          </div>
+
+          <!-- Charts Row -->
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px;">
+            <!-- Cases & Sessions Trend (Line Chart) -->
+            <div class="cases-card">
+              <div class="cases-header">
+                <h2 class="cases-title">Cases & Sessions Trend</h2>
+                <select id="analyticsDateRange" style="padding: 6px 12px; border: 1px solid var(--gray-300); border-radius: 6px; font-size: 13px;">
+                  <option value="14d">Last 14 Days</option>
+                  <option value="30d">Last 30 Days</option>
+                  <option value="90d">Last 90 Days</option>
+                </select>
+              </div>
+              <div style="padding: 24px;">
+                <div id="analyticsTrendChart" style="min-height: 200px;">
+                  <div class="loading-spinner"><div class="spinner"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cases by Type (Donut Chart) -->
+            <div class="cases-card">
+              <div class="cases-header">
+                <h2 class="cases-title">Cases by Type</h2>
+              </div>
+              <div style="padding: 24px;">
+                <div id="analyticsCasesByTypeChart" style="min-height: 200px;">
+                  <div class="loading-spinner"><div class="spinner"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lists Row -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px;">
+            <!-- Resolution Types -->
+            <div class="cases-card">
+              <div class="cases-header">
+                <h2 class="cases-title">Resolution Types</h2>
+              </div>
+              <div style="padding: 24px;">
+                <div id="analyticsResolutionTypes" style="max-height: 400px; overflow-y: auto;">
+                  <div class="loading-spinner"><div class="spinner"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Status Distribution -->
+            <div class="cases-card">
+              <div class="cases-header">
+                <h2 class="cases-title">Status Distribution</h2>
+              </div>
+              <div style="padding: 24px;">
+                <div id="analyticsStatusDistribution" style="max-height: 400px; overflow-y: auto;">
+                  <div class="loading-spinner"><div class="spinner"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Flow Types -->
+            <div class="cases-card">
+              <div class="cases-header">
+                <h2 class="cases-title">Flow Types</h2>
+              </div>
+              <div style="padding: 24px;">
+                <div id="analyticsFlowTypes" style="max-height: 400px; overflow-y: auto;">
+                  <div class="loading-spinner"><div class="spinner"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Row: Team Leaderboard, Root Causes, Resolution Time -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
+            <!-- Team Leaderboard -->
+            <div class="cases-card">
+              <div class="cases-header">
+                <h2 class="cases-title">Team Leaderboard</h2>
+                <span style="font-size: 12px; color: var(--gray-500);">Last 30 days</span>
+              </div>
+              <div style="padding: 24px;">
+                <div id="analyticsTeamLeaderboard" style="max-height: 300px; overflow-y: auto;">
+                  <div class="loading-spinner"><div class="spinner"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Root Cause Analysis -->
+            <div class="cases-card">
+              <div class="cases-header">
+                <h2 class="cases-title">Root Cause Analysis</h2>
+                <span style="font-size: 12px; color: var(--gray-500);">Last 30 days</span>
+              </div>
+              <div style="padding: 24px;">
+                <div id="analyticsRootCauseAnalysis" style="max-height: 300px; overflow-y: auto;">
+                  <div class="loading-spinner"><div class="spinner"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resolution Time Distribution -->
+            <div class="cases-card">
+              <div class="cases-header">
+                <h2 class="cases-title">Resolution Time Distribution</h2>
+              </div>
+              <div style="padding: 24px;">
+                <div id="analyticsResolutionTimeDist" style="max-height: 300px; overflow-y: auto;">
+                  <div class="loading-spinner"><div class="spinner"></div></div>
+                </div>
               </div>
             </div>
           </div>
