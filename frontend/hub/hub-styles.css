@@ -1930,59 +1930,69 @@ h1, h2, h3, h4, h5, h6 {
   height: 4px;
 }
 
-/* Stat Card Content */
-.stat-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--gray-700);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
+/* Stat Card Content - Value first, then label below */
 .stat-value {
   font-size: 36px;
   font-weight: 700;
   font-family: var(--font-display);
   color: var(--gray-900);
   line-height: 1.2;
+  margin-bottom: 4px;
+  -webkit-text-fill-color: var(--gray-900);
+}
+
+.stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   margin-bottom: 8px;
-  /* Remove gradient for better readability */
-  -webkit-text-fill-color: var(--gray-900);
-}
-
-.stat-card.highlight .stat-label {
-  color: var(--gray-800);
-}
-
-.stat-card.highlight .stat-value {
-  color: var(--gray-900);
-  -webkit-text-fill-color: var(--gray-900);
-}
-
-.stat-card.highlight[style*="background: #1a365d"] .stat-label,
-.stat-card.highlight[style*="background: #1a365d"] .stat-value,
-.stat-card.highlight[style*="background: #1a365d"] .stat-change {
-  color: rgba(255, 255, 255, 0.98);
-  -webkit-text-fill-color: rgba(255, 255, 255, 0.98);
-  background: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .stat-change {
   font-size: 12px;
-  color: var(--gray-600);
+  color: var(--gray-500);
   font-weight: 500;
+  margin-top: 4px;
 }
 
-.stat-card.highlight .stat-change {
-  color: var(--gray-700);
+/* Urgent stat change - red color for "Needs attention" */
+.stat-change.urgent {
+  color: #DC2626;
+  font-weight: 600;
 }
 
-.stat-card.highlight[style*="background: #1a365d"] .stat-change {
-  color: rgba(255, 255, 255, 0.85);
+/* Highlight Pending Card - Navy background with white text */
+.stat-card.highlight-pending {
+  background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
+  border: none;
+  box-shadow: 0 12px 32px rgba(26, 54, 93, 0.25), 0 4px 12px rgba(26, 54, 93, 0.15);
+}
+
+.stat-card.highlight-pending::before {
+  opacity: 0;
+}
+
+.stat-card.highlight-pending .stat-value {
+  color: white;
+  -webkit-text-fill-color: white;
+}
+
+.stat-card.highlight-pending .stat-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.stat-card.highlight-pending .stat-change {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.stat-card.highlight-pending .stat-change.urgent {
+  color: #FCA5A5;
+  font-weight: 600;
 }
 
 /* Special Highlight Cards */

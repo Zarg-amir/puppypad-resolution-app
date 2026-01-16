@@ -11318,50 +11318,11 @@ function getResolutionHubHTML() {
               <div id="searchDropdown" class="search-dropdown" style="display: none;"></div>
             </div>
 
-            <!-- Filters (hidden on pages with inline filters) -->
-            <div id="headerFilters" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <!-- Status Filter -->
-              <select id="statusFilter" class="filter-select" onchange="HubFilters.applyFilters()">
-                <option value="">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="overdue">Overdue</option>
-              </select>
-
-              <!-- Assignee Filter -->
-              <select id="assigneeFilter" class="filter-select" onchange="HubFilters.applyFilters()">
-                <option value="">All Assignees</option>
-                <option value="unassigned">Unassigned</option>
-              </select>
-
-              <!-- Date Range Filter -->
-              <select id="dateRangeFilter" class="filter-select" onchange="HubFilters.applyFilters()">
-                <option value="">All Time</option>
-                <option value="today">Today</option>
-                <option value="7d">Last 7 Days</option>
-                <option value="30d">Last 30 Days</option>
-                <option value="custom">Custom Range</option>
-              </select>
-
-              <!-- Sort By -->
-              <select id="sortBy" class="filter-select" onchange="HubFilters.applyFilters()">
-                <option value="created_desc">Newest First</option>
-                <option value="created_asc">Oldest First</option>
-                <option value="due_asc">Due Date (Earliest)</option>
-                <option value="due_desc">Due Date (Latest)</option>
-                <option value="customer_asc">Customer (A-Z)</option>
-                <option value="customer_desc">Customer (Z-A)</option>
-                <option value="status_asc">Status</option>
-                <option value="type_asc">Type</option>
-                <option value="assignee_asc">Assignee</option>
-              </select>
-
-              <button class="btn btn-secondary" onclick="refreshData()" style="display: flex; align-items: center; gap: 6px; padding: 10px 20px; background: white; border: 1px solid var(--gray-200); border-radius: 12px; font-size: 14px; font-weight: 600; color: var(--gray-700); cursor: pointer; transition: all 0.2s;">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16" stroke-width="2"><polyline points="23,4 23,10 17,10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
-                Refresh
-              </button>
-            </div>
+            <!-- Refresh button only in header -->
+            <button class="btn btn-secondary" onclick="refreshData()" style="display: flex; align-items: center; gap: 6px; padding: 10px 20px; background: white; border: 1px solid var(--gray-200); border-radius: 12px; font-size: 14px; font-weight: 600; color: var(--gray-700); cursor: pointer; transition: all 0.2s;">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16" stroke-width="2"><polyline points="23,4 23,10 17,10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
+              Refresh
+            </button>
           </div>
         </div>
       </header>
@@ -11370,50 +11331,55 @@ function getResolutionHubHTML() {
         <!-- Dashboard View -->
         <div id="dashboardView">
           <div class="stats-grid">
-            <div class="stat-card highlight">
-              <div class="stat-label">Pending Cases</div>
+            <div class="stat-card highlight-pending">
               <div class="stat-value" id="statPending">-</div>
-              <div class="stat-change up">Needs attention</div>
+              <div class="stat-label">Pending Cases</div>
+              <div class="stat-change urgent">Needs attention</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">In Progress</div>
               <div class="stat-value" id="statInProgress">-</div>
+              <div class="stat-label">In Progress</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Completed Today</div>
               <div class="stat-value" id="statCompletedToday">-</div>
+              <div class="stat-label">Completed Today</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Avg. Resolution Time</div>
               <div class="stat-value" id="statAvgTime">-</div>
+              <div class="stat-label">Avg. Resolution Time</div>
             </div>
           </div>
 
           <!-- Recent Cases -->
-          <div class="cases-card">
+          <div class="cases-card cases-card-enhanced">
             <div class="cases-header">
               <h2 class="cases-title">Recent Cases</h2>
               <button class="btn btn-secondary" onclick="navigateTo('cases', 'all')">View All</button>
             </div>
-            <!-- Filters above table -->
-            <div class="dashboard-filters" style="padding: 16px 20px; border-bottom: 1px solid var(--gray-100); display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-              <select id="dashboardStatusFilter" onchange="HubDashboard.filterRecentCases()" style="padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 13px; background: white;">
-                <option value="">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-              </select>
-              <select id="dashboardTypeFilter" onchange="HubDashboard.filterRecentCases()" style="padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 13px; background: white;">
-                <option value="">All Types</option>
-                <option value="refund">Refund</option>
-                <option value="shipping">Shipping</option>
-                <option value="subscription">Subscription</option>
-                <option value="return">Return</option>
-              </select>
-              <select id="dashboardSortFilter" onchange="HubDashboard.filterRecentCases()" style="padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 13px; background: white;">
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-              </select>
+            <!-- Filters above table - matching cases-filters-bar style -->
+            <div class="cases-filters-bar" style="padding: 16px 20px; margin-bottom: 0; border-bottom: 1px solid var(--gray-100);">
+              <div class="cases-filters-left">
+                <select id="dashboardStatusFilter" class="filter-select-inline" onchange="HubDashboard.filterRecentCases()">
+                  <option value="">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+                <select id="dashboardTypeFilter" class="filter-select-inline" onchange="HubDashboard.filterRecentCases()">
+                  <option value="">All Types</option>
+                  <option value="refund">Refund</option>
+                  <option value="shipping">Shipping</option>
+                  <option value="subscription">Subscription</option>
+                  <option value="return">Return</option>
+                </select>
+                <select id="dashboardSortFilter" class="filter-select-inline" onchange="HubDashboard.filterRecentCases()">
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                </select>
+              </div>
+              <div class="cases-filters-right">
+                <span id="dashboardResultCount" class="cases-result-count"></span>
+              </div>
             </div>
             <table class="cases-table cases-table-enhanced">
               <thead>
@@ -13855,59 +13821,69 @@ h1, h2, h3, h4, h5, h6 {
   height: 4px;
 }
 
-/* Stat Card Content */
-.stat-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--gray-700);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
+/* Stat Card Content - Value first, then label below */
 .stat-value {
   font-size: 36px;
   font-weight: 700;
   font-family: var(--font-display);
   color: var(--gray-900);
   line-height: 1.2;
+  margin-bottom: 4px;
+  -webkit-text-fill-color: var(--gray-900);
+}
+
+.stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   margin-bottom: 8px;
-  /* Remove gradient for better readability */
-  -webkit-text-fill-color: var(--gray-900);
-}
-
-.stat-card.highlight .stat-label {
-  color: var(--gray-800);
-}
-
-.stat-card.highlight .stat-value {
-  color: var(--gray-900);
-  -webkit-text-fill-color: var(--gray-900);
-}
-
-.stat-card.highlight[style*="background: #1a365d"] .stat-label,
-.stat-card.highlight[style*="background: #1a365d"] .stat-value,
-.stat-card.highlight[style*="background: #1a365d"] .stat-change {
-  color: rgba(255, 255, 255, 0.98);
-  -webkit-text-fill-color: rgba(255, 255, 255, 0.98);
-  background: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .stat-change {
   font-size: 12px;
-  color: var(--gray-600);
+  color: var(--gray-500);
   font-weight: 500;
+  margin-top: 4px;
 }
 
-.stat-card.highlight .stat-change {
-  color: var(--gray-700);
+/* Urgent stat change - red color for "Needs attention" */
+.stat-change.urgent {
+  color: #DC2626;
+  font-weight: 600;
 }
 
-.stat-card.highlight[style*="background: #1a365d"] .stat-change {
-  color: rgba(255, 255, 255, 0.85);
+/* Highlight Pending Card - Navy background with white text */
+.stat-card.highlight-pending {
+  background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
+  border: none;
+  box-shadow: 0 12px 32px rgba(26, 54, 93, 0.25), 0 4px 12px rgba(26, 54, 93, 0.15);
+}
+
+.stat-card.highlight-pending::before {
+  opacity: 0;
+}
+
+.stat-card.highlight-pending .stat-value {
+  color: white;
+  -webkit-text-fill-color: white;
+}
+
+.stat-card.highlight-pending .stat-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.stat-card.highlight-pending .stat-change {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.stat-card.highlight-pending .stat-change.urgent {
+  color: #FCA5A5;
+  font-weight: 600;
 }
 
 /* Special Highlight Cards */
