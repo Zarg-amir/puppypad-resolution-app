@@ -10385,44 +10385,62 @@ function getResolutionHubHTML() {
     // Will add JavaScript in next step
     console.log('Resolution Hub loaded');
 
-    // Navigation
+    // Simple navigation - handle clicks on nav links
     document.querySelectorAll('.nav-item').forEach(item => {
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault(); // Prevent default link behavior
         const page = item.dataset.page;
         const filter = item.dataset.filter;
-        navigateTo(page, filter);
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto(page, filter);
+        }
       });
     });
 
-    function navigateTo(page, filter) {
-      // Use HubNavigation if available (from hub-app.js), otherwise fallback to basic navigation
-      if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
-        HubNavigation.goto(page, filter);
-      } else {
-        // Fallback: Update active nav
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        const selector = filter
-          ? \`.nav-item[data-page="\${page}"][data-filter="\${filter}"]\`
-          : \`.nav-item[data-page="\${page}"]\`;
-        document.querySelector(selector)?.classList.add('active');
-
-        // Update page title
-        const titles = {
-          'dashboard': 'Dashboard',
-          'cases': 'Cases',
-          'sessions': 'Sessions',
-          'events': 'Event Log',
-          'analytics': 'Performance'
-        };
-        document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';
-
-        // Show/hide views
-        document.getElementById('dashboardView').style.display = page === 'dashboard' ? 'block' : 'none';
-        document.getElementById('casesView').style.display = page === 'cases' ? 'block' : 'none';
-        document.getElementById('sessionsView').style.display = page === 'sessions' ? 'block' : 'none';
-        document.getElementById('eventsView').style.display = page === 'events' ? 'block' : 'none';
-        document.getElementById('analyticsView').style.display = page === 'analytics' ? 'block' : 'none';
+    // Simple URL parsing on page load
+    function initFromURL() {
+      const path = window.location.pathname;
+      
+      // Parse /hub/cases/shipping -> page: cases, filter: shipping
+      if (path.startsWith('/hub/cases/')) {
+        const filter = path.split('/hub/cases/')[1].split('/')[0];
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto('cases', filter);
+        }
+      } else if (path === '/hub/cases' || path === '/hub/cases/') {
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto('cases', 'all');
+        }
+      } else if (path === '/hub/sessions' || path === '/hub/sessions/') {
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto('sessions');
+        }
+      } else if (path === '/hub/events' || path === '/hub/events/') {
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto('events');
+        }
+      } else if (path === '/hub/issues' || path === '/hub/issues/') {
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto('issues');
+        }
+      } else if (path === '/hub/analytics' || path === '/hub/analytics/') {
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto('analytics');
+        }
+      } else if (path === '/hub' || path === '/hub/') {
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto('dashboard');
+        }
       }
+    }
+
+    // Initialize from URL when page loads (after hub-app.js is loaded)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initFromURL, 100); // Wait for hub-app.js to load
+      });
+    } else {
+      setTimeout(initFromURL, 100);
     }
 
     function refreshData() {
