@@ -1690,7 +1690,7 @@ const HubCases = {
 // NAVIGATION
 // ============================================
 const HubNavigation = {
-  goto(page, filter = null, replaceState = false) {
+  goto(page, filter = null) {
     HubState.currentPage = page;
     HubState.currentFilter = filter || null;
 
@@ -1708,8 +1708,8 @@ const HubNavigation = {
       pageTitleEl.textContent = pageTitle;
     }
 
-    // Update URL with slug (use replaceState on initial load to avoid double state)
-    this.updateURL(page, filter, replaceState);
+    // Update URL with slug
+    this.updateURL(page, filter);
 
     // Show/hide views
     ['dashboard', 'cases', 'sessions', 'events', 'issues', 'analytics', 'audit', 'users'].forEach(v => {
@@ -1766,7 +1766,8 @@ const HubNavigation = {
     return baseTitles[page] || 'Dashboard';
   },
 
-  updateURL(page, filter, replace = false) {
+  // Simple URL update - just update the browser URL without complex state management
+  updateURL(page, filter) {
     let path = '/hub';
     
     if (page === 'dashboard') {
@@ -1787,67 +1788,9 @@ const HubNavigation = {
       path = '/hub/users';
     }
 
-    // Only update URL if it's different from current path
-    const currentPath = window.location.pathname;
-    const normalizedPath = path.endsWith('/') ? path.slice(0, -1) : path;
-    const normalizedCurrent = currentPath.endsWith('/') ? currentPath.slice(0, -1) : currentPath;
-
-    if (normalizedPath !== normalizedCurrent && window.history && window.history.pushState) {
-      if (replace) {
-        window.history.replaceState({ page, filter }, '', path);
-      } else {
-        window.history.pushState({ page, filter }, '', path);
-      }
-    }
-  },
-
-  init() {
-    // Prevent double initialization
-    if (this._initialized) return;
-    this._initialized = true;
-
-    // Handle browser back/forward buttons
-    window.addEventListener('popstate', (e) => {
-      if (e.state) {
-        const { page, filter } = e.state;
-        this.goto(page, filter, true); // Use replaceState to avoid adding to history
-      } else {
-        // Parse URL to determine page/filter
-        this.parseURL();
-      }
-    });
-
-    // Don't parse URL here - let HubApp.handleDeepLink() do it after everything is initialized
-  },
-
-  parseURL() {
-    const path = window.location.pathname;
-    // Normalize path (remove trailing slash)
-    const normalizedPath = path.endsWith('/') && path !== '/' ? path.slice(0, -1) : path;
-    
-    // Parse /hub/cases/shipping -> page: cases, filter: shipping
-    if (normalizedPath.startsWith('/hub/cases/')) {
-      const filter = normalizedPath.split('/hub/cases/')[1].split('/')[0]; // Get first segment only
-      this.goto('cases', filter || 'all', true); // Use replace=true to avoid double state push
-    } else if (normalizedPath === '/hub/cases') {
-      this.goto('cases', 'all', true);
-    } else if (normalizedPath === '/hub/sessions') {
-      this.goto('sessions', null, true);
-    } else if (normalizedPath === '/hub/events') {
-      this.goto('events', null, true);
-    } else if (normalizedPath === '/hub/issues') {
-      this.goto('issues', null, true);
-    } else if (normalizedPath === '/hub/analytics') {
-      this.goto('analytics', null, true);
-    } else if (normalizedPath === '/hub/audit') {
-      this.goto('audit', null, true);
-    } else if (normalizedPath === '/hub/users') {
-      this.goto('users', null, true);
-    } else if (normalizedPath === '/hub' || normalizedPath === '/') {
-      this.goto('dashboard', null, true);
-    } else {
-      // If no match, default to dashboard
-      this.goto('dashboard', null, true);
+    // Update URL without reload
+    if (window.history && window.history.pushState) {
+      window.history.pushState({ page, filter }, '', path);
     }
   }
 };
@@ -2422,10 +2365,9 @@ const HubApp = {
       HubUI.showApp();
       HubUI.init();
       HubKeyboard.init();
-      HubNavigation.init(); // Initialize URL routing
       HubViews.load();
 
-      // Check URL for case deep link or parse URL
+      // Check URL for case deep link
       this.handleDeepLink();
     } else {
       HubUI.showLoginScreen();
@@ -2437,12 +2379,10 @@ const HubApp = {
     const caseId = params.get('case');
 
     if (caseId) {
-      HubNavigation.goto('cases', 'all', true);
+      HubNavigation.goto('cases', 'all');
       setTimeout(() => HubCases.openCase(caseId), 500);
-    } else {
-      // Parse URL to determine initial page (use replaceState to avoid double state)
-      HubNavigation.parseURL();
     }
+    // URL parsing is now handled by inline script in hub.html
   }
 };
 
