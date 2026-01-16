@@ -71,7 +71,7 @@
   --transition-normal: 200ms ease;
 
   /* Hub Background Gradient */
-  --gradient-dawn: linear-gradient(135deg, #fef7f0 0%, #fdf2f8 25%, #f5f3ff 50%, #eff6ff 75%, #f0fdf4 100%);
+  --gradient-dawn: linear-gradient(135deg, #FFF8E7 0%, #FFF5F5 50%, #F0F7FF 100%);
 }
 
 /* ============================================
