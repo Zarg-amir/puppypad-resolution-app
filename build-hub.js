@@ -81,9 +81,10 @@ if (!jsFunctionRegex.test(indexJS)) {
   process.exit(1);
 }
 const escapedJS = JSON.stringify(hubAppJS);
+// Use string concatenation instead of template literal to avoid ${} interpretation
 indexJS = indexJS.replace(
   jsFunctionRegex,
-  `function getHubAppJS() {\n  return ${escapedJS};\n}`
+  'function getHubAppJS() {\n  return ' + escapedJS + ';\n}'
 );
 console.log('✓ Updated getHubAppJS()');
 
