@@ -4510,7 +4510,8 @@ async function handleTroubleReport(request, env, corsHeaders) {
       } catch (dbError2) {
         console.log('Basic insert also failed:', dbError2.message);
       }
-    }
+      }  // Close catch(e2)
+    }  // Close catch(dbError)
 
     const taskDescription = `
 **TROUBLE REPORT: ${reportId}**
