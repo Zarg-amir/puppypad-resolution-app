@@ -1,0 +1,5 @@
+# Cloudflare Pages Configuration
+# This file is used by the Pages auto-deployment from GitHub
+# The wrangler.json file is used separately for Worker deployment
+
+pages_build_output_dir = "frontend"
