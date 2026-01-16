@@ -1228,6 +1228,12 @@ export default {
         return await handleHubIssueStatusUpdate(reportId, request, env, corsHeaders);
       }
 
+      // Serve Resolution Hub - handle all /hub/* routes (SPA fallback)
+      // This must come AFTER all static assets and API routes
+      if (pathname.startsWith('/hub')) {
+        return await serveResolutionHub(env, corsHeaders);
+      }
+
       // ============================================
       // CLICKUP WEBHOOK (Two-way Sync)
       // ============================================
