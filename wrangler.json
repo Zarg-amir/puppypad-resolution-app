@@ -1,7 +1,7 @@
 {
-  "name": "puppypad-resolution-worker",
-  "main": "src/index.js",
+  "name": "puppypad-resolution",
   "compatibility_date": "2025-01-01",
+  "pages_build_output_dir": "dist",
   "d1_databases": [
     {
       "binding": "ANALYTICS_DB",
@@ -18,5 +18,8 @@
       "binding": "EVIDENCE_UPLOADS",
       "bucket_name": "puppypad-resolution-uploads"
     }
-  ]
+  ],
+  "vars": {
+    "ENVIRONMENT": "production"
+  }
 }
