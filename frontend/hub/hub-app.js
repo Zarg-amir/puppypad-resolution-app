@@ -363,15 +363,23 @@ const HubBulkActions = {
     `;
   },
 
-  showStatusModal() {
-    const count = HubState.selectedCaseIds.size;
+  // Stores caseIds passed to modal for later use
+  pendingBulkCaseIds: null,
+
+  showStatusModal(caseIds = null) {
+    // Use passed caseIds or fall back to HubState.selectedCaseIds
+    const ids = caseIds || Array.from(HubState.selectedCaseIds);
+    const count = ids.length;
     if (count === 0) return;
+    
+    // Store for later use in applyBulkStatus
+    this.pendingBulkCaseIds = ids;
 
     const html = `
       <div class="modal-overlay active" id="bulkStatusModal">
         <div class="modal" style="max-width: 400px;">
           <div class="modal-header">
-            <h3>Change Status (${count} cases)</h3>
+            <h3>Change Status (${count} case${count > 1 ? 's' : ''})</h3>
             <button class="modal-close" onclick="document.getElementById('bulkStatusModal').remove()">×</button>
           </div>
           <div class="modal-body" style="padding: 24px;">
@@ -410,7 +418,51 @@ const HubBulkActions = {
       return;
     }
     document.getElementById('bulkStatusModal')?.remove();
-    this.updateStatus(selected.value);
+    
+    // Use pendingBulkCaseIds if set, otherwise use HubState.selectedCaseIds
+    const caseIds = this.pendingBulkCaseIds || Array.from(HubState.selectedCaseIds);
+    this.pendingBulkCaseIds = null; // Clear after use
+    this.updateStatusWithIds(selected.value, caseIds);
+  },
+
+  async updateStatusWithIds(status, caseIds) {
+    if (!caseIds || caseIds.length === 0) {
+      HubUI.showToast('No cases selected', 'warning');
+      return;
+    }
+
+    try {
+      HubUI.showLoading();
+      const result = await HubAPI.post('/hub/api/bulk/status', {
+        caseIds: caseIds,
+        status,
+        actor: HubState.currentUser?.name || 'team_member',
+        actor_email: HubState.currentUser?.email || ''
+      });
+
+      if (result.success) {
+        HubUI.showToast(result.message || `Updated ${caseIds.length} cases to ${status}`, 'success');
+        this.deselectAll();
+        // Clear dashboard selection too
+        if (HubDashboard.selectedDashboardCases) {
+          HubDashboard.selectedDashboardCases.clear();
+          HubDashboard.updateBulkActionBar();
+        }
+        // Refresh current view
+        if (HubState.currentPage === 'dashboard') {
+          HubDashboard.load();
+        } else if (HubState.currentPage === 'cases') {
+          HubCases.loadCases(HubState.casesPage);
+        }
+      } else {
+        HubUI.showToast(result.error || 'Update failed', 'error');
+      }
+    } catch (e) {
+      console.error('Bulk status update error:', e);
+      HubUI.showToast('Failed to update cases', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
   },
 
   exportCSV() {
@@ -544,6 +596,43 @@ const HubBulkActions = {
           loadCasesView();
         } else if (typeof HubCases !== 'undefined') {
           HubCases.loadCases();
+        }
+      } else {
+        HubUI.showToast(result.error || 'Assign failed', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to assign cases: ' + (e.message || 'Unknown error'), 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
+  },
+
+  async assignWithIds(userId, caseIds) {
+    if (!caseIds || caseIds.length === 0) {
+      HubUI.showToast('No cases selected', 'warning');
+      return;
+    }
+
+    try {
+      HubUI.showLoading();
+      const result = await HubAPI.post('/hub/api/bulk/assign', {
+        caseIds: caseIds,
+        assignToUserId: userId
+      });
+
+      if (result.success) {
+        HubUI.showToast(result.message || `Assigned ${caseIds.length} cases`, 'success');
+        this.deselectAll();
+        // Clear dashboard selection too
+        if (HubDashboard.selectedDashboardCases) {
+          HubDashboard.selectedDashboardCases.clear();
+          HubDashboard.updateBulkActionBar();
+        }
+        // Refresh current view
+        if (HubState.currentPage === 'dashboard') {
+          HubDashboard.load();
+        } else if (HubState.currentPage === 'cases') {
+          HubCases.loadCases(HubState.casesPage);
         }
       } else {
         HubUI.showToast(result.error || 'Assign failed', 'error');
@@ -1463,14 +1552,19 @@ const HubUsers = {
     }
   },
 
+  pendingAssignCaseIds: null,
+
   showAssignModal(caseIds) {
+    // Store caseIds for later use
+    this.pendingAssignCaseIds = caseIds;
+    
     this.load().then(() => {
       const html = `
         <div class="modal-overlay active" id="assignModal">
           <div class="modal" style="max-width: 400px;">
             <div class="modal-header" style="padding: 20px 24px;">
               <div class="modal-header-content">
-                <div class="modal-title" style="font-size: 18px;">Assign ${caseIds.length} Case(s)</div>
+                <div class="modal-title" style="font-size: 18px;">Assign ${caseIds.length} Case${caseIds.length > 1 ? 's' : ''}</div>
               </div>
               <button class="modal-close" onclick="document.getElementById('assignModal').remove()">&times;</button>
             </div>
@@ -1498,8 +1592,11 @@ const HubUsers = {
 
   async confirmAssign() {
     const userId = document.getElementById('assignToUser').value;
+    const caseIds = this.pendingAssignCaseIds || Array.from(HubState.selectedCaseIds);
+    this.pendingAssignCaseIds = null; // Clear after use
+    
     document.getElementById('assignModal').remove();
-    await HubBulkActions.assign(userId ? parseInt(userId) : null);
+    await HubBulkActions.assignWithIds(userId ? parseInt(userId) : null, caseIds);
   },
 
   escapeHtml(text) {
@@ -5512,6 +5609,9 @@ const HubDashboard = {
       document.getElementById('statCompletedToday').textContent = result.completedToday || 0;
       document.getElementById('statAvgTime').textContent = result.avgTime || '-';
 
+      // Update sidebar progress bar
+      this.updateSidebarProgress(result);
+
       // Update sidebar counts
       ['all', 'shipping', 'refund', 'subscription', 'manual'].forEach(type => {
         const el = document.getElementById((type === 'all' ? 'allCases' : type) + 'Count');
@@ -5530,6 +5630,31 @@ const HubDashboard = {
       await this.loadRecentCases();
     } finally {
       HubUI.hideLoading();
+    }
+  },
+
+  updateSidebarProgress(stats) {
+    const pending = stats.pending || 0;
+    const completed = stats.completedToday || 0;
+    const inProgress = stats.inProgress || 0;
+    const total = pending + completed + inProgress;
+
+    // Update stats text
+    const progressCompleted = document.getElementById('progressCompleted');
+    const progressTotal = document.getElementById('progressTotal');
+    const progressPending = document.getElementById('progressPending');
+    const progressCompletedLabel = document.getElementById('progressCompletedLabel');
+    const progressBarFill = document.getElementById('progressBarFill');
+
+    if (progressCompleted) progressCompleted.textContent = completed;
+    if (progressTotal) progressTotal.textContent = total;
+    if (progressPending) progressPending.textContent = pending;
+    if (progressCompletedLabel) progressCompletedLabel.textContent = completed;
+
+    // Calculate and animate progress bar
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    if (progressBarFill) {
+      progressBarFill.style.width = `${percentage}%`;
     }
   },
 
@@ -5699,7 +5824,7 @@ const HubDashboard = {
     if (!container) return;
 
     if (cases.length === 0) {
-      container.innerHTML = '<tr><td colspan="7" class="empty-state">No recent cases</td></tr>';
+      container.innerHTML = '<tr><td colspan="8" class="empty-state">No recent cases</td></tr>';
       return;
     }
 
@@ -5717,17 +5842,16 @@ const HubDashboard = {
                    onclick="HubDashboard.toggleDashboardSelect('${c.case_id}')"
                    ${this.selectedDashboardCases.has(c.case_id) ? 'checked' : ''}>
           </td>
-          <td>
-            <div class="customer-info">
-              <span class="customer-name">${HubHelpers.formatName(c.customer_name)}</span>
-              <span class="customer-email">${this.escapeHtml(c.customer_email || '-')}</span>
-            </div>
+          <td class="td-customer">
+            <div class="td-customer-name">${HubHelpers.formatName(c.customer_name)}</div>
+            <div class="td-customer-email">${this.escapeHtml(c.customer_email || '-')}</div>
           </td>
           <td><span class="type-badge ${c.case_type || ''}">${this.escapeHtml(c.case_type || '-')}</span></td>
           <td><span class="status-badge ${statusClass}">${this.formatStatus(c.status || 'pending')}</span></td>
           <td class="td-due ${dueClass}">${isOverdue ? 'Overdue' : hoursLeft !== null ? hoursLeft + 'h left' : '-'}</td>
           <td class="td-resolution">${this.escapeHtml(c.resolution || '-')}</td>
-          <td class="time-ago">${this.timeAgo(c.created_at)}</td>
+          <td class="${c.assigned_to ? '' : 'td-assignee-unassigned'}">${c.assigned_to || 'Unassigned'}</td>
+          <td class="td-created">${this.timeAgo(c.created_at)}</td>
         </tr>
       `;
     }).join('');
