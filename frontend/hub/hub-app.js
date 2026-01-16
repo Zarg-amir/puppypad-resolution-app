@@ -4908,8 +4908,8 @@ const HubCaseDetail = {
     const templates = this.getEmailTemplatesForCase(c);
     
     const html = `
-      <div class="modal-overlay" id="emailTemplateModal" onclick="if(event.target.id==='emailTemplateModal')this.remove()">
-        <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-overlay active" id="emailTemplateModal" onclick="if(event.target.id==='emailTemplateModal')this.remove()">
+        <div class="modal" style="max-width: 700px;">
           <div class="modal-header">
             <h3>Copy Email Template</h3>
             <button class="modal-close" onclick="document.getElementById('emailTemplateModal').remove()">×</button>
