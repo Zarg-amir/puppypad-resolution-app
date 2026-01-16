@@ -75,17 +75,64 @@ indexJS = indexJS.replace(
 console.log('✓ Updated getResolutionHubHTML()');
 
 // Update getHubAppJS()
-const jsFunctionRegex = /function getHubAppJS\(\) \{\s*return "[\s\S]*?";\s*\}/;
-if (!jsFunctionRegex.test(indexJS)) {
+// Use a more robust approach: find function start, then find the matching closing brace
+// This handles cases where the content contains "; patterns
+const jsFunctionStart = indexJS.indexOf('function getHubAppJS() {');
+if (jsFunctionStart === -1) {
   console.error('✗ Could not find getHubAppJS() function');
   process.exit(1);
 }
+
+// Find the return statement
+const returnStart = indexJS.indexOf('return "', jsFunctionStart);
+if (returnStart === -1) {
+  console.error('✗ Could not find return statement in getHubAppJS()');
+  process.exit(1);
+}
+
+// Find the end of the string by parsing JSON-style escaped string
+// Start after 'return "' (8 characters)
+let stringStart = returnStart + 8;
+let stringEnd = stringStart;
+let escaped = false;
+
+// Parse the JSON-encoded string character by character
+while (stringEnd < indexJS.length) {
+  const char = indexJS[stringEnd];
+  if (escaped) {
+    escaped = false;
+    stringEnd++;
+  } else if (char === '\\') {
+    escaped = true;
+    stringEnd++;
+  } else if (char === '"') {
+    // Found the end of the string
+    break;
+  } else {
+    stringEnd++;
+  }
+}
+
+if (stringEnd >= indexJS.length || indexJS[stringEnd] !== '"') {
+  console.error('✗ Could not find end of string in getHubAppJS()');
+  process.exit(1);
+}
+
+// Find the semicolon and closing brace after the string
+const semicolonPos = indexJS.indexOf(';', stringEnd + 1);
+const bracePos = indexJS.indexOf('}', semicolonPos + 1);
+
+if (semicolonPos === -1 || bracePos === -1) {
+  console.error('✗ Could not find function end in getHubAppJS()');
+  process.exit(1);
+}
+
+// Replace the entire function
 const escapedJS = JSON.stringify(hubAppJS);
-// Use string concatenation instead of template literal to avoid ${} interpretation
-indexJS = indexJS.replace(
-  jsFunctionRegex,
-  'function getHubAppJS() {\n  return ' + escapedJS + ';\n}'
-);
+const beforeFunction = indexJS.substring(0, jsFunctionStart);
+const afterFunction = indexJS.substring(bracePos + 1);
+indexJS = beforeFunction + 'function getHubAppJS() {\n  return ' + escapedJS + ';\n}' + afterFunction;
+
 console.log('✓ Updated getHubAppJS()');
 
 // Update getHubStylesCSS()
