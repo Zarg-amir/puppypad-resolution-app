@@ -8261,11 +8261,16 @@ async function handleHubCases(request, env, corsHeaders) {
   try {
     const url = new URL(request.url);
     const limit = parseInt(url.searchParams.get('limit')) || 50;
-    const offset = parseInt(url.searchParams.get('offset')) || 0;
-    const filter = url.searchParams.get('filter') || 'all';
+    const page = parseInt(url.searchParams.get('page')) || 1;
+    const offset = (page - 1) * limit;
+    
+    // Support both 'type' (from frontend) and 'filter' (legacy)
+    const filter = url.searchParams.get('type') || url.searchParams.get('filter') || 'all';
     const status = url.searchParams.get('status');
+    const search = url.searchParams.get('search');
 
     let query = `SELECT * FROM cases`;
+    let countQuery = `SELECT COUNT(*) as total FROM cases`;
     const conditions = [];
     const params = [];
 
@@ -8279,23 +8284,40 @@ async function handleHubCases(request, env, corsHeaders) {
       params.push(status);
     }
 
+    if (search) {
+      conditions.push(`(case_id LIKE ? OR customer_email LIKE ? OR customer_name LIKE ?)`);
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm, searchTerm);
+    }
+
     if (conditions.length > 0) {
-      query += ` WHERE ` + conditions.join(' AND ');
+      const whereClause = ` WHERE ` + conditions.join(' AND ');
+      query += whereClause;
+      countQuery += whereClause;
     }
 
     query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
 
+    // Get total count first
+    const countStmt = env.ANALYTICS_DB.prepare(countQuery);
+    const countResult = await countStmt.bind(...params).first();
+    const total = countResult?.total || 0;
+    const totalPages = Math.ceil(total / limit);
+
+    // Get cases
     const stmt = env.ANALYTICS_DB.prepare(query);
-    const result = await stmt.bind(...params).all();
+    const queryParams = [...params, limit, offset];
+    const result = await stmt.bind(...queryParams).all();
 
     return Response.json({
       cases: result.results || [],
-      total: result.results?.length || 0
+      total: total,
+      totalPages: totalPages,
+      page: page
     }, { headers: corsHeaders });
   } catch (error) {
     console.error('Hub cases error:', error);
-    return Response.json({ cases: [], total: 0 }, { headers: corsHeaders });
+    return Response.json({ cases: [], total: 0, totalPages: 0, page: 1 }, { headers: corsHeaders });
   }
 }
 
@@ -10040,7 +10062,30 @@ function getResolutionHubHTML() {
 
         <!-- Cases View (will be shown/hidden) -->
         <div id="casesView" style="display: none;">
-          <!-- Cases content will be rendered here -->
+          <div class="cases-card">
+            <div class="cases-header">
+              <h2 class="cases-title">Cases</h2>
+            </div>
+            <table class="cases-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px;">
+                    <input type="checkbox" id="selectAllCases" onclick="HubBulkActions.selectAll()">
+                  </th>
+                  <th>Case ID</th>
+                  <th>Customer</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Assigned To</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="casesTableBody">
+                <tr><td colspan="7" class="loading-spinner"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+            <div id="casesPagination" class="pagination"></div>
+          </div>
         </div>
 
         <!-- Sessions View -->

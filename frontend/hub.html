@@ -954,7 +954,30 @@
 
         <!-- Cases View (will be shown/hidden) -->
         <div id="casesView" style="display: none;">
-          <!-- Cases content will be rendered here -->
+          <div class="cases-card">
+            <div class="cases-header">
+              <h2 class="cases-title">Cases</h2>
+            </div>
+            <table class="cases-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px;">
+                    <input type="checkbox" id="selectAllCases" onclick="HubBulkActions.selectAll()">
+                  </th>
+                  <th>Case ID</th>
+                  <th>Customer</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Assigned To</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="casesTableBody">
+                <tr><td colspan="7" class="loading-spinner"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+            <div id="casesPagination" class="pagination"></div>
+          </div>
         </div>
 
         <!-- Sessions View -->
