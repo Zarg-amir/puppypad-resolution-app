@@ -1145,19 +1145,20 @@ export default {
         return await serveDashboard(env, corsHeaders);
       }
 
-      // Serve Resolution Hub - handle all /hub/* routes (SPA fallback)
-      if (pathname.startsWith('/hub')) {
-        return await serveResolutionHub(env, corsHeaders);
-      }
-
-      // Serve Hub JavaScript
+      // Serve Hub JavaScript (must come before /hub/* catch-all)
       if (pathname === '/hub/hub-app.js') {
         return await serveHubAsset('js', corsHeaders);
       }
 
-      // Serve Hub CSS
+      // Serve Hub CSS (must come before /hub/* catch-all)
       if (pathname === '/hub/hub-styles.css') {
         return await serveHubAsset('css', corsHeaders);
+      }
+
+      // Serve Resolution Hub - handle all /hub/* routes (SPA fallback)
+      // This must come AFTER the static asset routes above
+      if (pathname.startsWith('/hub')) {
+        return await serveResolutionHub(env, corsHeaders);
       }
 
       // Hub API - Stats
