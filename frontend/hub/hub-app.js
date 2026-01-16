@@ -1690,7 +1690,7 @@ const HubCases = {
 // NAVIGATION
 // ============================================
 const HubNavigation = {
-  goto(page, filter = null) {
+  goto(page, filter = null, replaceState = false) {
     HubState.currentPage = page;
     HubState.currentFilter = filter || null;
 
@@ -1703,10 +1703,13 @@ const HubNavigation = {
 
     // Update page title dynamically based on page and filter
     const pageTitle = this.getPageTitle(page, filter);
-    document.getElementById('pageTitle').textContent = pageTitle;
+    const pageTitleEl = document.getElementById('pageTitle');
+    if (pageTitleEl) {
+      pageTitleEl.textContent = pageTitle;
+    }
 
-    // Update URL with slug
-    this.updateURL(page, filter);
+    // Update URL with slug (use replaceState on initial load to avoid double state)
+    this.updateURL(page, filter, replaceState);
 
     // Show/hide views
     ['dashboard', 'cases', 'sessions', 'events', 'issues', 'analytics', 'audit', 'users'].forEach(v => {
