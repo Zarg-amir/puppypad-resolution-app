@@ -1,0 +1,8 @@
+# Cloudflare Pages Redirects
+# This file tells Pages how to handle routing for the SPA
+
+# All /hub/* routes should serve hub.html (SPA fallback)
+/hub/*  /hub.html  200
+
+# Root should serve index.html (chat app)
+/  /index.html  200
