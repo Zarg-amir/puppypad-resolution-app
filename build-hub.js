@@ -56,96 +56,58 @@ try {
   process.exit(1);
 }
 
-// Escape content for template literals
-function escapeForTemplate(str) {
-  return str.replace(/`/g, '\\`').replace(/\${/g, '\\${');
+/**
+ * Ultra-simple function replacement: find function start, find next function start, replace everything in between
+ */
+function replaceFunction(content, functionName, newFunctionBody) {
+  const searchPattern = `function ${functionName}() {`;
+  const startPos = content.indexOf(searchPattern);
+  
+  if (startPos === -1) {
+    console.error(`✗ Could not find ${functionName}() function`);
+    process.exit(1);
+  }
+  
+  // Find the start of the next function (any function that comes after)
+  const afterStart = content.substring(startPos);
+  
+  // List of functions we might encounter
+  const functionNames = ['getResolutionHubHTML', 'getHubAppJS', 'getHubStylesCSS'];
+  let nextFunctionStart = content.length;
+  
+  for (const name of functionNames) {
+    if (name !== functionName) {
+      const nextPos = content.indexOf(`function ${name}() {`, startPos + searchPattern.length);
+      if (nextPos !== -1 && nextPos < nextFunctionStart) {
+        nextFunctionStart = nextPos;
+      }
+    }
+  }
+  
+  // If we found a next function, replace everything from start to that function
+  // Otherwise, replace to end of file
+  const before = content.substring(0, startPos);
+  const after = content.substring(nextFunctionStart);
+  
+  return before + newFunctionBody + '\n' + after;
 }
 
 // Update getResolutionHubHTML()
-const htmlFunctionRegex = /function getResolutionHubHTML\(\) \{\s*return `[\s\S]*?`;\s*\}/;
-if (!htmlFunctionRegex.test(indexJS)) {
-  console.error('✗ Could not find getResolutionHubHTML() function');
-  process.exit(1);
-}
-const escapedHTML = escapeForTemplate(hubHTML);
-indexJS = indexJS.replace(
-  htmlFunctionRegex,
-  `function getResolutionHubHTML() {\n  return \`${escapedHTML}\`;\n}`
-);
+const escapedHTML = JSON.stringify(hubHTML);
+const newHTMLFunction = `function getResolutionHubHTML() { return ${escapedHTML}; }`;
+indexJS = replaceFunction(indexJS, 'getResolutionHubHTML', newHTMLFunction);
 console.log('✓ Updated getResolutionHubHTML()');
 
 // Update getHubAppJS()
-// Use a more robust approach: find function start, then find the matching closing brace
-// This handles cases where the content contains "; patterns
-const jsFunctionStart = indexJS.indexOf('function getHubAppJS() {');
-if (jsFunctionStart === -1) {
-  console.error('✗ Could not find getHubAppJS() function');
-  process.exit(1);
-}
-
-// Find the return statement
-const returnStart = indexJS.indexOf('return "', jsFunctionStart);
-if (returnStart === -1) {
-  console.error('✗ Could not find return statement in getHubAppJS()');
-  process.exit(1);
-}
-
-// Find the end of the string by parsing JSON-style escaped string
-// Start after 'return "' (8 characters)
-let stringStart = returnStart + 8;
-let stringEnd = stringStart;
-let escaped = false;
-
-// Parse the JSON-encoded string character by character
-while (stringEnd < indexJS.length) {
-  const char = indexJS[stringEnd];
-  if (escaped) {
-    escaped = false;
-    stringEnd++;
-  } else if (char === '\\') {
-    escaped = true;
-    stringEnd++;
-  } else if (char === '"') {
-    // Found the end of the string
-    break;
-  } else {
-    stringEnd++;
-  }
-}
-
-if (stringEnd >= indexJS.length || indexJS[stringEnd] !== '"') {
-  console.error('✗ Could not find end of string in getHubAppJS()');
-  process.exit(1);
-}
-
-// Find the semicolon and closing brace after the string
-const semicolonPos = indexJS.indexOf(';', stringEnd + 1);
-const bracePos = indexJS.indexOf('}', semicolonPos + 1);
-
-if (semicolonPos === -1 || bracePos === -1) {
-  console.error('✗ Could not find function end in getHubAppJS()');
-  process.exit(1);
-}
-
-// Replace the entire function
 const escapedJS = JSON.stringify(hubAppJS);
-const beforeFunction = indexJS.substring(0, jsFunctionStart);
-const afterFunction = indexJS.substring(bracePos + 1);
-indexJS = beforeFunction + 'function getHubAppJS() {\n  return ' + escapedJS + ';\n}' + afterFunction;
-
+const newJSFunction = `function getHubAppJS() { return ${escapedJS}; }`;
+indexJS = replaceFunction(indexJS, 'getHubAppJS', newJSFunction);
 console.log('✓ Updated getHubAppJS()');
 
 // Update getHubStylesCSS()
-const cssFunctionRegex = /function getHubStylesCSS\(\) \{\s*return `[\s\S]*?`;\s*\}/;
-if (!cssFunctionRegex.test(indexJS)) {
-  console.error('✗ Could not find getHubStylesCSS() function');
-  process.exit(1);
-}
-const escapedCSS = escapeForTemplate(hubCSS);
-indexJS = indexJS.replace(
-  cssFunctionRegex,
-  `function getHubStylesCSS() {\n  return \`${escapedCSS}\`;\n}`
-);
+const escapedCSS = JSON.stringify(hubCSS);
+const newCSSFunction = `function getHubStylesCSS() { return ${escapedCSS}; }`;
+indexJS = replaceFunction(indexJS, 'getHubStylesCSS', newCSSFunction);
 console.log('✓ Updated getHubStylesCSS()');
 
 // Write back
