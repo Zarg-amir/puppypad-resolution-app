@@ -2227,9 +2227,9 @@ const HubAnalytics = {
       1
     );
 
-    const chartHeight = 200;
-    const chartWidth = 600;
-    const padding = 40;
+    const chartHeight = 300;
+    const chartWidth = 800;
+    const padding = 50;
     const barWidth = (chartWidth - padding * 2) / Math.max(sortedDates.length, 1);
 
     let svg = `<svg width="100%" height="${chartHeight}" viewBox="0 0 ${chartWidth} ${chartHeight}" style="overflow: visible;">`;
@@ -2240,62 +2240,88 @@ const HubAnalytics = {
       svg += `<line x1="${padding}" y1="${y}" x2="${chartWidth - padding}" y2="${y}" stroke="var(--gray-200)" stroke-width="1"/>`;
     }
 
-    // Draw cases line with gradient
+    // Helper function to create smooth curve using quadratic bezier
+    const createSmoothPath = (points) => {
+      if (points.length < 2) return '';
+      let path = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 0; i < points.length - 1; i++) {
+        const curr = points[i];
+        const next = points[i + 1];
+        const cpX = (curr.x + next.x) / 2;
+        const cpY = (curr.y + next.y) / 2;
+        path += ` Q ${curr.x} ${curr.y} ${cpX} ${cpY}`;
+        if (i === points.length - 2) {
+          path += ` T ${next.x} ${next.y}`;
+        }
+      }
+      return path;
+    };
+
+    // Draw cases line with smooth curve
     if (casesByDay.length > 0) {
-      const points = sortedDates.map((date, idx) => {
+      const casePoints = sortedDates.map((date, idx) => {
         const caseData = casesByDay.find(c => c.date === date);
         const x = padding + idx * barWidth + barWidth / 2;
         const y = chartHeight - padding - ((caseData?.count || 0) / maxValue) * (chartHeight - padding * 2);
-        return `${x},${y}`;
-      }).join(' ');
+        return { x, y, value: caseData?.count || 0 };
+      });
+
+      // Create smooth path
+      const smoothPath = createSmoothPath(casePoints);
       
       // Add area fill under line
-      const areaPoints = points + ` ${chartWidth - padding},${chartHeight - padding} ${padding},${chartHeight - padding}`;
+      const areaPath = smoothPath + ` L ${chartWidth - padding},${chartHeight - padding} L ${padding},${chartHeight - padding} Z`;
+      
       svg += `<defs>
         <linearGradient id="casesGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" style="stop-color:#1a365d;stop-opacity:0.3" />
-          <stop offset="100%" style="stop-color:#1a365d;stop-opacity:0.05" />
+          <stop offset="0%" style="stop-color:#1a365d;stop-opacity:0.25" />
+          <stop offset="100%" style="stop-color:#1a365d;stop-opacity:0.03" />
         </linearGradient>
       </defs>`;
-      svg += `<polygon points="${areaPoints}" fill="url(#casesGradient)"/>`;
-      svg += `<polyline points="${points}" fill="none" stroke="#1a365d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+      svg += `<path d="${areaPath}" fill="url(#casesGradient)"/>`;
+      svg += `<path d="${smoothPath}" fill="none" stroke="#1a365d" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
       
       // Add dots on line
-      sortedDates.forEach((date, idx) => {
-        const caseData = casesByDay.find(c => c.date === date);
-        const x = padding + idx * barWidth + barWidth / 2;
-        const y = chartHeight - padding - ((caseData?.count || 0) / maxValue) * (chartHeight - padding * 2);
-        svg += `<circle cx="${x}" cy="${y}" r="4" fill="#1a365d" stroke="white" stroke-width="2"/>`;
+      casePoints.forEach((point) => {
+        svg += `<circle cx="${point.x}" cy="${point.y}" r="5" fill="#1a365d" stroke="white" stroke-width="2.5" opacity="0.9"/>`;
       });
     }
 
-    // Draw sessions line with gradient
+    // Draw sessions line with smooth curve
     if (sessionsByDay.length > 0) {
-      const points = sortedDates.map((date, idx) => {
+      const sessionPoints = sortedDates.map((date, idx) => {
         const sessionData = sessionsByDay.find(s => s.date === date);
         const x = padding + idx * barWidth + barWidth / 2;
         const y = chartHeight - padding - ((sessionData?.count || 0) / maxValue) * (chartHeight - padding * 2);
-        return `${x},${y}`;
-      }).join(' ');
+        return { x, y, value: sessionData?.count || 0 };
+      });
+
+      // Create smooth path
+      const smoothPath = createSmoothPath(sessionPoints);
       
       // Add area fill under line
-      const areaPoints = points + ` ${chartWidth - padding},${chartHeight - padding} ${padding},${chartHeight - padding}`;
+      const areaPath = smoothPath + ` L ${chartWidth - padding},${chartHeight - padding} L ${padding},${chartHeight - padding} Z`;
+      
       svg += `<defs>
         <linearGradient id="sessionsGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" style="stop-color:#10B981;stop-opacity:0.3" />
-          <stop offset="100%" style="stop-color:#10B981;stop-opacity:0.05" />
+          <stop offset="0%" style="stop-color:#10B981;stop-opacity:0.25" />
+          <stop offset="100%" style="stop-color:#10B981;stop-opacity:0.03" />
         </linearGradient>
       </defs>`;
-      svg += `<polygon points="${areaPoints}" fill="url(#sessionsGradient)"/>`;
-      svg += `<polyline points="${points}" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+      svg += `<path d="${areaPath}" fill="url(#sessionsGradient)"/>`;
+      svg += `<path d="${smoothPath}" fill="none" stroke="#10B981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
       
       // Add dots on line
-      sortedDates.forEach((date, idx) => {
-        const sessionData = sessionsByDay.find(s => s.date === date);
-        const x = padding + idx * barWidth + barWidth / 2;
-        const y = chartHeight - padding - ((sessionData?.count || 0) / maxValue) * (chartHeight - padding * 2);
-        svg += `<circle cx="${x}" cy="${y}" r="4" fill="#10B981" stroke="white" stroke-width="2"/>`;
+      sessionPoints.forEach((point) => {
+        svg += `<circle cx="${point.x}" cy="${point.y}" r="5" fill="#10B981" stroke="white" stroke-width="2.5" opacity="0.9"/>`;
       });
+    }
+
+    // Draw Y-axis labels
+    for (let i = 0; i <= 5; i++) {
+      const y = padding + (chartHeight - padding * 2) * (i / 5);
+      const value = Math.round(maxValue * (1 - i / 5));
+      svg += `<text x="${padding - 10}" y="${y + 4}" text-anchor="end" font-size="11" font-weight="500" fill="var(--gray-500)">${value}</text>`;
     }
 
     // Draw date labels
@@ -2305,10 +2331,10 @@ const HubAnalytics = {
         // Handle both date strings and Date objects
         const dateObj = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
         const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        svg += `<text x="${x}" y="${chartHeight - 10}" text-anchor="middle" font-size="10" fill="var(--gray-600)">${dateStr}</text>`;
+        svg += `<text x="${x}" y="${chartHeight - 15}" text-anchor="middle" font-size="11" font-weight="500" fill="var(--gray-600)">${dateStr}</text>`;
       } catch (e) {
         console.error('Error formatting date:', date, e);
-        svg += `<text x="${x}" y="${chartHeight - 10}" text-anchor="middle" font-size="10" fill="var(--gray-600)">${date}</text>`;
+        svg += `<text x="${x}" y="${chartHeight - 15}" text-anchor="middle" font-size="11" font-weight="500" fill="var(--gray-600)">${date}</text>`;
       }
     });
 
