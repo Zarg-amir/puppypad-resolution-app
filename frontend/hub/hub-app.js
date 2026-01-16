@@ -2102,10 +2102,21 @@ const HubAnalytics = {
         document.getElementById('analyticsCompletedCases').textContent = result.completedCases || 0;
       }
       if (document.getElementById('analyticsAvgResolution')) {
-        document.getElementById('analyticsAvgResolution').textContent = result.avgResolutionTime || '-';
+        const avgHours = result.avgResolutionHours || 0;
+        if (avgHours > 0) {
+          if (avgHours < 24) {
+            document.getElementById('analyticsAvgResolution').textContent = `${Math.round(avgHours)}h`;
+          } else {
+            document.getElementById('analyticsAvgResolution').textContent = `${Math.round(avgHours / 24)}d`;
+          }
+        } else {
+          document.getElementById('analyticsAvgResolution').textContent = '-';
+        }
       }
       if (document.getElementById('analyticsSatisfaction')) {
-        document.getElementById('analyticsSatisfaction').textContent = result.satisfactionRate || '-';
+        // Use completion rate as satisfaction proxy, or SLA compliance rate
+        const satisfaction = result.completionRate || result.slaComplianceRate || 0;
+        document.getElementById('analyticsSatisfaction').textContent = satisfaction > 0 ? `${satisfaction}%` : '-';
       }
 
       // Render detailed analytics
@@ -2122,25 +2133,240 @@ const HubAnalytics = {
     const container = document.getElementById('analyticsContent');
     if (!container) return;
 
+    // Format currency
+    const formatCurrency = (amount) => {
+      if (!amount || amount === 0) return '$0.00';
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    };
+
+    // Format hours
+    const formatHours = (hours) => {
+      if (!hours || hours === 0) return '-';
+      if (hours < 24) return `${Math.round(hours * 10) / 10}h`;
+      return `${Math.round((hours / 24) * 10) / 10}d`;
+    };
+
+    // Simple bar chart rendering
+    const renderBarChart = (data, color = '#3B82F6') => {
+      if (!data || data.length === 0) return '<p style="color: var(--gray-500);">No data available</p>';
+      const maxCount = Math.max(...data.map(d => d.count || 0));
+      return data.map(item => {
+        const width = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+        return `
+          <div style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 13px; color: var(--gray-700);">${this.escapeHtml(item.name || item.case_type || item.reason || 'Unknown')}</span>
+              <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${item.count || 0}</span>
+            </div>
+            <div style="width: 100%; height: 8px; background: var(--gray-100); border-radius: 4px; overflow: hidden;">
+              <div style="width: ${width}%; height: 100%; background: ${color}; transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    };
+
     container.innerHTML = `
-      <div style="display: grid; gap: 24px;">
-        <div>
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Case Resolution Trends</h3>
-          <div style="padding: 20px; background: var(--gray-50); border-radius: 12px; color: var(--gray-600);">
-            ${data.resolutionTrends ? JSON.stringify(data.resolutionTrends, null, 2) : 'No data available'}
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+        <!-- Cases Overview -->
+        <div class="stat-card" style="grid-column: span 2;">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Cases Overview</h3>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+            <div>
+              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Total</div>
+              <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">${data.totalCases || 0}</div>
+            </div>
+            <div>
+              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">This Month</div>
+              <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">${data.casesThisMonth || 0}</div>
+            </div>
+            <div>
+              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">This Week</div>
+              <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">${data.casesThisWeek || 0}</div>
+            </div>
+            <div>
+              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Today</div>
+              <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">${data.casesToday || 0}</div>
+            </div>
           </div>
         </div>
-        <div>
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Performance Summary</h3>
-          <div style="padding: 20px; background: var(--gray-50); border-radius: 12px; color: var(--gray-600);">
-            Total Cases: ${data.totalCases || 0}<br>
-            Pending: ${data.pendingCases || 0}<br>
-            In Progress: ${data.inProgressCases || 0}<br>
-            Completed: ${data.completedCases || 0}
+
+        <!-- Cases by Type -->
+        <div class="stat-card">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Cases by Type</h3>
+          ${renderBarChart(data.casesByType || [], '#3B82F6')}
+        </div>
+
+        <!-- Cases by Status -->
+        <div class="stat-card">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Cases by Status</h3>
+          ${renderBarChart(data.casesByStatus || [], '#10B981')}
+        </div>
+
+        <!-- Resolution Types -->
+        <div class="stat-card" style="grid-column: span 2;">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Resolution Types</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            ${(data.resolutionTypes || []).slice(0, 10).map(r => `
+              <div style="padding: 12px; background: var(--gray-50); border-radius: 8px;">
+                <div style="font-size: 13px; color: var(--gray-600); margin-bottom: 4px;">${this.escapeHtml(r.resolution || 'Unknown')}</div>
+                <div style="font-size: 18px; font-weight: 600; color: var(--gray-900);">${r.count || 0}</div>
+                ${r.total_refund ? `<div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">${formatCurrency(r.total_refund)}</div>` : ''}
+              </div>
+            `).join('')}
           </div>
         </div>
+
+        <!-- Refunds Overview -->
+        <div class="stat-card">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Refunds</h3>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div>
+              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Total</div>
+              <div style="font-size: 20px; font-weight: 700; color: var(--gray-900);">${formatCurrency(data.totalRefunds || 0)}</div>
+            </div>
+            <div>
+              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">This Month</div>
+              <div style="font-size: 18px; font-weight: 600; color: var(--gray-900);">${formatCurrency(data.refundsThisMonth || 0)}</div>
+            </div>
+            <div>
+              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Average</div>
+              <div style="font-size: 16px; font-weight: 600; color: var(--gray-900);">${formatCurrency(data.avgRefund || 0)}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resolution Time Metrics -->
+        <div class="stat-card">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Resolution Time</h3>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div>
+              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Average</div>
+              <div style="font-size: 20px; font-weight: 700; color: var(--gray-900);">${formatHours(data.avgResolutionHours || 0)}</div>
+            </div>
+            <div>
+              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Min</div>
+              <div style="font-size: 16px; font-weight: 600; color: var(--gray-900);">${formatHours(data.minResolutionHours || 0)}</div>
+            </div>
+            <div>
+              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Max</div>
+              <div style="font-size: 16px; font-weight: 600; color: var(--gray-900);">${formatHours(data.maxResolutionHours || 0)}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SLA Compliance -->
+        <div class="stat-card">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">SLA Compliance</h3>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div>
+              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Compliance Rate</div>
+              <div style="font-size: 24px; font-weight: 700; color: ${data.slaComplianceRate >= 80 ? '#10B981' : data.slaComplianceRate >= 60 ? '#F59E0B' : '#EF4444'};">
+                ${data.slaComplianceRate || 0}%
+              </div>
+            </div>
+            <div style="display: flex; gap: 16px;">
+              <div>
+                <div style="font-size: 11px; color: var(--gray-500);">Compliant</div>
+                <div style="font-size: 16px; font-weight: 600; color: #10B981;">${data.slaCompliant || 0}</div>
+              </div>
+              <div>
+                <div style="font-size: 11px; color: var(--gray-500);">Breached</div>
+                <div style="font-size: 16px; font-weight: 600; color: #EF4444;">${data.slaBreached || 0}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resolution Time Distribution -->
+        <div class="stat-card" style="grid-column: span 2;">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Resolution Time Distribution</h3>
+          ${renderBarChart(data.resolutionDistribution || [], '#8B5CF6')}
+        </div>
+
+        <!-- Team Performance -->
+        <div class="stat-card" style="grid-column: span 2;">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Team Performance (Last 30 Days)</h3>
+          ${(data.teamPerformance || []).length > 0 ? `
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--gray-200);">
+                  <th style="text-align: left; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Team Member</th>
+                  <th style="text-align: right; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Cases Completed</th>
+                  <th style="text-align: right; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Total Refunds</th>
+                  <th style="text-align: right; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Avg. Resolution</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(data.teamPerformance || []).map(t => `
+                  <tr style="border-bottom: 1px solid var(--gray-100);">
+                    <td style="padding: 8px; font-size: 13px; color: var(--gray-900);">${this.escapeHtml(t.user_name || 'Unassigned')}</td>
+                    <td style="text-align: right; padding: 8px; font-size: 13px; font-weight: 600; color: var(--gray-900);">${t.cases_completed || 0}</td>
+                    <td style="text-align: right; padding: 8px; font-size: 13px; color: var(--gray-700);">${formatCurrency(t.total_refunds || 0)}</td>
+                    <td style="text-align: right; padding: 8px; font-size: 13px; color: var(--gray-700);">${formatHours(t.avg_resolution_hours || 0)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          ` : '<p style="color: var(--gray-500);">No team performance data available</p>'}
+        </div>
+
+        <!-- Root Causes -->
+        <div class="stat-card" style="grid-column: span 2;">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Root Causes (Last 30 Days)</h3>
+          ${renderBarChart((data.rootCauses || []).slice(0, 10), '#F59E0B')}
+        </div>
+
+        <!-- High Value Refunds -->
+        ${(data.highValueRefunds || []).length > 0 ? `
+          <div class="stat-card" style="grid-column: span 2;">
+            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Recent High-Value Refunds</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--gray-200);">
+                  <th style="text-align: left; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Case ID</th>
+                  <th style="text-align: left; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Customer</th>
+                  <th style="text-align: right; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Amount</th>
+                  <th style="text-align: left; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Resolution</th>
+                  <th style="text-align: left; padding: 8px; font-size: 12px; font-weight: 600; color: var(--gray-600);">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(data.highValueRefunds || []).map(r => `
+                  <tr style="border-bottom: 1px solid var(--gray-100);">
+                    <td style="padding: 8px; font-size: 12px; font-family: monospace; color: var(--gray-700);">${this.escapeHtml(r.case_id || '-')}</td>
+                    <td style="padding: 8px; font-size: 13px; color: var(--gray-900);">${this.escapeHtml(r.customer_email || '-')}</td>
+                    <td style="text-align: right; padding: 8px; font-size: 13px; font-weight: 600; color: var(--gray-900);">${formatCurrency(r.refund_amount || 0)}</td>
+                    <td style="padding: 8px; font-size: 13px; color: var(--gray-700);">${this.escapeHtml(r.resolution || '-')}</td>
+                    <td style="padding: 8px; font-size: 12px; color: var(--gray-500);">${this.formatDate(r.created_at)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
       </div>
     `;
+  },
+
+  formatDate(timestamp) {
+    if (!timestamp) return '-';
+    try {
+      return new Date(timestamp).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return '-';
+    }
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 };
 
