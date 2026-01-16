@@ -12223,77 +12223,101 @@ h1, h2, h3, h4, h5, h6 {
   border-color: #FCD34D;
 }
 
-.stat-card.highlight[style*="background: #FEF3C7"] .stat-label {
+/* Yellow card - Pending Cases */
+.stat-card.highlight[style*="FEF3C7"] .stat-label,
+.stat-card.highlight[style*="FEF3C7"] .stat-value,
+.stat-card.highlight[style*="FEF3C7"] .stat-change {
   color: #78350F !important; /* Dark amber for contrast */
-  font-weight: 700;
 }
 
-.stat-card.highlight[style*="background: #FEF3C7"] .stat-value {
+.stat-card.highlight[style*="FEF3C7"] .stat-value {
   color: #92400E !important; /* Dark amber for contrast */
   font-weight: 800;
 }
 
-.stat-card.highlight[style*="background: #FEF3C7"] .stat-change {
+.stat-card.highlight[style*="FEF3C7"] .stat-label {
+  font-weight: 700;
+}
+
+.stat-card.highlight[style*="FEF3C7"] .stat-change {
   color: #B45309 !important; /* Medium amber for contrast */
   font-weight: 600;
 }
 
-.stat-card.highlight[style*="background: #D1FAE5"] {
+/* Green card - Completed, SLA Compliance */
+.stat-card.highlight[style*="D1FAE5"] {
   background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
   border-color: #10B981;
 }
 
-.stat-card.highlight[style*="background: #D1FAE5"] .stat-label {
+.stat-card.highlight[style*="D1FAE5"] .stat-label,
+.stat-card.highlight[style*="D1FAE5"] .stat-value,
+.stat-card.highlight[style*="D1FAE5"] .stat-change {
   color: #065F46 !important; /* Dark green for contrast */
-  font-weight: 700;
 }
 
-.stat-card.highlight[style*="background: #D1FAE5"] .stat-value {
+.stat-card.highlight[style*="D1FAE5"] .stat-value {
   color: #047857 !important; /* Dark green for contrast */
   font-weight: 800;
 }
 
-.stat-card.highlight[style*="background: #D1FAE5"] .stat-change {
+.stat-card.highlight[style*="D1FAE5"] .stat-label {
+  font-weight: 700;
+}
+
+.stat-card.highlight[style*="D1FAE5"] .stat-change {
   color: #059669 !important; /* Medium green for contrast */
   font-weight: 600;
 }
 
-.stat-card.highlight[style*="background: #FCE7F3"] {
+/* Pink card - Refunds (30d) */
+.stat-card.highlight[style*="FCE7F3"] {
   background: linear-gradient(135deg, #FCE7F3 0%, #FBCFE8 100%);
   border-color: #F9A8D4;
 }
 
-.stat-card.highlight[style*="background: #FCE7F3"] .stat-label {
+.stat-card.highlight[style*="FCE7F3"] .stat-label,
+.stat-card.highlight[style*="FCE7F3"] .stat-value,
+.stat-card.highlight[style*="FCE7F3"] .stat-change {
   color: #831843 !important; /* Dark pink for contrast */
-  font-weight: 700;
 }
 
-.stat-card.highlight[style*="background: #FCE7F3"] .stat-value {
+.stat-card.highlight[style*="FCE7F3"] .stat-value {
   color: #9F1239 !important; /* Dark pink for contrast */
   font-weight: 800;
 }
 
-.stat-card.highlight[style*="background: #FCE7F3"] .stat-change {
+.stat-card.highlight[style*="FCE7F3"] .stat-label {
+  font-weight: 700;
+}
+
+.stat-card.highlight[style*="FCE7F3"] .stat-change {
   color: #BE185D !important; /* Medium pink for contrast */
   font-weight: 600;
 }
 
-.stat-card.highlight[style*="background: #FEE2E2"] {
+/* Red card - Root Cause Categories */
+.stat-card.highlight[style*="FEE2E2"] {
   background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
   border-color: #FCA5A5;
 }
 
-.stat-card.highlight[style*="background: #FEE2E2"] .stat-label {
+.stat-card.highlight[style*="FEE2E2"] .stat-label,
+.stat-card.highlight[style*="FEE2E2"] .stat-value,
+.stat-card.highlight[style*="FEE2E2"] .stat-change {
   color: #991B1B !important; /* Dark red for contrast */
-  font-weight: 700;
 }
 
-.stat-card.highlight[style*="background: #FEE2E2"] .stat-value {
+.stat-card.highlight[style*="FEE2E2"] .stat-value {
   color: #B91C1C !important; /* Dark red for contrast */
   font-weight: 800;
 }
 
-.stat-card.highlight[style*="background: #FEE2E2"] .stat-change {
+.stat-card.highlight[style*="FEE2E2"] .stat-label {
+  font-weight: 700;
+}
+
+.stat-card.highlight[style*="FEE2E2"] .stat-change {
   color: #DC2626 !important; /* Medium red for contrast */
   font-weight: 600;
 }
