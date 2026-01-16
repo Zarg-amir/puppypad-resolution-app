@@ -9090,4337 +9090,846 @@ function getResolutionHubHTML() {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Resolution Hub | PuppyPad</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+  <!-- Satoshi and Space Grotesk fonts for brand aesthetics -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { --brand-navy: #1e3a5f; --brand-navy-light: #2d4a6f; --accent-teal: #4fd1c5; --accent-coral: #f56565; --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb; --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280; --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937; --gray-900: #111827; --success: #10b981; --warning: #f59e0b; --error: #ef4444; --sidebar-width: 260px; }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--gray-50); color: var(--gray-800); min-height: 100vh; }
-    .app-container { display: flex; min-height: 100vh; }
-    .sidebar { width: var(--sidebar-width); background: var(--brand-navy); color: white; position: fixed; top: 0; left: 0; height: 100vh; display: flex; flex-direction: column; z-index: 100; }
-    .sidebar-header { padding: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    .sidebar-logo { display: flex; align-items: center; gap: 12px; }
-    .sidebar-logo img { height: 32px; filter: brightness(0) invert(1); }
-    .sidebar-logo span { font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 600; }
-    .sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
-    .nav-section { margin-bottom: 24px; }
-    .nav-section-title { padding: 8px 24px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.5); }
-    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 24px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent; }
-    .nav-item:hover { background: rgba(255,255,255,0.1); color: white; }
-    .nav-item.active { background: rgba(255,255,255,0.1); color: white; border-left-color: var(--accent-teal); }
-    .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
-    .nav-item .badge { margin-left: auto; background: var(--accent-coral); color: white; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; min-width: 20px; text-align: center; }
-    .sidebar-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.1); }
-    .user-info { display: flex; align-items: center; gap: 12px; }
-    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--accent-teal); display: flex; align-items: center; justify-content: center; font-weight: 600; }
-    .user-name { font-size: 14px; font-weight: 500; }
-    .user-role { font-size: 12px; color: rgba(255,255,255,0.5); }
-    .main-content { flex: 1; margin-left: var(--sidebar-width); display: flex; flex-direction: column; }
-    .top-header { background: white; padding: 16px 32px; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50; }
-    .page-title { font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 600; color: var(--gray-900); }
-    .header-actions { display: flex; align-items: center; gap: 16px; }
-    .search-box { display: flex; align-items: center; background: var(--gray-100); border-radius: 8px; padding: 8px 16px; gap: 8px; width: 300px; }
-    .search-box input { border: none; background: none; outline: none; font-size: 14px; width: 100%; }
-    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; border: none; }
-    .btn-primary { background: var(--brand-navy); color: white; }
-    .btn-secondary { background: white; color: var(--gray-700); border: 1px solid var(--gray-200); }
-    .btn-secondary:hover { background: var(--gray-50); }
-    .page-content { flex: 1; padding: 32px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 32px; }
-    .stat-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .stat-card.highlight { background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-light) 100%); color: white; }
-    .stat-label { font-size: 13px; color: var(--gray-500); margin-bottom: 8px; }
-    .stat-card.highlight .stat-label { color: rgba(255,255,255,0.7); }
-    .stat-value { font-family: 'Poppins', sans-serif; font-size: 32px; font-weight: 700; }
-    .stat-change { display: inline-flex; font-size: 12px; margin-top: 8px; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.1); color: var(--success); }
-    .cases-card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
-    .cases-header { padding: 20px 24px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
-    .cases-title { font-size: 16px; font-weight: 600; }
-    .cases-table { width: 100%; border-collapse: collapse; }
-    .cases-table th, .cases-table td { padding: 14px 20px; text-align: left; border-bottom: 1px solid var(--gray-100); }
-    .cases-table th { background: var(--gray-50); font-size: 12px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; }
-    .cases-table tbody tr { cursor: pointer; transition: background 0.2s; }
-    .cases-table tbody tr:hover { background: var(--gray-50); }
-    .case-id { font-family: monospace; font-size: 13px; color: var(--brand-navy); font-weight: 500; }
-    .customer-info { display: flex; flex-direction: column; gap: 2px; }
-    .customer-name { font-weight: 500; }
-    .customer-email { font-size: 12px; color: var(--gray-500); }
-    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
-    .status-badge.pending { background: #fef3c7; color: #d97706; }
-    .status-badge.in-progress { background: #dbeafe; color: #2563eb; }
-    .status-badge.completed { background: #d1fae5; color: #059669; }
-    .status-badge.abandoned { background: #fee2e2; color: #dc2626; }
-    .due-badge { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
-    .due-badge.due-done { background: #d1fae5; color: #059669; }
-    .due-badge.due-overdue { background: #fee2e2; color: #dc2626; }
-    .due-badge.due-urgent { background: #fef3c7; color: #d97706; }
-    .due-badge.due-warning { background: #fed7aa; color: #c2410c; }
-    .due-badge.due-ok { background: #e0e7ff; color: #4f46e5; }
-    .type-badge { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+    :root {
+      --brand-navy: #1a365d;
+      --brand-navy-light: #2c5282;
+      --accent-teal: #4fd1c5;
+      --accent-coral: #f56565;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --info: #3b82f6;
+      --sidebar-width: 260px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Satoshi', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #FFF8E7 0%, #FFF5F5 25%, #F5F3FF 50%, #EFF6FF 75%, #F0FDF4 100%);
+      background-attachment: fixed;
+      color: var(--gray-800);
+      min-height: 100vh;
+    }
+
+    /* Layout */
+    .app-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: #0f172a;
+      color: white;
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-logo img {
+      height: 32px;
+      filter: brightness(0) invert(1);
+    }
+
+    .sidebar-logo span {
+      font-family: 'Space Grotesk', 'Poppins', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 16px 0;
+      overflow-y: auto;
+    }
+
+    .nav-section {
+      margin-bottom: 24px;
+    }
+
+    .nav-section-title {
+      padding: 8px 24px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 24px;
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.1);
+      color: white;
+    }
+
+    .nav-item.active {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border-left-color: var(--accent-teal);
+    }
+
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .nav-item .badge {
+      margin-left: auto;
+      background: var(--accent-coral);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .sidebar-footer {
+      padding: 16px 24px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent-teal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .user-details {
+      flex: 1;
+    }
+
+    .user-name {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .user-role {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      margin-left: var(--sidebar-width);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Header */
+    .top-header {
+      background: white;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--gray-200);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .page-title {
+      font-family: 'Space Grotesk', 'Poppins', sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      background: var(--gray-100);
+      border-radius: 8px;
+      padding: 8px 16px;
+      gap: 8px;
+      width: 300px;
+    }
+
+    .search-box input {
+      border: none;
+      background: none;
+      outline: none;
+      font-size: 14px;
+      width: 100%;
+    }
+
+    .search-box svg {
+      width: 18px;
+      height: 18px;
+      color: var(--gray-400);
+      stroke-width: 2;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--brand-navy);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--brand-navy-light);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--gray-700);
+      border: 1px solid var(--gray-200);
+    }
+
+    .btn-secondary:hover {
+      background: var(--gray-50);
+    }
+
+    /* Page Content */
+    .page-content {
+      flex: 1;
+      padding: 32px;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .stat-card.highlight {
+      background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-light) 100%);
+      color: white;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--gray-500);
+      margin-bottom: 8px;
+    }
+
+    .stat-card.highlight .stat-label {
+      color: rgba(255,255,255,0.7);
+    }
+
+    .stat-value {
+      font-family: 'Space Grotesk', 'Poppins', sans-serif;
+      font-size: 32px;
+      font-weight: 700;
+    }
+
+    .stat-change {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      margin-top: 8px;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .stat-change.up {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+
+    .stat-change.down {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+    }
+
+    /* Case Category Tabs */
+    .category-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      background: white;
+      padding: 8px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .category-tab {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-600);
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      background: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .category-tab:hover {
+      background: var(--gray-100);
+    }
+
+    .category-tab.active {
+      background: var(--brand-navy);
+      color: white;
+    }
+
+    .category-tab .count {
+      background: var(--gray-200);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+
+    .category-tab.active .count {
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* Cases Table */
+    .cases-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .cases-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cases-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .cases-filters {
+      display: flex;
+      gap: 12px;
+    }
+
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--gray-700);
+      background: white;
+      cursor: pointer;
+    }
+
+    .cases-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .cases-table th,
+    .cases-table td {
+      padding: 14px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .cases-table th {
+      background: var(--gray-50);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .cases-table tr {
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .cases-table tbody tr:hover {
+      background: var(--gray-50);
+    }
+
+    .case-id {
+      font-family: 'SF Mono', 'Monaco', monospace;
+      font-size: 13px;
+      color: var(--brand-navy);
+      font-weight: 500;
+    }
+
+    .customer-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .customer-name {
+      font-weight: 500;
+      color: var(--gray-800);
+    }
+
+    .customer-email {
+      font-size: 12px;
+      color: var(--gray-500);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-badge.pending {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    .status-badge.in-progress {
+      background: #dbeafe;
+      color: #2563eb;
+    }
+
+    .status-badge.completed {
+      background: #d1fae5;
+      color: #059669;
+    }
+
+    .status-badge.cancelled {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .type-badge {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
     .type-badge.refund { background: #fee2e2; color: #dc2626; }
     .type-badge.shipping { background: #dbeafe; color: #2563eb; }
     .type-badge.subscription { background: #d1fae5; color: #059669; }
     .type-badge.return { background: #fef3c7; color: #d97706; }
     .type-badge.manual { background: #e5e7eb; color: #374151; }
-    .assignee-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; background: #e0e7ff; color: #4338ca; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .assignee-unassigned { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; color: #9ca3af; font-style: italic; }
-    .assignee-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; }
-    .assignee-avatar.unassigned { background: #e2e8f0; color: #94a3b8; }
-    .assignee-card { border: 1px solid #e0e7ff; }
-    .assign-user-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
-    .assign-user-item:hover { background: #f1f5f9; }
-    .assign-user-item.selected { background: #ecfdf5; border: 1px solid #10b981; }
-    .time-ago { font-size: 13px; color: var(--gray-500); }
-    .spinner { width: 32px; height: 32px; border: 3px solid var(--gray-200); border-top-color: var(--brand-navy); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 40px auto; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: translateY(10px); } }
-    .empty-state { text-align: center; padding: 60px 20px; color: var(--gray-500); }
-    @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .main-content { margin-left: 0; } }
-    /* Modal Styles - Redesigned */
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: flex-start; padding: 32px; overflow-y: auto; }
-    .modal-overlay.active { display: flex; }
-    .modal { background: white; border-radius: 20px; width: 100%; max-width: 960px; max-height: 90vh; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.3); display: flex; flex-direction: column; }
-    .modal-header { padding: 28px 32px; background: linear-gradient(135deg, var(--brand-navy) 0%, #2d4a6f 100%); color: white; display: flex; justify-content: space-between; align-items: flex-start; }
-    .modal-header-content { flex: 1; }
-    .modal-case-id { font-family: monospace; font-size: 13px; background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 6px; display: inline-block; margin-bottom: 8px; }
-    .modal-title { font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
-    .modal-meta { display: flex; align-items: center; gap: 16px; font-size: 14px; opacity: 0.9; }
-    .modal-meta-item { display: flex; align-items: center; gap: 6px; }
-    .modal-close { background: rgba(255,255,255,0.1); border: none; width: 40px; height: 40px; border-radius: 10px; font-size: 24px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; margin-left: 16px; flex-shrink: 0; }
-    .modal-close:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
-    .modal-body { flex: 1; overflow-y: auto; padding: 0; }
-    .modal-grid { display: grid; grid-template-columns: 2fr 1fr; min-height: 100%; }
-    .modal-main { padding: 28px 32px; border-right: 1px solid var(--gray-200); background: #f8fafc; }
-    .modal-sidebar { padding: 28px 24px; background: white; }
-    .modal-section { margin-bottom: 28px; }
-    .modal-section:last-child { margin-bottom: 0; }
-    .modal-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 16px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
-    .modal-section-title svg { width: 16px; height: 16px; color: #94a3b8; }
-    .detail-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
-    .detail-row:last-child { border-bottom: none; padding-bottom: 0; }
-    .detail-row:first-child { padding-top: 0; }
-    .detail-label { font-size: 13px; color: #64748b; font-weight: 500; }
-    .detail-value { font-size: 14px; font-weight: 600; color: #1e293b; text-align: right; max-width: 60%; word-break: break-word; }
-    .detail-value.highlight { color: var(--brand-navy); }
-    .detail-value.money { color: #059669; font-size: 16px; }
-    .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-    .info-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: box-shadow 0.2s; }
-    .info-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    .info-card-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600; }
-    .info-card-value { font-size: 15px; font-weight: 600; color: #1e293b; }
-    .info-card-value.email { font-size: 13px; word-break: break-all; color: #3b82f6; }
-    /* Status Cards - New Design */
-    .status-cards { display: flex; gap: 12px; }
-    .status-card { flex: 1; display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 12px; border: 2px solid var(--gray-200); background: white; cursor: pointer; transition: all 0.2s; position: relative; }
-    .status-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    .status-card-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .status-card-icon svg { width: 20px; height: 20px; }
-    .status-card-content { flex: 1; text-align: left; }
-    .status-card-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-    .status-card-desc { font-size: 11px; opacity: 0.7; }
-    .status-card-check { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%; display: none; align-items: center; justify-content: center; }
-    .status-card-check svg { width: 12px; height: 12px; }
-    .status-card.pending { border-color: #fcd34d; }
-    .status-card.pending .status-card-icon { background: #fffbeb; color: #b45309; }
-    .status-card.pending .status-card-title { color: #b45309; }
-    .status-card.pending .status-card-check { background: #f59e0b; color: white; }
-    .status-card.in-progress { border-color: #93c5fd; }
-    .status-card.in-progress .status-card-icon { background: #eff6ff; color: #1d4ed8; }
-    .status-card.in-progress .status-card-title { color: #1d4ed8; }
-    .status-card.in-progress .status-card-check { background: #3b82f6; color: white; }
-    .status-card.completed { border-color: #6ee7b7; }
-    .status-card.completed .status-card-icon { background: #ecfdf5; color: #047857; }
-    .status-card.completed .status-card-title { color: #047857; }
-    .status-card.completed .status-card-check { background: #10b981; color: white; }
-    .status-card.active { box-shadow: 0 0 0 3px rgba(30,58,95,0.15); transform: scale(1.02); }
-    .status-card.active .status-card-check { display: flex; }
-    /* Modal Navigation */
-    .modal-nav { display: flex; align-items: center; gap: 8px; margin-left: 16px; }
-    .nav-arrow { background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.3); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; position: relative; }
-    .nav-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.5); }
-    .nav-arrow:disabled { opacity: 0.4; cursor: not-allowed; background: rgba(255,255,255,0.1); }
-    .nav-arrow svg { width: 18px; height: 18px; }
-    .nav-preview { display: none; position: absolute; top: 100%; padding: 8px 12px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 11px; color: var(--gray-700); white-space: nowrap; z-index: 10; }
-    .nav-arrow.prev .nav-preview { right: 0; margin-top: 8px; }
-    .nav-arrow.next .nav-preview { left: 0; margin-top: 8px; }
-    .nav-arrow:hover .nav-preview { display: block; }
-    .copy-url-btn { background: rgba(255,255,255,0.1); border: none; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-    .copy-url-btn:hover { background: rgba(255,255,255,0.2); }
-    .copy-url-btn.copied { background: rgba(34,197,94,0.3); }
-    .copy-url-btn svg { width: 18px; height: 18px; }
-    .modal-close { background: rgba(255,255,255,0.1); border: none; width: 40px; height: 40px; border-radius: 10px; font-size: 24px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-    .modal-close:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
-    .quick-actions { display: flex; flex-direction: column; gap: 10px; }
-    .quick-action-btn { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: white; border: 1px solid var(--gray-200); border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--gray-700); text-decoration: none; cursor: pointer; transition: all 0.2s; }
-    .quick-action-btn:hover { background: white; border-color: var(--brand-navy); color: var(--brand-navy); transform: translateX(4px); }
-    .quick-action-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
-    .quick-action-btn.primary { background: var(--brand-navy); color: white; border-color: var(--brand-navy); }
-    .quick-action-btn.primary:hover { background: #3d5a80; }
-    .quick-action-btn.replay { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; border: none; }
-    .quick-action-btn.replay:hover { transform: translateX(4px); box-shadow: 0 4px 15px rgba(124,58,237,0.3); }
-    .quick-action-btn.richpanel { background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); color: white; border: none; }
-    .quick-action-btn.richpanel:hover { transform: translateX(4px); box-shadow: 0 4px 15px rgba(14,165,233,0.3); }
-    .comments-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; overflow: hidden; }
-    .comments-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
-    .comments-title { font-size: 14px; font-weight: 600; }
-    .comments-count { font-size: 12px; color: var(--gray-500); }
-    .comments-list { max-height: 250px; overflow-y: auto; padding: 16px 20px; }
-    .comments-list:empty::after { content: 'No comments yet'; color: var(--gray-400); font-size: 14px; display: block; text-align: center; padding: 20px; }
-    .comment-item { background: var(--gray-50); padding: 14px 16px; border-radius: 10px; margin-bottom: 12px; }
-    .comment-item:last-child { margin-bottom: 0; }
-    .comment-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
-    .comment-author { font-size: 13px; font-weight: 600; color: var(--gray-800); }
-    .comment-time { font-size: 11px; color: var(--gray-400); }
-    .comment-text { font-size: 14px; color: var(--gray-600); line-height: 1.5; }
-    .comment-form { padding: 16px 20px; border-top: 1px solid var(--gray-100); background: var(--gray-50); }
-    .comment-input-wrap { display: flex; gap: 12px; }
-    .comment-input { flex: 1; padding: 12px 16px; border: 1px solid var(--gray-200); border-radius: 10px; font-size: 14px; resize: none; background: white; font-family: inherit; }
-    .comment-input:focus { outline: none; border-color: var(--brand-navy); box-shadow: 0 0 0 3px rgba(30,58,95,0.1); }
-    .comment-submit { padding: 12px 20px; background: var(--brand-navy); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .comment-submit:hover { background: #3d5a80; }
-    .timeline-card { border: 1px solid var(--gray-200); border-radius: 10px; }
-    .timeline-item { display: flex; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--gray-100); transition: background 0.15s; }
-    .timeline-item:hover { background: var(--gray-50); }
-    .timeline-item:last-child { border-bottom: none; }
-    .timeline-dot { width: 10px; height: 10px; background: var(--brand-navy); border-radius: 50%; margin-top: 5px; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(30,64,175,0.1); }
-    .timeline-content { flex: 1; min-width: 0; }
-    .timeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 8px; }
-    .timeline-label { font-size: 12px; color: var(--gray-600); font-weight: 600; }
-    .timeline-time { font-size: 11px; color: var(--gray-400); flex-shrink: 0; }
-    .timeline-value { font-size: 13px; font-weight: 500; color: var(--gray-700); word-break: break-word; }
-    .timeline-actor { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
-    @media (max-width: 900px) { .modal-grid { grid-template-columns: 1fr; } .modal-sidebar { border-top: 1px solid var(--gray-100); } }
 
-    /* Performance Dashboard Styles */
-    .analytics-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
-    .analytics-title-section h2 { font-size: 24px; font-weight: 700; color: var(--gray-900); margin: 0 0 4px 0; }
-    .analytics-title-section p { font-size: 14px; color: var(--gray-500); margin: 0; }
-    .analytics-actions { display: flex; gap: 12px; align-items: center; }
-
-    /* KPI Cards Grid */
-    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-    @media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr; } }
-
-    .kpi-card { background: white; border-radius: 16px; padding: 20px; display: flex; gap: 16px; align-items: flex-start; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--gray-100); transition: all 0.2s; }
-    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
-    .kpi-card.highlight { background: linear-gradient(135deg, var(--brand-navy) 0%, #2d4a6f 100%); border: none; }
-    .kpi-card.highlight .kpi-value, .kpi-card.highlight .kpi-label, .kpi-card.highlight .kpi-sub { color: white; }
-    .kpi-card.highlight .kpi-sub { opacity: 0.8; }
-    .kpi-card.success { border-left: 4px solid #10b981; }
-    .kpi-card.warning { border-left: 4px solid #f59e0b; }
-    .kpi-card.danger { border-left: 4px solid #ef4444; }
-    .kpi-sub.alert { color: #ef4444; font-weight: 600; }
-
-    .kpi-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .kpi-icon svg { width: 24px; height: 24px; }
-
-    .kpi-content { flex: 1; min-width: 0; }
-    .kpi-value { font-size: 28px; font-weight: 700; color: var(--gray-900); line-height: 1.2; }
-    .kpi-label { font-size: 13px; font-weight: 500; color: var(--gray-600); margin-top: 2px; }
-    .kpi-sub { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
-    .kpi-sub.alert { color: #ef4444; font-weight: 500; }
-
-    /* Charts Grid */
-    .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 24px; }
-    @media (max-width: 1000px) { .charts-grid { grid-template-columns: 1fr; } }
-
-    .chart-card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--gray-100); overflow: hidden; }
-    .chart-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
-    .chart-header h3 { font-size: 16px; font-weight: 600; color: var(--gray-800); margin: 0; }
-    .chart-period { font-size: 12px; color: var(--gray-400); background: var(--gray-50); padding: 4px 10px; border-radius: 20px; }
-    .chart-body { padding: 20px 24px 24px; }
-
-    /* Breakdown Cards Grid */
-    .breakdown-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 24px; }
-    @media (max-width: 900px) { .breakdown-grid { grid-template-columns: 1fr; } }
-
-    .breakdown-card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--gray-100); overflow: hidden; }
-    .breakdown-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
-    .breakdown-header h3 { font-size: 15px; font-weight: 600; color: var(--gray-800); margin: 0; }
-    .breakdown-count { font-size: 12px; color: var(--gray-400); background: var(--gray-50); padding: 4px 10px; border-radius: 20px; }
-
-    .breakdown-list { padding: 8px 0; max-height: 300px; overflow-y: auto; }
-    .breakdown-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; transition: background 0.15s; }
-    .breakdown-item:hover { background: var(--gray-50); }
-    .breakdown-item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-    .breakdown-item-name { font-size: 14px; font-weight: 500; color: var(--gray-700); }
-    .breakdown-item-meta { font-size: 12px; color: var(--gray-400); }
-    .breakdown-item-count { font-size: 16px; font-weight: 700; color: var(--brand-navy); background: var(--gray-50); padding: 4px 12px; border-radius: 8px; flex-shrink: 0; }
-
-    .empty-state { text-align: center; padding: 30px 20px; color: var(--gray-400); font-size: 14px; }
-
-    /* Case Detail Full Page Styles */
-    .case-detail-page { padding: 0; }
-    .case-detail-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 28px; background: white; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 10; }
-    .case-detail-header-left { display: flex; align-items: center; gap: 16px; }
-    .case-detail-header-right { display: flex; align-items: center; gap: 8px; }
-    .case-detail-id { font-family: monospace; font-size: 16px; font-weight: 600; color: var(--brand-navy); background: rgba(30,58,95,0.1); padding: 6px 14px; border-radius: 8px; }
-    .case-detail-meta { display: flex; align-items: center; gap: 12px; }
-    .case-detail-grid { display: grid; grid-template-columns: 1fr 360px; gap: 0; min-height: calc(100vh - 140px); }
-    .case-detail-main { padding: 28px; background: #f8fafc; overflow-y: auto; }
-    .case-detail-sidebar { padding: 28px 24px; background: white; border-left: 1px solid var(--gray-200); overflow-y: auto; }
-    .case-section-card { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-    .case-section-card:last-child { margin-bottom: 0; }
-    .case-section-card.highlight-card { background: linear-gradient(135deg, rgba(102,126,234,0.08) 0%, rgba(118,75,162,0.08) 100%); border: 2px solid #667eea; }
-    .case-section-title { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 16px; letter-spacing: 0.5px; }
-    .case-section-title svg { color: #94a3b8; flex-shrink: 0; }
-    .info-grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .info-item { }
-    .info-label { font-size: 12px; color: var(--gray-500); margin-bottom: 4px; }
-    .info-value { font-size: 14px; font-weight: 500; color: var(--gray-800); }
-    .info-value.email { color: #3b82f6; word-break: break-all; }
-    .resolution-summary { font-size: 15px; font-weight: 600; color: #1a1a2e; line-height: 1.6; }
-    .case-details-breakdown { font-size: 14px; line-height: 1.7; color: var(--gray-700); }
-    .case-details-breakdown ul { margin: 0; padding-left: 20px; }
-    .case-details-breakdown li { margin-bottom: 10px; }
-    .case-details-breakdown li:last-child { margin-bottom: 0; }
-    .status-cards-row { display: flex; gap: 12px; }
-    .status-card-lg { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 16px; background: white; border: 2px solid var(--gray-200); border-radius: 12px; cursor: pointer; transition: all 0.2s; }
-    .status-card-lg:hover { border-color: var(--gray-300); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    .status-card-lg.active { border-width: 3px; transform: scale(1.02); }
-    .status-card-lg .status-card-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-    .status-card-lg .status-card-icon svg { width: 22px; height: 22px; }
-    .status-card-lg .status-card-text { font-size: 14px; font-weight: 600; }
-    .status-card-lg.pending .status-card-icon { background: #fef3c7; color: #b45309; }
-    .status-card-lg.pending .status-card-text { color: #b45309; }
-    .status-card-lg.pending.active { border-color: #f59e0b; background: #fffbeb; }
-    .status-card-lg.in-progress .status-card-icon { background: #dbeafe; color: #1d4ed8; }
-    .status-card-lg.in-progress .status-card-text { color: #1d4ed8; }
-    .status-card-lg.in-progress.active { border-color: #3b82f6; background: #eff6ff; }
-    .status-card-lg.completed .status-card-icon { background: #d1fae5; color: #047857; }
-    .status-card-lg.completed .status-card-text { color: #047857; }
-    .status-card-lg.completed.active { border-color: #10b981; background: #ecfdf5; }
-    .comments-badge { background: var(--gray-200); color: var(--gray-600); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-left: auto; }
-    .comments-container { max-height: 400px; overflow-y: auto; }
-    .comment-form-inline { display: flex; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200); }
-    .comment-form-inline textarea { flex: 1; resize: none; }
-    .quick-actions-list { display: flex; flex-direction: column; gap: 8px; }
-    .quick-action-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 10px; text-decoration: none; color: var(--gray-700); transition: all 0.2s; cursor: pointer; }
-    .quick-action-item:hover { background: white; border-color: var(--brand-navy); color: var(--brand-navy); transform: translateX(4px); }
-    .quick-action-icon { width: 32px; height: 32px; background: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .quick-action-icon svg { width: 16px; height: 16px; }
-    .quick-action-text { flex: 1; font-size: 13px; font-weight: 500; }
-    .quick-action-arrow { width: 16px; height: 16px; color: var(--gray-400); flex-shrink: 0; }
-    .assignee-display { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--gray-50); border-radius: 10px; }
-    .assignee-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-teal); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: white; flex-shrink: 0; }
-    .assignee-avatar.unassigned { background: var(--gray-300); color: var(--gray-500); }
-    .assignee-info { flex: 1; }
-    .assignee-name { font-size: 14px; font-weight: 600; color: var(--gray-800); }
-    .assignee-role { font-size: 12px; color: var(--gray-500); }
-    .timeline-list { display: flex; flex-direction: column; gap: 12px; }
-    .timeline-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
-    .timeline-label { color: var(--gray-500); }
-    .timeline-value { color: var(--gray-700); font-weight: 500; }
-    .ids-list { display: flex; flex-direction: column; gap: 10px; }
-    .id-row { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: var(--gray-50); border-radius: 8px; }
-    .id-label { font-size: 11px; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; }
-    .id-value { font-size: 13px; font-weight: 600; font-family: monospace; color: var(--gray-800); }
-
-    /* Completion Checklist Styles */
-    .checklist-container { display: flex; flex-direction: column; gap: 12px; }
-    .checklist-item { display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; background: var(--gray-50); border-radius: 10px; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
-    .checklist-item:hover { background: var(--gray-100); }
-    .checklist-item.checked { background: #ecfdf5; border-color: #10b981; }
-    .checklist-item.required { border-left: 4px solid #ef4444; }
-    .checklist-checkbox { width: 22px; height: 22px; border: 2px solid var(--gray-300); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; transition: all 0.2s; }
-    .checklist-item.checked .checklist-checkbox { background: #10b981; border-color: #10b981; color: white; }
-    .checklist-content { flex: 1; }
-    .checklist-text { font-size: 14px; color: var(--gray-700); line-height: 1.5; }
-    .checklist-required { display: inline-block; font-size: 10px; background: #fef2f2; color: #dc2626; padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: 600; }
-    @media (max-width: 1024px) {
-      .case-detail-grid { grid-template-columns: 1fr; }
-      .case-detail-sidebar { border-left: none; border-top: 1px solid var(--gray-200); }
+    .time-ago {
+      font-size: 13px;
+      color: var(--gray-500);
     }
 
-    /* ===== REDESIGNED CASE DETAIL STYLES ===== */
-    .cd-page { background: #f8fafc; min-height: 100vh; margin: -32px; width: calc(100% + 64px); }
-    @media (max-width: 768px) { .cd-page { margin: -16px; width: calc(100% + 32px); } }
+    /* Pagination */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      padding: 20px;
+      border-top: 1px solid var(--gray-100);
+    }
 
-    /* Header */
-    .cd-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 28px; background: white; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 100; }
-    .cd-header-left { display: flex; align-items: center; gap: 20px; }
-    .cd-header-right { display: flex; align-items: center; gap: 12px; }
-    .cd-back-btn { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: transparent; border: 1px solid var(--gray-300); border-radius: 8px; color: var(--gray-700); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-    .cd-back-btn:hover { background: var(--gray-50); border-color: var(--gray-400); }
-    /* Case Navigation */
-    .cd-nav-buttons { display: flex; align-items: center; gap: 8px; }
-    .cd-nav-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: white; border: 1px solid var(--gray-300); border-radius: 6px; color: var(--gray-600); cursor: pointer; transition: all 0.15s; }
-    .cd-nav-btn:hover:not(:disabled) { background: var(--gray-50); border-color: var(--gray-400); color: var(--gray-800); }
-    .cd-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .cd-nav-counter { font-size: 13px; color: var(--gray-500); font-weight: 500; min-width: 60px; text-align: center; }
-    .cd-type-badge { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; text-transform: capitalize; }
-    .cd-type-badge.refund { background: #fef3c7; color: #b45309; }
-    .cd-type-badge.return { background: #e0e7ff; color: #4338ca; }
-    .cd-type-badge.shipping { background: #dbeafe; color: #1d4ed8; }
-    .cd-type-badge.subscription { background: #f3e8ff; color: #7c3aed; }
-    .cd-type-badge.manual { background: #f1f5f9; color: #475569; }
-    .cd-status-badge { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-    .cd-status-badge.overdue { background: #fef2f2; color: #dc2626; }
-    .cd-status-badge.due-soon { background: #fffbeb; color: #b45309; }
-    .cd-status-badge.on-time { background: #ecfdf5; color: #059669; }
+    .pagination button {
+      padding: 8px 14px;
+      border: 1px solid var(--gray-200);
+      background: white;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
 
-    /* Customer Card */
-    .cd-customer-card { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 20px 28px; background: white; border-bottom: 1px solid var(--gray-100); }
-    .cd-customer-left { display: flex; align-items: center; gap: 14px; }
-    .cd-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 18px; flex-shrink: 0; }
-    .cd-customer-info { }
-    .cd-customer-name { font-size: 17px; font-weight: 600; color: var(--gray-900); margin-bottom: 2px; }
-    .cd-customer-email { font-size: 14px; color: #3b82f6; text-decoration: none; }
-    .cd-customer-email:hover { text-decoration: underline; }
-    .cd-order-info { text-align: center; padding: 0 20px; border-left: 1px solid var(--gray-200); border-right: 1px solid var(--gray-200); }
-    .cd-order-number { font-size: 15px; font-weight: 600; color: var(--gray-800); font-family: monospace; }
-    .cd-order-meta { font-size: 13px; color: var(--gray-500); margin-top: 2px; }
-    @media (max-width: 900px) { .cd-customer-card { flex-direction: column; align-items: flex-start; } .cd-order-info { border: none; padding: 0; } .cd-quick-links { width: 100%; } }
-    /* Quick Links with Labels */
-    .cd-quick-links { display: flex; gap: 12px; flex-wrap: wrap; }
-    .cd-quick-link { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: white; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--gray-700); text-decoration: none; transition: all 0.2s; white-space: nowrap; }
-    .cd-quick-link:hover { background: var(--gray-50); border-color: var(--brand-navy); color: var(--brand-navy); }
-    .cd-quick-link svg { flex-shrink: 0; }
+    .pagination button:hover:not(:disabled) {
+      background: var(--gray-50);
+    }
 
-    /* Two Column Layout */
-    .cd-two-col { display: grid; grid-template-columns: 1fr 320px; gap: 0; min-height: calc(100vh - 140px); }
-    @media (max-width: 1024px) { .cd-two-col { grid-template-columns: 1fr; } }
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
 
-    /* Main Content Column */
-    .cd-main { padding: 24px 28px; background: #f8fafc; overflow-y: auto; }
-    .cd-section { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-    .cd-section.cd-section-compact { padding: 20px; }
-    .cd-section:last-child { margin-bottom: 0; }
-    .cd-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--gray-100); }
-    .cd-section-title { font-size: 14px; font-weight: 600; color: var(--gray-800); margin: 0; text-transform: uppercase; letter-spacing: 0.3px; }
-    .cd-sop-link { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #3b82f6; text-decoration: none; font-weight: 500; }
-    .cd-sop-link:hover { text-decoration: underline; }
+    .pagination button.active {
+      background: var(--brand-navy);
+      color: white;
+      border-color: var(--brand-navy);
+    }
 
-    /* Issue Summary (Case Details) */
-    .cd-issue-summary { font-size: 15px; line-height: 1.7; color: var(--gray-700); }
-    .cd-issue-summary p { margin: 0 0 12px 0; }
-    .cd-issue-summary p:last-child { margin-bottom: 0; }
-    .cd-issue-summary strong { color: var(--gray-900); }
-    .cd-issue-summary .cd-issue-headline { font-size: 17px; margin-bottom: 8px; color: var(--gray-900); }
-    .cd-issue-summary .cd-customer-quote { background: #f8fafc; border-left: 3px solid var(--brand-navy); padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0; }
-    .cd-issue-summary .cd-customer-quote em { color: var(--gray-600); }
-    .cd-issue-summary .cd-issue-facts { list-style: none; padding: 0; margin: 16px 0 0 0; display: flex; flex-wrap: wrap; gap: 8px 20px; }
-    .cd-issue-summary .cd-issue-facts li { font-size: 14px; color: var(--gray-600); padding: 0; border: none; }
-    .cd-issue-summary .cd-issue-facts li strong { color: var(--gray-700); font-weight: 500; }
-    .cd-issue-summary .cd-issue-facts code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--gray-500);
+    }
 
-    /* Case Details List */
-    .cd-details-list { list-style: none; padding: 0; margin: 0; }
-    .cd-details-list li { padding: 12px 0; border-bottom: 1px solid var(--gray-100); font-size: 14px; line-height: 1.6; color: var(--gray-700); }
-    .cd-details-list li:last-child { border-bottom: none; padding-bottom: 0; }
-    .cd-details-list li strong { color: var(--gray-900); }
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
 
-    /* Resolution List (Action Steps) */
-    .cd-resolution-list { list-style: none; padding: 0; margin: 0; counter-reset: resolution-step; }
-    .cd-resolution-list li { position: relative; padding: 10px 0 10px 32px; font-size: 14px; line-height: 1.6; color: var(--gray-700); border-bottom: 1px solid var(--gray-100); }
-    .cd-resolution-list li:last-child { border-bottom: none; }
-    .cd-resolution-list li::before { counter-increment: resolution-step; content: counter(resolution-step); position: absolute; left: 0; top: 10px; width: 22px; height: 22px; background: var(--brand-navy); color: white; border-radius: 50%; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
-    .cd-resolution-list li strong { color: var(--gray-900); }
-    .cd-resolution-list li code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
-    .cd-resolution-notes { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200); }
-    .cd-resolution-notes p { margin: 0 0 8px 0; font-size: 13px; color: var(--gray-500); font-style: italic; }
-    .cd-resolution-notes p:last-child { margin-bottom: 0; }
-    .cd-resolution-empty { color: var(--gray-500); font-size: 14px; margin: 0; }
+    .empty-state h3 {
+      font-size: 16px;
+      color: var(--gray-700);
+      margin-bottom: 8px;
+    }
 
-    /* Evidence */
-    .cd-evidence { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--gray-200); }
-    .cd-evidence-title { font-size: 13px; font-weight: 600; color: var(--gray-500); margin-bottom: 12px; }
-    .cd-evidence-links { display: flex; gap: 10px; flex-wrap: wrap; }
+    /* Loading */
+    .loading-spinner {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px;
+    }
 
-    /* Activity List */
-    .cd-activity-list { }
-    .cd-activity-item { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--gray-100); }
-    .cd-activity-item:last-child { border-bottom: none; }
-    .cd-activity-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .cd-activity-icon.note { background: #eff6ff; color: #3b82f6; }
-    .cd-activity-icon.status { background: #f0fdf4; color: #16a34a; }
-    .cd-activity-icon.assignee { background: #fef3c7; color: #d97706; }
-    .cd-activity-icon.action { background: #f3e8ff; color: #7c3aed; }
-    .cd-activity-icon.system { background: var(--gray-100); color: var(--gray-500); }
-    .cd-activity-content { flex: 1; min-width: 0; }
-    .cd-activity-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-    .cd-activity-author { font-size: 13px; font-weight: 600; color: var(--gray-800); }
-    .cd-activity-time { font-size: 12px; color: var(--gray-400); }
-    .cd-activity-text { font-size: 14px; color: var(--gray-600); line-height: 1.5; }
-    .cd-activity-text.system-text { font-style: italic; color: var(--gray-500); }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--gray-200);
+      border-top-color: var(--brand-navy);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
 
-    /* Notes Section */
-    .cd-notes-count { background: var(--gray-200); color: var(--gray-600); font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px; }
-    .cd-notes-input { display: flex; gap: 10px; margin-bottom: 16px; }
-    .cd-notes-textarea { flex: 1; padding: 12px 14px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; resize: none; transition: border-color 0.2s; }
-    .cd-notes-textarea:focus { border-color: var(--brand-navy); outline: none; }
-    .cd-notes-submit { padding: 12px 20px; background: var(--brand-navy); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
-    .cd-notes-submit:hover { background: #2d4a6f; }
-    .cd-notes-list { }
-    .cd-notes-empty { text-align: center; padding: 24px; color: var(--gray-400); font-size: 14px; }
-    .cd-note-item { padding: 14px 0; border-bottom: 1px solid var(--gray-100); }
-    .cd-note-item:last-child { border-bottom: none; }
-    .cd-note-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-    .cd-note-author { font-size: 13px; font-weight: 600; color: var(--gray-700); }
-    .cd-note-time { font-size: 12px; color: var(--gray-400); }
-    .cd-note-text { font-size: 14px; color: var(--gray-600); line-height: 1.5; }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
 
-    /* Sidebar */
-    .cd-sidebar { padding: 24px; background: white; border-left: 1px solid var(--gray-200); overflow-y: auto; }
-    @media (max-width: 1024px) { .cd-sidebar { border-left: none; border-top: 1px solid var(--gray-200); } }
-    .cd-sidebar-section { margin-bottom: 28px; }
-    .cd-sidebar-section:last-child { margin-bottom: 0; }
-    .cd-sidebar-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 14px; }
-
-    /* Status Options - Clickable Cards */
-    .cd-status-options { display: flex; flex-direction: column; gap: 8px; }
-    .cd-status-option { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: white; border: 2px solid var(--gray-200); border-radius: 10px; cursor: pointer; transition: all 0.15s ease; }
-    .cd-status-option:hover { border-color: var(--gray-400); background: var(--gray-50); transform: translateY(-1px); }
-    .cd-status-option:active { transform: translateY(0); }
-    .cd-status-option input { display: none; }
-    .cd-status-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--gray-300); position: relative; flex-shrink: 0; transition: all 0.15s; }
-    .cd-status-radio::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); width: 10px; height: 10px; border-radius: 50%; background: currentColor; transition: transform 0.15s; }
-    .cd-status-option input:checked + .cd-status-radio::after { transform: translate(-50%, -50%) scale(1); }
-    /* Pending State */
-    .cd-status-option:has(input[value="pending"]:checked) { border-color: #f59e0b; background: #fffbeb; }
-    .cd-status-option input:checked + .cd-status-radio.pending { border-color: #f59e0b; color: #f59e0b; }
-    /* In Progress State */
-    .cd-status-option:has(input[value="in_progress"]:checked) { border-color: #3b82f6; background: #eff6ff; }
-    .cd-status-option input:checked + .cd-status-radio.in-progress { border-color: #3b82f6; color: #3b82f6; }
-    /* Completed State */
-    .cd-status-option:has(input[value="completed"]:checked) { border-color: #10b981; background: #ecfdf5; }
-    .cd-status-option input:checked + .cd-status-radio.completed { border-color: #10b981; color: #10b981; }
-    .cd-status-label { font-size: 14px; font-weight: 500; color: var(--gray-700); flex: 1; }
-
-    /* Assignee */
-    .cd-assignee { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--gray-50); border-radius: 10px; margin-bottom: 12px; }
-    .cd-assignee-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--gray-300); display: flex; align-items: center; justify-content: center; color: var(--gray-500); font-weight: 600; font-size: 16px; flex-shrink: 0; }
-    .cd-assignee-avatar.assigned { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-    .cd-assignee-name { font-size: 14px; font-weight: 500; color: var(--gray-700); }
-    .cd-assign-btn { width: 100%; padding: 10px; background: transparent; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--gray-600); cursor: pointer; transition: all 0.2s; }
-    .cd-assign-btn:hover { background: var(--gray-50); border-color: var(--brand-navy); color: var(--brand-navy); }
-
-    /* Timeline */
-    .cd-timeline { }
-    .cd-timeline-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
-    .cd-timeline-row:last-child { border-bottom: none; }
-    .cd-timeline-label { font-size: 13px; color: var(--gray-500); }
-    .cd-timeline-value { font-size: 13px; font-weight: 500; color: var(--gray-700); }
-    .cd-timeline-value.overdue { color: #dc2626; font-weight: 600; }
-
-    /* Copy Email Button */
-    .cd-copy-email-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px; background: linear-gradient(135deg, var(--brand-navy) 0%, #2d4a6f 100%); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-    .cd-copy-email-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(30,58,95,0.25); }
-
-    /* Complete Button */
-    .cd-complete-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 16px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 20px; }
-    .cd-complete-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16,185,129,0.3); }
-
-    /* Legacy styles kept for backwards compatibility */
-
-    /* WHO Section */
-    .who-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
-    .who-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
-    .who-info-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
-    .who-customer { display: flex; align-items: center; gap: 12px; }
-    .who-customer-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-teal); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 16px; }
-    .who-customer-details { }
-    .who-customer-name { font-size: 15px; font-weight: 600; color: var(--gray-800); }
-    .who-customer-email { font-size: 13px; color: #3b82f6; }
-    .who-order { display: flex; align-items: center; gap: 8px; }
-    .who-order-icon { font-size: 18px; }
-    .who-order-details { }
-    .who-order-number { font-size: 14px; font-weight: 600; color: var(--gray-800); }
-    .who-order-date { font-size: 12px; color: var(--gray-500); }
-    .who-total { text-align: right; }
-    .who-total-icon { font-size: 18px; }
-    .who-total-amount { font-size: 18px; font-weight: 700; color: var(--gray-800); }
-    .who-total-label { font-size: 12px; color: var(--gray-500); }
-    .who-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    .who-action-btn { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: white; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--gray-700); cursor: pointer; transition: all 0.2s; text-decoration: none; }
-    .who-action-btn:hover { background: var(--gray-50); border-color: var(--brand-navy); color: var(--brand-navy); }
-    .who-action-btn svg { width: 16px; height: 16px; }
-
-    /* Assignee & Timeline Row */
-    .assignee-timeline-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-    .section-box { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 20px; }
-    .section-box-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
-    .assignee-content { display: flex; align-items: center; gap: 12px; }
-    .assignee-avatar-lg { width: 48px; height: 48px; border-radius: 50%; background: var(--accent-teal); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 18px; flex-shrink: 0; }
-    .assignee-avatar-lg.unassigned { background: var(--gray-300); color: var(--gray-500); }
-    .assignee-details { flex: 1; }
-    .assignee-name-lg { font-size: 15px; font-weight: 600; color: var(--gray-800); }
-    .assignee-role-lg { font-size: 12px; color: var(--gray-500); }
-    .assignee-date { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
-    .btn-reassign { margin-top: 12px; width: 100%; }
-    .timeline-content { }
-    .timeline-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
-    .timeline-item:last-child { border-bottom: none; }
-    .timeline-item-label { font-size: 13px; color: var(--gray-500); display: flex; align-items: center; gap: 6px; }
-    .timeline-item-label svg { width: 14px; height: 14px; }
-    .timeline-item-value { font-size: 13px; font-weight: 500; color: var(--gray-700); }
-    .timeline-item-value.urgent { color: #dc2626; font-weight: 600; }
-    .timeline-item-value.warning { color: #f59e0b; }
-
-    /* WHAT Section */
-    .what-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
-    .what-section.highlight { background: linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(5,150,105,0.06) 100%); border: 2px solid #10b981; }
-    .what-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
-    .what-resolution { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 700; color: #047857; margin-bottom: 16px; }
-    .what-resolution-icon { font-size: 24px; }
-    .what-details { list-style: none; padding: 0; margin: 0; }
-    .what-details li { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 14px; color: var(--gray-700); line-height: 1.5; }
-    .what-details li::before { content: "•"; color: var(--gray-400); font-weight: bold; }
-    .what-evidence { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200); }
-    .what-evidence-title { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-bottom: 10px; }
-    .what-evidence-links { display: flex; gap: 10px; flex-wrap: wrap; }
-    .evidence-link { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 6px; font-size: 12px; color: #3b82f6; text-decoration: none; transition: all 0.2s; }
-    .evidence-link:hover { background: #eff6ff; border-color: #3b82f6; }
-    .evidence-link svg { width: 14px; height: 14px; }
-
-    /* HOW Section */
-    .how-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
-    .how-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
-    .how-steps { display: flex; gap: 16px; align-items: stretch; }
-    .how-step { flex: 1; background: var(--gray-50); border: 2px solid var(--gray-200); border-radius: 10px; padding: 16px; position: relative; transition: all 0.2s; }
-    .how-step.completed { background: #ecfdf5; border-color: #10b981; }
-    .how-step-number { font-size: 11px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; margin-bottom: 8px; }
-    .how-step-title { font-size: 14px; font-weight: 600; color: var(--gray-800); margin-bottom: 8px; }
-    .how-step-desc { font-size: 12px; color: var(--gray-600); line-height: 1.4; margin-bottom: 12px; }
-    .how-step-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-    .how-step-status.done { background: #10b981; color: white; }
-    .how-step-status.todo { background: var(--gray-200); color: var(--gray-600); }
-    .how-step-status.todo:hover { background: var(--gray-300); }
-    .how-step-arrow { position: absolute; right: -20px; top: 50%; transform: translateY(-50%); color: var(--gray-300); font-size: 20px; }
-    .how-step:last-child .how-step-arrow { display: none; }
-
-    /* Complete Case Button */
-    .complete-case-section { background: white; border: 2px dashed var(--gray-300); border-radius: 12px; padding: 24px; margin-bottom: 20px; text-align: center; transition: all 0.2s; }
-    .complete-case-section:hover { border-color: #10b981; background: #f0fdf4; }
-    .complete-case-section.ready { border-style: solid; border-color: #10b981; background: linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(5,150,105,0.1) 100%); }
-    .complete-case-btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 28px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .complete-case-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16,185,129,0.3); }
-    .complete-case-btn:disabled { background: var(--gray-300); cursor: not-allowed; transform: none; box-shadow: none; }
-    .complete-case-btn svg { width: 20px; height: 20px; }
-    .complete-case-hint { font-size: 13px; color: var(--gray-500); margin-top: 10px; }
-
-    /* Email Template Section */
-    .email-template-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
-    .email-template-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
-    .email-template-select { width: 100%; padding: 12px 14px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; margin-bottom: 14px; cursor: pointer; }
-    .email-template-preview { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; padding: 16px; margin-bottom: 14px; max-height: 200px; overflow-y: auto; }
-    .email-template-preview-subject { font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--gray-200); }
-    .email-template-preview-body { font-size: 13px; color: var(--gray-600); line-height: 1.6; white-space: pre-wrap; }
-    .email-copy-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; background: var(--brand-navy); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-    .email-copy-btn:hover { background: #2d4a6f; }
-    .email-copy-btn svg { width: 16px; height: 16px; }
-    .email-disclaimer { margin-top: 14px; padding: 12px 14px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; display: flex; align-items: flex-start; gap: 10px; }
-    .email-disclaimer-icon { color: #f59e0b; font-size: 18px; flex-shrink: 0; }
-    .email-disclaimer-text { font-size: 12px; color: #92400e; line-height: 1.5; }
-    .email-disclaimer-text strong { font-weight: 600; }
-
-    /* Comments Section */
-    .comments-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; }
-    .comments-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); }
-    .comments-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); }
-    .comments-add-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--gray-100); border: none; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--gray-600); cursor: pointer; transition: all 0.2s; }
-    .comments-add-btn:hover { background: var(--gray-200); }
-    .comment-input-wrapper { position: relative; margin-bottom: 16px; }
-    .comment-input-hint { font-size: 11px; color: var(--gray-400); margin-bottom: 8px; }
-    .comment-textarea { width: 100%; padding: 14px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; resize: none; min-height: 80px; transition: all 0.2s; }
-    .comment-textarea:focus { border-color: var(--brand-navy); outline: none; box-shadow: 0 0 0 3px rgba(30,58,95,0.1); }
-    .mention-dropdown { position: absolute; bottom: 100%; left: 0; right: 0; background: white; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); max-height: 200px; overflow-y: auto; display: none; z-index: 100; }
-    .mention-dropdown.active { display: block; }
-    .mention-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; transition: all 0.15s; }
-    .mention-item:hover, .mention-item.selected { background: var(--gray-100); }
-    .mention-item-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-teal); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 600; }
-    .mention-item-name { font-size: 13px; font-weight: 500; color: var(--gray-800); }
-    .mention-item-role { font-size: 11px; color: var(--gray-500); }
-    .comment-submit-row { display: flex; justify-content: flex-end; }
-    .comment-submit-btn { padding: 10px 20px; background: var(--brand-navy); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-    .comment-submit-btn:hover { background: #2d4a6f; }
-    .comments-list-v2 { display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto; }
-    .comment-item-v2 { padding: 14px; background: var(--gray-50); border-radius: 10px; }
-    .comment-item-v2.system { background: #f0f9ff; border-left: 3px solid #3b82f6; }
-    .comment-header-v2 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .comment-author-v2 { display: flex; align-items: center; gap: 8px; }
-    .comment-author-avatar-v2 { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-teal); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 600; }
-    .comment-author-avatar-v2.system { background: #3b82f6; }
-    .comment-author-name-v2 { font-size: 13px; font-weight: 600; color: var(--gray-800); }
-    .comment-time-v2 { font-size: 11px; color: var(--gray-400); }
-    .comment-body-v2 { font-size: 13px; color: var(--gray-700); line-height: 1.5; }
-    .comment-body-v2 .mention { color: #3b82f6; font-weight: 500; }
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
 
     @media (max-width: 768px) {
-      .assignee-timeline-row { grid-template-columns: 1fr; }
-      .how-steps { flex-direction: column; }
-      .how-step-arrow { display: none; }
-      .who-info-row { flex-direction: column; align-items: flex-start; }
-      .who-actions { width: 100%; }
-      .who-action-btn { flex: 1; justify-content: center; }
+      .sidebar {
+        transform: translateX(-100%);
+      }
+
+      .main-content {
+        margin-left: 0;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .page-content {
+        padding: 16px;
+      }
     }
-  </style>
-  <link rel="stylesheet" href="/hub/hub-styles.css">
-  <style>
-    .login-screen { display: flex; min-height: 100vh; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%); }
-    .login-card { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 400px; }
-    .login-logo { text-align: center; margin-bottom: 32px; }
-    .login-logo img { height: 40px; margin-bottom: 12px; }
-    .login-logo h1 { font-family: 'Poppins', sans-serif; font-size: 24px; color: var(--brand-navy); margin: 0; }
-    .login-logo p { color: var(--gray-500); font-size: 14px; margin: 8px 0 0; }
-    .login-form .form-group { margin-bottom: 20px; }
-    .login-form label { display: block; font-size: 14px; font-weight: 500; color: var(--gray-700); margin-bottom: 8px; }
-    .login-form input { width: 100%; padding: 12px 16px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 15px; transition: all 0.2s; }
-    .login-form input:focus { outline: none; border-color: var(--brand-navy); box-shadow: 0 0 0 3px rgba(30,58,95,0.1); }
-    .login-btn { width: 100%; padding: 14px; background: var(--brand-navy); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .login-btn:hover { background: #2d4a6f; }
-    .login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
-    .login-error { background: #fef2f2; color: #dc2626; padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; display: none; }
-    .admin-only { display: none; }
   </style>
 </head>
 <body>
-  <div id="toastContainer"></div>
-
-  <!-- Login Screen -->
-  <div class="login-screen" id="loginScreen">
-    <div class="login-card">
-      <div class="login-logo">
-        <img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad">
-        <h1>Resolution Hub</h1>
-        <p>Sign in to manage customer cases</p>
-      </div>
-      <div class="login-error" id="loginError"></div>
-      <form class="login-form" onsubmit="handleLogin(event)">
-        <div class="form-group">
-          <label for="loginUsername">Username</label>
-          <input type="text" id="loginUsername" placeholder="Enter your username" required>
-        </div>
-        <div class="form-group">
-          <label for="loginPassword">Password</label>
-          <input type="password" id="loginPassword" placeholder="Enter your password" required>
-        </div>
-        <button type="submit" class="login-btn" id="loginBtn">Sign In</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- App Container (hidden by default until logged in) -->
-  <div class="app-container" id="appContainer" style="display: none;">
+  <div class="app-container">
+    <!-- Sidebar -->
     <aside class="sidebar">
-      <div class="sidebar-header"><div class="sidebar-logo"><img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad"><span>Resolution Hub</span></div></div>
-      <nav class="sidebar-nav">
-        <div class="nav-section"><div class="nav-section-title">Overview</div><a class="nav-item active" data-page="dashboard"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a></div>
-        <div class="nav-section"><div class="nav-section-title">Cases</div><a class="nav-item" data-page="cases" data-filter="all"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>All Cases<span class="badge" id="allCasesCount">0</span></a><a class="nav-item" data-page="cases" data-filter="shipping"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>Shipping<span class="badge" id="shippingCount">0</span></a><a class="nav-item" data-page="cases" data-filter="refund"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>Refunds<span class="badge" id="refundCount">0</span></a><a class="nav-item" data-page="cases" data-filter="return"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>Returns<span class="badge" id="returnCount">0</span></a><a class="nav-item" data-page="cases" data-filter="subscription"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Subscriptions<span class="badge" id="subscriptionCount">0</span></a><a class="nav-item" data-page="cases" data-filter="manual"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>Manual Review<span class="badge" id="manualCount">0</span></a></div>
-        <div class="nav-section"><div class="nav-section-title">Activity</div><a class="nav-item" data-page="sessions"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>Sessions</a><a class="nav-item" data-page="events"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>Event Log</a><a class="nav-item" data-page="issues"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>Issue Reports<span class="badge issue-badge" id="issuesCount">0</span></a></div>
-        <div class="nav-section"><div class="nav-section-title">Analytics</div><a class="nav-item" data-page="analytics"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Performance</a></div>
-        <div class="nav-section admin-only" id="adminNavSection"><div class="nav-section-title">Admin</div><a class="nav-item" data-page="audit"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>Audit Log</a><a class="nav-item" data-page="users"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>User Management</a></div>
-        <div class="nav-section"><div class="nav-section-title">Saved Views</div><div id="savedViewsContainer" class="saved-views-list"></div></div>
-      </nav>
-      <div class="sidebar-footer"><div class="user-info" style="cursor:pointer;" onclick="showProfileModal()"><div class="user-avatar">A</div><div><div class="user-name">Admin</div><div class="user-role">Administrator</div></div></div><button onclick="handleLogout()" style="background:rgba(255,255,255,0.1);border:none;color:rgba(255,255,255,0.7);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;" title="Sign out">Logout</button></div>
-    </aside>
-    <main class="main-content">
-      <header class="top-header"><h1 class="page-title" id="pageTitle">Dashboard</h1><div class="header-actions"><div class="search-box"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Search cases, orders..." id="searchInput"></div><button class="btn btn-secondary" onclick="refreshData()">Refresh</button></div></header>
-      <div class="page-content">
-        <div id="dashboardView">
-          <div class="stats-grid"><div class="stat-card highlight"><div class="stat-label">Pending Cases</div><div class="stat-value" id="statPending">-</div><div class="stat-change">Needs attention</div></div><div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value" id="statInProgress">-</div></div><div class="stat-card"><div class="stat-label">Completed Today</div><div class="stat-value" id="statCompletedToday">-</div></div><div class="stat-card"><div class="stat-label">Avg. Resolution Time</div><div class="stat-value" id="statAvgTime">-</div></div></div>
-          <div class="cases-card"><div class="cases-header"><h2 class="cases-title">Recent Cases</h2><button class="btn btn-secondary" onclick="navigateTo('cases','all')">View All</button></div><table class="cases-table"><thead><tr><th>Case ID</th><th>Customer</th><th>Type</th><th>Status</th><th>Created</th></tr></thead><tbody id="recentCasesBody"><tr><td colspan="5"><div class="spinner"></div></td></tr></tbody></table></div>
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad">
+          <span>Resolution Hub</span>
         </div>
-        <div id="casesView" style="display:none"></div>
-        <div id="sessionsView" style="display:none"></div>
-        <div id="eventsView" style="display:none"></div>
-        <div id="issuesView" style="display:none"></div>
-        <div id="analyticsView" style="display:none"></div>
-        <div id="auditView" style="display:none"></div>
-        <div id="usersView" style="display:none"></div>
+      </div>
 
-        <!-- Case Detail Full Page View - REDESIGNED -->
-        <div id="caseDetailView" style="display:none">
-          <div class="cd-page">
-            <!-- Header -->
-            <div class="cd-header">
-              <div class="cd-header-left">
-                <button class="cd-back-btn" onclick="closeCaseDetail()">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                  Cases
-                </button>
-                <div class="cd-nav-buttons">
-                  <button class="cd-nav-btn" id="prevCaseBtn" onclick="navigateToPrevCase()" title="Previous Case">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                  </button>
-                  <span class="cd-nav-counter" id="caseNavCounter">1 of 10</span>
-                  <button class="cd-nav-btn" id="nextCaseBtn" onclick="navigateToNextCase()" title="Next Case">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                  </button>
-                </div>
-              </div>
-              <div class="cd-header-right">
-                <span class="cd-type-badge" id="detailTypeBadge">Loading</span>
-                <span class="cd-status-badge" id="detailStatusBadge">-</span>
-              </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">Overview</div>
+          <a class="nav-item active" data-page="dashboard">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+            Dashboard
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Cases</div>
+          <a class="nav-item" data-page="cases" data-filter="all">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            All Cases
+            <span class="badge" id="allCasesCount">0</span>
+          </a>
+          <a class="nav-item" data-page="cases" data-filter="shipping">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+            Shipping
+            <span class="badge" id="shippingCount">0</span>
+          </a>
+          <a class="nav-item" data-page="cases" data-filter="refund">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+            Refunds
+            <span class="badge" id="refundsCount">0</span>
+          </a>
+          <a class="nav-item" data-page="cases" data-filter="return">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z"></path></svg>
+            Returns
+            <span class="badge" id="returnsCount">0</span>
+          </a>
+          <a class="nav-item" data-page="cases" data-filter="subscription">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            Subscriptions
+            <span class="badge" id="subscriptionsCount">0</span>
+          </a>
+          <a class="nav-item" data-page="cases" data-filter="manual">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+            Manual Review
+            <span class="badge" id="manualCount">0</span>
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Activity</div>
+          <a class="nav-item" data-page="sessions">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            Sessions
+          </a>
+          <a class="nav-item" data-page="events">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+            Event Log
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Analytics</div>
+          <a class="nav-item" data-page="analytics">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            Performance
+          </a>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">A</div>
+          <div class="user-details">
+            <div class="user-name">Admin</div>
+            <div class="user-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="top-header">
+        <h1 class="page-title" id="pageTitle">Dashboard</h1>
+        <div class="header-actions">
+          <div class="search-box">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" placeholder="Search cases, orders, customers..." id="searchInput">
+          </div>
+          <button class="btn btn-secondary" onclick="refreshData()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <!-- Dashboard View -->
+        <div id="dashboardView">
+          <div class="stats-grid">
+            <div class="stat-card highlight">
+              <div class="stat-label">Pending Cases</div>
+              <div class="stat-value" id="statPending">-</div>
+              <div class="stat-change up">Needs attention</div>
             </div>
-
-            <!-- Customer Card -->
-            <div class="cd-customer-card">
-              <div class="cd-customer-left">
-                <div class="cd-avatar" id="detailCustomerAvatar">?</div>
-                <div class="cd-customer-info">
-                  <div class="cd-customer-name" id="detailCustomerName">Loading...</div>
-                  <a class="cd-customer-email" id="detailCustomerEmail" href="#">-</a>
-                </div>
-              </div>
-              <div class="cd-order-info">
-                <div class="cd-order-number" id="detailOrderNumber">-</div>
-                <div class="cd-order-meta" id="detailOrderDate">-</div>
-              </div>
-              <div class="cd-quick-links">
-                <a class="cd-quick-link" id="detailShopifyLink" href="#" target="_blank">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-                  View Shopify Order
-                </a>
-                <a class="cd-quick-link" id="detailRichpanelLink" href="#" target="_blank">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                  View Richpanel Conversation
-                </a>
-                <a class="cd-quick-link" id="detailReplayLink" href="#" target="_blank">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
-                  View Session Recording
-                </a>
-              </div>
+            <div class="stat-card">
+              <div class="stat-label">In Progress</div>
+              <div class="stat-value" id="statInProgress">-</div>
             </div>
-
-            <!-- Two Column Layout -->
-            <div class="cd-two-col">
-              <!-- Left Column - Main Content -->
-              <div class="cd-main">
-                <!-- Case Details Section - What the customer's issue is -->
-                <div class="cd-section cd-section-compact">
-                  <div class="cd-section-header">
-                    <h3 class="cd-section-title">Case Details</h3>
-                  </div>
-                  <div class="cd-issue-summary" id="detailIssueSummary">
-                    <!-- Shows what the customer's issue/problem is -->
-                  </div>
-                  <!-- Evidence Links -->
-                  <div class="cd-evidence" id="detailEvidenceSection" style="display:none;">
-                    <div class="cd-evidence-title">Attached Evidence</div>
-                    <div class="cd-evidence-links" id="detailEvidenceLinks"></div>
-                  </div>
-                </div>
-
-                <!-- Resolution Section - What actions to take -->
-                <div class="cd-section cd-section-compact">
-                  <div class="cd-section-header">
-                    <h3 class="cd-section-title">Resolution</h3>
-                    <a class="cd-sop-link" id="detailSOPLink" href="#" target="_blank" onclick="logActivity('sop_viewed', 'Viewed SOP document')">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                      View SOP
-                    </a>
-                  </div>
-                  <ul class="cd-details-list" id="detailResolutionSteps">
-                    <!-- Bullet point action steps populated by buildCaseDetailsHtml -->
-                  </ul>
-                </div>
-
-                <!-- Activity Section - Notes + System Logs -->
-                <div class="cd-section">
-                  <div class="cd-section-header">
-                    <h3 class="cd-section-title">Activity</h3>
-                    <span class="cd-notes-count" id="detailActivityCount">0</span>
-                  </div>
-                  <div class="cd-notes-input">
-                    <textarea class="cd-notes-textarea" id="detailCommentInput" placeholder="Add a note or comment..." rows="2"></textarea>
-                    <button class="cd-notes-submit" onclick="addCommentFromDetail()">Post</button>
-                  </div>
-                  <div class="cd-activity-list" id="detailActivityList">
-                    <div class="cd-notes-empty">No activity yet</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Right Column - Sidebar -->
-              <div class="cd-sidebar">
-                <!-- Status Section -->
-                <div class="cd-sidebar-section">
-                  <div class="cd-sidebar-title">Status</div>
-                  <div class="cd-status-options">
-                    <label class="cd-status-option">
-                      <input type="radio" name="caseStatus" value="pending" onchange="updateStatus('pending')">
-                      <span class="cd-status-radio pending"></span>
-                      <span class="cd-status-label">Pending</span>
-                    </label>
-                    <label class="cd-status-option">
-                      <input type="radio" name="caseStatus" value="in_progress" onchange="updateStatus('in_progress')">
-                      <span class="cd-status-radio in-progress"></span>
-                      <span class="cd-status-label">In Progress</span>
-                    </label>
-                    <label class="cd-status-option">
-                      <input type="radio" name="caseStatus" value="completed" onchange="updateStatus('completed')">
-                      <span class="cd-status-radio completed"></span>
-                      <span class="cd-status-label">Completed</span>
-                    </label>
-                  </div>
-                </div>
-
-                <!-- Assigned Section -->
-                <div class="cd-sidebar-section">
-                  <div class="cd-sidebar-title">Assigned To</div>
-                  <div class="cd-assignee">
-                    <div class="cd-assignee-avatar" id="detailAssigneeAvatar">?</div>
-                    <div class="cd-assignee-info">
-                      <div class="cd-assignee-name" id="detailAssigneeName">Unassigned</div>
-                    </div>
-                  </div>
-                  <button class="cd-assign-btn" onclick="showAssignModal()">Assign</button>
-                </div>
-
-                <!-- Timeline Section -->
-                <div class="cd-sidebar-section">
-                  <div class="cd-sidebar-title">Timeline</div>
-                  <div class="cd-timeline">
-                    <div class="cd-timeline-row">
-                      <span class="cd-timeline-label">Created</span>
-                      <span class="cd-timeline-value" id="detailCreatedAt">-</span>
-                    </div>
-                    <div class="cd-timeline-row">
-                      <span class="cd-timeline-label">Due</span>
-                      <span class="cd-timeline-value" id="detailDueDate">-</span>
-                    </div>
-                    <div class="cd-timeline-row">
-                      <span class="cd-timeline-label">Updated</span>
-                      <span class="cd-timeline-value" id="detailUpdatedAt">-</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Quick Actions Section -->
-                <div class="cd-sidebar-section">
-                  <div class="cd-sidebar-title">Quick Actions</div>
-                  <button class="cd-copy-email-btn" onclick="copyEmailTemplate()">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-                    Copy Email Template
-                  </button>
-                </div>
-
-                <!-- Complete Case Button -->
-                <button class="cd-complete-btn" onclick="showCompletionChecklist()" id="completeCaseBtn">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                  Complete Case
-                </button>
-              </div>
+            <div class="stat-card">
+              <div class="stat-label">Completed Today</div>
+              <div class="stat-value" id="statCompletedToday">-</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Avg. Resolution Time</div>
+              <div class="stat-value" id="statAvgTime">-</div>
             </div>
           </div>
+
+          <!-- Recent Cases -->
+          <div class="cases-card">
+            <div class="cases-header">
+              <h2 class="cases-title">Recent Cases</h2>
+              <button class="btn btn-secondary" onclick="navigateTo('cases', 'all')">View All</button>
+            </div>
+            <table class="cases-table">
+              <thead>
+                <tr>
+                  <th>Case ID</th>
+                  <th>Customer</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="recentCasesBody">
+                <tr><td colspan="5" class="loading-spinner"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Cases View (will be shown/hidden) -->
+        <div id="casesView" style="display: none;">
+          <!-- Cases content will be rendered here -->
+        </div>
+
+        <!-- Sessions View -->
+        <div id="sessionsView" style="display: none;">
+          <!-- Sessions content will be rendered here -->
+        </div>
+
+        <!-- Events View -->
+        <div id="eventsView" style="display: none;">
+          <!-- Events content will be rendered here -->
+        </div>
+
+        <!-- Analytics View -->
+        <div id="analyticsView" style="display: none;">
+          <!-- Analytics content will be rendered here -->
         </div>
       </div>
     </main>
   </div>
 
-  <!-- Completion Checklist Modal -->
-  <div class="modal-overlay" id="completionChecklistModal">
-    <div class="modal" style="max-width:500px;">
-      <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
-        <div class="modal-header-content">
-          <div class="modal-title" style="color: white;">Complete Case Checklist</div>
-          <div style="font-size:13px;opacity:0.9;margin-top:4px;">Please verify before marking as complete</div>
-        </div>
-        <button class="modal-close" onclick="closeCompletionChecklist()" style="color:white;">&times;</button>
-      </div>
-      <div class="modal-body" style="padding:24px;">
-        <div class="checklist-container" id="completionChecklistItems">
-          <!-- Populated dynamically based on case type -->
-        </div>
-        <div class="checklist-footer" style="margin-top:24px;display:flex;gap:12px;">
-          <button class="btn btn-secondary" style="flex:1;" onclick="closeCompletionChecklist()">Cancel</button>
-          <button class="btn btn-success" style="flex:1;" id="confirmCompleteBtn" onclick="confirmCompleteCase()" disabled>
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            Confirm Complete
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Case Detail Modal - Redesigned -->
-  <div class="modal-overlay" id="caseModal">
-    <div class="modal">
-      <div class="modal-header">
-        <div class="modal-header-content">
-          <div class="modal-case-id" id="modalCaseId">Loading...</div>
-          <div class="modal-title" id="modalCustomerName">Customer Name</div>
-          <div class="modal-meta">
-            <div class="modal-meta-item" id="modalCaseType">
-              <span class="type-badge">-</span>
-            </div>
-            <div class="modal-meta-item" id="modalStatusBadge">
-              <span class="status-badge">-</span>
-            </div>
-            <div class="modal-meta-item" id="modalTimeAgo">-</div>
-          </div>
-        </div>
-        <div class="modal-nav">
-          <button class="nav-arrow prev" id="prevCaseBtn" onclick="navigateCase('prev')" title="Previous case">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-            <span class="nav-preview" id="prevCasePreview"></span>
-          </button>
-          <button class="nav-arrow next" id="nextCaseBtn" onclick="navigateCase('next')" title="Next case">
-            <span class="nav-preview" id="nextCasePreview"></span>
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </button>
-          <button class="copy-url-btn" onclick="copyCaseUrl()" title="Copy case URL">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-          </button>
-          <button class="modal-close" onclick="closeModal()">&times;</button>
-        </div>
-      </div>
-      <div class="modal-body">
-        <div class="modal-grid">
-          <div class="modal-main">
-            <!-- Status Section -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Update Status
-              </div>
-              <div class="status-cards">
-                <button class="status-card pending" onclick="updateStatus('pending')">
-                  <div class="status-card-icon">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  </div>
-                  <div class="status-card-content">
-                    <div class="status-card-title">Pending</div>
-                    <div class="status-card-desc">Awaiting review</div>
-                  </div>
-                  <div class="status-card-check"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
-                </button>
-                <button class="status-card in-progress" onclick="updateStatus('in_progress')">
-                  <div class="status-card-icon">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                  </div>
-                  <div class="status-card-content">
-                    <div class="status-card-title">In Progress</div>
-                    <div class="status-card-desc">Being worked on</div>
-                  </div>
-                  <div class="status-card-check"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
-                </button>
-                <button class="status-card completed" onclick="updateStatus('completed')">
-                  <div class="status-card-icon">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  </div>
-                  <div class="status-card-content">
-                    <div class="status-card-title">Completed</div>
-                    <div class="status-card-desc">Case resolved</div>
-                  </div>
-                  <div class="status-card-check"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
-                </button>
-              </div>
-            </div>
-
-            <!-- Customer & Order Info -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                Customer & Order
-              </div>
-              <div class="info-grid">
-                <div class="info-card">
-                  <div class="info-card-label">Customer Email</div>
-                  <div class="info-card-value email" id="modalCustomerEmail">-</div>
-                </div>
-                <div class="info-card">
-                  <div class="info-card-label">Order Number</div>
-                  <div class="info-card-value" id="modalOrderNumber">-</div>
-                </div>
-                <div class="info-card">
-                  <div class="info-card-label">Order Date</div>
-                  <div class="info-card-value" id="modalOrderDate">-</div>
-                </div>
-                <div class="info-card">
-                  <div class="info-card-label">Session ID</div>
-                  <div class="info-card-value" id="modalSessionId" style="font-size:11px;font-family:monospace;">-</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Resolution (At-a-Glance) -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                Resolution (At-a-Glance)
-              </div>
-              <div class="detail-card" style="background: linear-gradient(135deg, #667eea15, #764ba215); border: 2px solid #667eea;">
-                <div class="detail-row" style="border-bottom: none;">
-                  <span class="detail-value" id="modalResolution" style="font-weight: 600; color: #1a1a2e; font-size: 14px; line-height: 1.5;">-</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Case Details (Full Breakdown) -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-                Case Details
-              </div>
-              <div class="detail-card" id="modalCaseDetails">
-                <!-- Populated dynamically -->
-              </div>
-            </div>
-
-            <!-- Timestamps -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Timestamps
-              </div>
-              <div class="detail-card">
-                <div class="detail-row">
-                  <span class="detail-label">Refund Amount</span>
-                  <span class="detail-value money" id="modalRefundAmount">-</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">Created</span>
-                  <span class="detail-value" id="modalCreatedAt">-</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">Last Updated</span>
-                  <span class="detail-value" id="modalUpdatedAt">-</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">Due Date</span>
-                  <span class="detail-value" id="modalDueDate">-</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Comments Section -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                Team Comments
-              </div>
-              <div class="comments-section">
-                <div class="comments-header">
-                  <span class="comments-title">Internal Notes</span>
-                  <span class="comments-count" id="commentsCount">0 comments</span>
-                </div>
-                <div class="comments-list" id="commentsList"></div>
-                <div class="comment-form">
-                  <div class="comment-input-wrap">
-                    <textarea class="comment-input" id="commentInput" placeholder="Add a note or comment..." rows="2"></textarea>
-                    <button class="comment-submit" onclick="addComment()">Post</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Sidebar -->
-          <div class="modal-sidebar">
-            <!-- Case Reference -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
-                Case Reference
-              </div>
-              <div class="detail-card" style="padding:14px 16px;">
-                <div style="font-family:monospace;font-size:13px;color:#64748b;margin-bottom:4px;">Case ID</div>
-                <div style="font-size:14px;font-weight:600;color:#1e293b;" id="modalCaseRef">-</div>
-              </div>
-            </div>
-
-            <!-- Assignee -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                Assigned To
-              </div>
-              <div class="detail-card assignee-card" style="padding:14px 16px;">
-                <div id="modalAssigneeDisplay" style="display:flex;align-items:center;gap:10px;">
-                  <div class="assignee-avatar" id="modalAssigneeAvatar">?</div>
-                  <div>
-                    <div style="font-size:14px;font-weight:600;color:#1e293b;" id="modalAssigneeName">Unassigned</div>
-                    <div style="font-size:12px;color:#64748b;" id="modalAssigneeRole">-</div>
-                  </div>
-                </div>
-                <button class="btn btn-secondary" style="width:100%;margin-top:12px;font-size:12px;" onclick="showAssignModal()" id="assignCaseBtn">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                  Assign / Reassign
-                </button>
-              </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                Quick Actions
-              </div>
-              <div class="quick-actions">
-                <a class="quick-action-btn" id="replayLink" href="#" target="_blank" style="display:none;">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
-                  Watch Session Recording
-                </a>
-                <a class="quick-action-btn" id="richpanelLink" href="#" target="_blank" style="display:none;">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                  View Conversation
-                </a>
-                <a class="quick-action-btn" id="clickupLink" href="#" target="_blank" style="display:none;">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                  View in ClickUp
-                </a>
-                <a class="quick-action-btn" id="shopifyLink" href="#" target="_blank" style="display:none;">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-                  View Shopify Order
-                </a>
-                <a class="quick-action-btn" id="sopLink" href="#" target="_blank">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                  View SOP Guide
-                </a>
-              </div>
-            </div>
-
-            <!-- Timeline -->
-            <div class="modal-section">
-              <div class="modal-section-title" style="justify-content:space-between;">
-                <span style="display:flex;align-items:center;gap:8px;">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  Activity Timeline
-                </span>
-                <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="loadCaseActivity()" title="Refresh activity">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                </button>
-              </div>
-              <div class="detail-card timeline-card" style="padding:0;max-height:300px;overflow-y:auto;">
-                <div id="activityTimeline">
-                  <div class="timeline-item">
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-content">
-                      <div class="timeline-label">Case Created</div>
-                      <div class="timeline-value" id="timelineCreated">-</div>
-                    </div>
-                  </div>
-                  <div class="timeline-item" id="timelineFirstResponseRow" style="display:none;">
-                    <div class="timeline-dot" style="background:#059669;"></div>
-                    <div class="timeline-content">
-                      <div class="timeline-label">First Response</div>
-                      <div class="timeline-value" id="timelineFirstResponse">-</div>
-                    </div>
-                  </div>
-                  <div class="timeline-item" id="timelineResolvedRow" style="display:none;">
-                    <div class="timeline-dot" style="background:#10b981;"></div>
-                    <div class="timeline-content">
-                      <div class="timeline-label">Resolved</div>
-                      <div class="timeline-value" id="timelineResolved">-</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Issue Report Modal - Same structure as Case Modal -->
-  <div class="modal-overlay" id="issueModal">
-    <div class="modal">
-      <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-        <div class="modal-header-content">
-          <div class="modal-case-id" id="issueModalId">Loading...</div>
-          <div class="modal-title" id="issueModalName">Customer Name</div>
-          <div class="modal-meta">
-            <div class="modal-meta-item" id="issueModalStatusBadge">
-              <span class="status-badge">-</span>
-            </div>
-            <div class="modal-meta-item" id="issueModalTime">-</div>
-          </div>
-        </div>
-        <div class="modal-nav">
-          <button class="nav-arrow prev" id="prevIssueBtn" onclick="navigateIssue('prev')" title="Previous issue">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-          </button>
-          <button class="nav-arrow next" id="nextIssueBtn" onclick="navigateIssue('next')" title="Next issue">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </button>
-          <button class="modal-close" onclick="closeIssueModal()">&times;</button>
-        </div>
-      </div>
-      <div class="modal-body">
-        <div class="modal-grid">
-          <div class="modal-main">
-            <!-- Status Section - Same as Case Modal -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Update Status
-              </div>
-              <div class="status-cards">
-                <button class="status-card pending" onclick="updateIssueStatus('pending')">
-                  <div class="status-card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-                  <div class="status-card-content"><div class="status-card-title">Pending</div><div class="status-card-desc">Awaiting review</div></div>
-                  <div class="status-card-check"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
-                </button>
-                <button class="status-card in-progress" onclick="updateIssueStatus('in_progress')">
-                  <div class="status-card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div>
-                  <div class="status-card-content"><div class="status-card-title">In Progress</div><div class="status-card-desc">Being worked on</div></div>
-                  <div class="status-card-check"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
-                </button>
-                <button class="status-card completed" onclick="updateIssueStatus('resolved')">
-                  <div class="status-card-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-                  <div class="status-card-content"><div class="status-card-title">Resolved</div><div class="status-card-desc">Issue fixed</div></div>
-                  <div class="status-card-check"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
-                </button>
-              </div>
-            </div>
-
-            <!-- Customer Info - Same structure as Case Modal -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                Customer Information
-              </div>
-              <div class="info-grid">
-                <div class="info-card" style="grid-column: span 2;">
-                  <div class="info-card-label">Email Address</div>
-                  <div class="info-card-value email" id="issueModalEmail">-</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Issue Description - Styled like Resolution box -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
-                Issue Description
-              </div>
-              <div class="detail-card" style="background: linear-gradient(135deg, #fef3c715, #f59e0b15); border: 2px solid #f59e0b;">
-                <div class="detail-row" style="border-bottom: none;">
-                  <span class="detail-value" id="issueModalDescription" style="font-weight: 500; color: #1a1a2e; font-size: 14px; line-height: 1.6; text-align: left; max-width: 100%; white-space: pre-wrap;">-</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Technical Details - Same structure as Case Modal -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-                Technical Details
-              </div>
-              <div class="info-grid">
-                <div class="info-card">
-                  <div class="info-card-label">Session ID</div>
-                  <div class="info-card-value" id="issueModalSession" style="font-size:11px;font-family:monospace;">-</div>
-                </div>
-                <div class="info-card">
-                  <div class="info-card-label">Current Step</div>
-                  <div class="info-card-value" id="issueModalStep">-</div>
-                </div>
-                <div class="info-card" style="grid-column: span 2;">
-                  <div class="info-card-label">Browser</div>
-                  <div class="info-card-value" id="issueModalBrowser" style="font-size:12px;word-break:break-all;">-</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-sidebar">
-            <!-- Quick Actions - Same structure as Case Modal -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                Quick Actions
-              </div>
-              <div class="quick-actions">
-                <a class="quick-action-btn" id="issueConversationLink" href="#" target="_blank" style="display:none;">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                  View Conversation
-                </a>
-                <a class="quick-action-btn" id="issueReplayLink" href="#" target="_blank" style="display:none;">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
-                  Watch Session Recording
-                </a>
-                <a class="quick-action-btn" id="issueSopLink" href="https://docs.puppypad.com/sop/trouble-reports" target="_blank">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                  View SOP
-                </a>
-              </div>
-            </div>
-
-            <!-- Timeline - Same structure as Case Modal -->
-            <div class="modal-section">
-              <div class="modal-section-title">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Timeline
-              </div>
-              <div class="detail-card" style="padding:16px;">
-                <div class="timeline-item">
-                  <div class="timeline-dot"></div>
-                  <div class="timeline-content">
-                    <div class="timeline-label">Issue Reported</div>
-                    <div class="timeline-value" id="issueTimelineCreated">-</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    // Global error handler for debugging
-    window.onerror = function(msg, url, line, col, error) {
-      console.error('[Global Error]', msg, 'at line', line, ':', error);
-      return false;
-    };
-    window.addEventListener('unhandledrejection', function(event) {
-      console.error('[Unhandled Promise Rejection]', event.reason);
-    });
-    console.log('[Hub] Script starting...');
+    // Will add JavaScript in next step
+    console.log('Resolution Hub loaded');
 
-    // Test function to verify JS is working (call from browser console: testOpenCase())
-    window.testOpenCase = function() {
-      console.log('[TEST] testOpenCase called');
-      console.log('[TEST] casesList has', casesList.length, 'cases');
-      if (casesList.length > 0) {
-        console.log('[TEST] First case:', casesList[0]);
-        console.log('[TEST] Calling openCase with:', casesList[0].case_id);
-        openCase(casesList[0].case_id);
-      } else {
-        console.log('[TEST] No cases in casesList - trying API fetch directly');
-        fetch('/hub/api/cases?limit=1').then(r => r.json()).then(d => {
-          console.log('[TEST] Direct API response:', d);
-          if (d.cases && d.cases[0]) {
-            console.log('[TEST] Calling openCase with:', d.cases[0].case_id);
-            openCase(d.cases[0].case_id);
-          }
-        }).catch(e => console.error('[TEST] API error:', e));
-      }
-    };
-
-    const API = '';
-    let currentCase = null;
-    let currentFilter = 'all';
-    let casesList = [];
-    let currentCaseIndex = -1;
-    let issuesList = [];
-    let currentIssueIndex = -1;
-    let currentIssue = null;
-
-    // Toast notification function
-    function showToast(message, type = 'info') {
-      const existing = document.getElementById('toastNotification');
-      if (existing) existing.remove();
-
-      const colors = {
-        success: { bg: '#10b981', icon: '✓' },
-        error: { bg: '#ef4444', icon: '✕' },
-        warning: { bg: '#f59e0b', icon: '⚠' },
-        info: { bg: '#3b82f6', icon: 'ℹ' }
-      };
-      const c = colors[type] || colors.info;
-
-      const toast = document.createElement('div');
-      toast.id = 'toastNotification';
-      toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:'+c.bg+';color:white;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;display:flex;align-items:center;gap:10px;animation:slideIn 0.3s ease;';
-      toast.innerHTML = '<span style="font-size:16px;">'+c.icon+'</span><span>'+message+'</span>';
-
-      document.body.appendChild(toast);
-      setTimeout(function() {
-        toast.style.animation = 'fadeOut 0.3s ease';
-        setTimeout(function() { toast.remove(); }, 300);
-      }, 3000);
-    }
-
-    // Login handler
-    async function handleLogin(event) {
-      event.preventDefault();
-      const username = document.getElementById('loginUsername').value;
-      const password = document.getElementById('loginPassword').value;
-      const btn = document.getElementById('loginBtn');
-      const errorEl = document.getElementById('loginError');
-
-      btn.disabled = true;
-      btn.textContent = 'Signing in...';
-      errorEl.style.display = 'none';
-
-      try {
-        const response = await fetch(API + '/admin/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-        const data = await response.json();
-
-        if (data.success) {
-          localStorage.setItem('hub_token', data.token);
-          localStorage.setItem('hub_user', JSON.stringify(data.user));
-          showAppAfterLogin(data.user);
-        } else {
-          errorEl.textContent = data.error || 'Invalid username or password';
-          errorEl.style.display = 'block';
-        }
-      } catch (e) {
-        errorEl.textContent = 'Network error. Please try again.';
-        errorEl.style.display = 'block';
-      }
-
-      btn.disabled = false;
-      btn.textContent = 'Sign In';
-    }
-
-    function showAppAfterLogin(user) {
-      console.log('[showAppAfterLogin] Showing app for user:', user);
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('appContainer').style.display = 'flex';
-
-      // Update HubState for hub-app.js modules (so HubAuth.isAdmin() works)
-      if (typeof HubState !== 'undefined') {
-        HubState.currentUser = user;
-        HubState.token = localStorage.getItem('hub_token');
-        console.log('[showAppAfterLogin] Updated HubState with user and token');
-      }
-
-      // Update user info in sidebar
-      const userName = user?.name || 'User';
-      const userRole = user?.role || 'user';
-      const userNameEl = document.querySelector('.user-name');
-      const userRoleEl = document.querySelector('.user-role');
-      const userAvatarEl = document.querySelector('.user-avatar');
-
-      if (userNameEl) userNameEl.textContent = userName;
-      if (userRoleEl) userRoleEl.textContent = userRole === 'admin' ? 'Administrator' : 'Team Member';
-      if (userAvatarEl) userAvatarEl.textContent = userName.charAt(0).toUpperCase();
-
-      // Show admin elements for admin users
-      if (userRole === 'admin') {
-        document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
-      }
-
-      // Load dashboard data, then handle URL params
-      console.log('[showAppAfterLogin] Loading dashboard...');
-      loadDashboard();
-      handleUrlParams();
-    }
-
-    function handleLogout() {
-      localStorage.removeItem('hub_token');
-      localStorage.removeItem('hub_user');
-      document.getElementById('appContainer').style.display = 'none';
-      document.getElementById('loginScreen').style.display = 'flex';
-      // Hide admin elements
-      document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-      // Reset URL
-      history.pushState({}, '', '/hub');
-    }
-
-    // Show profile edit modal
-    function showProfileModal() {
-      const user = JSON.parse(localStorage.getItem('hub_user') || '{}');
-      const modal = document.createElement('div');
-      modal.className = 'modal-overlay active';
-      modal.id = 'profileModal';
-      modal.innerHTML = \`
-        <div class="modal" style="max-width:450px;">
-          <div class="modal-header" style="padding:20px 24px;">
-            <div class="modal-title" style="font-size:18px;">Edit Profile</div>
-            <button class="modal-close" onclick="closeProfileModal()">&times;</button>
-          </div>
-          <div class="modal-body" style="padding:24px;">
-            <div style="text-align:center;margin-bottom:24px;">
-              <div style="width:80px;height:80px;border-radius:50%;background:var(--accent-teal);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:600;color:white;margin:0 auto 12px;" id="profileAvatar">\${(user.name || 'U').charAt(0).toUpperCase()}</div>
-              <div style="font-size:12px;color:var(--gray-500);">Click your name in sidebar to change</div>
-            </div>
-            <div class="form-group">
-              <label>Display Name</label>
-              <input type="text" id="profileName" class="form-input" value="\${user.name || ''}" placeholder="Your name">
-            </div>
-            <div class="form-group">
-              <label>Email Address</label>
-              <input type="email" id="profileEmail" class="form-input" value="\${user.username || ''}" placeholder="your@email.com">
-            </div>
-            <hr style="margin:24px 0;border:none;border-top:1px solid var(--gray-200);">
-            <div style="font-weight:500;margin-bottom:16px;">Change Password</div>
-            <div class="form-group">
-              <label>Current Password</label>
-              <input type="password" id="profileCurrentPwd" class="form-input" placeholder="Enter current password">
-            </div>
-            <div class="form-group">
-              <label>New Password</label>
-              <input type="password" id="profileNewPwd" class="form-input" placeholder="Enter new password">
-            </div>
-            <div class="form-group">
-              <label>Confirm New Password</label>
-              <input type="password" id="profileConfirmPwd" class="form-input" placeholder="Confirm new password">
-            </div>
-            <div id="profileError" class="error-message" style="display:none;"></div>
-            <div id="profileSuccess" style="display:none;background:#ecfdf5;color:#059669;padding:12px 16px;border-radius:8px;font-size:14px;margin-bottom:16px;"></div>
-            <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="saveProfile()">Save Changes</button>
-          </div>
-        </div>
-      \`;
-      modal.onclick = (e) => { if(e.target === modal) closeProfileModal(); };
-      document.body.appendChild(modal);
-    }
-
-    function closeProfileModal() {
-      const modal = document.getElementById('profileModal');
-      if(modal) modal.remove();
-    }
-
-    async function saveProfile() {
-      const name = document.getElementById('profileName').value.trim();
-      const email = document.getElementById('profileEmail').value.trim();
-      const currentPwd = document.getElementById('profileCurrentPwd').value;
-      const newPwd = document.getElementById('profileNewPwd').value;
-      const confirmPwd = document.getElementById('profileConfirmPwd').value;
-      const errorEl = document.getElementById('profileError');
-      const successEl = document.getElementById('profileSuccess');
-
-      errorEl.style.display = 'none';
-      successEl.style.display = 'none';
-
-      // Validate
-      if (!name) { errorEl.textContent = 'Name is required'; errorEl.style.display = 'block'; return; }
-      if (!email) { errorEl.textContent = 'Email is required'; errorEl.style.display = 'block'; return; }
-      if (newPwd && newPwd !== confirmPwd) { errorEl.textContent = 'New passwords do not match'; errorEl.style.display = 'block'; return; }
-      if (newPwd && !currentPwd) { errorEl.textContent = 'Current password required to change password'; errorEl.style.display = 'block'; return; }
-
-      try {
-        const token = localStorage.getItem('hub_token');
-        const response = await fetch(API + '/hub/api/profile', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify({ name, email, currentPassword: currentPwd, newPassword: newPwd })
-        });
-        const data = await response.json();
-
-        if (data.success) {
-          // Update local storage with new user data
-          const user = JSON.parse(localStorage.getItem('hub_user') || '{}');
-          user.name = name;
-          user.username = email;
-          localStorage.setItem('hub_user', JSON.stringify(user));
-
-          // Update HubState if it exists
-          if (typeof HubState !== 'undefined') HubState.currentUser = user;
-
-          // Update sidebar
-          document.querySelector('.user-name').textContent = name;
-          document.querySelector('.user-avatar').textContent = name.charAt(0).toUpperCase();
-          document.getElementById('profileAvatar').textContent = name.charAt(0).toUpperCase();
-
-          successEl.textContent = 'Profile updated successfully!';
-          successEl.style.display = 'block';
-
-          // Clear password fields
-          document.getElementById('profileCurrentPwd').value = '';
-          document.getElementById('profileNewPwd').value = '';
-          document.getElementById('profileConfirmPwd').value = '';
-        } else {
-          errorEl.textContent = data.error || 'Failed to update profile';
-          errorEl.style.display = 'block';
-        }
-      } catch (e) {
-        errorEl.textContent = 'Network error. Please try again.';
-        errorEl.style.display = 'block';
-      }
-    }
-
-    // Check for existing session on page load
-    function checkExistingSession() {
-      console.log('[checkExistingSession] Checking for existing session...');
-      const token = localStorage.getItem('hub_token');
-      const userStr = localStorage.getItem('hub_user');
-      console.log('[checkExistingSession] Token exists:', !!token, 'User exists:', !!userStr);
-      if (token && userStr) {
-        try {
-          const user = JSON.parse(userStr);
-          console.log('[checkExistingSession] Parsed user:', user);
-          showAppAfterLogin(user);
-          return true;
-        } catch (e) {
-          console.error('[checkExistingSession] Error parsing user:', e);
-          localStorage.removeItem('hub_token');
-          localStorage.removeItem('hub_user');
-        }
-      }
-      return false;
-    }
-
-    // Version marker for debugging - check with: console.log(window.HUB_VERSION)
-    window.HUB_VERSION = '2026-01-11-v3';
-    console.log('[Hub] Version:', window.HUB_VERSION);
-
-    // Resolution code to human-readable text (MUST be defined before renderCaseRow)
-    function formatResolution(code, amount) {
-      console.log('[formatResolution] code:', code, 'amount:', amount);
-      if (!code) return '-';
-      const amountStr = amount ? '$' + parseFloat(amount).toFixed(2) : '';
-      const map = {
-        // Standard refunds
-        'full_refund': 'Process full refund' + (amountStr ? ' (' + amountStr + ')' : ' (calculate amount)'),
-        'partial_20': 'Process 20% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' - Customer keeps product',
-        'partial_30': 'Process 30% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' - Customer keeps product',
-        'partial_40': 'Process 40% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' - Customer keeps product',
-        'partial_50': 'Process 50% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' - Customer keeps product',
-        'partial_75': 'Process 75% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' - Customer keeps product',
-        'store_credit': 'Issue store credit',
-        'replacement': 'Ship replacement',
-        'exchange': 'Process exchange - Send return label, ship replacement after return',
-        'reship': 'Reship order',
-        'partial_20_reship': 'Process 20% refund + Reship order',
-        'partial_50_reship': 'Process 50% refund + Reship order',
-        'refund_missing_item': 'Calculate & refund missing item value',
-        'reship_missing_item': 'Ship missing item',
-        'reship_missing_item_bonus': 'Ship missing item + bonus for inconvenience',
-        'replacement_damaged': 'Ship replacement for damaged item',
-        'partial_missing': 'Process partial refund for missing item',
-        'apology_note': 'Send apology note',
-        'training_tips': 'Provide training tips',
-        'manual_assistance': 'Manual review required',
-        'manual_order_not_found': 'Manual review - Order not found in system',
-        'escalate': 'Escalate to team',
-        'no_action': 'No action required',
-        // Quality difference resolutions
-        'upgrade_keep_originals': 'Send $20/pad checkout link - Ship PuppyPad 2.0 after payment',
-        'return_upgrade_enhanced': 'Wait for return - Send checkout link - Ship PuppyPad 2.0',
-        'reship_quality_upgrade': 'Ship FREE PuppyPad 2.0 (customer keeps Originals)',
-        'full_refund_quality': 'Process refund - Customer keeps Originals',
-        'full_refund_quality_used': 'Process refund - Items used, no return needed',
-        'full_refund_quality_return': 'Wait for return - Process refund after received',
-        'return_refund': 'Send return label - Refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' after return',
-        // Subscription resolutions - ACTION ORIENTED
-        'subscription_paused': 'Pause subscription in CheckoutChamp (see Case Details for duration)',
-        'subscription_cancelled': 'Cancel subscription in CheckoutChamp and process refund if applicable',
-        'subscription_resumed': 'Resume subscription in CheckoutChamp',
-        'subscription_modified': 'Modify subscription in CheckoutChamp per case details',
-        'subscription_address_updated': 'Update shipping address in CheckoutChamp subscription',
-        'subscription_schedule_changed': 'Update delivery schedule in CheckoutChamp',
-        'subscription_skip_next': 'Skip next shipment in CheckoutChamp',
-        'subscription_unskip': 'Unskip shipment in CheckoutChamp',
-        'discount_applied': 'Apply discount to subscription in CheckoutChamp (see Case Details for %)',
-        'address_changed': 'Update subscription address in CheckoutChamp',
-        'schedule_changed': 'Change delivery frequency in CheckoutChamp (see Case Details)'
-      };
-      // Check for dynamic patterns
-      const partialMatch = code.match(/^partial_(\\d+)$/);
-      if (partialMatch) return 'Process ' + partialMatch[1] + '% refund' + (amountStr ? ' (' + amountStr + ')' : '') + ' - Customer keeps product';
-      const partialReshipMatch = code.match(/^partial_(\\d+)_reship$/);
-      if (partialReshipMatch) return 'Process ' + partialReshipMatch[1] + '% refund + Reship order';
-      return map[code] || code.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());
-    }
-
-    // Calculate due date status for a case (24h from creation)
-    function getDueStatus(caseItem) {
-      console.log('[getDueStatus] caseItem:', caseItem?.case_id, 'created_at:', caseItem?.created_at);
-      if (!caseItem || !caseItem.created_at) {
-        console.log('[getDueStatus] Returning - because no created_at');
-        return { text: '-', class: '' };
-      }
-      try {
-        const createdDate = new Date(caseItem.created_at);
-        if (isNaN(createdDate.getTime())) {
-          return { text: '-', class: '' };
-        }
-        const dueDate = new Date(createdDate.getTime() + 24*60*60*1000);
-        const now = Date.now();
-        const timeLeft = dueDate.getTime() - now;
-        if (caseItem.status === 'completed') return { text: 'Done', class: 'due-done' };
-        if (timeLeft < 0) return { text: 'Overdue', class: 'due-overdue' };
-        const hoursLeft = Math.floor(timeLeft / (60*60*1000));
-        if (hoursLeft < 1) return { text: '<1h left', class: 'due-urgent' };
-        if (hoursLeft < 6) return { text: hoursLeft + 'h left', class: 'due-warning' };
-        return { text: hoursLeft + 'h left', class: 'due-ok' };
-      } catch(e) {
-        return { text: '-', class: '' };
-      }
-    }
-
-    // Render a single case row for the table
-    // Columns: Checkbox, Customer, Type, Status, Due, Resolution, Assignee, Created
-    function renderCaseRow(c) {
-      const due = getDueStatus(c);
-      const res = formatResolution(c.resolution, c.refund_amount);
-      const assignee = c.assigned_to_name || c.assigned_to || '';
-      const assigneeDisplay = assignee ? '<span class="assignee-badge">'+assignee+'</span>' : '<span class="assignee-unassigned">Unassigned</span>';
-      return '<tr data-case-id="'+c.case_id+'">'+
-        '<td onclick="event.stopPropagation()"><input type="checkbox" class="case-checkbox" data-case-id="'+c.case_id+'" onchange="toggleCaseSelect(\\''+c.case_id+'\\')" style="width:16px;height:16px;cursor:pointer;"></td>'+
-        '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td>'+
-        '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td>'+
-        '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td>'+
-        '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;"><span class="due-badge '+due.class+'">'+due.text+'</span></td>'+
-        '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+res+'">'+res+'</td>'+
-        '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;">'+assigneeDisplay+'</td>'+
-        '<td onclick="openCase(\\''+c.case_id+'\\')" style="cursor:pointer;" class="time-ago">'+timeAgo(c.created_at)+'</td>'+
-      '</tr>';
-    }
-
-    document.querySelectorAll('.nav-item').forEach(i => i.addEventListener('click', () => navigateTo(i.dataset.page, i.dataset.filter)));
-    document.getElementById('caseModal').addEventListener('click', e => { if(e.target.id === 'caseModal') closeModal(); });
-
-    function hideAllViews() {
-      ['dashboard','cases','sessions','events','issues','analytics','audit','users','caseDetail'].forEach(v => {
-        const el = document.getElementById(v+'View');
-        if (el) el.style.display = 'none';
+    // Navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const page = item.dataset.page;
+        const filter = item.dataset.filter;
+        navigateTo(page, filter);
       });
-    }
+    });
 
     function navigateTo(page, filter) {
-      console.log('[navigateTo] page:', page, 'filter:', filter);
+      // Update active nav
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      const sel = filter ? '.nav-item[data-page="'+page+'"][data-filter="'+filter+'"]' : '.nav-item[data-page="'+page+'"]';
-      document.querySelector(sel)?.classList.add('active');
-      document.getElementById('pageTitle').textContent = {dashboard:'Dashboard',cases:'Cases',sessions:'Sessions',events:'Event Log',issues:'Issue Reports',analytics:'Performance',audit:'Audit Log',users:'User Management'}[page]||'Dashboard';
-      hideAllViews();
-      document.getElementById(page+'View').style.display = 'block';
-
-      if(page==='cases') {
-        currentFilter = filter||'all';
-        console.log('[navigateTo] Setting currentFilter to:', currentFilter);
-        loadCasesView();
-      }
-      if(page==='sessions') loadSessionsView();
-      if(page==='events') loadEventsView();
-      if(page==='issues') loadIssuesView();
-      if(page==='analytics') loadAnalyticsView();
-      if(page==='audit' && typeof HubEnhancedAuditLog !== 'undefined') HubEnhancedAuditLog.show();
-      if(page==='users' && typeof HubUsers !== 'undefined') HubUsers.show();
-    }
-
-    // Always start on dashboard (URL param navigation removed)
-    function handleUrlParams() {
-      // No-op - always start on dashboard
-    }
-
-    async function loadDashboard() {
-      try {
-        console.log('[loadDashboard] Fetching stats...');
-        const r = await fetch(API+'/hub/api/stats');
-        console.log('[loadDashboard] Stats response status:', r.status);
-        const d = await r.json();
-        console.log('[loadDashboard] Stats:', d);
-        document.getElementById('statPending').textContent = d.pending||0;
-        document.getElementById('statInProgress').textContent = d.inProgress||0;
-        document.getElementById('statCompletedToday').textContent = d.completedToday||0;
-        document.getElementById('statAvgTime').textContent = d.avgTime||'-';
-        ['all','shipping','refund','return','subscription','manual'].forEach(t => { const el = document.getElementById((t==='all'?'allCases':t)+'Count'); if(el) el.textContent = d[t]||0; });
-        loadRecentCases();
-        // Load issues count
-        loadIssuesCount();
-      } catch(e) { console.error(e); }
-    }
-
-    async function loadIssuesCount() {
-      try {
-        const r = await fetch(API+'/hub/api/issues?limit=100');
-        const d = await r.json();
-        const pendingCount = (d.issues || []).filter(i => i.status !== 'resolved').length;
-        const countEl = document.getElementById('issuesCount');
-        if (countEl) countEl.textContent = pendingCount;
-      } catch(e) { console.log('Issues count load skipped:', e.message); }
-    }
-
-    async function loadRecentCases() {
-      try {
-        const r = await fetch(API+'/hub/api/cases?limit=10');
-        const d = await r.json();
-        const tbody = document.getElementById('recentCasesBody');
-        if (!d.cases?.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No cases yet</td></tr>'; return; }
-        casesList = d.cases || [];
-        tbody.innerHTML = d.cases.map(c => '<tr onclick="openCase(\\''+c.case_id+'\\')"><td><span class="case-id">'+c.case_id+'</span></td><td><div class="customer-info"><span class="customer-name">'+(c.customer_name||c.customer_email?.split('@')[0]||'Customer')+'</span><span class="customer-email">'+(c.customer_email||'')+'</span></div></td><td><span class="type-badge '+c.case_type+'">'+c.case_type+'</span></td><td><span class="status-badge '+(c.status||'').replace('_','-')+'">'+(c.status||'pending')+'</span></td><td class="time-ago">'+timeAgo(c.created_at)+'</td></tr>').join('');
-      } catch(e) { console.error(e); }
-    }
-
-    let casesLoadRequestId = 0;
-    async function loadCasesView() {
-      const view = document.getElementById('casesView');
-      view.innerHTML = '<div class="spinner"></div>';
-      const requestId = ++casesLoadRequestId;
-      const filterAtRequest = currentFilter;
-      console.log('[loadCasesView] Starting with filter:', filterAtRequest, 'requestId:', requestId);
-      try {
-        const url = filterAtRequest==='all' ? API+'/hub/api/cases?limit=50' : API+'/hub/api/cases?limit=50&filter='+filterAtRequest;
-        console.log('[loadCasesView] Fetching URL:', url);
-        const r = await fetch(url);
-        // Check if this request is still current (user may have navigated away)
-        if (requestId !== casesLoadRequestId) {
-          return;
-        }
-        const d = await r.json();
-        console.log('[loadCasesView] API returned', d.cases?.length, 'cases');
-        if (d.cases?.length > 0) {
-          console.log('[loadCasesView] Sample case keys:', Object.keys(d.cases[0]));
-          console.log('[loadCasesView] Sample case data:', JSON.stringify(d.cases[0]));
-        }
-        casesList = d.cases || [];
-
-        view.innerHTML = '<div class="cases-filters" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">'+
-          '<div class="search-input-wrapper" style="position:relative;flex:1;min-width:200px;max-width:400px;">'+
-            '<svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--gray-400);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>'+
-            '<input type="text" id="caseSearchInput" placeholder="Search cases... (⌘K)" oninput="debounceSearch()" style="width:100%;padding:8px 12px 8px 36px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;"/>'+
-            '<button id="clearSearchBtn" onclick="clearCaseSearch()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px;line-height:1;">&times;</button>'+
-          '</div>'+
-          '<select id="caseStatusFilter" onchange="applyCaseFilters()" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;">'+
-            '<option value="all">All Statuses</option>'+
-            '<option value="pending">Pending</option>'+
-            '<option value="in_progress">In Progress</option>'+
-            '<option value="completed">Completed</option>'+
-          '</select>'+
-          '<select id="caseDueFilter" onchange="applyCaseFilters()" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;">'+
-            '<option value="all">All Due Dates</option>'+
-            '<option value="overdue">Overdue Only</option>'+
-            '<option value="urgent">Due in < 6 hours</option>'+
-            '<option value="today">Due Today</option>'+
-          '</select>'+
-          '<select id="caseSortBy" onchange="applyCaseFilters()" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;">'+
-            '<option value="newest">Newest First</option>'+
-            '<option value="oldest">Oldest First</option>'+
-            '<option value="due_soonest">Due Soonest</option>'+
-            '<option value="amount_high">Highest Amount</option>'+
-          '</select>'+
-          '<span id="searchResultsCount" style="font-size:13px;color:var(--gray-500);"></span>'+
-        '</div>'+
-        '<div class="cases-card"><table class="cases-table"><thead><tr><th style="width:40px;"><input type="checkbox" id="selectAllCases" onchange="toggleSelectAll(this.checked)" style="width:16px;height:16px;cursor:pointer;"></th><th>Customer</th><th>Type</th><th>Status</th><th>Due</th><th>Resolution</th><th>Assignee</th><th>Created</th></tr></thead><tbody id="casesTableBody">'+
-          (casesList.length ? casesList.map(renderCaseRow).join('') : '<tr><td colspan="8" class="empty-state">No cases found</td></tr>')+
-        '</tbody></table></div>';
-
-        window.allCases = casesList;
-      } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load cases</div>'; }
-    }
-
-    let searchDebounceTimer = null;
-    function debounceSearch() {
-      const input = document.getElementById('caseSearchInput');
-      const clearBtn = document.getElementById('clearSearchBtn');
-      if (clearBtn) clearBtn.style.display = input.value ? 'block' : 'none';
-      clearTimeout(searchDebounceTimer);
-      searchDebounceTimer = setTimeout(() => applyCaseFilters(), 200);
-    }
-
-    function clearCaseSearch() {
-      const input = document.getElementById('caseSearchInput');
-      const clearBtn = document.getElementById('clearSearchBtn');
-      if (input) input.value = '';
-      if (clearBtn) clearBtn.style.display = 'none';
-      applyCaseFilters();
-    }
-
-    // Bulk selection - use HubState from hub-app.js
-    function toggleCaseSelect(caseId) {
-      if (typeof HubBulkActions !== 'undefined') {
-        HubBulkActions.toggleSelect(caseId);
-      }
-    }
-
-    function toggleSelectAll(checked) {
-      if (typeof HubBulkActions !== 'undefined') {
-        if (checked) {
-          HubBulkActions.selectAll();
-        } else {
-          HubBulkActions.deselectAll();
-        }
-      }
-    }
-
-    function applyCaseFilters() {
-      const searchTerm = (document.getElementById('caseSearchInput')?.value || '').toLowerCase().trim();
-      const statusFilter = document.getElementById('caseStatusFilter').value;
-      const dueFilter = document.getElementById('caseDueFilter').value;
-      const sortBy = document.getElementById('caseSortBy').value;
-      let filtered = [...(window.allCases || [])];
-
-      // Search filter - searches across multiple fields
-      if (searchTerm) {
-        filtered = filtered.filter(c => {
-          const searchFields = [
-            c.case_id,
-            c.customer_name,
-            c.customer_email,
-            c.order_number,
-            c.resolution,
-            c.refund_reason,
-            c.notes,
-            c.case_type,
-            c.status
-          ].filter(Boolean).map(f => String(f).toLowerCase());
-          return searchFields.some(field => field.includes(searchTerm));
-        });
-      }
-
-      // Status filter
-      if (statusFilter !== 'all') filtered = filtered.filter(c => c.status === statusFilter);
-
-      // Due date filter
-      if (dueFilter !== 'all') {
-        filtered = filtered.filter(c => {
-          if (!c.created_at || c.status === 'completed') return false;
-          const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
-          const now = Date.now();
-          const hoursLeft = (dueDate.getTime() - now) / (60*60*1000);
-          if (dueFilter === 'overdue') return hoursLeft < 0;
-          if (dueFilter === 'urgent') return hoursLeft >= 0 && hoursLeft < 6;
-          if (dueFilter === 'today') return hoursLeft >= 0 && hoursLeft < 24;
-          return true;
-        });
-      }
-
-      // Sort
-      filtered.sort((a, b) => {
-        if (sortBy === 'newest') return new Date(b.created_at) - new Date(a.created_at);
-        if (sortBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
-        if (sortBy === 'due_soonest') {
-          const dueA = new Date(a.created_at).getTime() + 24*60*60*1000;
-          const dueB = new Date(b.created_at).getTime() + 24*60*60*1000;
-          return dueA - dueB;
-        }
-        if (sortBy === 'amount_high') return (parseFloat(b.refund_amount)||0) - (parseFloat(a.refund_amount)||0);
-        return 0;
-      });
-
-      // Update results count
-      const countEl = document.getElementById('searchResultsCount');
-      const total = window.allCases?.length || 0;
-      if (countEl) {
-        if (searchTerm || statusFilter !== 'all' || dueFilter !== 'all') {
-          countEl.textContent = filtered.length + ' of ' + total + ' cases';
-        } else {
-          countEl.textContent = '';
-        }
-      }
-
-      const tbody = document.getElementById('casesTableBody');
-      tbody.innerHTML = filtered.length ? filtered.map(renderCaseRow).join('') : '<tr><td colspan="8" class="empty-state">No cases match filters</td></tr>';
-    }
-
-    async function loadSessionsView() {
-      const view = document.getElementById('sessionsView');
-      view.innerHTML = '<div class="spinner"></div>';
-      try {
-        const r = await fetch(API+'/hub/api/sessions?limit=100'); const d = await r.json();
-        const sessions = d.sessions || [];
-        const completedSessions = sessions.filter(s => s.completed);
-        const incompleteSessions = sessions.filter(s => !s.completed);
-
-        // Calculate time status for sessions (sessions have 30 min typical duration)
-        function getSessionTimeStatus(s) {
-          if (s.completed) return { text: 'Completed', class: 'completed' };
-          const created = new Date(s.created_at).getTime();
-          const elapsed = Date.now() - created;
-          const elapsedMins = Math.floor(elapsed / 60000);
-          if (elapsedMins < 30) return { text: elapsedMins + 'm active', class: 'in-progress' };
-          if (elapsedMins < 60) return { text: 'Idle ' + elapsedMins + 'm', class: 'pending' };
-          const hours = Math.floor(elapsedMins / 60);
-          return { text: 'Abandoned ' + hours + 'h ago', class: 'abandoned' };
-        }
-
-        function renderSessionRow(s) {
-          const hasRecording = s.session_replay_url;
-          const customerName = s.customer_name || s.customer_email?.split('@')[0] || 'Anonymous';
-          const flowLabel = { 'refund': 'Refund Request', 'shipping': 'Shipping Issue', 'subscription': 'Subscription', 'manual': 'Manual Help', 'help': 'Help Request', 'track': 'Order Tracking' }[s.flow_type] || s.flow_type || 'Unknown';
-          const timeStatus = getSessionTimeStatus(s);
-          return '<tr>'+
-            '<td><div style="display:flex;flex-direction:column;gap:4px;"><span class="customer-name">'+customerName+'</span><span class="customer-email" style="font-size:11px;color:var(--gray-400);">'+(s.customer_email||'No email')+'</span></div></td>'+
-            '<td><span class="type-badge '+s.flow_type+'">'+flowLabel+'</span></td>'+
-            '<td>'+(s.order_number||'-')+'</td>'+
-            '<td><span class="status-badge '+timeStatus.class+'">'+timeStatus.text+'</span></td>'+
-            '<td>'+timeAgo(s.created_at)+'</td>'+
-            '<td>'+(hasRecording ? '<a href="'+s.session_replay_url+'" target="_blank" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">Watch Recording</a>' : '<span style="color:var(--gray-400);font-size:12px;">No recording</span>')+'</td>'+
-          '</tr>';
-        }
-
-        // Count abandoned sessions
-        const abandonedSessions = sessions.filter(s => !s.completed && (Date.now() - new Date(s.created_at).getTime()) > 60*60*1000);
-
-        view.innerHTML = '<div class="sessions-container">'+
-          '<div class="stats-grid" style="margin-bottom:24px;">'+
-            '<div class="stat-card"><div class="stat-label">Total Sessions</div><div class="stat-value">'+sessions.length+'</div></div>'+
-            '<div class="stat-card" style="border-left:3px solid #10b981;"><div class="stat-label">Completed</div><div class="stat-value" style="color:#10b981;">'+completedSessions.length+'</div></div>'+
-            '<div class="stat-card" style="border-left:3px solid #f59e0b;"><div class="stat-label">In Progress</div><div class="stat-value" style="color:#f59e0b;">'+(incompleteSessions.length - abandonedSessions.length)+'</div></div>'+
-            '<div class="stat-card" style="border-left:3px solid #ef4444;"><div class="stat-label">Abandoned</div><div class="stat-value" style="color:#ef4444;">'+abandonedSessions.length+'</div></div>'+
-          '</div>'+
-          '<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">'+
-            '<div class="tab-buttons" style="display:flex;gap:8px;">'+
-              '<button class="btn btn-primary" id="tabAll" onclick="filterSessions(\\'all\\')">All ('+sessions.length+')</button>'+
-              '<button class="btn btn-secondary" id="tabCompleted" onclick="filterSessions(\\'completed\\')">Completed ('+completedSessions.length+')</button>'+
-              '<button class="btn btn-secondary" id="tabIncomplete" onclick="filterSessions(\\'incomplete\\')">In Progress ('+(incompleteSessions.length - abandonedSessions.length)+')</button>'+
-              '<button class="btn btn-secondary" id="tabAbandoned" onclick="filterSessions(\\'abandoned\\')">Abandoned ('+abandonedSessions.length+')</button>'+
-            '</div>'+
-            '<select id="sessionSortBy" onchange="filterSessions(window.currentSessionFilter||\\'all\\')" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;">'+
-              '<option value="newest">Newest First</option>'+
-              '<option value="oldest">Oldest First</option>'+
-            '</select>'+
-          '</div>'+
-          '<div class="cases-card"><table class="cases-table"><thead><tr><th>Customer</th><th>Flow Type</th><th>Order #</th><th>Status</th><th>Started</th><th>Recording</th></tr></thead><tbody id="sessionsTableBody">'+
-            (sessions.length ? sessions.map(renderSessionRow).join('') : '<tr><td colspan="6" class="empty-state">No sessions yet</td></tr>')+
-          '</tbody></table></div>'+
-        '</div>';
-
-        window.allSessions = sessions;
-        window.renderSessionRow = renderSessionRow;
-        window.currentSessionFilter = 'all';
-      } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load sessions</div>'; }
-    }
-
-    function filterSessions(filter) {
-      window.currentSessionFilter = filter;
-      const sortBy = document.getElementById('sessionSortBy')?.value || 'newest';
-      let filtered = [...(window.allSessions || [])];
-
-      if (filter === 'completed') filtered = filtered.filter(s => s.completed);
-      if (filter === 'incomplete') filtered = filtered.filter(s => !s.completed && (Date.now() - new Date(s.created_at).getTime()) <= 60*60*1000);
-      if (filter === 'abandoned') filtered = filtered.filter(s => !s.completed && (Date.now() - new Date(s.created_at).getTime()) > 60*60*1000);
-
-      // Sort
-      filtered.sort((a, b) => {
-        if (sortBy === 'newest') return new Date(b.created_at) - new Date(a.created_at);
-        if (sortBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
-        return 0;
-      });
-
-      const tbody = document.getElementById('sessionsTableBody');
-      tbody.innerHTML = filtered.length ? filtered.map(window.renderSessionRow).join('') : '<tr><td colspan="6" class="empty-state">No sessions found</td></tr>';
-
-      // Update tab styling
-      document.getElementById('tabAll').className = filter === 'all' ? 'btn btn-primary' : 'btn btn-secondary';
-      document.getElementById('tabCompleted').className = filter === 'completed' ? 'btn btn-primary' : 'btn btn-secondary';
-      document.getElementById('tabIncomplete').className = filter === 'incomplete' ? 'btn btn-primary' : 'btn btn-secondary';
-      document.getElementById('tabAbandoned').className = filter === 'abandoned' ? 'btn btn-primary' : 'btn btn-secondary';
-    }
-
-    async function loadEventsView() {
-      const view = document.getElementById('eventsView');
-      view.innerHTML = '<div class="spinner"></div>';
-      try {
-        const r = await fetch(API+'/hub/api/events?limit=100'); const d = await r.json();
-        const events = d.events || [];
-
-        // Format event for display
-        function formatEventName(e) {
-          const nameMap = {
-            'flow_start': 'Started Resolution Flow',
-            'flow_complete': 'Completed Resolution Flow',
-            'step_view': 'Viewed Step',
-            'step_complete': 'Completed Step',
-            'order_lookup': 'Looked Up Order',
-            'order_found': 'Order Found',
-            'order_not_found': 'Order Not Found',
-            'photo_upload': 'Uploaded Photo',
-            'resolution_selected': 'Selected Resolution',
-            'case_submitted': 'Case Submitted',
-            'status_change': 'Status Changed',
-            'page_view': 'Viewed Page',
-            'button_click': 'Clicked Button',
-            'form_submit': 'Submitted Form'
-          };
-          return nameMap[e.event_name] || e.event_name?.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase()) || 'Unknown Event';
-        }
-
-        function formatEventDetails(e) {
-          if (!e.event_data) return '-';
-          try {
-            const data = typeof e.event_data === 'string' ? JSON.parse(e.event_data) : e.event_data;
-            // Create human-readable summary
-            const parts = [];
-            if (data.step_name) parts.push('Step: ' + data.step_name);
-            if (data.flow_type) parts.push('Flow: ' + data.flow_type);
-            if (data.order_number) parts.push('Order: #' + data.order_number);
-            if (data.resolution) parts.push('Resolution: ' + data.resolution);
-            if (data.old_status && data.new_status) parts.push(data.old_status + ' → ' + data.new_status);
-            if (data.case_id) parts.push('Case: ' + data.case_id);
-            return parts.length ? parts.join(' | ') : '-';
-          } catch { return '-'; }
-        }
-
-        function getEventIcon(type) {
-          const icons = {
-            'flow_start': '🚀', 'flow_complete': '✅', 'step_view': '👁️', 'step_complete': '✓',
-            'order_lookup': '🔍', 'order_found': '📦', 'order_not_found': '❌',
-            'photo_upload': '📷', 'resolution_selected': '🎯', 'case_submitted': '📋',
-            'status_change': '🔄', 'page_view': '📄', 'button_click': '👆', 'form_submit': '📝'
-          };
-          return icons[type] || '📌';
-        }
-
-        function getEventColor(type) {
-          const colors = {
-            'flow_start': '#3b82f6', 'flow_complete': '#10b981', 'case_submitted': '#8b5cf6',
-            'status_change': '#f59e0b', 'order_not_found': '#ef4444', 'photo_upload': '#06b6d4'
-          };
-          return colors[type] || '#6b7280';
-        }
-
-        view.innerHTML = '<div class="events-container">'+
-          '<div class="cases-card"><div class="cases-header"><h2 class="cases-title">Activity Log</h2><span style="color:var(--gray-500);">'+events.length+' recent events</span></div>'+
-          '<div style="padding:0 20px 20px;">'+
-            (events.length ? events.map(function(e) {
-              return '<div style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--gray-100);">'+
-                '<div style="width:40px;height:40px;border-radius:10px;background:'+getEventColor(e.event_name)+'15;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">'+getEventIcon(e.event_name)+'</div>'+
-                '<div style="flex:1;min-width:0;">'+
-                  '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">'+
-                    '<div>'+
-                      '<div style="font-weight:600;color:var(--gray-800);margin-bottom:4px;">'+formatEventName(e)+'</div>'+
-                      '<div style="font-size:13px;color:var(--gray-500);">'+formatEventDetails(e)+'</div>'+
-                    '</div>'+
-                    '<div style="font-size:12px;color:var(--gray-400);white-space:nowrap;">'+timeAgo(e.created_at)+'</div>'+
-                  '</div>'+
-                '</div>'+
-              '</div>';
-            }).join('') : '<div class="empty-state">No events yet</div>')+
-          '</div></div>'+
-        '</div>';
-      } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load events</div>'; }
-    }
-
-    // ============================================
-    // ISSUES / TROUBLE REPORTS
-    // ============================================
-
-    async function loadIssuesView() {
-      const view = document.getElementById('issuesView');
-      view.innerHTML = '<div class="spinner"></div>';
-      try {
-        const r = await fetch(API+'/hub/api/issues?limit=50');
-        const d = await r.json();
-        issuesList = d.issues || [];
-
-        // Update badge count
-        const countEl = document.getElementById('issuesCount');
-        if (countEl) countEl.textContent = issuesList.filter(i => i.status !== 'resolved').length;
-
-        function renderIssueRow(issue) {
-          const statusClass = (issue.status || 'pending').replace('_', '-');
-          const shortDesc = (issue.description || '-').substring(0, 60) + ((issue.description || '').length > 60 ? '...' : '');
-          return '<tr onclick="openIssue(\\''+issue.report_id+'\\')">'+
-            '<td><span class="case-id" style="background:#fef3c7;color:#92400e;">'+issue.report_id+'</span></td>'+
-            '<td><div class="customer-info"><span class="customer-name">'+(issue.name||'Unknown')+'</span><span class="customer-email">'+(issue.email||'')+'</span></div></td>'+
-            '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--gray-600);">'+shortDesc+'</td>'+
-            '<td><span class="status-badge '+statusClass+'">'+(issue.status||'pending')+'</span></td>'+
-            '<td class="time-ago">'+timeAgo(issue.created_at)+'</td>'+
-          '</tr>';
-        }
-
-        view.innerHTML = '<div class="cases-card">'+
-          '<div class="cases-header">'+
-            '<h2 class="cases-title">Issue Reports</h2>'+
-            '<span style="color:var(--gray-500);">Users who reported problems with the resolution app</span>'+
-          '</div>'+
-          '<table class="cases-table">'+
-            '<thead><tr><th>Report ID</th><th>Customer</th><th>Issue</th><th>Status</th><th>Reported</th></tr></thead>'+
-            '<tbody>'+
-              (issuesList.length ? issuesList.map(renderIssueRow).join('') : '<tr><td colspan="5" class="empty-state">No issue reports yet</td></tr>')+
-            '</tbody>'+
-          '</table>'+
-        '</div>';
-
-      } catch(e) {
-        console.error(e);
-        view.innerHTML = '<div class="empty-state">Failed to load issues</div>';
-      }
-    }
-
-    async function openIssue(reportId) {
-      document.getElementById('issueModal').classList.add('active');
-      document.getElementById('issueModalId').textContent = reportId;
-      document.getElementById('issueModalName').textContent = 'Loading...';
-
-      currentIssueIndex = issuesList.findIndex(i => i.report_id === reportId);
-
-      try {
-        const r = await fetch(API+'/hub/api/issues/'+reportId);
-        const issue = await r.json();
-        currentIssue = issue;
-
-        // Populate modal
-        document.getElementById('issueModalId').textContent = issue.report_id;
-        document.getElementById('issueModalName').textContent = issue.name || 'Unknown';
-        const statusText = (issue.status || 'pending').replace('_', ' ');
-        document.getElementById('issueModalStatusBadge').innerHTML = '<span class="status-badge '+(issue.status||'pending').replace('_','-')+'">'+statusText+'</span>';
-        document.getElementById('issueModalTime').textContent = timeAgo(issue.created_at);
-
-        document.getElementById('issueModalEmail').textContent = issue.email || '-';
-        document.getElementById('issueModalDescription').textContent = issue.description || 'No description provided';
-
-        document.getElementById('issueModalSession').textContent = issue.session_id || 'N/A';
-        document.getElementById('issueModalStep').textContent = issue.current_step || 'Unknown';
-        document.getElementById('issueModalBrowser').textContent = issue.browser || 'Unknown';
-
-        document.getElementById('issueTimelineCreated').textContent = formatDate(issue.created_at);
-
-        // Update status cards - highlight current status
-        document.querySelectorAll('#issueModal .status-card').forEach(card => card.classList.remove('active'));
-        const statusClass = (issue.status || 'pending') === 'resolved' ? 'completed' : (issue.status || 'pending').replace('_', '-');
-        document.querySelector('#issueModal .status-card.' + statusClass)?.classList.add('active');
-
-        // Richpanel conversation link
-        const conversationLink = document.getElementById('issueConversationLink');
-        if (issue.richpanel_conversation_no) {
-          conversationLink.href = 'https://app.richpanel.com/conversations?viewId=search&conversationNo=' + issue.richpanel_conversation_no;
-          conversationLink.style.display = 'flex';
-        } else {
-          conversationLink.style.display = 'none';
-        }
-
-        // Session replay link - use stored URL if available, otherwise construct from session ID
-        const replayLink = document.getElementById('issueReplayLink');
-        if (issue.session_replay_url) {
-          replayLink.href = issue.session_replay_url;
-          replayLink.style.display = 'flex';
-        } else if (issue.session_id) {
-          // Fallback: construct URL from session ID
-          replayLink.href = 'https://app.posthog.com/replay/' + issue.session_id;
-          replayLink.style.display = 'flex';
-        } else {
-          replayLink.style.display = 'none';
-        }
-
-        // Navigation buttons
-        document.getElementById('prevIssueBtn').disabled = currentIssueIndex <= 0;
-        document.getElementById('nextIssueBtn').disabled = currentIssueIndex >= issuesList.length - 1;
-
-      } catch(e) {
-        console.error(e);
-        document.getElementById('issueModalDescription').textContent = 'Failed to load issue details';
-      }
-    }
-
-    function closeIssueModal() {
-      document.getElementById('issueModal').classList.remove('active');
-      currentIssue = null;
-    }
-
-    function navigateIssue(direction) {
-      if (direction === 'prev' && currentIssueIndex > 0) {
-        openIssue(issuesList[currentIssueIndex - 1].report_id);
-      } else if (direction === 'next' && currentIssueIndex < issuesList.length - 1) {
-        openIssue(issuesList[currentIssueIndex + 1].report_id);
-      }
-    }
-
-    async function updateIssueStatus(newStatus) {
-      if (!currentIssue) return;
-      try {
-        const r = await fetch(API+'/hub/api/issues/'+currentIssue.report_id+'/status', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: newStatus })
-        });
-        if (r.ok) {
-          currentIssue.status = newStatus;
-          // Update UI - header badge
-          const statusText = newStatus.replace('_', ' ');
-          document.getElementById('issueModalStatusBadge').innerHTML = '<span class="status-badge '+newStatus.replace('_','-')+'">'+statusText+'</span>';
-          // Update status cards
-          document.querySelectorAll('#issueModal .status-card').forEach(card => card.classList.remove('active'));
-          const statusClass = newStatus === 'resolved' ? 'completed' : newStatus.replace('_', '-');
-          document.querySelector('#issueModal .status-card.' + statusClass)?.classList.add('active');
-          // Refresh list
-          loadIssuesView();
-        }
-      } catch(e) { console.error(e); }
-    }
-
-    // Close issue modal when clicking outside
-    document.getElementById('issueModal').addEventListener('click', e => { if(e.target.id === 'issueModal') closeIssueModal(); });
-
-    let analyticsCharts = {};
-
-    async function loadAnalyticsView() {
-      const view = document.getElementById('analyticsView');
-      view.innerHTML = '<div class="spinner"></div>';
-      try {
-        const r = await fetch(API+'/hub/api/analytics'); const d = await r.json();
-        const typeData = d.casesByType||[]; const statusData = d.casesByStatus||[];
-
-        // Build resolution types list
-        const resolutionList = (d.resolutionTypes||[]).map(function(r) {
-          return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="breakdown-item-name">'+formatResolution(r.resolution)+'</span><span class="breakdown-item-meta">'+(r.total_refund ? '$'+parseFloat(r.total_refund).toFixed(2)+' total' : '')+'</span></div><span class="breakdown-item-count">'+r.count+'</span></div>';
-        }).join('') || '<div class="empty-state">No data</div>';
-
-        // Build status list
-        const statusList = statusData.map(function(s) {
-          return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="status-badge '+(s.status||'').replace('_','-')+'">'+(s.status||'unknown').replace('_',' ')+'</span></div><span class="breakdown-item-count">'+s.count+'</span></div>';
-        }).join('') || '<div class="empty-state">No data</div>';
-
-        // Build flow types list
-        const flowList = (d.flowTypes||[]).map(function(f) {
-          return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="type-badge '+f.flow_type+'">'+(f.flow_type || 'unknown')+'</span></div><span class="breakdown-item-count">'+f.count+'</span></div>';
-        }).join('') || '<div class="empty-state">No data</div>';
-
-        // Build team performance leaderboard
-        const teamList = (d.teamPerformance||[]).map(function(t, i) {
-          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
-          const avgHours = t.avg_resolution_hours ? t.avg_resolution_hours.toFixed(1) + 'h avg' : '';
-          return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="breakdown-item-name">' + medal + ' ' + (t.user_name || 'Unknown') + '</span><span class="breakdown-item-meta">' + avgHours + (t.total_refunds ? ' · $' + parseFloat(t.total_refunds).toFixed(0) + ' refunds' : '') + '</span></div><span class="breakdown-item-count">' + t.cases_completed + '</span></div>';
-        }).join('') || '<div class="empty-state">No data yet</div>';
-
-        // Build root cause analysis list
-        const rootCauseList = (d.rootCauses||[]).map(function(r) {
-          return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="breakdown-item-name">' + formatResolution(r.reason) + '</span><span class="breakdown-item-meta">' + (r.total_amount ? '$' + parseFloat(r.total_amount).toFixed(0) + ' total' : '') + (r.avg_amount ? ' · $' + parseFloat(r.avg_amount).toFixed(0) + ' avg' : '') + '</span></div><span class="breakdown-item-count">' + r.count + '</span></div>';
-        }).join('') || '<div class="empty-state">No data</div>';
-
-        // Build resolution time distribution
-        const timeDistList = (d.resolutionDistribution||[]).map(function(t) {
-          const color = t.time_bucket === '< 1 hour' ? '#10b981' : t.time_bucket === '1-4 hours' ? '#22c55e' : t.time_bucket === '4-12 hours' ? '#f59e0b' : t.time_bucket === '12-24 hours' ? '#f97316' : '#ef4444';
-          return '<div class="breakdown-item"><div class="breakdown-item-info"><span class="breakdown-item-name" style="color:' + color + ';">' + t.time_bucket + '</span></div><span class="breakdown-item-count">' + t.count + '</span></div>';
-        }).join('') || '<div class="empty-state">No data</div>';
-
-        // Format resolution time
-        function formatHours(h) {
-          if (!h || h === 0) return '-';
-          if (h < 1) return Math.round(h * 60) + 'm';
-          if (h < 24) return h.toFixed(1) + 'h';
-          return (h / 24).toFixed(1) + 'd';
-        }
-
-        view.innerHTML = '<div class="analytics-header"><div class="analytics-title-section"><h2>Performance Dashboard</h2><p>Track your resolution metrics and KPIs</p></div><div class="analytics-actions"><select id="reportPeriod" onchange="loadAnalyticsView()" style="padding:10px 16px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;cursor:pointer;"><option value="14">Last 14 Days</option><option value="30">Last 30 Days</option><option value="90">Last 90 Days</option></select><button onclick="downloadReport()" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Export Report</button></div></div>'+
-          '<div class="kpi-grid">'+
-            '<div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff;color:#2563eb;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.totalCases||0)+'</div><div class="kpi-label">Total Cases</div><div class="kpi-sub">'+(d.casesToday||0)+' today</div></div></div>'+
-            '<div class="kpi-card"><div class="kpi-icon" style="background:#fef3c7;color:#d97706;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.pendingCases||0)+'</div><div class="kpi-label">Pending Cases</div><div class="kpi-sub'+((d.staleCases||0)>0?' alert':'')+'">'+(d.staleCases||0)+' overdue (24h+)</div></div></div>'+
-            '<div class="kpi-card"><div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.inProgressCases||0)+'</div><div class="kpi-label">In Progress</div><div class="kpi-sub">Being worked on</div></div></div>'+
-            '<div class="kpi-card success"><div class="kpi-icon" style="background:#d1fae5;color:#059669;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.completedCases||0)+'</div><div class="kpi-label">Completed</div><div class="kpi-sub">'+(d.completionRate||0)+'% resolution rate</div></div></div>'+
-          '</div>'+
-          '<div class="kpi-grid" style="margin-top:16px;">'+
-            '<div class="kpi-card highlight"><div class="kpi-icon" style="background:rgba(255,255,255,0.2);color:white;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="kpi-content"><div class="kpi-value">$'+(d.totalRefunds||0).toFixed(2)+'</div><div class="kpi-label">Total Refunds</div><div class="kpi-sub">All time</div></div></div>'+
-            '<div class="kpi-card"><div class="kpi-icon" style="background:#fce7f3;color:#db2777;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div><div class="kpi-content"><div class="kpi-value">$'+(d.refundsThisMonth||0).toFixed(2)+'</div><div class="kpi-label">Refunds (30d)</div><div class="kpi-sub">This month</div></div></div>'+
-            '<div class="kpi-card"><div class="kpi-icon" style="background:#e0e7ff;color:#4f46e5;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg></div><div class="kpi-content"><div class="kpi-value">$'+(d.avgRefund||0).toFixed(2)+'</div><div class="kpi-label">Avg. Refund</div><div class="kpi-sub">Per case</div></div></div>'+
-            '<div class="kpi-card"><div class="kpi-icon" style="background:#ecfdf5;color:#059669;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.totalSessions||0)+'</div><div class="kpi-label">Total Sessions</div><div class="kpi-sub">'+(d.completionRate||0)+'% completion</div></div></div>'+
-          '</div>'+
-          // Time & SLA Metrics Row
-          '<div class="kpi-grid" style="margin-top:16px;">'+
-            '<div class="kpi-card"><div class="kpi-icon" style="background:#dbeafe;color:#2563eb;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+formatHours(d.avgResolutionHours)+'</div><div class="kpi-label">Avg Resolution Time</div><div class="kpi-sub">Min: '+formatHours(d.minResolutionHours)+' · Max: '+formatHours(d.maxResolutionHours)+'</div></div></div>'+
-            '<div class="kpi-card '+(d.slaComplianceRate >= 90 ? 'success' : d.slaComplianceRate >= 70 ? '' : 'warning')+'"><div class="kpi-icon" style="background:'+(d.slaComplianceRate >= 90 ? '#d1fae5' : d.slaComplianceRate >= 70 ? '#fef3c7' : '#fee2e2')+';color:'+(d.slaComplianceRate >= 90 ? '#059669' : d.slaComplianceRate >= 70 ? '#d97706' : '#dc2626')+';"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.slaComplianceRate||0)+'%</div><div class="kpi-label">SLA Compliance</div><div class="kpi-sub">'+(d.slaCompliant||0)+' met · '+(d.slaBreached||0)+' breached (24h)</div></div></div>'+
-            '<div class="kpi-card"><div class="kpi-icon" style="background:#faf5ff;color:#7c3aed;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.teamPerformance?.length||0)+'</div><div class="kpi-label">Active Team Members</div><div class="kpi-sub">Last 30 days</div></div></div>'+
-            '<div class="kpi-card"><div class="kpi-icon" style="background:#fef2f2;color:#dc2626;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><div class="kpi-content"><div class="kpi-value">'+(d.rootCauses?.length||0)+'</div><div class="kpi-label">Root Cause Categories</div><div class="kpi-sub">Last 30 days</div></div></div>'+
-          '</div>'+
-          '<div class="charts-grid">'+
-            '<div class="chart-card"><div class="chart-header"><h3>Cases & Sessions Trend</h3><span class="chart-period">Last 14 days</span></div><div class="chart-body"><canvas id="trendChart" height="250"></canvas></div></div>'+
-            '<div class="chart-card"><div class="chart-header"><h3>Cases by Type</h3></div><div class="chart-body"><canvas id="typeChart" height="250"></canvas></div></div>'+
-          '</div>'+
-          '<div class="breakdown-grid">'+
-            '<div class="breakdown-card"><div class="breakdown-header"><h3>Resolution Types</h3><span class="breakdown-count">'+(d.resolutionTypes||[]).length+' types</span></div><div class="breakdown-list">'+resolutionList+'</div></div>'+
-            '<div class="breakdown-card"><div class="breakdown-header"><h3>Status Distribution</h3></div><div class="breakdown-list">'+statusList+'</div></div>'+
-            '<div class="breakdown-card"><div class="breakdown-header"><h3>Flow Types</h3></div><div class="breakdown-list">'+flowList+'</div></div>'+
-          '</div>'+
-          // Phase 3: Enhanced Analytics Breakdown Cards
-          '<div class="breakdown-grid" style="margin-top:20px;">'+
-            '<div class="breakdown-card"><div class="breakdown-header"><h3>Team Leaderboard</h3><span class="breakdown-count">Last 30 days</span></div><div class="breakdown-list">'+teamList+'</div></div>'+
-            '<div class="breakdown-card"><div class="breakdown-header"><h3>Root Cause Analysis</h3><span class="breakdown-count">'+(d.rootCauses||[]).length+' categories</span></div><div class="breakdown-list">'+rootCauseList+'</div></div>'+
-            '<div class="breakdown-card"><div class="breakdown-header"><h3>Resolution Time Distribution</h3></div><div class="breakdown-list">'+timeDistList+'</div></div>'+
-          '</div>';
-
-        // Initialize charts
-        renderTrendChart(d);
-        renderTypeChart(typeData);
-
-      } catch(e) { console.error(e); view.innerHTML = '<div class="empty-state">Failed to load analytics</div>'; }
-    }
-
-    function renderTrendChart(data) {
-      const ctx = document.getElementById('trendChart');
-      if (!ctx) return;
-
-      // Destroy existing chart
-      if (analyticsCharts.trend) analyticsCharts.trend.destroy();
-
-      const labels = (data.casesByDay || []).map(d => {
-        const date = new Date(d.date);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      });
-
-      analyticsCharts.trend = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: 'Cases',
-              data: (data.casesByDay || []).map(d => d.count),
-              borderColor: '#1e3a5f',
-              backgroundColor: 'rgba(30,58,95,0.1)',
-              fill: true,
-              tension: 0.4,
-              pointRadius: 4,
-              pointBackgroundColor: '#1e3a5f'
-            },
-            {
-              label: 'Sessions',
-              data: (data.sessionsByDay || []).map(d => d.count),
-              borderColor: '#4ecdc4',
-              backgroundColor: 'rgba(78,205,196,0.1)',
-              fill: true,
-              tension: 0.4,
-              pointRadius: 4,
-              pointBackgroundColor: '#4ecdc4'
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom' } },
-          scales: {
-            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-            x: { grid: { display: false } }
-          }
-        }
-      });
-    }
-
-    function renderTypeChart(typeData) {
-      const ctx = document.getElementById('typeChart');
-      if (!ctx) return;
-
-      if (analyticsCharts.type) analyticsCharts.type.destroy();
-
-      const colors = {
-        'refund': '#ef4444',
-        'shipping': '#3b82f6',
-        'subscription': '#10b981',
-        'return': '#f59e0b',
-        'manual': '#6b7280'
+      document.querySelector(\`.nav-item[data-page="${page}"]${filter ? \`[data-filter="${filter}"]\` : ''}\`).classList.add('active');
+
+      // Update page title
+      const titles = {
+        'dashboard': 'Dashboard',
+        'cases': 'Cases',
+        'sessions': 'Sessions',
+        'events': 'Event Log',
+        'analytics': 'Performance'
       };
-
-      analyticsCharts.type = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: typeData.map(t => t.case_type),
-          datasets: [{
-            data: typeData.map(t => t.count),
-            backgroundColor: typeData.map(t => colors[t.case_type] || '#6b7280'),
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'right' }
-          },
-          cutout: '60%'
-        }
-      });
-    }
-
-    async function downloadReport() {
-      try {
-        // Fetch latest analytics data
-        const r = await fetch(API+'/hub/api/analytics');
-        const d = await r.json();
-
-        // Generate comprehensive CSV report
-        const rows = [
-          ['PuppyPad Resolution Hub Report'],
-          ['Generated:', new Date().toLocaleString()],
-          [''],
-          ['=== OVERVIEW ==='],
-          ['Total Cases', d.totalCases || 0],
-          ['Cases Today', d.casesToday || 0],
-          ['Cases This Week', d.casesThisWeek || 0],
-          ['Cases This Month', d.casesThisMonth || 0],
-          [''],
-          ['=== STATUS BREAKDOWN ==='],
-          ['Pending Cases', d.pendingCases || 0],
-          ['In Progress Cases', d.inProgressCases || 0],
-          ['Completed Cases', d.completedCases || 0],
-          ['Stale Cases (24h+)', d.staleCases || 0],
-          [''],
-          ['=== SESSIONS ==='],
-          ['Total Sessions', d.totalSessions || 0],
-          ['Completed Sessions', d.completedSessions || 0],
-          ['Completion Rate', (d.completionRate || 0) + '%'],
-          [''],
-          ['=== FINANCIAL ==='],
-          ['Total Refunds', '$' + (d.totalRefunds || 0).toFixed(2)],
-          ['Refunds (Last 30 Days)', '$' + (d.refundsThisMonth || 0).toFixed(2)],
-          ['Average Refund', '$' + (d.avgRefund || 0).toFixed(2)],
-          [''],
-          ['=== CASES BY TYPE ==='],
-        ];
-
-        (d.casesByType || []).forEach(t => {
-          rows.push([t.case_type || 'unknown', t.count || 0]);
-        });
-
-        rows.push(['']);
-        rows.push(['=== RESOLUTION TYPES ===']);
-        rows.push(['Resolution', 'Count', 'Total Refund']);
-        (d.resolutionTypes || []).forEach(r => {
-          rows.push([formatResolution(r.resolution), r.count || 0, '$' + (parseFloat(r.total_refund) || 0).toFixed(2)]);
-        });
-
-        rows.push(['']);
-        rows.push(['=== FLOW TYPES ===']);
-        (d.flowTypes || []).forEach(f => {
-          rows.push([f.flow_type || 'unknown', f.count || 0]);
-        });
-
-        rows.push(['']);
-        rows.push(['=== DAILY TRENDS (Last 14 Days) ===']);
-        rows.push(['Date', 'Cases', 'Sessions']);
-        const dates = new Set([...(d.casesByDay||[]).map(x=>x.date), ...(d.sessionsByDay||[]).map(x=>x.date)]);
-        [...dates].sort().forEach(date => {
-          const caseCount = (d.casesByDay||[]).find(x=>x.date===date)?.count || 0;
-          const sessionCount = (d.sessionsByDay||[]).find(x=>x.date===date)?.count || 0;
-          rows.push([date, caseCount, sessionCount]);
-        });
-
-        const csvContent = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'resolution-hub-report-' + new Date().toISOString().split('T')[0] + '.csv';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch(e) {
-        console.error('Report download error:', e);
-        alert('Failed to generate report. Please try again.');
-      }
-    }
-
-    function timeAgo(d) { if(!d)return'-'; const s=Math.floor((Date.now()-new Date(d))/1000); if(s<60)return'Just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
-    function formatDate(d) { if(!d)return'-'; return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
-
-    async function loadCaseActivity() {
-      if (!currentCase) return;
-      const container = document.getElementById('activityTimeline');
-      if (!container) return;
-
-      try {
-        const r = await fetch(API + '/hub/api/case/' + currentCase.case_id + '/activity');
-        const data = await r.json();
-
-        if (!data.success || !data.activities?.length) {
-          // Keep showing the basic timeline
-          return;
-        }
-
-        // Build enhanced timeline with activities
-        let html = '';
-
-        // Sort activities by timestamp descending (newest first)
-        const activities = data.activities.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-        activities.forEach(activity => {
-          const activityConfig = getActivityConfig(activity.activity_type);
-          html += '<div class="timeline-item">' +
-            '<div class="timeline-dot" style="background:' + activityConfig.color + ';"></div>' +
-            '<div class="timeline-content">' +
-              '<div class="timeline-header">' +
-                '<span class="timeline-label">' + activityConfig.label + '</span>' +
-                '<span class="timeline-time">' + timeAgo(activity.created_at) + '</span>' +
-              '</div>' +
-              '<div class="timeline-value">' + formatActivityDetails(activity) + '</div>' +
-              (activity.actor ? '<div class="timeline-actor">by ' + (activity.actor_email || activity.actor) + '</div>' : '') +
-            '</div>' +
-          '</div>';
-        });
-
-        // Add case created as first event (at the bottom since we're sorted newest first)
-        html += '<div class="timeline-item">' +
-          '<div class="timeline-dot" style="background:var(--brand-navy);"></div>' +
-          '<div class="timeline-content">' +
-            '<div class="timeline-header">' +
-              '<span class="timeline-label">Case Created</span>' +
-              '<span class="timeline-time">' + timeAgo(currentCase.created_at) + '</span>' +
-            '</div>' +
-            '<div class="timeline-value">' + formatDate(currentCase.created_at) + '</div>' +
-          '</div>' +
-        '</div>';
-
-        container.innerHTML = html;
-      } catch (e) {
-        console.error('Failed to load activity:', e);
-      }
-    }
-
-    function getActivityConfig(type) {
-      const configs = {
-        'status_change': { label: 'Status Changed', color: '#3b82f6' },
-        'note_added': { label: 'Note Added', color: '#8b5cf6' },
-        'comment_added': { label: 'Comment Added', color: '#8b5cf6' },
-        'assigned': { label: 'Assigned', color: '#f59e0b' },
-        'unassigned': { label: 'Unassigned', color: '#6b7280' },
-        'resolution_updated': { label: 'Resolution Updated', color: '#10b981' },
-        'clickup_created': { label: 'ClickUp Task Created', color: '#7c3aed' },
-        'checklist_completed': { label: 'Checklist Completed', color: '#10b981' },
-        'webhook_update': { label: 'External Update', color: '#06b6d4' }
-      };
-      return configs[type] || { label: type?.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase()) || 'Activity', color: '#6b7280' };
-    }
-
-    function formatActivityDetails(activity) {
-      if (activity.activity_type === 'status_change') {
-        return (activity.old_value || 'unknown') + ' → ' + (activity.new_value || 'unknown');
-      }
-      if (activity.activity_type === 'note_added' || activity.activity_type === 'comment_added') {
-        const note = activity.new_value || '';
-        return note.length > 100 ? note.substring(0, 100) + '...' : note;
-      }
-      if (activity.field_name) {
-        return activity.field_name + ': ' + (activity.new_value || '-');
-      }
-      return activity.new_value || '-';
-    }
-
-    // Build issue summary HTML - explains what the customer's problem is with rich context
-    function buildIssueSummaryHtml(c) {
-      let extra = {};
-      try {
-        if (c.extra_data) extra = typeof c.extra_data === 'string' ? JSON.parse(c.extra_data) : c.extra_data;
-      } catch(e) {}
-
-      const caseType = c.case_type || 'manual';
-      const issueType = c.issue_type || '';
-      const intent = extra.intent || '';
-      let html = '';
-      let bullets = [];
-
-      // ===== SUBSCRIPTION CASES =====
-      if (caseType === 'subscription') {
-        const actionType = extra.actionType || '';
-        const cancelReasons = {
-          'expensive': 'it\\'s too expensive',
-          'too_many': 'they have too many products',
-          'not_working': 'the product isn\\'t working as expected',
-          'moving': 'they are moving',
-          'other': 'other reasons'
-        };
-
-        if (actionType === 'cancel') {
-          html = '<p class="cd-issue-headline"><strong>Subscription Cancellation Request</strong></p>';
-          const reason = cancelReasons[extra.cancelReason] || extra.cancelReason || 'unspecified reason';
-          html += '<p>Customer wants to <strong>cancel</strong> their subscription because <strong>' + reason + '</strong>.</p>';
-          if (extra.subscriptionProductName) bullets.push('<strong>Product:</strong> ' + escapeHtml(extra.subscriptionProductName));
-          if (extra.subscriptionStatus) bullets.push('<strong>Status:</strong> ' + extra.subscriptionStatus);
-          if (extra.keepProduct !== undefined) bullets.push('<strong>Keeping items:</strong> ' + (extra.keepProduct ? 'Yes' : 'No, returning'));
-        } else if (actionType === 'pause') {
-          html = '<p class="cd-issue-headline"><strong>Subscription Pause Request</strong></p>';
-          html += '<p>Customer wants to <strong>pause</strong> their subscription';
-          if (extra.pauseDuration) html += ' for <strong>' + extra.pauseDuration + ' days</strong>';
-          html += '.</p>';
-          if (extra.subscriptionProductName) bullets.push('<strong>Product:</strong> ' + escapeHtml(extra.subscriptionProductName));
-          if (extra.pauseResumeDate) bullets.push('<strong>Resume Date:</strong> ' + new Date(extra.pauseResumeDate).toLocaleDateString());
-        } else if (actionType === 'discount_accepted') {
-          html = '<p class="cd-issue-headline"><strong>Retention Offer Accepted</strong></p>';
-          html += '<p>Customer was going to cancel but <strong>accepted a ' + (extra.discountPercent || '?') + '% discount</strong> to stay.</p>';
-          if (extra.cancelReason) {
-            const reason = cancelReasons[extra.cancelReason] || extra.cancelReason;
-            bullets.push('<strong>Original concern:</strong> ' + reason);
-          }
-          if (extra.subscriptionProductName) bullets.push('<strong>Product:</strong> ' + escapeHtml(extra.subscriptionProductName));
-        } else if (actionType === 'changeSchedule') {
-          html = '<p class="cd-issue-headline"><strong>Delivery Schedule Change</strong></p>';
-          html += '<p>Customer wants to <strong>change their delivery frequency</strong>.</p>';
-          if (extra.previousFrequency) bullets.push('<strong>Previous:</strong> Every ' + extra.previousFrequency + ' days');
-          if (extra.newFrequency) bullets.push('<strong>New:</strong> Every ' + extra.newFrequency + ' days');
-          if (extra.subscriptionProductName) bullets.push('<strong>Product:</strong> ' + escapeHtml(extra.subscriptionProductName));
-        } else if (actionType === 'changeAddress') {
-          html = '<p class="cd-issue-headline"><strong>Shipping Address Change</strong></p>';
-          html += '<p>Customer wants to <strong>update their shipping address</strong> for their subscription.</p>';
-          if (extra.subscriptionProductName) bullets.push('<strong>Product:</strong> ' + escapeHtml(extra.subscriptionProductName));
-          if (extra.newAddress) {
-            const addr = extra.newAddress;
-            const addrStr = [addr.address1, addr.address2, addr.city, addr.state, addr.zip].filter(Boolean).join(', ');
-            if (addrStr) bullets.push('<strong>New Address:</strong> ' + escapeHtml(addrStr));
-          }
-        } else {
-          html = '<p class="cd-issue-headline"><strong>Subscription Inquiry</strong></p>';
-          html += '<p>Customer needs help with their subscription.</p>';
-          if (extra.subscriptionProductName) bullets.push('<strong>Product:</strong> ' + escapeHtml(extra.subscriptionProductName));
-        }
-      }
-
-      // ===== SHIPPING CASES =====
-      else if (caseType === 'shipping' || issueType === 'stuck_in_transit' || issueType === 'lost_package' || issueType === 'delivered_not_received' || issueType === 'no_tracking' || issueType === 'pending_too_long' || intent === 'not_received') {
-        const daysInTransit = extra.daysInTransit || 0;
-
-        if (issueType === 'stuck_in_transit' || (daysInTransit > 5 && extra.trackingStatus === 'in_transit')) {
-          html = '<p class="cd-issue-headline"><strong>Package Stuck in Transit</strong>' + (daysInTransit ? ' &mdash; ' + daysInTransit + ' Days' : '') + '</p>';
-          html += '<p>Customer\\'s order has been <strong>in transit for ' + daysInTransit + ' days</strong> with no recent tracking updates.</p>';
-        } else if (issueType === 'delivered_not_received' || extra.trackingStatus === 'delivered') {
-          html = '<p class="cd-issue-headline"><strong>Delivered But Not Received</strong></p>';
-          html += '<p>Tracking shows the package was <strong>delivered</strong>, but the customer <strong>never received it</strong>.</p>';
-        } else if (issueType === 'lost_package') {
-          html = '<p class="cd-issue-headline"><strong>Lost Package</strong></p>';
-          html += '<p>Customer\\'s package appears to be <strong>lost in transit</strong> and was never delivered.</p>';
-        } else if (issueType === 'no_tracking') {
-          html = '<p class="cd-issue-headline"><strong>No Tracking Available</strong></p>';
-          html += '<p>Customer cannot track their order &mdash; <strong>no tracking information</strong> is available.</p>';
-        } else if (issueType === 'pending_too_long') {
-          html = '<p class="cd-issue-headline"><strong>Order Pending Too Long</strong></p>';
-          html += '<p>Customer\\'s order has been <strong>pending for too long</strong> without being shipped.</p>';
-        } else {
-          // Provide more specific context based on available data
-          const orderNum = c.order_number || extra.orderNumber || '';
-          const productName = c.product_name || extra.productName || '';
-          const trackingStatus = extra.trackingStatus || '';
-
-          html = '<p class="cd-issue-headline"><strong>Shipping Issue</strong>' + (orderNum ? ' &mdash; Order ' + escapeHtml(orderNum) : '') + '</p>';
-
-          if (trackingStatus === 'in_transit') {
-            html += '<p>Customer is concerned about their order that is <strong>currently in transit</strong>. They may be asking about delivery timeframe or tracking updates.</p>';
-          } else if (trackingStatus === 'delivered') {
-            html += '<p>Tracking shows <strong>delivered</strong> but customer has concerns. Verify delivery details and resolve.</p>';
-          } else if (trackingStatus === 'pending' || trackingStatus === 'info_received') {
-            html += '<p>Customer\\'s order is <strong>awaiting shipment</strong>. Verify fulfillment status and provide update.</p>';
-          } else {
-            html += '<p>Customer needs assistance with their order shipment.' + (productName ? ' Product: <strong>' + escapeHtml(productName) + '</strong>.' : '') + '</p>';
-          }
-        }
-
-        // Shipping details
-        if (extra.carrierName) bullets.push('<strong>Carrier:</strong> ' + escapeHtml(extra.carrierName));
-        if (extra.trackingNumber) bullets.push('<strong>Tracking #:</strong> <code>' + escapeHtml(extra.trackingNumber) + '</code>');
-        if (extra.trackingStatus) bullets.push('<strong>Last Status:</strong> ' + escapeHtml(extra.trackingStatus));
-        if (daysInTransit) bullets.push('<strong>Days in Transit:</strong> ' + daysInTransit);
-        if (c.order_number && !bullets.some(b => b.includes(c.order_number))) bullets.push('<strong>Order:</strong> ' + escapeHtml(c.order_number));
-      }
-
-      // ===== REFUND/RETURN CASES =====
-      else if (caseType === 'refund' || caseType === 'return') {
-        const intentDescriptions = {
-          'damaged': { headline: 'Damaged Product', desc: 'Customer received a <strong>damaged product</strong> and needs a resolution.' },
-          'missing_items': { headline: 'Missing Items', desc: 'Customer is <strong>missing items</strong> from their order.' },
-          'wrong_item': { headline: 'Wrong Item Received', desc: 'Customer received the <strong>wrong item</strong> in their order.' },
-          'not_met_expectations': { headline: 'Did Not Meet Expectations', desc: 'The product <strong>did not meet the customer\\'s expectations</strong>.' },
-          'charged_unexpectedly': { headline: 'Unexpected Charge', desc: 'Customer was <strong>charged unexpectedly</strong> and doesn\\'t recognize this order.' },
-          'changed_mind': { headline: 'Changed Mind', desc: 'Customer <strong>changed their mind</strong> about the purchase.' },
-          'ordered_mistake': { headline: 'Ordered by Mistake', desc: 'Customer <strong>ordered by mistake</strong> and wants to return.' },
-          'dog_not_using': { headline: 'Dog Not Using Product', desc: 'Customer\\'s dog is <strong>not using the product</strong> as expected.' },
-          'quality_difference': { headline: 'Quality Difference (Original vs 2.0)', desc: 'Customer received <strong>Original material pads</strong> instead of PuppyPad 2.0.' }
-        };
-
-        const issueInfo = intentDescriptions[intent] || intentDescriptions[issueType] || null;
-        if (issueInfo) {
-          html = '<p class="cd-issue-headline"><strong>' + issueInfo.headline + '</strong></p>';
-          html += '<p>' + issueInfo.desc + '</p>';
-        } else {
-          html = '<p class="cd-issue-headline"><strong>' + (caseType === 'return' ? 'Return Request' : 'Refund Request') + '</strong></p>';
-          html += '<p>Customer is requesting a <strong>' + caseType + '</strong> for their order.</p>';
-        }
-
-        // Quality difference specific
-        if ((intent === 'quality_difference' || issueType === 'quality_difference') && extra.qualityDetails) {
-          const qd = extra.qualityDetails;
-          if (qd.padCount) bullets.push('<strong>Pads Affected:</strong> ' + qd.padCount);
-          if (qd.itemsUsed === true) bullets.push('<strong>Items Used:</strong> <span style="color:#f59e0b">Yes</span>');
-          else if (qd.itemsUsed === false) bullets.push('<strong>Items Used:</strong> <span style="color:#10b981">No (unused)</span>');
-        }
-
-        // Dog not using specific - show dog details
-        if ((intent === 'dog_not_using' || issueType === 'dog_not_using') && extra.dogs && extra.dogs.length) {
-          extra.dogs.forEach(function(dog, i) {
-            let dogInfo = (dog.name || 'Dog ' + (i+1));
-            if (dog.breed) dogInfo += ' (' + dog.breed + ')';
-            if (dog.age) dogInfo += ', ' + dog.age;
-            bullets.push('<strong>Dog:</strong> ' + escapeHtml(dogInfo));
-          });
-          if (extra.methodsTried) {
-            bullets.push('<strong>Methods Tried:</strong> ' + escapeHtml(extra.methodsTried));
-          }
-        }
-
-        // Refund details
-        if (c.refund_amount) bullets.push('<strong>Refund Amount:</strong> $' + parseFloat(c.refund_amount).toFixed(2));
-        if (extra.refundPercent) bullets.push('<strong>Refund:</strong> ' + extra.refundPercent + '% of order');
-        if (extra.keepProduct !== undefined) bullets.push('<strong>Keeping Product:</strong> ' + (extra.keepProduct ? 'Yes' : 'No, returning'));
-      }
-
-      // ===== MANUAL/OTHER CASES =====
-      else {
-        if (intent === 'dog_not_using') {
-          html = '<p class="cd-issue-headline"><strong>Dog Not Using Product</strong></p>';
-          html += '<p>Customer\\'s dog is <strong>not using the PuppyPad</strong> as expected. Needs training tips or alternative solution.</p>';
-          if (extra.dogs && extra.dogs.length) {
-            extra.dogs.forEach(function(dog, i) {
-              let dogInfo = (dog.name || 'Dog ' + (i+1));
-              if (dog.breed) dogInfo += ' (' + dog.breed + ')';
-              if (dog.age) dogInfo += ', ' + dog.age;
-              bullets.push('<strong>Dog:</strong> ' + escapeHtml(dogInfo));
-            });
-          }
-          if (extra.methodsTried) {
-            bullets.push('<strong>Methods Tried:</strong> ' + escapeHtml(extra.methodsTried));
-          }
-        } else if (intent === 'other') {
-          html = '<p class="cd-issue-headline"><strong>Other Issue</strong></p>';
-          html += '<p>Customer has a <strong>specific concern</strong> that requires manual review.</p>';
-        } else {
-          html = '<p class="cd-issue-headline"><strong>Manual Review Required</strong></p>';
-          html += '<p>This case requires <strong>manual review</strong> by the team.</p>';
-        }
-      }
-
-      // ===== CUSTOMER'S OWN WORDS =====
-      if (extra.intentDetails) {
-        html += '<div class="cd-customer-quote"><strong>Customer said:</strong> <em>"' + escapeHtml(extra.intentDetails) + '"</em></div>';
-      }
-
-      // ===== SELECTED ITEMS =====
-      if (extra.selectedItems && extra.selectedItems.length) {
-        const itemNames = extra.selectedItems.map(function(item) {
-          return escapeHtml(item.title || item.name || 'Item') + (item.quantity > 1 ? ' (x' + item.quantity + ')' : '');
-        });
-        bullets.push('<strong>Item(s):</strong> ' + itemNames.join(', '));
-      }
-
-      // ===== BUILD BULLET LIST =====
-      if (bullets.length) {
-        html += '<ul class="cd-issue-facts">';
-        bullets.forEach(function(b) { html += '<li>' + b + '</li>'; });
-        html += '</ul>';
-      }
-
-      return html || '<p>Review case details in Shopify.</p>';
-    }
-
-    // Case navigation functions
-    function updateCaseNavigation() {
-      const counter = document.getElementById('caseNavCounter');
-      const prevBtn = document.getElementById('prevCaseBtn');
-      const nextBtn = document.getElementById('nextCaseBtn');
-      if (!counter || !prevBtn || !nextBtn) return;
-
-      const total = casesList.length;
-      const current = currentCaseIndex + 1;
-      counter.textContent = current + ' of ' + total;
-
-      prevBtn.disabled = currentCaseIndex <= 0;
-      nextBtn.disabled = currentCaseIndex >= total - 1;
-    }
-
-    function navigateToPrevCase() {
-      if (currentCaseIndex > 0) {
-        const prevCase = casesList[currentCaseIndex - 1];
-        if (prevCase) openCase(prevCase.case_id);
-      }
-    }
-
-    function navigateToNextCase() {
-      if (currentCaseIndex < casesList.length - 1) {
-        const nextCase = casesList[currentCaseIndex + 1];
-        if (nextCase) openCase(nextCase.case_id);
-      }
-    }
-
-    // Build detailed case breakdown HTML for modal - plain English bullet points
-    // Build Resolution section HTML - actionable steps for what the team needs to do
-    function buildCaseDetailsHtml(c) {
-      let extra = {};
-      try {
-        if (c.extra_data) extra = typeof c.extra_data === 'string' ? JSON.parse(c.extra_data) : c.extra_data;
-      } catch(e) {}
-
-      const caseType = c.case_type || 'manual';
-      const resolution = c.resolution || '';
-      const actionType = extra.actionType || '';
-      const intent = extra.intent || '';
-      let actions = [];
-      let notes = [];
-
-      // ===== SUBSCRIPTION CASES =====
-      if (caseType === 'subscription') {
-
-        // PAUSE
-        if (actionType === 'pause' || resolution === 'subscription_paused') {
-          actions.push('<strong>Pause subscription</strong> in Recharge' + (extra.pauseDuration ? ' for <strong>' + extra.pauseDuration + ' days</strong>' : ''));
-          if (extra.pauseResumeDate) {
-            const resumeDate = new Date(extra.pauseResumeDate);
-            actions.push('Set resume date: <strong>' + resumeDate.toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'}) + '</strong>');
-          }
-          actions.push('Send confirmation email with resume date');
-          notes.push('Mark case complete after pause is confirmed in system');
-        }
-
-        // CANCEL
-        else if (actionType === 'cancel' || resolution === 'subscription_cancelled') {
-          actions.push('<strong>Cancel subscription</strong> in Recharge portal');
-          if (extra.keepProduct === true) {
-            actions.push('Customer keeping items &mdash; <strong>no return needed</strong>');
-          } else if (extra.keepProduct === false) {
-            actions.push('<span style="color:#f59e0b"><strong>Wait for return</strong> before processing refund</span>');
-          }
-          if (c.refund_amount) {
-            actions.push('Process refund: <strong>$' + parseFloat(c.refund_amount).toFixed(2) + '</strong>');
-          }
-          notes.push('Consider reaching out with discount offer before finalizing cancellation');
-        }
-
-        // DISCOUNT ACCEPTED (Retention)
-        else if (actionType === 'discount_accepted' || resolution === 'discount_applied') {
-          actions.push('<strong>Apply ' + (extra.discountPercent || '?') + '% discount</strong> to all future shipments in Recharge');
-          actions.push('Update subscription with discount code');
-          actions.push('Send confirmation email about the discount');
-          notes.push('Customer was retained &mdash; no cancellation needed');
-        }
-
-        // SCHEDULE CHANGE
-        else if (actionType === 'changeSchedule' || resolution === 'schedule_changed') {
-          actions.push('<strong>Update delivery frequency</strong> in Recharge');
-          if (extra.newFrequency) {
-            actions.push('New schedule: <strong>Every ' + extra.newFrequency + ' days</strong>');
-          }
-          actions.push('Send confirmation email with new schedule');
-        }
-
-        // ADDRESS CHANGE
-        else if (actionType === 'changeAddress' || resolution === 'address_changed') {
-          actions.push('<strong>Update shipping address</strong> in Recharge');
-          if (extra.newAddress) {
-            const addr = extra.newAddress;
-            const addrStr = [addr.address1, addr.address2, addr.city, addr.state, addr.zip].filter(Boolean).join(', ');
-            actions.push('New address: <strong>' + escapeHtml(addrStr) + '</strong>');
-          }
-          actions.push('Verify address is correct for next shipment');
-        }
-
-        // FALLBACK
-        else {
-          actions.push('Log into <strong>Recharge</strong> and locate customer subscription');
-          actions.push('Review subscription status and any pending orders');
-          actions.push('Address customer request and send confirmation email');
-          if (extra.subscriptionProductName) notes.push('Product: ' + escapeHtml(extra.subscriptionProductName));
-        }
-
-        // Add subscription identifiers
-        if (extra.purchaseId) notes.push('Subscription ID: <code>' + extra.purchaseId + '</code>');
-        if (extra.clientOrderId) notes.push('CheckoutChamp Order: <code>' + extra.clientOrderId + '</code>');
-      }
-
-      // ===== SHIPPING CASES =====
-      else if (caseType === 'shipping' || resolution.includes('reship') || resolution.includes('investigation')) {
-
-        if (resolution === 'reship' || resolution === 'reship_missing_item_bonus') {
-          actions.push('<strong>Create replacement shipment</strong> with same items');
-          if (resolution === 'reship_missing_item_bonus') {
-            actions.push('Include <strong>bonus item</strong> for the inconvenience');
-          }
-          actions.push('Provide new tracking number to customer');
-          notes.push('If original package arrives later, customer may keep both (goodwill)');
-        }
-
-        else if (resolution.includes('investigation')) {
-          actions.push('<strong>Open carrier investigation</strong> for missing/lost package');
-          if (extra.trackingNumber) {
-            actions.push('Reference tracking: <code>' + escapeHtml(extra.trackingNumber) + '</code>');
-          }
-          actions.push('Contact customer within 24-48 hours with investigation update');
-          if (c.issue_type === 'delivered_not_received') {
-            notes.push('Package shows delivered but customer claims not received &mdash; may need proof');
-          }
-        }
-
-        else {
-          // Generic shipping resolution
-          if (c.issue_type === 'stuck_in_transit') {
-            actions.push('Check carrier status and escalate if needed');
-            actions.push('If 10+ days with no movement, offer <strong>reship or refund</strong>');
-          } else if (c.issue_type === 'no_tracking') {
-            actions.push('Locate tracking information in Shopify/fulfillment system');
-            actions.push('Provide tracking to customer or escalate to warehouse');
-          } else if (c.issue_type === 'pending_too_long') {
-            actions.push('Check with warehouse on fulfillment status');
-            actions.push('Offer customer option to <strong>cancel</strong> or <strong>wait</strong>');
-          } else {
-            // More specific fallback based on tracking status
-            const trackingStatus = extra.trackingStatus || '';
-            if (trackingStatus === 'in_transit') {
-              actions.push('Verify tracking status in carrier portal');
-              actions.push('If delivery is delayed, <strong>update customer</strong> with expected timeframe');
-              actions.push('If package appears stuck (7+ days), offer <strong>reship or refund</strong>');
-            } else if (trackingStatus === 'delivered') {
-              actions.push('Verify delivery details (date, time, location)');
-              actions.push('Ask customer to check with neighbors/building manager');
-              actions.push('If not found, initiate <strong>carrier investigation</strong> or offer <strong>reship</strong>');
-            } else if (trackingStatus === 'pending' || trackingStatus === 'info_received') {
-              actions.push('Check fulfillment status in Shopify');
-              actions.push('Contact warehouse if order hasn\\'t shipped');
-              actions.push('Provide estimated ship date to customer');
-            } else {
-              actions.push('Check order status in <strong>Shopify</strong>');
-              actions.push('Verify tracking in carrier portal');
-              actions.push('Update customer with current status');
-              if (extra.trackingNumber) {
-                actions.push('Tracking: <code>' + escapeHtml(extra.trackingNumber) + '</code>');
-              }
-            }
-          }
-        }
-
-        // Add tracking info
-        if (extra.carrierName) notes.push('Carrier: ' + escapeHtml(extra.carrierName));
-        if (extra.trackingNumber && !actions.some(function(a) { return a.includes(extra.trackingNumber); })) {
-          notes.push('Tracking: <code>' + escapeHtml(extra.trackingNumber) + '</code>');
-        }
-      }
-
-      // ===== REFUND CASES =====
-      else if (caseType === 'refund') {
-        const refundAmt = c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : (extra.refundPercent ? extra.refundPercent + '% of order' : 'TBD');
-
-        if (resolution === 'full_refund') {
-          actions.push('<strong>Process full refund</strong>: ' + refundAmt);
-        } else if (resolution.startsWith('partial_')) {
-          actions.push('<strong>Process partial refund</strong>: ' + refundAmt);
-        } else if (resolution === 'replacement_damaged' || resolution === 'reship_wrong_item') {
-          actions.push('<strong>Send replacement</strong> for ' + (intent === 'damaged' ? 'damaged' : 'incorrect') + ' item');
-          actions.push('Create new shipment and provide tracking');
-        } else {
-          actions.push('<strong>Process refund</strong>: ' + refundAmt);
-        }
-
-        // Return requirement
-        if (extra.keepProduct === true) {
-          actions.push('Customer keeps product &mdash; <strong>no return required</strong>');
-        } else if (extra.keepProduct === false) {
-          actions.push('<span style="color:#f59e0b"><strong>Return required</strong> &mdash; wait for items before processing refund</span>');
-        }
-
-        // Specific guidance based on intent
-        if (intent === 'damaged' && extra.uploadedFiles) {
-          notes.push('Customer provided photos of damage &mdash; review in Evidence section');
-        }
-        if (intent === 'charged_unexpectedly') {
-          notes.push('Customer didn\\'t recognize charge &mdash; verify order legitimacy');
-        }
-      }
-
-      // ===== RETURN CASES =====
-      else if (caseType === 'return') {
-        actions.push('<strong>Provide return shipping label</strong> to customer');
-        actions.push('Process refund once return is received and inspected');
-        if (c.refund_amount) {
-          actions.push('Refund amount: <strong>$' + parseFloat(c.refund_amount).toFixed(2) + '</strong>');
-        }
-        notes.push('Inspect returned items for condition before processing');
-      }
-
-      // ===== QUALITY DIFFERENCE =====
-      else if (c.issue_type === 'quality_difference' || intent === 'quality_difference') {
-        const qd = extra.qualityDetails || {};
-
-        if (qd.resolutionPath === 'upgrade') {
-          actions.push('<strong>Process upgrade payment</strong> ($20/pad)');
-          if (qd.upgradeTotal) actions.push('Total: <strong>$' + qd.upgradeTotal + '</strong>');
-          actions.push('Ship PuppyPad 2.0 replacements');
-          if (qd.requiresReturn) actions.push('Wait for Original pads to be returned');
-        } else if (qd.resolutionPath === 'refund') {
-          actions.push('<strong>Process full refund</strong> for Original pads');
-          if (qd.requiresReturn) actions.push('Wait for Original pads to be returned first');
-        } else if (qd.resolutionPath === 'free_upgrade') {
-          actions.push('<strong>Ship FREE PuppyPad 2.0</strong> (company goodwill)');
-          actions.push('No charge to customer');
-        } else {
-          actions.push('Review quality issue and determine resolution');
-        }
-
-        if (qd.itemsUsed === true) {
-          notes.push('<span style="color:#f59e0b">Items have been used</span> &mdash; return may not be possible');
-        }
-      }
-
-      // ===== MANUAL / DOG NOT USING =====
-      else if (caseType === 'manual' || intent === 'dog_not_using' || intent === 'other') {
-        if (intent === 'dog_not_using') {
-          actions.push('Review AI-generated training tips that were provided');
-          actions.push('Follow up with personalized advice if needed');
-          actions.push('Offer alternative solutions if training tips didn\\'t help');
-          if (extra.dogs && extra.dogs.length) {
-            const dogNames = extra.dogs.map(function(d) { return d.name || 'their dog'; }).join(', ');
-            notes.push('Dog info provided for ' + dogNames + ' &mdash; tailor advice accordingly');
-          }
-        } else {
-          actions.push('Review case details and customer message');
-          actions.push('Determine appropriate resolution based on situation');
-          actions.push('Respond to customer with solution');
-        }
-      }
-
-      // ===== FALLBACK =====
-      else {
-        actions.push('Review customer message and order history in <strong>Shopify</strong>');
-        actions.push('Check <strong>Richpanel conversation</strong> for full context');
-        actions.push('Respond to customer with appropriate solution');
-        if (c.order_number) notes.push('Order: <code>' + escapeHtml(c.order_number) + '</code>');
-        if (c.customer_email) notes.push('Customer: ' + escapeHtml(c.customer_email));
-      }
-
-      // Build HTML
-      let html = '';
-
-      if (actions.length > 0) {
-        html += '<ul class="cd-resolution-list">';
-        actions.forEach(function(a) { html += '<li>' + a + '</li>'; });
-        html += '</ul>';
-      }
-
-      if (notes.length > 0) {
-        html += '<div class="cd-resolution-notes">';
-        notes.forEach(function(n) { html += '<p>' + n + '</p>'; });
-        html += '</div>';
-      }
-
-      if (!html) {
-        html = '<p class="cd-resolution-empty">No specific resolution steps defined. Review case and respond accordingly.</p>';
-      }
-
-      return html;
-    }
-
-    async function openCase(caseId) {
-      console.log('[openCase] Opening case:', caseId);
-
-      // Show full page view instead of modal
-      hideAllViews();
-      document.getElementById('caseDetailView').style.display = 'block';
-      document.getElementById('detailCustomerName').textContent = 'Loading...';
-
-      // Update URL with case ID
-      const params = new URLSearchParams(window.location.search);
-      params.set('case', caseId);
-      const newUrl = '/hub?' + params.toString();
-      history.pushState({ page: params.get('page') || 'cases', filter: params.get('filter'), caseId }, '', newUrl);
-
-      // Set current case index for navigation
-      currentCaseIndex = casesList.findIndex(c => c.case_id === caseId);
-      updateNavigationButtons();
-
-      try {
-        const r = await fetch(API+'/hub/api/case/'+caseId);
-        console.log('[openCase] Fetch response status:', r.status);
-        if (!r.ok) {
-          throw new Error('API returned status ' + r.status);
-        }
-        const data = await r.json();
-        console.log('[openCase] API response:', data);
-        const c = data.case;
-        if (!c) {
-          throw new Error('No case data in response');
-        }
-        currentCase = c;
-
-        // Populate full page detail view
-        populateCaseDetailView(c);
-
-        // Load comments for detail view
-        loadCommentsForDetail(caseId);
-      } catch(e) {
-        console.error('[openCase] Error loading case:', e);
-        const nameEl = document.getElementById('detailCustomerName');
-        if (nameEl) nameEl.textContent = 'Error: ' + e.message;
-      }
-    }
-
-    function populateCaseDetailView(c) {
-      const customerName = c.customer_name || c.customer_email?.split('@')[0] || 'Customer';
-      const statusClass = (c.status||'pending').replace('_','-');
-
-      // Header - Type badge
-      const typeBadge = document.getElementById('detailTypeBadge');
-      if (typeBadge) {
-        typeBadge.textContent = c.case_type || 'Case';
-        typeBadge.className = 'cd-type-badge ' + (c.case_type || 'manual');
-      }
-
-      // Header - Status badge (due status)
-      const statusBadge = document.getElementById('detailStatusBadge');
-      if (c.created_at && statusBadge) {
-        const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
-        const now = Date.now();
-        const hoursLeft = Math.max(0, Math.round((dueDate.getTime() - now) / (1000*60*60)));
-        if (c.status === 'completed') {
-          statusBadge.textContent = 'Completed';
-          statusBadge.className = 'cd-status-badge on-time';
-        } else if (now > dueDate.getTime()) {
-          statusBadge.textContent = 'OVERDUE';
-          statusBadge.className = 'cd-status-badge overdue';
-        } else if (hoursLeft <= 4) {
-          statusBadge.textContent = 'Due Soon';
-          statusBadge.className = 'cd-status-badge due-soon';
-        } else {
-          statusBadge.textContent = 'On Time';
-          statusBadge.className = 'cd-status-badge on-time';
-        }
-      }
-
-      // Set status radio buttons
-      const statusRadio = document.querySelector('input[name="caseStatus"][value="' + (c.status || 'pending') + '"]');
-      if (statusRadio) statusRadio.checked = true;
-
-      // WHO Section - Customer info
-      document.getElementById('detailCustomerName').textContent = customerName;
-      document.getElementById('detailCustomerEmail').textContent = c.customer_email || '-';
-      const customerAvatar = document.getElementById('detailCustomerAvatar');
-      if (customerAvatar) {
-        customerAvatar.textContent = customerName.charAt(0).toUpperCase();
-      }
-
-      // WHO - Order info
-      document.getElementById('detailOrderNumber').textContent = c.order_number ? 'Order #' + c.order_number : '-';
-      document.getElementById('detailOrderDate').textContent = formatDate(c.order_date || c.created_at);
-
-      // WHO - Order total
-      const orderTotal = document.getElementById('detailOrderTotal');
-      if (orderTotal) {
-        orderTotal.textContent = c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '-';
-      }
-
-      // WHO - Quick action links
-      if (c.richpanel_conversation_no) {
-        document.getElementById('detailRichpanelLink').href = 'https://app.richpanel.com/conversations?viewId=search&conversationNo=' + c.richpanel_conversation_no;
-        document.getElementById('detailRichpanelLink').style.display = 'flex';
-      } else {
-        document.getElementById('detailRichpanelLink').style.display = 'none';
-      }
-
-      if (c.order_url) {
-        document.getElementById('detailShopifyLink').href = c.order_url;
-        document.getElementById('detailShopifyLink').style.display = 'flex';
-      } else {
-        document.getElementById('detailShopifyLink').style.display = 'none';
-      }
-
-      if (c.session_replay_url) {
-        document.getElementById('detailReplayLink').href = c.session_replay_url;
-        document.getElementById('detailReplayLink').style.display = 'flex';
-      } else {
-        document.getElementById('detailReplayLink').style.display = 'none';
-      }
-
-      // SOP link - based on case type
-      const sopUrls = {
-        'refund': 'https://docs.google.com/document/d/YOUR_REFUND_SOP_DOC_ID/edit',
-        'shipping': 'https://docs.google.com/document/d/YOUR_SHIPPING_SOP_DOC_ID/edit',
-        'subscription': 'https://docs.google.com/document/d/YOUR_SUBSCRIPTION_SOP_DOC_ID/edit',
-        'manual': 'https://docs.google.com/document/d/YOUR_MANUAL_SOP_DOC_ID/edit',
-        'default': 'https://docs.google.com/document/d/YOUR_DEFAULT_SOP_DOC_ID/edit'
-      };
-      document.getElementById('detailSOPLink').href = sopUrls[c.case_type] || sopUrls['default'];
-
-      // ASSIGNEE Section
-      const assigneeName = c.assigned_to_name || c.assigned_to || null;
-      const assigneeAvatar = document.getElementById('detailAssigneeAvatar');
-      const assigneeNameEl = document.getElementById('detailAssigneeName');
-      if (assigneeName) {
-        if (assigneeAvatar) {
-          assigneeAvatar.textContent = assigneeName.charAt(0).toUpperCase();
-          assigneeAvatar.classList.add('assigned');
-        }
-        if (assigneeNameEl) assigneeNameEl.textContent = assigneeName;
-      } else {
-        if (assigneeAvatar) {
-          assigneeAvatar.textContent = '?';
-          assigneeAvatar.classList.remove('assigned');
-        }
-        if (assigneeNameEl) assigneeNameEl.textContent = 'Unassigned';
-      }
-
-      // TIMELINE Section
-      document.getElementById('detailCreatedAt').textContent = formatDate(c.created_at);
-      document.getElementById('detailUpdatedAt').textContent = formatDate(c.updated_at || c.created_at);
-
-      // Due date in timeline
-      const dueEl = document.getElementById('detailDueDate');
-      if (c.created_at && dueEl) {
-        const dueDate = new Date(new Date(c.created_at).getTime() + 24*60*60*1000);
-        const isOverdue = Date.now() > dueDate.getTime() && c.status !== 'completed';
-        const dueDateStr = dueDate.toLocaleDateString('en-US', {month:'short',day:'numeric'});
-        if (c.status === 'completed') {
-          dueEl.textContent = 'Completed';
-          dueEl.classList.remove('overdue');
-        } else if (isOverdue) {
-          dueEl.textContent = 'OVERDUE';
-          dueEl.classList.add('overdue');
-        } else {
-          dueEl.textContent = dueDateStr;
-          dueEl.classList.remove('overdue');
-        }
-      }
-
-      // Case Details section - Show what the customer's issue is
-      const issueSummary = document.getElementById('detailIssueSummary');
-      if (issueSummary) {
-        issueSummary.innerHTML = buildIssueSummaryHtml(c);
-      }
-
-      // Resolution section - Bullet points of what actions to take
-      const resolutionSteps = document.getElementById('detailResolutionSteps');
-      if (resolutionSteps) {
-        const stepsHtml = buildCaseDetailsHtml(c);
-        resolutionSteps.innerHTML = stepsHtml || '<li>Review case details and take appropriate action</li>';
-      }
-
-      // Update case navigation counter
-      updateCaseNavigation();
-
-      // WHAT - Evidence links
-      const evidenceSection = document.getElementById('detailEvidenceSection');
-      const evidenceLinks = document.getElementById('detailEvidenceLinks');
-      let extra = {};
-      try {
-        if (c.extra_data) extra = typeof c.extra_data === 'string' ? JSON.parse(c.extra_data) : c.extra_data;
-      } catch(e) {}
-
-      const images = extra.image_urls || extra.images || [];
-      if (images.length > 0 && evidenceSection && evidenceLinks) {
-        evidenceSection.style.display = 'block';
-        evidenceLinks.innerHTML = images.map((url, i) =>
-          '<a href="' + escapeHtml(url) + '" target="_blank" class="evidence-link">' +
-          '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>' +
-          'Image ' + (i + 1) + '</a>'
-        ).join('');
-      } else if (evidenceSection) {
-        evidenceSection.style.display = 'none';
-      }
-
-      // HOW Section - Completion steps
-      buildHowSteps(c);
-
-      // Update navigation buttons
-      updateDetailNavigationButtons();
-    }
-
-    // Build resolution details list
-    function buildResolutionDetailsList(c) {
-      const details = [];
-      if (c.product_name) details.push(c.product_name);
-      if (c.reason) details.push(c.reason);
-      if (c.refund_amount) details.push('Amount: $' + parseFloat(c.refund_amount).toFixed(2));
-      if (c.case_type === 'refund') {
-        details.push('Within return policy window');
-        details.push('Customer keeps product (no return needed)');
-      }
-      if (c.case_type === 'shipping') {
-        details.push('Tracking update required');
-      }
-      if (c.case_type === 'subscription') {
-        details.push('Subscription status check required');
-      }
-      return details.length ? details : ['Review case details above'];
-    }
-
-    // Build HOW steps based on case type
-    function buildHowSteps(c) {
-      const stepsContainer = document.getElementById('detailHowSteps');
-      if (!stepsContainer) return;
-
-      let steps = [];
-      const caseType = c.case_type || 'manual';
-
-      if (caseType === 'refund') {
-        steps = [
-          { num: 1, title: 'REFUND', desc: 'Process $' + (c.refund_amount || '0.00') + ' in Shopify', action: 'refund' },
-          { num: 2, title: 'EMAIL', desc: 'Send customer confirmation', action: 'email' },
-          { num: 3, title: 'CLOSE', desc: 'Close ticket in Richpanel', action: 'close' }
-        ];
-      } else if (caseType === 'shipping') {
-        steps = [
-          { num: 1, title: 'INVESTIGATE', desc: 'Check tracking status', action: 'investigate' },
-          { num: 2, title: 'UPDATE', desc: 'Update customer on status', action: 'email' },
-          { num: 3, title: 'CLOSE', desc: 'Close ticket in Richpanel', action: 'close' }
-        ];
-      } else if (caseType === 'subscription') {
-        steps = [
-          { num: 1, title: 'VERIFY', desc: 'Check subscription status', action: 'verify' },
-          { num: 2, title: 'ACTION', desc: 'Cancel/modify as requested', action: 'action' },
-          { num: 3, title: 'CONFIRM', desc: 'Email confirmation to customer', action: 'email' }
-        ];
-      } else {
-        steps = [
-          { num: 1, title: 'REVIEW', desc: 'Review case details', action: 'review' },
-          { num: 2, title: 'RESOLVE', desc: 'Take appropriate action', action: 'resolve' },
-          { num: 3, title: 'CLOSE', desc: 'Close the case', action: 'close' }
-        ];
-      }
-
-      // Get completion status from case or local storage
-      let completedSteps = [];
-      try {
-        const saved = localStorage.getItem('case_steps_' + c.case_id);
-        if (saved) completedSteps = JSON.parse(saved);
-      } catch(e) {}
-
-      stepsContainer.innerHTML = steps.map((step, i) => {
-        const isComplete = completedSteps.includes(step.action);
-        return '<div class="how-step' + (isComplete ? ' completed' : '') + '" data-step="' + step.action + '">' +
-          '<div class="how-step-number">' + step.num + '. ' + step.title + '</div>' +
-          '<div class="how-step-desc">' + step.desc + '</div>' +
-          '<button class="how-step-status ' + (isComplete ? 'done' : 'todo') + '" onclick="toggleStepComplete(\\'' + c.case_id + '\\', \\'' + step.action + '\\')">' +
-          (isComplete ? '✓ Done' : '☐ To Do') +
-          '</button>' +
-          (i < steps.length - 1 ? '<span class="how-step-arrow">→</span>' : '') +
-          '</div>';
-      }).join('');
-
-      // Update complete button state
-      updateCompleteCaseButton(completedSteps.length >= steps.length);
-    }
-
-    // Toggle step completion
-    function toggleStepComplete(caseId, stepAction) {
-      let completedSteps = [];
-      try {
-        const saved = localStorage.getItem('case_steps_' + caseId);
-        if (saved) completedSteps = JSON.parse(saved);
-      } catch(e) {}
-
-      const idx = completedSteps.indexOf(stepAction);
-      if (idx === -1) {
-        completedSteps.push(stepAction);
-      } else {
-        completedSteps.splice(idx, 1);
-      }
-
-      localStorage.setItem('case_steps_' + caseId, JSON.stringify(completedSteps));
-
-      // Re-render steps
-      if (currentCase) buildHowSteps(currentCase);
-    }
-
-    // Update complete case button state
-    function updateCompleteCaseButton(allDone) {
-      const section = document.getElementById('completeCaseSection');
-      const btn = document.getElementById('completeCaseBtn');
-      if (section && btn) {
-        if (allDone) {
-          section.classList.add('ready');
-          btn.disabled = false;
-        } else {
-          section.classList.remove('ready');
-          // Button still enabled but visual cue
-        }
-      }
-    }
-
-    // Email template functions
-    const emailTemplates = {
-      initial: {
-        subject: 'Re: Your PuppyPad Order - We\\'re Here to Help',
-        body: 'Hi {{customer_name}},\\n\\nThank you for reaching out to us. We\\'ve received your message and are looking into this right away.\\n\\nWe\\'ll get back to you within 24 hours with an update.\\n\\nBest regards,\\nThe PuppyPad Team'
-      },
-      request_info: {
-        subject: 'Re: Your PuppyPad Order - Additional Information Needed',
-        body: 'Hi {{customer_name}},\\n\\nThank you for contacting us about your order.\\n\\nTo better assist you, could you please provide:\\n- Your order number\\n- A brief description of the issue\\n- Any photos that might help us understand the situation\\n\\nOnce we have this information, we\\'ll be able to resolve this quickly for you.\\n\\nBest regards,\\nThe PuppyPad Team'
-      },
-      refund_confirm: {
-        subject: 'Your Refund Has Been Processed - Order #{{order_number}}',
-        body: 'Hi {{customer_name}},\\n\\nGreat news! We\\'ve processed your refund of {{refund_amount}} for your PuppyPad order.\\n\\nPlease allow 5-10 business days for the credit to appear in your account, depending on your bank.\\n\\nWe\\'re sorry the product didn\\'t meet your expectations, and we hope to serve you again in the future.\\n\\nBest regards,\\nThe PuppyPad Team'
-      },
-      replacement: {
-        subject: 'Your Replacement Has Been Shipped - Order #{{order_number}}',
-        body: 'Hi {{customer_name}},\\n\\nWe\\'re happy to let you know that your replacement has been shipped!\\n\\nYou should receive tracking information shortly. The package is expected to arrive within 5-7 business days.\\n\\nThank you for your patience and understanding.\\n\\nBest regards,\\nThe PuppyPad Team'
-      },
-      resolution: {
-        subject: 'Resolution for Your PuppyPad Order #{{order_number}}',
-        body: 'Hi {{customer_name}},\\n\\nThank you for bringing this to our attention. After reviewing your case, we\\'d like to offer the following resolution:\\n\\n{{resolution}}\\n\\nPlease let us know if this works for you, or if you\\'d prefer a different solution.\\n\\nBest regards,\\nThe PuppyPad Team'
-      },
-      closed: {
-        subject: 'Your Support Case Has Been Resolved',
-        body: 'Hi {{customer_name}},\\n\\nWe\\'re pleased to confirm that your support case has been resolved.\\n\\nIf you have any other questions or need further assistance, please don\\'t hesitate to reach out.\\n\\nThank you for being a valued PuppyPad customer!\\n\\nBest regards,\\nThe PuppyPad Team'
-      }
-    };
-
-    function updateEmailTemplatePreview() {
-      const select = document.getElementById('emailTemplateSelect');
-      const preview = document.getElementById('emailTemplatePreview');
-      const copyBtn = document.getElementById('emailCopyBtn');
-      const subjectEl = document.getElementById('emailTemplateSubject');
-      const bodyEl = document.getElementById('emailTemplateBody');
-
-      const templateKey = select.value;
-      if (!templateKey || !emailTemplates[templateKey]) {
-        preview.style.display = 'none';
-        copyBtn.style.display = 'none';
-        return;
-      }
-
-      const template = emailTemplates[templateKey];
-      const c = currentCase || {};
-
-      // Replace placeholders
-      let subject = template.subject
-        .replace('{{customer_name}}', c.customer_name || 'Customer')
-        .replace('{{order_number}}', c.order_number || 'N/A')
-        .replace('{{refund_amount}}', c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '$0.00');
-
-      let body = template.body
-        .replace(/\{\{customer_name\}\}/g, c.customer_name || 'Customer')
-        .replace(/\{\{order_number\}\}/g, c.order_number || 'N/A')
-        .replace(/\{\{refund_amount\}\}/g, c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '$0.00')
-        .replace(/\{\{resolution\}\}/g, formatResolution(c.resolution, c.refund_amount));
-
-      subjectEl.textContent = 'Subject: ' + subject;
-      bodyEl.textContent = body;
-      preview.style.display = 'block';
-      copyBtn.style.display = 'flex';
-    }
-
-    function copyEmailTemplate() {
-      if (!currentCase) {
-        showToast('No case selected', 'error');
-        return;
-      }
-      // Get the email template based on case type
-      const template = generateEmailTemplate(currentCase);
-      const fullEmail = template.subject + '\\n\\n' + template.body;
-
-      navigator.clipboard.writeText(fullEmail).then(() => {
-        showToast('Email template copied! Review and personalize before sending.', 'success');
-        // Log to activity
-        const user = JSON.parse(localStorage.getItem('hub_user') || '{}');
-        logActivity('action', 'Email template copied by ' + (user.name || 'Admin'));
-      }).catch(() => {
-        showToast('Failed to copy template', 'error');
-      });
-    }
-
-    function generateEmailTemplate(c) {
-      const customerName = c.customer_name || c.customer_email?.split('@')[0] || 'Valued Customer';
-      const firstName = customerName.split(' ')[0];
-
-      // Default template
-      let subject = 'Update on Your PuppyPad Order';
-      let body = 'Hi ' + firstName + ',\\n\\nThank you for reaching out to us.\\n\\n';
-
-      if (c.case_type === 'refund') {
-        subject = 'Your PuppyPad Refund Has Been Processed';
-        body += 'We have processed your refund' + (c.refund_amount ? ' of $' + parseFloat(c.refund_amount).toFixed(2) : '') + '. ';
-        body += 'Please allow 5-10 business days for the amount to appear in your account.\\n\\n';
-      } else if (c.case_type === 'subscription') {
-        subject = 'Your PuppyPad Subscription Update';
-        body += 'We have made the requested changes to your subscription. ';
-        body += 'You can view your subscription details in your account at any time.\\n\\n';
-      } else if (c.case_type === 'shipping') {
-        subject = 'Update on Your PuppyPad Shipment';
-        body += 'We wanted to update you on the status of your order. ';
-        body += 'If you have any questions, please don\\'t hesitate to reach out.\\n\\n';
-      }
-
-      body += 'If you have any other questions or concerns, we\\'re here to help!\\n\\n';
-      body += 'Best regards,\\nThe PuppyPad Team';
-
-      return { subject, body };
-    }
-
-    // Comment @mention functions
-    let mentionUsers = [];
-    let mentionSelectedIndex = 0;
-    let mentionSearchStart = -1;
-
-    async function loadMentionUsers() {
-      try {
-        const r = await fetch(API + '/hub/api/users');
-        const d = await r.json();
-        mentionUsers = (d.users || []).map(u => ({
-          id: u.id,
-          name: u.name || u.username,
-          username: u.username,
-          role: u.role || 'Team Member'
-        }));
-      } catch(e) {
-        console.error('Failed to load users for mentions:', e);
-      }
-    }
-
-    function handleCommentInput(event) {
-      const textarea = event.target;
-      const text = textarea.value;
-      const cursorPos = textarea.selectionStart;
-
-      // Find @ symbol before cursor
-      const textBeforeCursor = text.substring(0, cursorPos);
-      const atIndex = textBeforeCursor.lastIndexOf('@');
-
-      if (atIndex !== -1 && (atIndex === 0 || /\s/.test(text[atIndex - 1]))) {
-        const searchTerm = textBeforeCursor.substring(atIndex + 1).toLowerCase();
-        mentionSearchStart = atIndex;
-
-        // Filter users
-        const filtered = mentionUsers.filter(u =>
-          u.name.toLowerCase().includes(searchTerm) ||
-          u.username.toLowerCase().includes(searchTerm)
-        ).slice(0, 5);
-
-        if (filtered.length > 0) {
-          showMentionDropdown(filtered);
-        } else {
-          hideMentionDropdown();
-        }
-      } else {
-        hideMentionDropdown();
-      }
-    }
-
-    function handleCommentKeydown(event) {
-      const dropdown = document.getElementById('mentionDropdown');
-      if (!dropdown.classList.contains('active')) return;
-
-      const items = dropdown.querySelectorAll('.mention-item');
-      if (!items.length) return;
-
-      if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        mentionSelectedIndex = Math.min(mentionSelectedIndex + 1, items.length - 1);
-        updateMentionSelection(items);
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        mentionSelectedIndex = Math.max(mentionSelectedIndex - 1, 0);
-        updateMentionSelection(items);
-      } else if (event.key === 'Enter' && dropdown.classList.contains('active')) {
-        event.preventDefault();
-        const selected = items[mentionSelectedIndex];
-        if (selected) selectMention(selected.dataset.username, selected.dataset.name);
-      } else if (event.key === 'Escape') {
-        hideMentionDropdown();
-      }
-    }
-
-    function showMentionDropdown(users) {
-      const dropdown = document.getElementById('mentionDropdown');
-      mentionSelectedIndex = 0;
-
-      dropdown.innerHTML = users.map((u, i) =>
-        '<div class="mention-item' + (i === 0 ? ' selected' : '') + '" data-username="' + escapeHtml(u.username) + '" data-name="' + escapeHtml(u.name) + '" onclick="selectMention(\\'' + escapeHtml(u.username) + '\\', \\'' + escapeHtml(u.name) + '\\')">' +
-        '<div class="mention-item-avatar">' + u.name.charAt(0).toUpperCase() + '</div>' +
-        '<div><div class="mention-item-name">@' + escapeHtml(u.username) + '</div><div class="mention-item-role">' + escapeHtml(u.name) + ' - ' + escapeHtml(u.role) + '</div></div></div>'
-      ).join('');
-
-      dropdown.classList.add('active');
-    }
-
-    function hideMentionDropdown() {
-      const dropdown = document.getElementById('mentionDropdown');
-      dropdown.classList.remove('active');
-      mentionSearchStart = -1;
-    }
-
-    function updateMentionSelection(items) {
-      items.forEach((item, i) => {
-        item.classList.toggle('selected', i === mentionSelectedIndex);
-      });
-    }
-
-    function selectMention(username, name) {
-      const textarea = document.getElementById('detailCommentInput');
-      const text = textarea.value;
-      const cursorPos = textarea.selectionStart;
-
-      if (mentionSearchStart !== -1) {
-        const before = text.substring(0, mentionSearchStart);
-        const after = text.substring(cursorPos);
-        textarea.value = before + '@' + username + ' ' + after;
-        const newPos = mentionSearchStart + username.length + 2;
-        textarea.setSelectionRange(newPos, newPos);
-      }
-
-      hideMentionDropdown();
-      textarea.focus();
-    }
-
-    function focusCommentInput() {
-      const input = document.getElementById('detailCommentInput');
-      if (input) {
-        input.focus();
-        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-
-    function showEditDueDateModal() {
-      // Placeholder for due date editing modal
-      showToast('Due date editing coming soon!', 'info');
-    }
-
-    // Load mention users when DOM is ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', loadMentionUsers);
-    } else {
-      setTimeout(loadMentionUsers, 100);
-    }
-
-    function buildReferenceIDsSection(c) {
-      let extra = {};
-      try {
-        if (c.extra_data) extra = typeof c.extra_data === 'string' ? JSON.parse(c.extra_data) : c.extra_data;
-      } catch(e) {}
-
-      const ids = [];
-      if (c.order_number) ids.push({ label: 'Shopify Order', value: c.order_number });
-      if (extra.clientOrderId) ids.push({ label: 'CheckoutChamp Order', value: extra.clientOrderId });
-      if (extra.purchaseId) ids.push({ label: 'Subscription ID', value: extra.purchaseId });
-      if (c.session_id) ids.push({ label: 'Session ID', value: c.session_id.substring(0, 16) + '...' });
-
-      const idsCard = document.getElementById('detailIDsCard');
-      const idsList = document.getElementById('detailIDsList');
-
-      if (ids.length > 0) {
-        idsCard.style.display = 'block';
-        idsList.innerHTML = ids.map(id =>
-          '<div class="id-row"><span class="id-label">' + id.label + '</span><span class="id-value">' + id.value + '</span></div>'
-        ).join('');
-      } else {
-        idsCard.style.display = 'none';
-      }
-    }
-
-    function updateDetailNavigationButtons() {
-      const prevBtn = document.getElementById('prevCaseDetailBtn');
-      const nextBtn = document.getElementById('nextCaseDetailBtn');
-      if (prevBtn) prevBtn.disabled = currentCaseIndex <= 0;
-      if (nextBtn) nextBtn.disabled = currentCaseIndex >= casesList.length - 1;
-    }
-
-    function navigateCaseDetail(direction) {
-      if (direction === 'prev' && currentCaseIndex > 0) {
-        openCase(casesList[currentCaseIndex - 1].case_id);
-      } else if (direction === 'next' && currentCaseIndex < casesList.length - 1) {
-        openCase(casesList[currentCaseIndex + 1].case_id);
-      }
-    }
-
-    function closeCaseDetail() {
-      document.getElementById('caseDetailView').style.display = 'none';
-      currentCase = null;
-      currentCaseIndex = -1;
-      // Remove case ID from URL and go back to cases
-      const params = new URLSearchParams(window.location.search);
-      params.delete('case');
-      params.set('page', 'cases');
-      const newUrl = '/hub?' + params.toString();
-      history.pushState({ page: 'cases' }, '', newUrl);
-      navigateTo('cases', currentFilter || 'all');
-    }
-
-    async function loadCommentsForDetail(caseId) {
-      try {
-        const r = await fetch(API + '/hub/api/case/' + caseId + '/comments');
-        const d = await r.json();
-        const list = document.getElementById('detailActivityList');
-        const countEl = document.getElementById('detailActivityCount');
-        const count = d.comments?.length || 0;
-        if (countEl) countEl.textContent = count;
-        if (!list) return;
-        if (!count) {
-          list.innerHTML = '<div class="cd-notes-empty">No activity yet. Add a note or comment to get started.</div>';
-          return;
-        }
-        list.innerHTML = d.comments.map(c => {
-          const isSystem = c.author_name === 'System' || c.is_system;
-          const activityType = c.activity_type || (isSystem ? 'system' : 'note');
-          const iconClass = getActivityIconClass(activityType);
-          const iconSvg = getActivityIcon(activityType);
-          const authorInitial = (c.author_name || 'T').charAt(0).toUpperCase();
-          const contentWithMentions = escapeHtml(c.content).replace(/@(\w+)/g, '<span class="mention">@$1</span>');
-          return '<div class="cd-activity-item">' +
-            '<div class="cd-activity-icon ' + iconClass + '">' + (isSystem ? iconSvg : authorInitial) + '</div>' +
-            '<div class="cd-activity-content">' +
-            '<div class="cd-activity-header">' +
-            '<span class="cd-activity-author">' + escapeHtml(c.author_name || 'Team') + '</span>' +
-            '<span class="cd-activity-time">' + timeAgo(c.created_at) + '</span></div>' +
-            '<div class="cd-activity-text' + (isSystem ? ' system-text' : '') + '">' + contentWithMentions + '</div></div></div>';
-        }).join('');
-      } catch(e) { console.error(e); }
-    }
-
-    function getActivityIconClass(type) {
-      const map = { 'status': 'status', 'assignee': 'assignee', 'note': 'note', 'action': 'action', 'system': 'system' };
-      return map[type] || 'note';
-    }
-
-    function getActivityIcon(type) {
-      const icons = {
-        'status': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
-        'assignee': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>',
-        'action': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>',
-        'system': '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
-      };
-      return icons[type] || icons['system'];
-    }
-
-    async function logActivity(activityType, description) {
-      if (!currentCase) return;
-      try {
-        const user = JSON.parse(localStorage.getItem('hub_user') || '{}');
-        await fetch(API + '/hub/api/case/' + currentCase.case_id + '/comments', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content: description,
-            author_name: 'System',
-            is_system: true,
-            activity_type: activityType
-          })
-        });
-        loadCommentsForDetail(currentCase.case_id);
-      } catch(e) { console.error('Failed to log activity:', e); }
-    }
-
-    async function addCommentFromDetail() {
-      if (!currentCase) return;
-      const input = document.getElementById('detailCommentInput');
-      const content = input.value.trim();
-      if (!content) return;
-      try {
-        const user = JSON.parse(localStorage.getItem('hub_user') || '{}');
-        const r = await fetch(API + '/hub/api/case/' + currentCase.case_id + '/comments', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: content, author_name: user.name || 'Admin' })
-        });
-        if (r.ok) {
-          input.value = '';
-          loadCommentsForDetail(currentCase.case_id);
-        }
-      } catch(e) { console.error(e); }
-    }
-
-    async function updateStatusFromDetail(newStatus) {
-      if (!currentCase) return;
-      try {
-        // Update UI optimistically
-        const statusClass = newStatus.replace('_', '-');
-        document.querySelectorAll('.status-card-lg').forEach(card => card.classList.remove('active'));
-        document.querySelector('.status-card-lg.' + statusClass)?.classList.add('active');
-        document.getElementById('detailStatusBadge').className = 'status-badge ' + statusClass;
-        document.getElementById('detailStatusBadge').textContent = newStatus.replace('_', ' ');
-
-        const r = await fetch(API + '/hub/api/case/' + currentCase.case_id + '/status', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: newStatus })
-        });
-        if (r.ok) {
-          currentCase.status = newStatus;
-          const idx = casesList.findIndex(c => c.case_id === currentCase.case_id);
-          if (idx >= 0) casesList[idx].status = newStatus;
-          showToast('Status updated to ' + newStatus.replace('_', ' '), 'success');
-        } else {
-          // Revert on failure
-          populateCaseDetailView(currentCase);
-          showToast('Failed to update status', 'error');
-        }
-      } catch(e) {
-        console.error('Status update error:', e);
-        showToast('Failed to update status', 'error');
-      }
-    }
-
-    // Completion checklist functions
-    function showCompletionChecklist() {
-      if (!currentCase) return;
-
-      // Build checklist based on case type
-      const checklists = {
-        refund: [
-          { text: 'Verified refund amount is correct', required: true },
-          { text: 'Processed refund in Shopify', required: true },
-          { text: 'Sent refund confirmation email to customer', required: true },
-          { text: 'Updated ticket notes with refund details', required: false }
-        ],
-        shipping: [
-          { text: 'Verified shipping address with customer', required: true },
-          { text: 'Created new shipment or reship order', required: true },
-          { text: 'Sent tracking information to customer', required: true },
-          { text: 'Added bonus item to order (if applicable)', required: false }
-        ],
-        subscription: [
-          { text: 'Made changes in CheckoutChamp', required: true },
-          { text: 'Verified subscription status is correct', required: true },
-          { text: 'Sent confirmation email to customer', required: true },
-          { text: 'Updated internal notes', required: false }
-        ],
-        manual: [
-          { text: 'Completed all required actions', required: true },
-          { text: 'Customer has been notified of resolution', required: true },
-          { text: 'All relevant systems have been updated', required: false }
-        ],
-        'return': [
-          { text: 'Received returned items', required: true },
-          { text: 'Verified condition of returned items', required: true },
-          { text: 'Processed refund for returned items', required: true },
-          { text: 'Sent confirmation to customer', required: true }
-        ]
-      };
-
-      const items = checklists[currentCase.case_type] || checklists.manual;
-      const container = document.getElementById('completionChecklistItems');
-
-      container.innerHTML = items.map((item, idx) =>
-        '<div class="checklist-item' + (item.required ? ' required' : '') + '" onclick="toggleChecklistItem(this)" data-index="' + idx + '">' +
-        '<div class="checklist-checkbox"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>' +
-        '<div class="checklist-content"><span class="checklist-text">' + item.text + '</span>' +
-        (item.required ? '<span class="checklist-required">REQUIRED</span>' : '') +
-        '</div></div>'
-      ).join('');
-
-      // Reset confirm button
-      document.getElementById('confirmCompleteBtn').disabled = true;
-
-      // Show modal
-      document.getElementById('completionChecklistModal').classList.add('active');
-    }
-
-    function toggleChecklistItem(el) {
-      el.classList.toggle('checked');
-      validateChecklist();
-    }
-
-    function validateChecklist() {
-      const items = document.querySelectorAll('#completionChecklistItems .checklist-item.required');
-      const allChecked = Array.from(items).every(item => item.classList.contains('checked'));
-      document.getElementById('confirmCompleteBtn').disabled = !allChecked;
-    }
-
-    function closeCompletionChecklist() {
-      document.getElementById('completionChecklistModal').classList.remove('active');
-    }
-
-    async function confirmCompleteCase() {
-      closeCompletionChecklist();
-      await updateStatusFromDetail('completed');
-    }
-
-    function closeModal() {
-      document.getElementById('caseModal').classList.remove('active');
-      currentCase = null;
-      currentCaseIndex = -1;
-      // Remove case ID from URL
-      const params = new URLSearchParams(window.location.search);
-      params.delete('case');
-      const newUrl = params.toString() ? '/hub?' + params.toString() : '/hub';
-      history.pushState({ page: params.get('page') || 'dashboard', filter: params.get('filter') }, '', newUrl);
-    }
-
-    function copyCaseUrl() {
-      if (!currentCase) return;
-      const url = window.location.origin + '/hub?case=' + currentCase.case_id;
-      navigator.clipboard.writeText(url).then(() => {
-        const btn = document.querySelector('.copy-url-btn');
-        if (btn) {
-          btn.classList.add('copied');
-          btn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
-          setTimeout(() => {
-            btn.classList.remove('copied');
-            btn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>';
-          }, 2000);
-        }
-        showToast('Case URL copied to clipboard', 'success');
-      });
-    }
-
-    // Show assign modal for current case
-    async function showAssignModal() {
-      if (!currentCase) return;
-
-      // Fetch users list
-      try {
-        const r = await fetch(API+'/hub/api/users', {
-          headers: { 'Authorization': 'Bearer ' + authToken }
-        });
-        const data = await r.json();
-        const users = data.users || [];
-
-        const html = '<div class="modal-overlay active" id="assignModal" style="z-index:210;">' +
-          '<div class="modal" style="max-width:400px;">' +
-            '<div class="modal-header" style="padding:20px 24px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">' +
-              '<div class="modal-header-content">' +
-                '<div class="modal-title" style="font-size:18px;">Assign Case</div>' +
-                '<div style="font-size:13px;opacity:0.9;margin-top:4px;">Select a team member</div>' +
-              '</div>' +
-              '<button class="modal-close" onclick="document.getElementById(\\'assignModal\\').remove()">&times;</button>' +
-            '</div>' +
-            '<div class="modal-body" style="padding:24px;">' +
-              '<div style="max-height:300px;overflow-y:auto;">' +
-                users.map(function(u) {
-                  const isSelected = currentCase.assigned_to_id === u.id;
-                  return '<div class="assign-user-item'+(isSelected?' selected':'')+'" onclick="assignCase('+u.id+',\\''+u.name.replace(/'/g,"\\\\'")+'\\')">'+
-                    '<div class="assignee-avatar" style="width:32px;height:32px;font-size:12px;">'+u.name.charAt(0).toUpperCase()+'</div>'+
-                    '<div style="flex:1;">'+
-                      '<div style="font-weight:600;font-size:14px;">'+u.name+'</div>'+
-                      '<div style="font-size:12px;color:#64748b;">'+u.email+'</div>'+
-                    '</div>'+
-                    (isSelected ? '<svg fill="none" stroke="#059669" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : '')+
-                  '</div>';
-                }).join('') +
-                '<div class="assign-user-item" onclick="assignCase(null,null)" style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:12px;">'+
-                  '<div class="assignee-avatar unassigned" style="width:32px;height:32px;font-size:12px;">?</div>'+
-                  '<div style="flex:1;"><div style="font-weight:600;font-size:14px;color:#64748b;">Unassign</div></div>'+
-                '</div>' +
-              '</div>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-
-        document.body.insertAdjacentHTML('beforeend', html);
-      } catch(e) {
-        showToast('Failed to load users', 'error');
-      }
-    }
-
-    // Assign case to user
-    async function assignCase(userId, userName) {
-      if (!currentCase) return;
-
-      try {
-        const r = await fetch(API+'/hub/api/case/'+currentCase.case_id+'/assign', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-          body: JSON.stringify({ assignToUserId: userId })
-        });
-        const data = await r.json();
-
-        if (data.success) {
-          document.getElementById('assignModal')?.remove();
-
-          // Update modal display
-          const assigneeAvatar = document.getElementById('modalAssigneeAvatar');
-          const assigneeNameEl = document.getElementById('modalAssigneeName');
-          const assigneeRoleEl = document.getElementById('modalAssigneeRole');
-
-          if (userName) {
-            assigneeAvatar.textContent = userName.charAt(0).toUpperCase();
-            assigneeAvatar.classList.remove('unassigned');
-            assigneeNameEl.textContent = userName;
-            assigneeRoleEl.textContent = 'Team Member';
-          } else {
-            assigneeAvatar.textContent = '?';
-            assigneeAvatar.classList.add('unassigned');
-            assigneeNameEl.textContent = 'Unassigned';
-            assigneeRoleEl.textContent = 'Click to assign';
-          }
-
-          // Update case data
-          const oldAssignee = currentCase.assigned_to_name;
-          currentCase.assigned_to_name = userName;
-          currentCase.assigned_to_id = userId;
-
-          showToast(userName ? 'Case assigned to ' + userName : 'Case unassigned', 'success');
-
-          // Log assignee change to activity
-          const currentUser = JSON.parse(localStorage.getItem('hub_user') || '{}');
-          if (userName) {
-            logActivity('assignee', 'Assigned to ' + userName + ' by ' + (currentUser.name || 'Admin'));
-          } else {
-            logActivity('assignee', 'Unassigned by ' + (currentUser.name || 'Admin') + (oldAssignee ? ' (was ' + oldAssignee + ')' : ''));
-          }
-
-          // Refresh cases list
-          if (typeof loadCasesView === 'function') loadCasesView();
-        } else {
-          showToast(data.error || 'Failed to assign', 'error');
-        }
-      } catch(e) {
-        showToast('Failed to assign case', 'error');
-      }
-    }
-
-    // Case navigation functions
-    function updateNavigationButtons() {
-      const prevBtn = document.getElementById('prevCaseBtn');
-      const nextBtn = document.getElementById('nextCaseBtn');
-      const prevPreview = document.getElementById('prevCasePreview');
-      const nextPreview = document.getElementById('nextCasePreview');
-
-      if (currentCaseIndex > 0 && casesList.length > 0) {
-        prevBtn.disabled = false;
-        const prevCase = casesList[currentCaseIndex - 1];
-        prevPreview.textContent = (prevCase.customer_name || prevCase.customer_email?.split('@')[0] || 'Case') + ' - ' + prevCase.case_type;
-      } else {
-        prevBtn.disabled = true;
-        prevPreview.textContent = '';
-      }
-
-      if (currentCaseIndex < casesList.length - 1 && casesList.length > 0) {
-        nextBtn.disabled = false;
-        const nextCase = casesList[currentCaseIndex + 1];
-        nextPreview.textContent = (nextCase.customer_name || nextCase.customer_email?.split('@')[0] || 'Case') + ' - ' + nextCase.case_type;
-      } else {
-        nextBtn.disabled = true;
-        nextPreview.textContent = '';
-      }
-    }
-
-    function navigateCase(direction) {
-      if (direction === 'prev' && currentCaseIndex > 0) {
-        openCase(casesList[currentCaseIndex - 1].case_id);
-      } else if (direction === 'next' && currentCaseIndex < casesList.length - 1) {
-        openCase(casesList[currentCaseIndex + 1].case_id);
-      }
-    }
-
-    async function updateStatus(newStatus) {
-      if(!currentCase) {
-        console.error('No current case to update');
-        return;
-      }
-      const oldStatus = currentCase.status || 'pending';
-      if (oldStatus === newStatus) return; // No change
-
-      try {
-        // Optimistically update UI first
-        document.querySelectorAll('.status-card').forEach(card => card.classList.remove('active'));
-        const statusClass = newStatus.replace('_','-');
-        document.querySelector('.status-card.'+statusClass)?.classList.add('active');
-        const modalBadge = document.getElementById('modalStatusBadge');
-        if (modalBadge) modalBadge.innerHTML = '<span class="status-badge '+statusClass+'">'+newStatus.replace('_',' ')+'</span>';
-
-        const r = await fetch(API+'/hub/api/case/'+currentCase.case_id+'/status', {
-          method: 'PUT',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({status: newStatus})
-        });
-        if(r.ok) {
-          currentCase.status = newStatus;
-          // Update casesList too
-          const idx = casesList.findIndex(c => c.case_id === currentCase.case_id);
-          if(idx >= 0) casesList[idx].status = newStatus;
-          loadDashboard();
-
-          // Log status change to activity
-          const statusNames = { 'pending': 'Pending', 'in_progress': 'In Progress', 'completed': 'Completed' };
-          const user = JSON.parse(localStorage.getItem('hub_user') || '{}');
-          logActivity('status', 'Status changed from ' + (statusNames[oldStatus] || oldStatus) + ' to ' + (statusNames[newStatus] || newStatus) + ' by ' + (user.name || 'Admin'));
-        } else {
-          // Revert on failure
-          const oldClass = oldStatus.replace('_','-');
-          document.querySelectorAll('.status-card').forEach(card => card.classList.remove('active'));
-          document.querySelector('.status-card.'+oldClass)?.classList.add('active');
-          if (modalBadge) modalBadge.innerHTML = '<span class="status-badge '+oldClass+'">'+oldStatus.replace('_',' ')+'</span>';
-          alert('Failed to update status');
-        }
-      } catch(e) {
-        console.error('Status update error:', e);
-        alert('Failed to update status: ' + e.message);
-      }
-    }
-
-    async function loadComments(caseId) {
-      try {
-        const r = await fetch(API+'/hub/api/case/'+caseId+'/comments');
-        const d = await r.json();
-        const list = document.getElementById('commentsList');
-        const countEl = document.getElementById('commentsCount');
-        const count = d.comments?.length || 0;
-        countEl.textContent = count + ' comment' + (count !== 1 ? 's' : '');
-        if(!count) {
-          list.innerHTML = '';
-          return;
-        }
-        list.innerHTML = d.comments.map(c => '<div class="comment-item"><div class="comment-header"><span class="comment-author">'+(c.author_name||'Team')+'</span><span class="comment-time">'+timeAgo(c.created_at)+'</span></div><div class="comment-text">'+escapeHtml(c.content)+'</div></div>').join('');
-      } catch(e) { console.error(e); }
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    async function addComment() {
-      if(!currentCase) return;
-      const input = document.getElementById('commentInput');
-      const content = input.value.trim();
-      if(!content) return;
-      try {
-        const r = await fetch(API+'/hub/api/case/'+currentCase.case_id+'/comments', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({content: content, author_name: 'Admin'})
-        });
-        if(r.ok) { input.value = ''; loadComments(currentCase.case_id); }
-      } catch(e) { console.error(e); alert('Failed to add comment'); }
+      document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';
+
+      // Show/hide views
+      document.getElementById('dashboardView').style.display = page === 'dashboard' ? 'block' : 'none';
+      document.getElementById('casesView').style.display = page === 'cases' ? 'block' : 'none';
+      document.getElementById('sessionsView').style.display = page === 'sessions' ? 'block' : 'none';
+      document.getElementById('eventsView').style.display = page === 'events' ? 'block' : 'none';
+      document.getElementById('analyticsView').style.display = page === 'analytics' ? 'block' : 'none';
     }
 
     function refreshData() {
-      // Get current page from active nav item
-      const activeNav = document.querySelector('.nav-item.active');
-      const currentPage = activeNav?.dataset.page || 'dashboard';
-      const currentFilter = activeNav?.dataset.filter;
-
-      console.log('[refreshData] Refreshing page:', currentPage, 'filter:', currentFilter);
-
-      // Show toast notification
-      showToast('Refreshing...', 'info');
-
-      // Reload the current view
-      if (currentPage === 'dashboard') loadDashboard();
-      else if (currentPage === 'cases') loadCasesView();
-      else if (currentPage === 'sessions') loadSessionsView();
-      else if (currentPage === 'events') loadEventsView();
-      else if (currentPage === 'issues') loadIssuesView();
-      else if (currentPage === 'analytics') loadAnalyticsView();
-      else if (currentPage === 'audit') loadAuditView();
-      else if (currentPage === 'users') loadUsersView();
-      else loadDashboard();
-
-      setTimeout(() => showToast('Refreshed', 'success'), 500);
+      console.log('Refreshing data...');
+      // Will implement
     }
-
-    // Global keyboard shortcut: Cmd/Ctrl+K to focus search
-    document.addEventListener('keydown', function(e) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        const searchInput = document.getElementById('caseSearchInput');
-        if (searchInput) {
-          if (document.getElementById('casesView').style.display === 'none') {
-            navigateTo('cases', 'all');
-            setTimeout(() => document.getElementById('caseSearchInput')?.focus(), 100);
-          } else {
-            searchInput.focus();
-            searchInput.select();
-          }
-        }
-      }
-      if (e.key === 'Escape') {
-        if (document.activeElement?.matches('input, textarea')) {
-          document.activeElement.blur();
-        }
-        const activeModal = document.querySelector('.modal-overlay.active');
-        if (activeModal) closeModal();
-      }
-      if (e.key === '/' && !e.target.matches('input, textarea, select')) {
-        e.preventDefault();
-        const searchInput = document.getElementById('caseSearchInput');
-        if (searchInput && document.getElementById('casesView').style.display !== 'none') {
-          searchInput.focus();
-        }
-      }
-    });
-
-    // Check for existing session, otherwise show login screen
-    checkExistingSession();
   </script>
-
-  <!-- Bulk Actions Toolbar -->
-  <div class="bulk-actions-toolbar" id="bulkActionsToolbar">
-    <span class="selected-count" id="selectedCount">0 selected</span>
-    <button class="bulk-btn" onclick="HubBulkActions.updateStatus('pending')">Set Pending</button>
-    <button class="bulk-btn" onclick="HubBulkActions.updateStatus('in_progress')">Set In Progress</button>
-    <button class="bulk-btn" onclick="HubBulkActions.updateStatus('completed')">Set Completed</button>
-    <div class="bulk-btn-divider"></div>
-    <button class="bulk-btn admin-only" onclick="HubBulkActions.showAssignModal()">Assign</button>
-    <button class="bulk-btn" onclick="HubBulkActions.addComment()">Add Comment</button>
-    <button class="bulk-btn" onclick="HubBulkActions.exportCSV()">Export</button>
-    <button class="bulk-close" onclick="HubBulkActions.deselectAll()">&times;</button>
-  </div>
-
-  <!-- Loading Overlay -->
-  <div class="loading-overlay" id="loadingOverlay">
-    <div class="loading-spinner"></div>
-  </div>
-
-  <!-- Hub Enhanced Features -->
-  <script src="/hub/hub-app.js"></script>
+  <script src="hub/hub-app.js"></script>
 </body>
-</html>`;
+</html>
+`;
 }
 // Hub CSS Asset
 
 function getHubStylesCSS() {
-  return "/**\n * Resolution Hub Styles\n * Modern, accessible styling for the hub application\n */\n\n/* ============================================\n   CSS Variables\n   ============================================ */\n:root {\n  /* Colors */\n  --primary-50: #eff6ff;\n  --primary-100: #dbeafe;\n  --primary-500: #3b82f6;\n  --primary-600: #2563eb;\n  --primary-700: #1d4ed8;\n\n  --success-50: #ecfdf5;\n  --success-500: #10b981;\n  --success-600: #059669;\n\n  --warning-50: #fffbeb;\n  --warning-500: #f59e0b;\n  --warning-600: #d97706;\n\n  --error-50: #fef2f2;\n  --error-500: #ef4444;\n  --error-600: #dc2626;\n\n  --gray-50: #f9fafb;\n  --gray-100: #f3f4f6;\n  --gray-200: #e5e7eb;\n  --gray-300: #d1d5db;\n  --gray-400: #9ca3af;\n  --gray-500: #6b7280;\n  --gray-600: #4b5563;\n  --gray-700: #374151;\n  --gray-800: #1f2937;\n  --gray-900: #111827;\n\n  /* Spacing */\n  --spacing-xs: 4px;\n  --spacing-sm: 8px;\n  --spacing-md: 16px;\n  --spacing-lg: 24px;\n  --spacing-xl: 32px;\n\n  /* Typography */\n  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n  --font-mono: 'SF Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;\n\n  /* Shadows */\n  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);\n  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);\n  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);\n  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);\n\n  /* Borders */\n  --radius-sm: 4px;\n  --radius-md: 8px;\n  --radius-lg: 12px;\n  --radius-full: 9999px;\n\n  /* Transitions */\n  --transition-fast: 150ms ease;\n  --transition-normal: 200ms ease;\n}\n\n/* ============================================\n   Base Styles\n   ============================================ */\n*, *::before, *::after {\n  box-sizing: border-box;\n}\n\nbody {\n  font-family: var(--font-sans);\n  color: var(--gray-900);\n  background: var(--gray-50);\n  margin: 0;\n  padding: 0;\n  -webkit-font-smoothing: antialiased;\n  -moz-osx-font-smoothing: grayscale;\n}\n\n/* ============================================\n   Bulk Actions Toolbar\n   ============================================ */\n.bulk-actions-toolbar {\n  display: none;\n  position: fixed;\n  bottom: 24px;\n  left: 50%;\n  transform: translateX(-50%);\n  background: var(--gray-800);\n  color: white;\n  padding: 12px 20px;\n  border-radius: var(--radius-lg);\n  box-shadow: var(--shadow-xl);\n  align-items: center;\n  gap: 16px;\n  z-index: 100;\n  animation: slideUp 0.2s ease;\n}\n\n@keyframes slideUp {\n  from {\n    opacity: 0;\n    transform: translateX(-50%) translateY(20px);\n  }\n  to {\n    opacity: 1;\n    transform: translateX(-50%) translateY(0);\n  }\n}\n\n.bulk-actions-toolbar .selected-count {\n  font-weight: 600;\n  padding-right: 16px;\n  border-right: 1px solid var(--gray-600);\n}\n\n.bulk-actions-toolbar .bulk-btn {\n  background: transparent;\n  border: none;\n  color: white;\n  padding: 8px 12px;\n  border-radius: var(--radius-sm);\n  cursor: pointer;\n  font-size: 14px;\n  transition: background var(--transition-fast);\n}\n\n.bulk-actions-toolbar .bulk-btn:hover {\n  background: var(--gray-700);\n}\n\n.bulk-actions-toolbar .bulk-btn.danger:hover {\n  background: var(--error-600);\n}\n\n.bulk-actions-toolbar .bulk-btn-divider {\n  width: 1px;\n  height: 24px;\n  background: var(--gray-600);\n}\n\n.bulk-actions-toolbar .bulk-close {\n  background: transparent;\n  border: none;\n  color: var(--gray-400);\n  padding: 4px;\n  cursor: pointer;\n  margin-left: 8px;\n}\n\n.bulk-actions-toolbar .bulk-close:hover {\n  color: white;\n}\n\n/* ============================================\n   Saved Views Sidebar\n   ============================================ */\n.saved-views-section {\n  margin-top: 24px;\n  padding-top: 16px;\n  border-top: 1px solid var(--gray-200);\n}\n\n.saved-views-header {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 0 16px;\n  margin-bottom: 8px;\n}\n\n.saved-views-header h4 {\n  font-size: 12px;\n  font-weight: 600;\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n  color: var(--gray-500);\n  margin: 0;\n}\n\n.saved-views-header button {\n  background: none;\n  border: none;\n  color: var(--primary-600);\n  font-size: 18px;\n  cursor: pointer;\n  padding: 0;\n  line-height: 1;\n}\n\n.saved-views-header button:hover {\n  color: var(--primary-700);\n}\n\n.saved-view-item {\n  display: flex;\n  align-items: center;\n  padding: 10px 16px;\n  cursor: pointer;\n  transition: background var(--transition-fast);\n}\n\n.saved-view-item:hover {\n  background: var(--gray-100);\n}\n\n.saved-view-item.active {\n  background: var(--primary-50);\n  border-right: 3px solid var(--primary-500);\n}\n\n.saved-view-item .view-name {\n  flex: 1;\n  font-size: 14px;\n  color: var(--gray-700);\n}\n\n.saved-view-item .view-default {\n  font-size: 11px;\n  background: var(--primary-100);\n  color: var(--primary-700);\n  padding: 2px 6px;\n  border-radius: var(--radius-full);\n  margin-left: 8px;\n}\n\n.saved-view-item .view-delete {\n  opacity: 0;\n  background: none;\n  border: none;\n  color: var(--gray-400);\n  cursor: pointer;\n  padding: 2px 6px;\n  font-size: 16px;\n  transition: opacity var(--transition-fast);\n}\n\n.saved-view-item:hover .view-delete {\n  opacity: 1;\n}\n\n.saved-view-item .view-delete:hover {\n  color: var(--error-500);\n}\n\n.empty-views {\n  padding: 16px;\n  text-align: center;\n  color: var(--gray-400);\n  font-size: 13px;\n}\n\n/* ============================================\n   Completion Checklist Modal\n   ============================================ */\n.checklist-items {\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n}\n\n.checklist-item {\n  display: flex;\n  align-items: flex-start;\n  gap: 12px;\n  padding: 12px;\n  background: var(--gray-50);\n  border-radius: var(--radius-md);\n  cursor: pointer;\n  transition: background var(--transition-fast);\n}\n\n.checklist-item:hover {\n  background: var(--gray-100);\n}\n\n.checklist-item.required {\n  border-left: 3px solid var(--error-500);\n}\n\n.checklist-checkbox {\n  width: 20px;\n  height: 20px;\n  accent-color: var(--success-500);\n  cursor: pointer;\n  flex-shrink: 0;\n  margin-top: 2px;\n}\n\n.checklist-text {\n  flex: 1;\n  font-size: 14px;\n  color: var(--gray-700);\n  line-height: 1.5;\n}\n\n.required-badge {\n  display: inline-block;\n  font-size: 11px;\n  background: var(--error-100);\n  color: var(--error-700);\n  padding: 2px 6px;\n  border-radius: var(--radius-full);\n  margin-left: 8px;\n  vertical-align: middle;\n}\n\n.completed-by {\n  font-size: 12px;\n  color: var(--gray-400);\n  white-space: nowrap;\n}\n\n/* ============================================\n   Keyboard Shortcuts Modal\n   ============================================ */\n.shortcuts-section {\n  margin-bottom: 24px;\n}\n\n.shortcuts-section:last-child {\n  margin-bottom: 0;\n}\n\n.shortcuts-section h4 {\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--gray-500);\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n  margin: 0 0 12px 0;\n  padding-bottom: 8px;\n  border-bottom: 1px solid var(--gray-200);\n}\n\n.shortcut {\n  display: flex;\n  align-items: center;\n  padding: 8px 0;\n  font-size: 14px;\n  color: var(--gray-600);\n}\n\n.shortcut kbd {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  min-width: 24px;\n  height: 24px;\n  padding: 0 6px;\n  font-family: var(--font-mono);\n  font-size: 12px;\n  background: var(--gray-100);\n  border: 1px solid var(--gray-300);\n  border-radius: var(--radius-sm);\n  box-shadow: 0 1px 0 var(--gray-300);\n  margin-right: 8px;\n}\n\n/* Keyboard selection highlight */\n.cases-table tbody tr.keyboard-selected {\n  outline: 2px solid var(--primary-500);\n  outline-offset: -2px;\n  background: var(--primary-50);\n}\n\n/* ============================================\n   User Management\n   ============================================ */\n.users-list {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.user-row {\n  display: flex;\n  align-items: center;\n  padding: 12px 16px;\n  background: var(--gray-50);\n  border-radius: var(--radius-md);\n  gap: 16px;\n}\n\n.user-row-info {\n  flex: 1;\n}\n\n.user-row-name {\n  font-weight: 500;\n  color: var(--gray-900);\n}\n\n.user-row-meta {\n  font-size: 13px;\n  color: var(--gray-500);\n  margin-top: 2px;\n}\n\n.user-row-status {\n  font-size: 12px;\n  padding: 4px 8px;\n  border-radius: var(--radius-full);\n}\n\n.user-row-status.active {\n  background: var(--success-50);\n  color: var(--success-600);\n}\n\n.user-row-status.inactive {\n  background: var(--gray-100);\n  color: var(--gray-500);\n}\n\n.user-row-actions {\n  display: flex;\n  gap: 8px;\n}\n\n.btn-icon {\n  background: none;\n  border: none;\n  padding: 4px 8px;\n  font-size: 13px;\n  color: var(--primary-600);\n  cursor: pointer;\n  border-radius: var(--radius-sm);\n}\n\n.btn-icon:hover {\n  background: var(--primary-50);\n}\n\n.btn-icon.danger {\n  color: var(--error-600);\n}\n\n.btn-icon.danger:hover {\n  background: var(--error-50);\n}\n\n/* ============================================\n   Assignment Queue Table\n   ============================================ */\n.queue-table {\n  width: 100%;\n  border-collapse: collapse;\n  font-size: 14px;\n}\n\n.queue-table th {\n  text-align: left;\n  padding: 12px;\n  background: var(--gray-50);\n  border-bottom: 1px solid var(--gray-200);\n  font-weight: 600;\n  color: var(--gray-600);\n}\n\n.queue-table td {\n  padding: 12px;\n  border-bottom: 1px solid var(--gray-100);\n}\n\n.queue-table tbody tr:hover {\n  background: var(--gray-50);\n}\n\n/* ============================================\n   Audit Log Table\n   ============================================ */\n.audit-table {\n  width: 100%;\n  border-collapse: collapse;\n  font-size: 13px;\n}\n\n.audit-table th {\n  text-align: left;\n  padding: 12px 16px;\n  background: var(--gray-50);\n  border-bottom: 1px solid var(--gray-200);\n  font-weight: 600;\n  color: var(--gray-600);\n  position: sticky;\n  top: 0;\n}\n\n.audit-table td {\n  padding: 10px 16px;\n  border-bottom: 1px solid var(--gray-100);\n  vertical-align: middle;\n}\n\n.audit-table tbody tr:hover {\n  background: var(--gray-50);\n}\n\n.action-badge {\n  display: inline-block;\n  font-size: 11px;\n  padding: 3px 8px;\n  border-radius: var(--radius-full);\n  font-weight: 500;\n}\n\n.action-badge.cases {\n  background: var(--primary-100);\n  color: var(--primary-700);\n}\n\n.action-badge.users {\n  background: var(--warning-100);\n  color: var(--warning-700);\n}\n\n.action-badge.views {\n  background: var(--success-100);\n  color: var(--success-700);\n}\n\n.action-badge.auth {\n  background: var(--gray-100);\n  color: var(--gray-700);\n}\n\n.action-badge.system {\n  background: var(--error-100);\n  color: var(--error-700);\n}\n\n/* ============================================\n   Toast Notifications\n   ============================================ */\n#toastContainer {\n  position: fixed;\n  bottom: 24px;\n  right: 24px;\n  z-index: 1000;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.toast {\n  padding: 12px 20px;\n  border-radius: var(--radius-md);\n  font-size: 14px;\n  font-weight: 500;\n  box-shadow: var(--shadow-lg);\n  transform: translateX(100%);\n  opacity: 0;\n  transition: all var(--transition-normal);\n}\n\n.toast.show {\n  transform: translateX(0);\n  opacity: 1;\n}\n\n.toast-success {\n  background: var(--success-500);\n  color: white;\n}\n\n.toast-error {\n  background: var(--error-500);\n  color: white;\n}\n\n.toast-warning {\n  background: var(--warning-500);\n  color: white;\n}\n\n.toast-info {\n  background: var(--primary-500);\n  color: white;\n}\n\n/* ============================================\n   Form Elements\n   ============================================ */\n.form-group {\n  margin-bottom: 16px;\n}\n\n.form-group label {\n  display: block;\n  font-size: 13px;\n  font-weight: 500;\n  color: var(--gray-700);\n  margin-bottom: 6px;\n}\n\n.form-input {\n  width: 100%;\n  padding: 10px 12px;\n  font-size: 14px;\n  border: 1px solid var(--gray-300);\n  border-radius: var(--radius-md);\n  background: white;\n  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);\n}\n\n.form-input:focus {\n  outline: none;\n  border-color: var(--primary-500);\n  box-shadow: 0 0 0 3px var(--primary-100);\n}\n\n.form-input::placeholder {\n  color: var(--gray-400);\n}\n\n.error-message {\n  color: var(--error-600);\n  font-size: 13px;\n  margin-top: 8px;\n  padding: 8px 12px;\n  background: var(--error-50);\n  border-radius: var(--radius-sm);\n}\n\n/* ============================================\n   Buttons\n   ============================================ */\n.btn {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 10px 16px;\n  font-size: 14px;\n  font-weight: 500;\n  border-radius: var(--radius-md);\n  cursor: pointer;\n  transition: all var(--transition-fast);\n  border: none;\n  gap: 8px;\n}\n\n.btn-primary {\n  background: var(--primary-600);\n  color: white;\n}\n\n.btn-primary:hover {\n  background: var(--primary-700);\n}\n\n.btn-secondary {\n  background: var(--gray-100);\n  color: var(--gray-700);\n}\n\n.btn-secondary:hover {\n  background: var(--gray-200);\n}\n\n.btn-success {\n  background: var(--success-600);\n  color: white;\n}\n\n.btn-success:hover {\n  background: var(--success-700);\n}\n\n.btn-danger {\n  background: var(--error-600);\n  color: white;\n}\n\n.btn-danger:hover {\n  background: var(--error-700);\n}\n\n.btn:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n/* ============================================\n   Modal Styles\n   ============================================ */\n.modal-overlay {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(0, 0, 0, 0.5);\n  display: none;\n  align-items: center;\n  justify-content: center;\n  z-index: 200;\n  padding: 24px;\n}\n\n.modal-overlay.active {\n  display: flex;\n}\n\n.modal {\n  background: white;\n  border-radius: var(--radius-lg);\n  box-shadow: var(--shadow-xl);\n  max-height: 90vh;\n  overflow: hidden;\n  display: flex;\n  flex-direction: column;\n  width: 100%;\n  animation: modalIn 0.2s ease;\n}\n\n@keyframes modalIn {\n  from {\n    opacity: 0;\n    transform: scale(0.95);\n  }\n  to {\n    opacity: 1;\n    transform: scale(1);\n  }\n}\n\n.modal-header {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 16px 24px;\n  border-bottom: 1px solid var(--gray-200);\n  background: white;\n}\n\n.modal-header-content {\n  flex: 1;\n}\n\n.modal-title {\n  font-size: 16px;\n  font-weight: 600;\n  color: var(--gray-900);\n}\n\n.modal-close {\n  background: none;\n  border: none;\n  font-size: 24px;\n  color: var(--gray-400);\n  cursor: pointer;\n  padding: 0;\n  line-height: 1;\n  transition: color var(--transition-fast);\n}\n\n.modal-close:hover {\n  color: var(--gray-600);\n}\n\n.modal-body {\n  padding: 24px;\n  overflow-y: auto;\n}\n\n/* ============================================\n   Cases Table\n   ============================================ */\n.cases-table {\n  width: 100%;\n  border-collapse: collapse;\n  font-size: 14px;\n}\n\n.cases-table th {\n  text-align: left;\n  padding: 12px 16px;\n  background: var(--gray-50);\n  border-bottom: 2px solid var(--gray-200);\n  font-weight: 600;\n  color: var(--gray-600);\n  white-space: nowrap;\n}\n\n.cases-table td {\n  padding: 12px 16px;\n  border-bottom: 1px solid var(--gray-100);\n  vertical-align: middle;\n}\n\n.cases-table tbody tr {\n  cursor: pointer;\n  transition: background var(--transition-fast);\n}\n\n.cases-table tbody tr:hover {\n  background: var(--gray-50);\n}\n\n.case-checkbox {\n  width: 18px;\n  height: 18px;\n  cursor: pointer;\n  accent-color: var(--primary-500);\n}\n\n.case-id {\n  font-family: var(--font-mono);\n  font-size: 12px;\n  color: var(--gray-500);\n}\n\n.customer-info {\n  display: flex;\n  flex-direction: column;\n}\n\n.customer-name {\n  font-weight: 500;\n  color: var(--gray-900);\n}\n\n.customer-email {\n  font-size: 12px;\n  color: var(--gray-500);\n  margin-top: 2px;\n}\n\n.time-ago {\n  font-size: 13px;\n  color: var(--gray-500);\n}\n\n/* ============================================\n   Status & Type Badges\n   ============================================ */\n.status-badge {\n  display: inline-block;\n  padding: 4px 10px;\n  font-size: 12px;\n  font-weight: 500;\n  border-radius: var(--radius-full);\n}\n\n.status-badge.pending {\n  background: var(--warning-50);\n  color: var(--warning-700);\n}\n\n.status-badge.in-progress {\n  background: var(--primary-50);\n  color: var(--primary-700);\n}\n\n.status-badge.completed {\n  background: var(--success-50);\n  color: var(--success-700);\n}\n\n.type-badge {\n  display: inline-block;\n  padding: 4px 10px;\n  font-size: 12px;\n  font-weight: 500;\n  border-radius: var(--radius-full);\n  text-transform: capitalize;\n}\n\n.type-badge.shipping {\n  background: #dbeafe;\n  color: #1e40af;\n}\n\n.type-badge.refund {\n  background: #fef3c7;\n  color: #92400e;\n}\n\n.type-badge.subscription {\n  background: #e0e7ff;\n  color: #3730a3;\n}\n\n.type-badge.manual {\n  background: #f3f4f6;\n  color: #4b5563;\n}\n\n.type-badge.return {\n  background: #fce7f3;\n  color: #9d174d;\n}\n\n/* ============================================\n   Empty States\n   ============================================ */\n.empty-state {\n  text-align: center;\n  padding: 48px 24px;\n  color: var(--gray-500);\n}\n\n.empty-state-icon {\n  font-size: 48px;\n  margin-bottom: 16px;\n  opacity: 0.5;\n}\n\n.empty-state-title {\n  font-size: 16px;\n  font-weight: 500;\n  color: var(--gray-700);\n  margin-bottom: 8px;\n}\n\n.empty-state-text {\n  font-size: 14px;\n  color: var(--gray-500);\n}\n\n/* ============================================\n   Pagination\n   ============================================ */\n#casesPagination {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  gap: 16px;\n  padding: 16px;\n  border-top: 1px solid var(--gray-200);\n}\n\n#casesPagination button {\n  padding: 8px 16px;\n  font-size: 14px;\n  background: var(--gray-100);\n  border: none;\n  border-radius: var(--radius-md);\n  cursor: pointer;\n  transition: background var(--transition-fast);\n}\n\n#casesPagination button:hover {\n  background: var(--gray-200);\n}\n\n#casesPagination span {\n  font-size: 14px;\n  color: var(--gray-600);\n}\n\n/* ============================================\n   Admin-only Elements\n   ============================================ */\n.admin-only {\n  display: none;\n}\n\n/* ============================================\n   Loading Indicator\n   ============================================ */\n.loading-overlay {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(255, 255, 255, 0.8);\n  display: none;\n  align-items: center;\n  justify-content: center;\n  z-index: 500;\n}\n\n.loading-overlay.active {\n  display: flex;\n}\n\n.loading-spinner {\n  width: 40px;\n  height: 40px;\n  border: 3px solid var(--gray-200);\n  border-top-color: var(--primary-500);\n  border-radius: 50%;\n  animation: spin 0.8s linear infinite;\n}\n\n@keyframes spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n\n/* ============================================\n   Responsive Adjustments\n   ============================================ */\n@media (max-width: 768px) {\n  .bulk-actions-toolbar {\n    left: 16px;\n    right: 16px;\n    transform: none;\n    flex-wrap: wrap;\n  }\n\n  .modal {\n    margin: 16px;\n  }\n\n  .cases-table {\n    font-size: 13px;\n  }\n\n  .cases-table th,\n  .cases-table td {\n    padding: 10px 12px;\n  }\n\n  #toastContainer {\n    left: 16px;\n    right: 16px;\n    bottom: 16px;\n  }\n}\n\n/* ============================================\n   Status Cards in Case Modal\n   ============================================ */\n.status-cards {\n  display: flex;\n  gap: 12px;\n  margin-bottom: 24px;\n}\n\n.status-card {\n  flex: 1;\n  padding: 12px 16px;\n  border: 2px solid var(--gray-200);\n  border-radius: var(--radius-md);\n  text-align: center;\n  cursor: pointer;\n  transition: all var(--transition-fast);\n}\n\n.status-card:hover {\n  border-color: var(--gray-300);\n  background: var(--gray-50);\n}\n\n.status-card.active {\n  border-color: var(--primary-500);\n  background: var(--primary-50);\n}\n\n.status-card.pending.active {\n  border-color: var(--warning-500);\n  background: var(--warning-50);\n}\n\n.status-card.in-progress.active {\n  border-color: var(--primary-500);\n  background: var(--primary-50);\n}\n\n.status-card.completed.active {\n  border-color: var(--success-500);\n  background: var(--success-50);\n}\n\n.status-card-label {\n  font-size: 12px;\n  font-weight: 500;\n  color: var(--gray-500);\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n}\n\n.status-card-value {\n  font-size: 14px;\n  font-weight: 600;\n  color: var(--gray-900);\n  margin-top: 4px;\n}\n\n/* ============================================\n   Deep Link Copy Button\n   ============================================ */\n.copy-link-btn {\n  background: none;\n  border: none;\n  color: var(--gray-400);\n  cursor: pointer;\n  padding: 4px;\n  border-radius: var(--radius-sm);\n  transition: all var(--transition-fast);\n}\n\n.copy-link-btn:hover {\n  color: var(--primary-600);\n  background: var(--primary-50);\n}\n\n/* ============================================\n   Search Input Enhancements\n   ============================================ */\n.search-container {\n  position: relative;\n}\n\n.search-input {\n  width: 100%;\n  padding: 10px 12px 10px 40px;\n  font-size: 14px;\n  border: 1px solid var(--gray-200);\n  border-radius: var(--radius-md);\n  background: white;\n  transition: all var(--transition-fast);\n}\n\n.search-input:focus {\n  outline: none;\n  border-color: var(--primary-500);\n  box-shadow: 0 0 0 3px var(--primary-100);\n}\n\n.search-icon {\n  position: absolute;\n  left: 12px;\n  top: 50%;\n  transform: translateY(-50%);\n  color: var(--gray-400);\n  pointer-events: none;\n}\n\n.search-shortcut {\n  position: absolute;\n  right: 12px;\n  top: 50%;\n  transform: translateY(-50%);\n  font-size: 11px;\n  color: var(--gray-400);\n  background: var(--gray-100);\n  padding: 2px 6px;\n  border-radius: var(--radius-sm);\n}\n";
+  return "/**\n * Resolution Hub Styles\n * Modern, accessible styling for the hub application\n */\n\n/* ============================================\n   CSS Variables\n   ============================================ */\n:root {\n  /* Brand Colors - Updated to match old app */\n  --brand-navy: #1a365d;\n  --brand-navy-light: #2c5282;\n  --brand-navy-soft: #E8EEF4;\n  \n  /* Colors */\n  --primary-50: #eff6ff;\n  --primary-100: #dbeafe;\n  --primary-500: #1a365d;\n  --primary-600: #1a365d;\n  --primary-700: #0f172a;\n\n  --success-50: #ecfdf5;\n  --success-500: #10b981;\n  --success-600: #059669;\n\n  --warning-50: #fffbeb;\n  --warning-500: #f59e0b;\n  --warning-600: #d97706;\n\n  --error-50: #fef2f2;\n  --error-500: #ef4444;\n  --error-600: #dc2626;\n\n  --gray-50: #f9fafb;\n  --gray-100: #f3f4f6;\n  --gray-200: #e5e7eb;\n  --gray-300: #d1d5db;\n  --gray-400: #9ca3af;\n  --gray-500: #6b7280;\n  --gray-600: #4b5563;\n  --gray-700: #374151;\n  --gray-800: #1f2937;\n  --gray-900: #111827;\n\n  /* Spacing */\n  --spacing-xs: 4px;\n  --spacing-sm: 8px;\n  --spacing-md: 16px;\n  --spacing-lg: 24px;\n  --spacing-xl: 32px;\n\n  /* Typography */\n  --font-sans: 'Satoshi', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n  --font-display: 'Space Grotesk', 'Poppins', sans-serif;\n  --font-mono: 'SF Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;\n\n  /* Shadows */\n  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);\n  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);\n  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);\n  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);\n\n  /* Borders */\n  --radius-sm: 4px;\n  --radius-md: 8px;\n  --radius-lg: 12px;\n  --radius-full: 9999px;\n\n  /* Transitions */\n  --transition-fast: 150ms ease;\n  --transition-normal: 200ms ease;\n\n  /* Hub Background Gradient */\n  --gradient-dawn: linear-gradient(135deg, #fef7f0 0%, #fdf2f8 25%, #f5f3ff 50%, #eff6ff 75%, #f0fdf4 100%);\n}\n\n/* ============================================\n   Base Styles\n   ============================================ */\n*, *::before, *::after {\n  box-sizing: border-box;\n}\n\nbody {\n  font-family: var(--font-sans);\n  color: var(--gray-900);\n  background: var(--gradient-dawn);\n  background-attachment: fixed;\n  margin: 0;\n  padding: 0;\n  -webkit-font-smoothing: antialiased;\n  -moz-osx-font-smoothing: grayscale;\n}\n\nh1, h2, h3, h4, h5, h6 {\n  font-family: var(--font-display);\n  font-weight: 700;\n}\n\n/* ============================================\n   Bulk Actions Toolbar\n   ============================================ */\n.bulk-actions-toolbar {\n  display: none;\n  position: fixed;\n  bottom: 24px;\n  left: 50%;\n  transform: translateX(-50%);\n  background: var(--gray-800);\n  color: white;\n  padding: 12px 20px;\n  border-radius: var(--radius-lg);\n  box-shadow: var(--shadow-xl);\n  align-items: center;\n  gap: 16px;\n  z-index: 100;\n  animation: slideUp 0.2s ease;\n}\n\n.bulk-actions-toolbar.visible {\n  display: flex;\n}\n\n@keyframes slideUp {\n  from {\n    opacity: 0;\n    transform: translateX(-50%) translateY(20px);\n  }\n  to {\n    opacity: 1;\n    transform: translateX(-50%) translateY(0);\n  }\n}\n\n.bulk-actions-toolbar .selected-count {\n  font-weight: 600;\n  padding-right: 16px;\n  border-right: 1px solid var(--gray-600);\n}\n\n.bulk-actions-toolbar .bulk-btn {\n  background: transparent;\n  border: none;\n  color: white;\n  padding: 8px 12px;\n  border-radius: var(--radius-sm);\n  cursor: pointer;\n  font-size: 14px;\n  transition: background var(--transition-fast);\n}\n\n.bulk-actions-toolbar .bulk-btn:hover {\n  background: var(--gray-700);\n}\n\n.bulk-actions-toolbar .bulk-btn.danger:hover {\n  background: var(--error-600);\n}\n\n.bulk-actions-toolbar .bulk-btn-divider {\n  width: 1px;\n  height: 24px;\n  background: var(--gray-600);\n}\n\n.bulk-actions-toolbar .bulk-close {\n  background: transparent;\n  border: none;\n  color: var(--gray-400);\n  padding: 4px;\n  cursor: pointer;\n  margin-left: 8px;\n}\n\n.bulk-actions-toolbar .bulk-close:hover {\n  color: white;\n}\n\n/* ============================================\n   Saved Views Sidebar\n   ============================================ */\n.saved-views-section {\n  margin-top: 24px;\n  padding-top: 16px;\n  border-top: 1px solid var(--gray-200);\n}\n\n.saved-views-header {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 0 16px;\n  margin-bottom: 8px;\n}\n\n.saved-views-header h4 {\n  font-size: 12px;\n  font-weight: 600;\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n  color: var(--gray-500);\n  margin: 0;\n}\n\n.saved-views-header button {\n  background: none;\n  border: none;\n  color: var(--primary-600);\n  font-size: 18px;\n  cursor: pointer;\n  padding: 0;\n  line-height: 1;\n}\n\n.saved-views-header button:hover {\n  color: var(--primary-700);\n}\n\n.saved-view-item {\n  display: flex;\n  align-items: center;\n  padding: 10px 16px;\n  cursor: pointer;\n  transition: background var(--transition-fast);\n}\n\n.saved-view-item:hover {\n  background: var(--gray-100);\n}\n\n.saved-view-item.active {\n  background: var(--primary-50);\n  border-right: 3px solid var(--primary-500);\n}\n\n.saved-view-item .view-name {\n  flex: 1;\n  font-size: 14px;\n  color: var(--gray-700);\n}\n\n.saved-view-item .view-default {\n  font-size: 11px;\n  background: var(--primary-100);\n  color: var(--primary-700);\n  padding: 2px 6px;\n  border-radius: var(--radius-full);\n  margin-left: 8px;\n}\n\n.saved-view-item .view-delete {\n  opacity: 0;\n  background: none;\n  border: none;\n  color: var(--gray-400);\n  cursor: pointer;\n  padding: 2px 6px;\n  font-size: 16px;\n  transition: opacity var(--transition-fast);\n}\n\n.saved-view-item:hover .view-delete {\n  opacity: 1;\n}\n\n.saved-view-item .view-delete:hover {\n  color: var(--error-500);\n}\n\n.empty-views {\n  padding: 16px;\n  text-align: center;\n  color: var(--gray-400);\n  font-size: 13px;\n}\n\n/* ============================================\n   Completion Checklist Modal\n   ============================================ */\n.checklist-items {\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n}\n\n.checklist-item {\n  display: flex;\n  align-items: flex-start;\n  gap: 12px;\n  padding: 12px;\n  background: var(--gray-50);\n  border-radius: var(--radius-md);\n  cursor: pointer;\n  transition: background var(--transition-fast);\n}\n\n.checklist-item:hover {\n  background: var(--gray-100);\n}\n\n.checklist-item.required {\n  border-left: 3px solid var(--error-500);\n}\n\n.checklist-checkbox {\n  width: 20px;\n  height: 20px;\n  accent-color: var(--success-500);\n  cursor: pointer;\n  flex-shrink: 0;\n  margin-top: 2px;\n}\n\n.checklist-text {\n  flex: 1;\n  font-size: 14px;\n  color: var(--gray-700);\n  line-height: 1.5;\n}\n\n.required-badge {\n  display: inline-block;\n  font-size: 11px;\n  background: var(--error-100);\n  color: var(--error-700);\n  padding: 2px 6px;\n  border-radius: var(--radius-full);\n  margin-left: 8px;\n  vertical-align: middle;\n}\n\n.completed-by {\n  font-size: 12px;\n  color: var(--gray-400);\n  white-space: nowrap;\n}\n\n/* ============================================\n   Keyboard Shortcuts Modal\n   ============================================ */\n.shortcuts-section {\n  margin-bottom: 24px;\n}\n\n.shortcuts-section:last-child {\n  margin-bottom: 0;\n}\n\n.shortcuts-section h4 {\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--gray-500);\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n  margin: 0 0 12px 0;\n  padding-bottom: 8px;\n  border-bottom: 1px solid var(--gray-200);\n}\n\n.shortcut {\n  display: flex;\n  align-items: center;\n  padding: 8px 0;\n  font-size: 14px;\n  color: var(--gray-600);\n}\n\n.shortcut kbd {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  min-width: 24px;\n  height: 24px;\n  padding: 0 6px;\n  font-family: var(--font-mono);\n  font-size: 12px;\n  background: var(--gray-100);\n  border: 1px solid var(--gray-300);\n  border-radius: var(--radius-sm);\n  box-shadow: 0 1px 0 var(--gray-300);\n  margin-right: 8px;\n}\n\n/* Keyboard selection highlight */\n.cases-table tbody tr.keyboard-selected {\n  outline: 2px solid var(--primary-500);\n  outline-offset: -2px;\n  background: var(--primary-50);\n}\n\n/* ============================================\n   User Management\n   ============================================ */\n.users-list {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.user-row {\n  display: flex;\n  align-items: center;\n  padding: 12px 16px;\n  background: var(--gray-50);\n  border-radius: var(--radius-md);\n  gap: 16px;\n}\n\n.user-row-info {\n  flex: 1;\n}\n\n.user-row-name {\n  font-weight: 500;\n  color: var(--gray-900);\n}\n\n.user-row-meta {\n  font-size: 13px;\n  color: var(--gray-500);\n  margin-top: 2px;\n}\n\n.user-row-status {\n  font-size: 12px;\n  padding: 4px 8px;\n  border-radius: var(--radius-full);\n}\n\n.user-row-status.active {\n  background: var(--success-50);\n  color: var(--success-600);\n}\n\n.user-row-status.inactive {\n  background: var(--gray-100);\n  color: var(--gray-500);\n}\n\n.user-row-actions {\n  display: flex;\n  gap: 8px;\n}\n\n.btn-icon {\n  background: none;\n  border: none;\n  padding: 4px 8px;\n  font-size: 13px;\n  color: var(--primary-600);\n  cursor: pointer;\n  border-radius: var(--radius-sm);\n}\n\n.btn-icon:hover {\n  background: var(--primary-50);\n}\n\n.btn-icon.danger {\n  color: var(--error-600);\n}\n\n.btn-icon.danger:hover {\n  background: var(--error-50);\n}\n\n/* ============================================\n   Assignment Queue Table\n   ============================================ */\n.queue-table {\n  width: 100%;\n  border-collapse: collapse;\n  font-size: 14px;\n}\n\n.queue-table th {\n  text-align: left;\n  padding: 12px;\n  background: var(--gray-50);\n  border-bottom: 1px solid var(--gray-200);\n  font-weight: 600;\n  color: var(--gray-600);\n}\n\n.queue-table td {\n  padding: 12px;\n  border-bottom: 1px solid var(--gray-100);\n}\n\n.queue-table tbody tr:hover {\n  background: var(--gray-50);\n}\n\n/* ============================================\n   Audit Log Table\n   ============================================ */\n.audit-table {\n  width: 100%;\n  border-collapse: collapse;\n  font-size: 13px;\n}\n\n.audit-table th {\n  text-align: left;\n  padding: 12px 16px;\n  background: var(--gray-50);\n  border-bottom: 1px solid var(--gray-200);\n  font-weight: 600;\n  color: var(--gray-600);\n  position: sticky;\n  top: 0;\n}\n\n.audit-table td {\n  padding: 10px 16px;\n  border-bottom: 1px solid var(--gray-100);\n  vertical-align: middle;\n}\n\n.audit-table tbody tr:hover {\n  background: var(--gray-50);\n}\n\n.action-badge {\n  display: inline-block;\n  font-size: 11px;\n  padding: 3px 8px;\n  border-radius: var(--radius-full);\n  font-weight: 500;\n}\n\n.action-badge.cases {\n  background: var(--primary-100);\n  color: var(--primary-700);\n}\n\n.action-badge.users {\n  background: var(--warning-100);\n  color: var(--warning-700);\n}\n\n.action-badge.views {\n  background: var(--success-100);\n  color: var(--success-700);\n}\n\n.action-badge.auth {\n  background: var(--gray-100);\n  color: var(--gray-700);\n}\n\n.action-badge.system {\n  background: var(--error-100);\n  color: var(--error-700);\n}\n\n/* ============================================\n   Toast Notifications\n   ============================================ */\n#toastContainer {\n  position: fixed;\n  bottom: 24px;\n  right: 24px;\n  z-index: 1000;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.toast {\n  padding: 12px 20px;\n  border-radius: var(--radius-md);\n  font-size: 14px;\n  font-weight: 500;\n  box-shadow: var(--shadow-lg);\n  transform: translateX(100%);\n  opacity: 0;\n  transition: all var(--transition-normal);\n}\n\n.toast.show {\n  transform: translateX(0);\n  opacity: 1;\n}\n\n.toast-success {\n  background: var(--success-500);\n  color: white;\n}\n\n.toast-error {\n  background: var(--error-500);\n  color: white;\n}\n\n.toast-warning {\n  background: var(--warning-500);\n  color: white;\n}\n\n.toast-info {\n  background: var(--primary-500);\n  color: white;\n}\n\n/* ============================================\n   Form Elements\n   ============================================ */\n.form-group {\n  margin-bottom: 16px;\n}\n\n.form-group label {\n  display: block;\n  font-size: 13px;\n  font-weight: 500;\n  color: var(--gray-700);\n  margin-bottom: 6px;\n}\n\n.form-input {\n  width: 100%;\n  padding: 10px 12px;\n  font-size: 14px;\n  border: 1px solid var(--gray-300);\n  border-radius: var(--radius-md);\n  background: white;\n  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);\n}\n\n.form-input:focus {\n  outline: none;\n  border-color: var(--primary-500);\n  box-shadow: 0 0 0 3px var(--primary-100);\n}\n\n.form-input::placeholder {\n  color: var(--gray-400);\n}\n\n.error-message {\n  color: var(--error-600);\n  font-size: 13px;\n  margin-top: 8px;\n  padding: 8px 12px;\n  background: var(--error-50);\n  border-radius: var(--radius-sm);\n}\n\n/* ============================================\n   Buttons\n   ============================================ */\n.btn {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 10px 16px;\n  font-size: 14px;\n  font-weight: 500;\n  border-radius: var(--radius-md);\n  cursor: pointer;\n  transition: all var(--transition-fast);\n  border: none;\n  gap: 8px;\n}\n\n.btn-primary {\n  background: var(--primary-600);\n  color: white;\n}\n\n.btn-primary:hover {\n  background: var(--primary-700);\n}\n\n.btn-secondary {\n  background: var(--gray-100);\n  color: var(--gray-700);\n}\n\n.btn-secondary:hover {\n  background: var(--gray-200);\n}\n\n.btn-success {\n  background: var(--success-600);\n  color: white;\n}\n\n.btn-success:hover {\n  background: var(--success-700);\n}\n\n.btn-danger {\n  background: var(--error-600);\n  color: white;\n}\n\n.btn-danger:hover {\n  background: var(--error-700);\n}\n\n.btn:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n/* ============================================\n   Modal Styles\n   ============================================ */\n.modal-overlay {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(0, 0, 0, 0.5);\n  display: none;\n  align-items: center;\n  justify-content: center;\n  z-index: 200;\n  padding: 24px;\n}\n\n.modal-overlay.active {\n  display: flex;\n}\n\n.modal {\n  background: white;\n  border-radius: var(--radius-lg);\n  box-shadow: var(--shadow-xl);\n  max-height: 90vh;\n  overflow: hidden;\n  display: flex;\n  flex-direction: column;\n  width: 100%;\n  animation: modalIn 0.2s ease;\n}\n\n@keyframes modalIn {\n  from {\n    opacity: 0;\n    transform: scale(0.95);\n  }\n  to {\n    opacity: 1;\n    transform: scale(1);\n  }\n}\n\n.modal-header {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 16px 24px;\n  border-bottom: 1px solid var(--gray-200);\n  background: white;\n}\n\n.modal-header-content {\n  flex: 1;\n}\n\n.modal-title {\n  font-size: 16px;\n  font-weight: 600;\n  color: var(--gray-900);\n}\n\n.modal-close {\n  background: none;\n  border: none;\n  font-size: 24px;\n  color: var(--gray-400);\n  cursor: pointer;\n  padding: 0;\n  line-height: 1;\n  transition: color var(--transition-fast);\n}\n\n.modal-close:hover {\n  color: var(--gray-600);\n}\n\n.modal-body {\n  padding: 24px;\n  overflow-y: auto;\n}\n\n/* ============================================\n   Cases Table\n   ============================================ */\n.cases-table {\n  width: 100%;\n  border-collapse: collapse;\n  font-size: 14px;\n}\n\n.cases-table th {\n  text-align: left;\n  padding: 12px 16px;\n  background: var(--gray-50);\n  border-bottom: 2px solid var(--gray-200);\n  font-weight: 600;\n  color: var(--gray-600);\n  white-space: nowrap;\n}\n\n.cases-table td {\n  padding: 12px 16px;\n  border-bottom: 1px solid var(--gray-100);\n  vertical-align: middle;\n}\n\n.cases-table tbody tr {\n  cursor: pointer;\n  transition: background var(--transition-fast);\n}\n\n.cases-table tbody tr:hover {\n  background: var(--gray-50);\n}\n\n.case-checkbox {\n  width: 18px;\n  height: 18px;\n  cursor: pointer;\n  accent-color: var(--primary-500);\n}\n\n.case-id {\n  font-family: var(--font-mono);\n  font-size: 12px;\n  color: var(--gray-500);\n}\n\n.customer-info {\n  display: flex;\n  flex-direction: column;\n}\n\n.customer-name {\n  font-weight: 500;\n  color: var(--gray-900);\n}\n\n.customer-email {\n  font-size: 12px;\n  color: var(--gray-500);\n  margin-top: 2px;\n}\n\n.time-ago {\n  font-size: 13px;\n  color: var(--gray-500);\n}\n\n/* ============================================\n   Status & Type Badges\n   ============================================ */\n.status-badge {\n  display: inline-block;\n  padding: 4px 10px;\n  font-size: 12px;\n  font-weight: 500;\n  border-radius: var(--radius-full);\n}\n\n.status-badge.pending {\n  background: var(--warning-50);\n  color: var(--warning-700);\n}\n\n.status-badge.in-progress {\n  background: var(--primary-50);\n  color: var(--primary-700);\n}\n\n.status-badge.completed {\n  background: var(--success-50);\n  color: var(--success-700);\n}\n\n.type-badge {\n  display: inline-block;\n  padding: 4px 10px;\n  font-size: 12px;\n  font-weight: 500;\n  border-radius: var(--radius-full);\n  text-transform: capitalize;\n}\n\n.type-badge.shipping {\n  background: #dbeafe;\n  color: #1e40af;\n}\n\n.type-badge.refund {\n  background: #fef3c7;\n  color: #92400e;\n}\n\n.type-badge.subscription {\n  background: #e0e7ff;\n  color: #3730a3;\n}\n\n.type-badge.manual {\n  background: #f3f4f6;\n  color: #4b5563;\n}\n\n.type-badge.return {\n  background: #fce7f3;\n  color: #9d174d;\n}\n\n/* ============================================\n   Empty States\n   ============================================ */\n.empty-state {\n  text-align: center;\n  padding: 48px 24px;\n  color: var(--gray-500);\n}\n\n.empty-state-icon {\n  font-size: 48px;\n  margin-bottom: 16px;\n  opacity: 0.5;\n}\n\n.empty-state-title {\n  font-size: 16px;\n  font-weight: 500;\n  color: var(--gray-700);\n  margin-bottom: 8px;\n}\n\n.empty-state-text {\n  font-size: 14px;\n  color: var(--gray-500);\n}\n\n/* ============================================\n   Pagination\n   ============================================ */\n#casesPagination {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  gap: 16px;\n  padding: 16px;\n  border-top: 1px solid var(--gray-200);\n}\n\n#casesPagination button {\n  padding: 8px 16px;\n  font-size: 14px;\n  background: var(--gray-100);\n  border: none;\n  border-radius: var(--radius-md);\n  cursor: pointer;\n  transition: background var(--transition-fast);\n}\n\n#casesPagination button:hover {\n  background: var(--gray-200);\n}\n\n#casesPagination span {\n  font-size: 14px;\n  color: var(--gray-600);\n}\n\n/* ============================================\n   Admin-only Elements\n   ============================================ */\n.admin-only {\n  display: none;\n}\n\n/* ============================================\n   Loading Indicator\n   ============================================ */\n.loading-overlay {\n  position: fixed;\n  top: 0;\n  left: 0;\n  right: 0;\n  bottom: 0;\n  background: rgba(255, 255, 255, 0.8);\n  display: none;\n  align-items: center;\n  justify-content: center;\n  z-index: 500;\n}\n\n.loading-overlay.active {\n  display: flex;\n}\n\n.loading-spinner {\n  width: 40px;\n  height: 40px;\n  border: 3px solid var(--gray-200);\n  border-top-color: var(--primary-500);\n  border-radius: 50%;\n  animation: spin 0.8s linear infinite;\n}\n\n@keyframes spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n\n/* ============================================\n   Responsive Adjustments\n   ============================================ */\n@media (max-width: 768px) {\n  .bulk-actions-toolbar {\n    left: 16px;\n    right: 16px;\n    transform: none;\n    flex-wrap: wrap;\n  }\n\n  .modal {\n    margin: 16px;\n  }\n\n  .cases-table {\n    font-size: 13px;\n  }\n\n  .cases-table th,\n  .cases-table td {\n    padding: 10px 12px;\n  }\n\n  #toastContainer {\n    left: 16px;\n    right: 16px;\n    bottom: 16px;\n  }\n}\n\n/* ============================================\n   Status Cards in Case Modal\n   ============================================ */\n.status-cards {\n  display: flex;\n  gap: 12px;\n  margin-bottom: 24px;\n}\n\n.status-card {\n  flex: 1;\n  padding: 12px 16px;\n  border: 2px solid var(--gray-200);\n  border-radius: var(--radius-md);\n  text-align: center;\n  cursor: pointer;\n  transition: all var(--transition-fast);\n}\n\n.status-card:hover {\n  border-color: var(--gray-300);\n  background: var(--gray-50);\n}\n\n.status-card.active {\n  border-color: var(--primary-500);\n  background: var(--primary-50);\n}\n\n.status-card.pending.active {\n  border-color: var(--warning-500);\n  background: var(--warning-50);\n}\n\n.status-card.in-progress.active {\n  border-color: var(--primary-500);\n  background: var(--primary-50);\n}\n\n.status-card.completed.active {\n  border-color: var(--success-500);\n  background: var(--success-50);\n}\n\n.status-card-label {\n  font-size: 12px;\n  font-weight: 500;\n  color: var(--gray-500);\n  text-transform: uppercase;\n  letter-spacing: 0.05em;\n}\n\n.status-card-value {\n  font-size: 14px;\n  font-weight: 600;\n  color: var(--gray-900);\n  margin-top: 4px;\n}\n\n/* ============================================\n   Deep Link Copy Button\n   ============================================ */\n.copy-link-btn {\n  background: none;\n  border: none;\n  color: var(--gray-400);\n  cursor: pointer;\n  padding: 4px;\n  border-radius: var(--radius-sm);\n  transition: all var(--transition-fast);\n}\n\n.copy-link-btn:hover {\n  color: var(--primary-600);\n  background: var(--primary-50);\n}\n\n/* ============================================\n   Search Input Enhancements\n   ============================================ */\n.search-container {\n  position: relative;\n}\n\n.search-input {\n  width: 100%;\n  padding: 10px 12px 10px 40px;\n  font-size: 14px;\n  border: 1px solid var(--gray-200);\n  border-radius: var(--radius-md);\n  background: white;\n  transition: all var(--transition-fast);\n}\n\n.search-input:focus {\n  outline: none;\n  border-color: var(--primary-500);\n  box-shadow: 0 0 0 3px var(--primary-100);\n}\n\n.search-icon {\n  position: absolute;\n  left: 12px;\n  top: 50%;\n  transform: translateY(-50%);\n  color: var(--gray-400);\n  pointer-events: none;\n}\n\n.search-shortcut {\n  position: absolute;\n  right: 12px;\n  top: 50%;\n  transform: translateY(-50%);\n  font-size: 11px;\n  color: var(--gray-400);\n  background: var(--gray-100);\n  padding: 2px 6px;\n  border-radius: var(--radius-sm);\n}\n\n/* ============================================\n   Mobile Responsive Styles\n   ============================================ */\n\n/* Tablet and below (max-width: 1024px) */\n@media (max-width: 1024px) {\n  .bulk-actions-toolbar {\n    left: 16px;\n    right: 16px;\n    transform: none;\n    flex-wrap: wrap;\n    gap: 8px;\n  }\n\n  .bulk-actions-toolbar .btn {\n    padding: 8px 12px;\n    font-size: 12px;\n  }\n\n  .saved-views-sidebar {\n    width: 280px;\n  }\n}\n\n/* Mobile (max-width: 768px) */\n@media (max-width: 768px) {\n  /* Sidebar toggle for mobile */\n  .sidebar {\n    position: fixed;\n    z-index: 100;\n    transform: translateX(-100%);\n    transition: transform 0.3s ease;\n  }\n\n  .sidebar.mobile-open {\n    transform: translateX(0);\n  }\n\n  .main-content {\n    margin-left: 0;\n  }\n\n  /* Mobile header with menu button */\n  .mobile-header {\n    display: flex;\n    align-items: center;\n    padding: 12px 16px;\n    background: white;\n    border-bottom: 1px solid var(--gray-200);\n  }\n\n  .mobile-menu-btn {\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    width: 40px;\n    height: 40px;\n    border: none;\n    background: var(--gray-100);\n    border-radius: var(--radius-md);\n    cursor: pointer;\n  }\n\n  /* Bulk actions mobile */\n  .bulk-actions-toolbar {\n    bottom: 16px;\n    left: 8px;\n    right: 8px;\n    padding: 10px 12px;\n    gap: 8px;\n  }\n\n  .bulk-actions-toolbar .selected-count {\n    font-size: 13px;\n    width: 100%;\n    text-align: center;\n    margin-bottom: 4px;\n  }\n\n  .bulk-actions-toolbar .btn {\n    flex: 1;\n    min-width: 0;\n    padding: 8px;\n    font-size: 11px;\n  }\n\n  .bulk-actions-toolbar .btn svg {\n    display: none;\n  }\n\n  /* Cases filters mobile */\n  .cases-filters {\n    flex-direction: column;\n    gap: 8px !important;\n  }\n\n  .cases-filters select,\n  .cases-filters .search-input-wrapper {\n    width: 100% !important;\n    max-width: none !important;\n  }\n\n  /* Table mobile - horizontal scroll */\n  .cases-table {\n    display: block;\n    overflow-x: auto;\n    -webkit-overflow-scrolling: touch;\n  }\n\n  .cases-table th,\n  .cases-table td {\n    min-width: 100px;\n    white-space: nowrap;\n  }\n\n  /* Modal mobile */\n  .modal-overlay {\n    padding: 8px;\n  }\n\n  .modal {\n    border-radius: 12px;\n    max-height: 95vh;\n  }\n\n  .modal-header {\n    padding: 16px;\n  }\n\n  .modal-title {\n    font-size: 18px;\n  }\n\n  .modal-nav {\n    gap: 4px;\n  }\n\n  .nav-arrow,\n  .copy-url-btn {\n    width: 32px;\n    height: 32px;\n  }\n\n  .modal-close {\n    width: 32px;\n    height: 32px;\n    font-size: 20px;\n  }\n\n  .modal-grid {\n    grid-template-columns: 1fr;\n  }\n\n  .modal-main {\n    padding: 16px;\n    border-right: none;\n    border-bottom: 1px solid var(--gray-100);\n  }\n\n  .modal-sidebar {\n    padding: 16px;\n  }\n\n  /* Status cards stack on mobile */\n  .status-cards {\n    flex-direction: column;\n    gap: 8px;\n  }\n\n  .status-card {\n    padding: 12px;\n  }\n\n  /* Info grid mobile */\n  .info-grid {\n    grid-template-columns: 1fr;\n    gap: 8px;\n  }\n\n  .info-card {\n    padding: 12px;\n  }\n\n  /* Saved views sidebar mobile */\n  .saved-views-sidebar {\n    position: fixed;\n    left: 0;\n    top: 0;\n    bottom: 0;\n    width: 100%;\n    max-width: 320px;\n    z-index: 150;\n    transform: translateX(-100%);\n    transition: transform 0.3s ease;\n  }\n\n  .saved-views-sidebar.mobile-open {\n    transform: translateX(0);\n  }\n\n  /* Keyboard shortcuts hide on mobile */\n  .keyboard-shortcuts-modal {\n    display: none !important;\n  }\n\n  /* Toast positioning mobile */\n  #toastContainer {\n    left: 16px;\n    right: 16px;\n    bottom: 16px;\n  }\n\n  .toast {\n    max-width: none;\n  }\n\n  /* Stats grid mobile */\n  .stats-grid {\n    grid-template-columns: 1fr;\n    gap: 8px;\n  }\n\n  .stat-card {\n    padding: 12px 16px;\n  }\n\n  /* Quick actions mobile */\n  .quick-actions {\n    gap: 8px;\n  }\n\n  .quick-action-btn {\n    padding: 12px;\n    font-size: 13px;\n  }\n\n  /* Timeline mobile */\n  .timeline-item {\n    padding: 12px;\n  }\n\n  .timeline-content {\n    font-size: 13px;\n  }\n}\n\n/* Small mobile (max-width: 480px) */\n@media (max-width: 480px) {\n  .modal-meta {\n    flex-wrap: wrap;\n    gap: 8px;\n  }\n\n  .modal-case-id {\n    font-size: 11px;\n  }\n\n  .type-badge,\n  .status-badge {\n    font-size: 11px;\n    padding: 2px 8px;\n  }\n\n  .btn {\n    padding: 8px 12px;\n    font-size: 13px;\n  }\n\n  .btn-sm {\n    padding: 6px 10px;\n    font-size: 12px;\n  }\n\n  /* Hide less important columns on small screens */\n  .cases-table .time-ago-col,\n  .cases-table td:nth-child(7) {\n    display: none;\n  }\n\n  /* Checklist modal mobile */\n  .checklist-item {\n    padding: 10px;\n  }\n\n  .checklist-item label {\n    font-size: 13px;\n  }\n}\n";
 }
 
 // Hub JS Asset
