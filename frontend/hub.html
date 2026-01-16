@@ -5,11 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Resolution Hub | PuppyPad</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+  <!-- Satoshi and Space Grotesk fonts for brand aesthetics -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --brand-navy: #1e3a5f;
-      --brand-navy-light: #2d4a6f;
+      --brand-navy: #1a365d;
+      --brand-navy-light: #2c5282;
       --accent-teal: #4fd1c5;
       --accent-coral: #f56565;
       --gray-50: #f9fafb;
@@ -36,8 +39,9 @@
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--gray-50);
+      font-family: 'Satoshi', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #FFF8E7 0%, #FFF5F5 25%, #F5F3FF 50%, #EFF6FF 75%, #F0FDF4 100%);
+      background-attachment: fixed;
       color: var(--gray-800);
       min-height: 100vh;
     }
@@ -51,7 +55,7 @@
     /* Sidebar */
     .sidebar {
       width: var(--sidebar-width);
-      background: var(--brand-navy);
+      background: #0f172a;
       color: white;
       position: fixed;
       top: 0;
@@ -79,7 +83,7 @@
     }
 
     .sidebar-logo span {
-      font-family: 'Poppins', sans-serif;
+      font-family: 'Space Grotesk', 'Poppins', sans-serif;
       font-size: 18px;
       font-weight: 600;
     }
@@ -129,8 +133,8 @@
     }
 
     .nav-item svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       flex-shrink: 0;
     }
 
@@ -203,7 +207,7 @@
     }
 
     .page-title {
-      font-family: 'Poppins', sans-serif;
+      font-family: 'Space Grotesk', 'Poppins', sans-serif;
       font-size: 24px;
       font-weight: 600;
       color: var(--gray-900);
@@ -237,6 +241,7 @@
       width: 18px;
       height: 18px;
       color: var(--gray-400);
+      stroke-width: 2;
     }
 
     .btn {
@@ -308,7 +313,7 @@
     }
 
     .stat-value {
-      font-family: 'Poppins', sans-serif;
+      font-family: 'Space Grotesk', 'Poppins', sans-serif;
       font-size: 32px;
       font-weight: 700;
     }
