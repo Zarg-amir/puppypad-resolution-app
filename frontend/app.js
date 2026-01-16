@@ -1,0 +1,6860 @@
+/**
+ * PuppyPad Resolution App
+ * Main Application Logic with Edit Functionality
+ *
+ * CONFIGURATION GUIDE:
+ * - All easy-to-modify settings are at the TOP of this file
+ * - Search for "EASY CONFIG" to find customizable sections
+ * - See CODING_GUIDELINES.md for modification rules
+ */
+
+// ============================================
+// EASY CONFIG: APP SETTINGS
+// ============================================
+const CONFIG = {
+  API_URL: 'https://puppypad-resolution-worker.gulfam.workers.dev',
+  GUARANTEE_DAYS: 90,
+  FULFILLMENT_CUTOFF_HOURS: 10,
+  IN_TRANSIT_VOICE_DAYS: 6,
+  IN_TRANSIT_ESCALATE_DAYS: 15,
+};
+
+// ============================================
+// EASY CONFIG: PERSONA SETTINGS
+// Modify names, titles, avatars, colors here
+// ============================================
+const PERSONAS = {
+  amy: {
+    name: 'Amy',
+    title: 'Customer Support',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face',
+    color: '#FF6B6B',
+  },
+  sarah: {
+    name: 'Sarah',
+    title: 'CX Lead',
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
+    color: '#FFE66D',
+  },
+  claudia: {
+    name: 'Claudia',
+    title: 'Veterinarian',
+    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face',
+    color: '#A78BFA',
+  },
+};
+
+// ============================================
+// EASY CONFIG: BOT MESSAGES
+// Modify greetings, responses, error messages here
+// ============================================
+const MESSAGES = {
+  // Welcome messages per flow type
+  welcome: {
+    track: "Hi! I'm Amy. Let me help you track your order — just enter your details below and I'll pull it right up. 📦",
+    subscription: "Hi! I'm Amy. I'll help you manage your subscription — just enter your details below to get started. 🔄",
+    help: "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below. 🙂",
+  },
+  // Survey messages
+  survey: {
+    prompt: "Before you go — how was your experience today?",
+    thankYouHigh: "Thank you so much! We're thrilled we could help. 💜",
+    thankYouMedium: "Thanks for your feedback! We're always working to improve. 🙏",
+    thankYouLow: "We're sorry we didn't meet your expectations. Your feedback helps us do better. 💙",
+  },
+  // Common messages
+  common: {
+    lookingUp: "Looking up your order... 🔍",
+    homeMenu: "What can I help you with today?",
+    selectItems: "Which item(s) do you need help with? Tap to select:",
+    whatHappened: "Got it! What's going on with your order?",
+  },
+  // Error/validation messages
+  errors: {
+    orderNotFound: "I couldn't find an order with those details. Let's try a deeper search with more information.",
+    stillNotFound: "I still couldn't find your order, but don't worry — I'll make sure our team helps you personally. Please fill in these details:",
+    fillBothFields: "Please fill in both fields to continue.",
+    selectItem: "Please select at least one item to continue.",
+    separateRequests: "Free items and paid items need separate requests. Please select only one type.",
+  },
+  // Policy block messages
+  policy: {
+    guaranteeExpiredIntro: "I really wish I could help with a refund, but I need to be upfront with you. 💔",
+    existingCase: "I see we already have an open case for this order! 📋",
+  },
+  // Success/resolution messages - consistent wording for case processing
+  success: {
+    refundProcessing: "Our team will review your case within 1-2 business days. Once processed, you'll receive an email confirmation and the refund will appear in your account within 3-5 business days depending on your bank.",
+    refundProcessingShort: "Our team will process this within 1-2 business days. You'll receive an email confirmation, then 3-5 business days for the refund to appear in your account.",
+    reshipProcessing: "Our team will process your reship within 1-2 business days. You'll receive tracking information via email once it ships.",
+    returnProcessing: "Once we receive your return, our team will process your refund within 1-2 business days. You'll then receive an email confirmation.",
+  },
+};
+
+// Legacy CONFIG.AVATARS for backward compatibility
+CONFIG.AVATARS = {
+  amy: PERSONAS.amy.avatar,
+  sarah: PERSONAS.sarah.avatar,
+  claudia: PERSONAS.claudia.avatar,
+};
+
+// ============================================
+// SHIPPING HELPERS
+// ============================================
+
+// Detect international carriers (China-based) - use "international warehouse" messaging
+function isInternationalCarrier(tracking) {
+  if (!tracking) return false;
+
+  const carrier = (tracking.carrier || '').toLowerCase();
+  const trackingNum = (tracking.trackingNumber || '').toUpperCase();
+
+  // Known China-based carriers
+  const chinaCarriers = ['yunexpress', 'yanwen', '4px', 'cne', 'cainiao', 'china post', 'chinapost', 'epacket'];
+  if (chinaCarriers.some(c => carrier.includes(c))) return true;
+
+  // YunExpress tracking patterns: starts with YT or ends with CN
+  if (trackingNum.startsWith('YT') || trackingNum.endsWith('CN')) return true;
+
+  // Yanwen patterns: VP, UV, LP, ABC prefixes or YP/CN suffix
+  if (/^(VP|UV|LP|ABC)/i.test(trackingNum)) return true;
+  if (/YP$/i.test(trackingNum)) return true;
+
+  return false;
+}
+
+// Get carrier contact info for failed delivery attempts
+function getCarrierContactInfo(carrier) {
+  const carrierUpper = (carrier || '').toUpperCase();
+  const contacts = {
+    'USPS': { name: 'USPS', phone: '1-800-275-8777', website: 'usps.com' },
+    'UPS': { name: 'UPS', phone: '1-800-742-5877', website: 'ups.com' },
+    'FEDEX': { name: 'FedEx', phone: '1-800-463-3339', website: 'fedex.com' },
+    'DHL': { name: 'DHL', phone: '1-800-225-5345', website: 'dhl.com' },
+  };
+  return contacts[carrierUpper] || { name: carrier || 'the carrier', phone: null, website: null };
+}
+
+// ============================================
+// ANALYTICS MODULE
+// ============================================
+const Analytics = {
+  // Log session start or update
+  async logSession(data) {
+    try {
+      // Get customer name from various sources
+      const customerName = state.customerData?.firstName
+        ? `${state.customerData.firstName} ${state.customerData.lastName || ''}`.trim()
+        : state.selectedOrder
+          ? `${state.selectedOrder.customerFirstName || ''} ${state.selectedOrder.customerLastName || ''}`.trim()
+          : null;
+
+      await fetch(`${CONFIG.API_URL}/api/a/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          flowType: data.flowType || state.flowType,
+          customerEmail: state.customerData?.email || state.selectedOrder?.email,
+          customerName: customerName,
+          orderNumber: state.customerData?.orderNumber || state.selectedOrder?.orderNumber,
+          persona: state.currentPersona,
+          deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+          sessionReplayUrl: getSessionReplayUrl(),
+          issueType: state.issueType || null,
+          ...data
+        })
+      });
+    } catch (e) {
+      console.warn('Analytics session log failed:', e);
+    }
+  },
+
+  // Log user event
+  async logEvent(eventType, eventName, eventData = {}) {
+    try {
+      await fetch(`${CONFIG.API_URL}/api/a/event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          eventType,
+          eventName,
+          eventData
+        })
+      });
+    } catch (e) {
+      console.warn('Analytics event log failed:', e);
+    }
+  },
+
+  // Log survey response
+  async logSurvey(rating) {
+    try {
+      await fetch(`${CONFIG.API_URL}/api/a/survey`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          caseId: state.caseId,
+          rating
+        })
+      });
+    } catch (e) {
+      console.warn('Analytics survey log failed:', e);
+    }
+  },
+
+  // Log policy block
+  async logPolicyBlock(blockType, data = {}) {
+    try {
+      await fetch(`${CONFIG.API_URL}/api/a/policy-block`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          blockType,
+          orderNumber: state.selectedOrder?.orderNumber,
+          ...data
+        })
+      });
+    } catch (e) {
+      console.warn('Analytics policy block log failed:', e);
+    }
+  },
+
+  // Mark session as ended/completed
+  async endSession(completed = false) {
+    await this.logSession({ ended: true, completed });
+  }
+};
+
+// ============================================
+// STATE MANAGEMENT
+// ============================================
+const state = {
+  sessionId: generateSessionId(),
+  currentPersona: 'amy',
+  currentStep: 'welcome',
+  identifyMethod: 'email',
+  selectedCountryCode: 'US',
+  customerData: {
+    email: '',
+    phone: '',
+    firstName: '',
+    lastName: '',
+    orderNumber: '',
+    address1: '',
+    country: 'US'
+  },
+  orders: [],
+  selectedOrder: null,
+  selectedItems: [],
+  subscriptions: [],
+  selectedSubscription: null,
+  tracking: null,
+  intent: null,
+  intentDetails: '',
+  ladderStep: 0,
+  ladderType: null,
+  uploadedFiles: [],
+  evidenceType: null,
+  caseId: null,
+  flowType: null,
+  allTracking: null,
+  lookupAttempts: [],
+  // Store references for edit functionality
+  editHistory: [],
+  // Store existing case info for append flow (dedupe)
+  existingCaseInfo: null
+};
+
+// ============================================
+// DOM ELEMENTS
+// ============================================
+const elements = {
+  app: document.getElementById('app'),
+  homeScreen: document.getElementById('homeScreen'),
+  chatContainer: document.getElementById('chatContainer'),
+  chatArea: document.getElementById('chatArea'),
+  inputArea: document.getElementById('inputArea'),
+  textInput: document.getElementById('textInput'),
+  currentAvatar: document.getElementById('currentAvatar'),
+  currentName: document.getElementById('currentName'),
+  avatarRing: document.getElementById('avatarRing'),
+  statusDot: document.getElementById('statusDot'),
+  statusText: document.getElementById('statusText'),
+  networkBanner: document.getElementById('networkBanner'),
+  srAnnouncer: document.getElementById('srAnnouncer')
+};
+
+// ============================================
+// HOME SCREEN CONTROLLER
+// ============================================
+const HomeScreen = {
+  handleAction(action) {
+    // Hide home screen and show chat
+    elements.homeScreen.classList.remove('active');
+    elements.chatContainer.classList.add('active');
+
+    // Announce to screen readers
+    announceToScreenReader(`Starting ${action} flow`);
+
+    // Route to appropriate flow
+    switch (action) {
+      case 'track':
+        startTrackOrder();
+        break;
+      case 'subscription':
+        startManageSubscription();
+        break;
+      case 'help':
+        startHelpWithOrder();
+        break;
+      default:
+        showWelcomeMessage();
+    }
+  },
+
+  show() {
+    elements.chatContainer.classList.remove('active');
+    elements.homeScreen.classList.add('active');
+    announceToScreenReader('Returned to home screen');
+  }
+};
+
+// Make HomeScreen available globally for onclick handlers
+window.HomeScreen = HomeScreen;
+
+// ============================================
+// NETWORK STATUS HANDLER
+// ============================================
+const NetworkStatus = {
+  isOnline: navigator.onLine,
+
+  init() {
+    window.addEventListener('online', () => this.handleStatusChange(true));
+    window.addEventListener('offline', () => this.handleStatusChange(false));
+    this.updateUI(this.isOnline);
+  },
+
+  handleStatusChange(online) {
+    this.isOnline = online;
+    this.updateUI(online);
+    announceToScreenReader(online ? 'Connection restored' : 'You are offline');
+  },
+
+  updateUI(online) {
+    if (elements.networkBanner) {
+      if (online) {
+        elements.networkBanner.classList.remove('visible');
+        elements.networkBanner.textContent = '';
+      } else {
+        elements.networkBanner.classList.add('visible');
+        elements.networkBanner.innerHTML = `
+          <span class="network-icon">📡</span>
+          <span>You're offline. Some features may be unavailable.</span>
+        `;
+      }
+    }
+  }
+};
+
+// ============================================
+// ACCESSIBILITY HELPERS
+// ============================================
+function announceToScreenReader(message) {
+  if (elements.srAnnouncer) {
+    elements.srAnnouncer.textContent = message;
+    // Clear after announcement
+    setTimeout(() => {
+      elements.srAnnouncer.textContent = '';
+    }, 1000);
+  }
+}
+
+// ============================================
+// INITIALIZATION
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+  initializeApp();
+  setupEventListeners();
+});
+
+function initializeApp() {
+  // Initialize network status handler
+  NetworkStatus.init();
+
+  // Always clear session on page load - start fresh at home screen
+  SessionManager.clear();
+
+  // Home screen is shown by default via HTML (has .active class)
+}
+
+function setupEventListeners() {
+  elements.textInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  if ('visualViewport' in window) {
+    window.visualViewport.addEventListener('resize', () => {
+      elements.chatArea.scrollTop = elements.chatArea.scrollHeight;
+    });
+  }
+
+  // Save session before page unload
+  window.addEventListener('beforeunload', () => {
+    SessionManager.save();
+  });
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+function generateSessionId() {
+  return 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function generateCaseId(type) {
+  const now = new Date();
+  const prefixes = { refund: 'REF', return: 'RET', shipping: 'SHP', subscription: 'SUB', manual: 'MAN' };
+  const prefix = prefixes[type] || 'CAS';
+  return `${prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+}
+
+function getSessionReplayUrl() {
+  // Get PostHog session replay URL if available
+  try {
+    if (typeof posthog !== 'undefined' && posthog.get_session_replay_url) {
+      return posthog.get_session_replay_url({ withTimestamp: true }) || '';
+    }
+  } catch (e) {
+    console.warn('Could not get PostHog session replay URL:', e);
+  }
+  return '';
+}
+
+// Identify user in PostHog for session recording searchability
+function identifyUserInPostHog(userData = {}) {
+  try {
+    if (typeof posthog !== 'undefined' && posthog.identify) {
+      const email = userData.email || state.customerData?.email || state.selectedOrder?.email;
+      const name = userData.name ||
+        `${state.customerData?.firstName || ''} ${state.customerData?.lastName || ''}`.trim() ||
+        `${state.selectedOrder?.customerFirstName || ''} ${state.selectedOrder?.customerLastName || ''}`.trim();
+      const orderNumber = userData.orderNumber || state.customerData?.orderNumber || state.selectedOrder?.orderNumber;
+
+      if (email) {
+        // Identify with email as the unique ID
+        posthog.identify(email, {
+          email: email,
+          name: name || undefined,
+          order_number: orderNumber || undefined,
+          first_name: state.customerData?.firstName || state.selectedOrder?.customerFirstName || undefined,
+          last_name: state.customerData?.lastName || state.selectedOrder?.customerLastName || undefined,
+        });
+        console.log('PostHog: Identified user', email);
+      }
+    }
+  } catch (e) {
+    console.warn('Could not identify user in PostHog:', e);
+  }
+}
+
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatCurrency(amount, currency = 'USD') {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(parseFloat(amount));
+}
+
+// Format phone number as user types
+function formatPhoneInput(input) {
+  // Get just the digits
+  let digits = input.value.replace(/\D/g, '');
+
+  // Limit to 11 digits (1 + 10 for US)
+  if (digits.length > 11) {
+    digits = digits.substring(0, 11);
+  }
+
+  // Format based on length
+  let formatted = '';
+
+  if (digits.length === 0) {
+    formatted = '';
+  } else if (digits.length <= 3) {
+    // Just area code starting
+    if (digits.startsWith('1')) {
+      formatted = `+1 (${digits.substring(1)}`;
+    } else {
+      formatted = `(${digits}`;
+    }
+  } else if (digits.length <= 6) {
+    if (digits.startsWith('1')) {
+      formatted = `+1 (${digits.substring(1, 4)}) ${digits.substring(4)}`;
+    } else {
+      formatted = `(${digits.substring(0, 3)}) ${digits.substring(3)}`;
+    }
+  } else {
+    if (digits.startsWith('1')) {
+      formatted = `+1 (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7)}`;
+    } else {
+      formatted = `(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}`;
+    }
+  }
+
+  input.value = formatted;
+}
+
+// Clean phone number for API (just digits)
+function cleanPhoneNumber(phone) {
+  if (!phone) return '';
+  return phone.replace(/\D/g, '');
+}
+
+// ============================================
+// DYNAMIC ADDRESS FIELDS BY COUNTRY
+// ============================================
+
+// Get address field configuration by country
+function getAddressFieldsConfig(country) {
+  const configs = {
+    'United States': {
+      stateLabel: 'State *',
+      statePlaceholder: 'CA',
+      zipLabel: 'ZIP Code *',
+      zipPlaceholder: '12345',
+      phonePlaceholder: '+1 (555) 000-0000',
+      states: ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC']
+    },
+    'Canada': {
+      stateLabel: 'Province *',
+      statePlaceholder: 'ON',
+      zipLabel: 'Postal Code *',
+      zipPlaceholder: 'A1A 1A1',
+      phonePlaceholder: '+1 (555) 000-0000',
+      states: ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT']
+    },
+    'United Kingdom': {
+      stateLabel: 'County',
+      statePlaceholder: 'County (optional)',
+      zipLabel: 'Postcode *',
+      zipPlaceholder: 'SW1A 1AA',
+      phonePlaceholder: '+44 20 7123 4567',
+      states: [] // UK doesn't use state dropdown
+    },
+    'Australia': {
+      stateLabel: 'State/Territory *',
+      statePlaceholder: 'NSW',
+      zipLabel: 'Postcode *',
+      zipPlaceholder: '2000',
+      phonePlaceholder: '+61 2 1234 5678',
+      states: ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA']
+    }
+  };
+
+  return configs[country] || configs['United States'];
+}
+
+// Update address form fields when country changes
+// formPrefix: 'new' for subscription form, '' for reship form
+function updateAddressFields(formPrefix = '') {
+  // Handle both naming conventions
+  const countryId = formPrefix ? formPrefix + 'Country' : 'country';
+  const provinceId = formPrefix ? formPrefix + 'Province' : 'province';
+  const zipId = formPrefix ? formPrefix + 'Zip' : 'zip';
+  const phoneId = formPrefix ? formPrefix + 'Phone' : null;
+
+  const countrySelect = document.getElementById(countryId);
+  if (!countrySelect) return;
+
+  const country = countrySelect.value;
+  const config = getAddressFieldsConfig(country);
+
+  // Update State/Province label and placeholder
+  const stateInput = document.getElementById(provinceId);
+  if (stateInput) {
+    const stateLabel = stateInput.closest('.form-group')?.querySelector('label');
+    if (stateLabel) stateLabel.textContent = config.stateLabel;
+    stateInput.placeholder = config.statePlaceholder;
+  }
+
+  // Update ZIP/Postal Code label and placeholder
+  const zipInput = document.getElementById(zipId);
+  if (zipInput) {
+    const zipLabel = zipInput.closest('.form-group')?.querySelector('label');
+    if (zipLabel) zipLabel.textContent = config.zipLabel;
+    zipInput.placeholder = config.zipPlaceholder;
+  }
+
+  // Update phone placeholder if phone field exists
+  if (phoneId) {
+    const phoneInput = document.getElementById(phoneId);
+    if (phoneInput) {
+      phoneInput.placeholder = config.phonePlaceholder;
+    }
+  }
+}
+
+function scrollToBottom() {
+  if (!elements.chatArea) return;
+  // Scroll to show the last element at the TOP of viewport (with space below)
+  // This gives the user a top-down reading experience
+  const lastElement = elements.chatArea.lastElementChild;
+  if (lastElement) {
+    lastElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ============================================
+// COPY TO CLIPBOARD
+// ============================================
+async function copyToClipboard(text, buttonElement) {
+  try {
+    await navigator.clipboard.writeText(text);
+
+    // Visual feedback
+    const originalText = buttonElement.innerHTML;
+    buttonElement.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      Copied!
+    `;
+    buttonElement.classList.add('copied');
+
+    setTimeout(() => {
+      buttonElement.innerHTML = originalText;
+      buttonElement.classList.remove('copied');
+    }, 2000);
+
+    announceToScreenReader('Case ID copied to clipboard');
+  } catch (err) {
+    console.error('Failed to copy:', err);
+    announceToScreenReader('Failed to copy case ID');
+  }
+}
+
+// Generate copyable case ID HTML
+function getCaseIdHtml(caseId) {
+  return `
+    <div class="case-id-container">
+      <span class="case-id-label">Case ID:</span>
+      <span class="case-id-value">${caseId}</span>
+      <button class="case-id-copy-btn" onclick="copyToClipboard('${caseId}', this)" title="Copy to clipboard">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        Copy
+      </button>
+    </div>
+  `;
+}
+
+// Make copyToClipboard available globally
+window.copyToClipboard = copyToClipboard;
+
+// ============================================
+// CONFIRMATION DIALOG
+// ============================================
+function showConfirmDialog(title, message, confirmText = 'Confirm', cancelText = 'Cancel') {
+  return new Promise((resolve) => {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-dialog-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-dialog">
+        <div class="confirm-dialog-icon">⚠️</div>
+        <h3 class="confirm-dialog-title">${title}</h3>
+        <p class="confirm-dialog-message">${message}</p>
+        <div class="confirm-dialog-buttons">
+          <button class="confirm-dialog-btn cancel">${cancelText}</button>
+          <button class="confirm-dialog-btn confirm">${confirmText}</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      overlay.classList.add('visible');
+    });
+
+    // Handle button clicks
+    const cancelBtn = overlay.querySelector('.cancel');
+    const confirmBtn = overlay.querySelector('.confirm');
+
+    const closeDialog = (result) => {
+      overlay.classList.remove('visible');
+      setTimeout(() => {
+        overlay.remove();
+        resolve(result);
+      }, 200);
+    };
+
+    cancelBtn.onclick = () => closeDialog(false);
+    confirmBtn.onclick = () => closeDialog(true);
+
+    // Close on overlay click
+    overlay.onclick = (e) => {
+      if (e.target === overlay) closeDialog(false);
+    };
+
+    // Close on Escape key
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        document.removeEventListener('keydown', handleEscape);
+        closeDialog(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+  });
+}
+
+// ============================================
+// SESSION MANAGER
+// ============================================
+const SessionManager = {
+  STORAGE_KEY: 'puppypad_session',
+  SESSION_EXPIRY: 30 * 60 * 1000, // 30 minutes
+
+  save() {
+    try {
+      const sessionData = {
+        timestamp: Date.now(),
+        sessionId: state.sessionId,
+        currentPersona: state.currentPersona,
+        currentStep: state.currentStep,
+        flowType: state.flowType,
+        customerData: state.customerData,
+        selectedOrder: state.selectedOrder,
+        intent: state.intent
+      };
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(sessionData));
+    } catch (e) {
+      console.warn('Failed to save session:', e);
+    }
+  },
+
+  restore() {
+    try {
+      const saved = localStorage.getItem(this.STORAGE_KEY);
+      if (!saved) return null;
+
+      const sessionData = JSON.parse(saved);
+      const age = Date.now() - sessionData.timestamp;
+
+      // Check if session is still valid
+      if (age > this.SESSION_EXPIRY) {
+        this.clear();
+        return null;
+      }
+
+      return sessionData;
+    } catch (e) {
+      console.warn('Failed to restore session:', e);
+      return null;
+    }
+  },
+
+  clear() {
+    try {
+      localStorage.removeItem(this.STORAGE_KEY);
+    } catch (e) {
+      console.warn('Failed to clear session:', e);
+    }
+  }
+};
+
+// ============================================
+// PERSONA MANAGEMENT
+// ============================================
+const PERSONA_INFO = {
+  amy: {
+    name: 'Amy',
+    role: 'Customer Support',
+    avatar: CONFIG.AVATARS.amy
+  },
+  sarah: {
+    name: 'Sarah',
+    role: 'Customer Experience Lead',
+    avatar: CONFIG.AVATARS.sarah
+  },
+  claudia: {
+    name: 'Claudia',
+    role: 'In-House Veterinarian',
+    avatar: CONFIG.AVATARS.claudia
+  }
+};
+
+function setPersona(persona) {
+  state.currentPersona = persona;
+  const info = PERSONA_INFO[persona] || PERSONA_INFO.amy;
+
+  elements.currentAvatar.src = info.avatar;
+  elements.currentName.textContent = info.name;
+
+  // Update avatar ring data attribute for gradient styling
+  if (elements.avatarRing) {
+    elements.avatarRing.dataset.persona = persona;
+  }
+}
+
+function setTyping(isTyping) {
+  elements.statusDot.classList.toggle('typing', isTyping);
+  elements.statusText.textContent = isTyping ? 'Typing...' : 'Online';
+}
+
+// ============================================
+// MESSAGE RENDERING
+// ============================================
+
+// Calculate realistic typing delay based on message length
+function getTypingDelay(text) {
+  // Strip HTML tags to get actual text length
+  const plainText = text.replace(/<[^>]+>/g, '');
+  const charCount = plainText.length;
+
+  // Base delay + variable delay based on length
+  // Short messages (< 50 chars): 800-1200ms
+  // Medium messages (50-150 chars): 1200-2000ms
+  // Long messages (150+ chars): 2000-3000ms
+  if (charCount < 50) {
+    return 800 + Math.random() * 400;
+  } else if (charCount < 150) {
+    return 1200 + Math.min(charCount * 5, 800) + Math.random() * 300;
+  } else {
+    return 2000 + Math.min(charCount * 2, 1000) + Math.random() * 400;
+  }
+}
+
+async function addBotMessage(text, persona = state.currentPersona) {
+  const info = PERSONA_INFO[persona] || PERSONA_INFO.amy;
+
+  setTyping(true);
+
+  // Create message container with typing indicator
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message bot ${persona}`;
+  messageDiv.innerHTML = `
+    <img src="${info.avatar}" alt="${info.name}" class="message-avatar">
+    <div class="message-content">
+      <div class="message-sender">
+        <span class="sender-name">${info.name}</span>
+        <span class="sender-role">${info.role}</span>
+      </div>
+      <div class="typing-indicator"><span></span><span></span><span></span></div>
+    </div>
+  `;
+  elements.chatArea.appendChild(messageDiv);
+  scrollToBottom();
+
+  // Wait for realistic "typing" delay based on message length
+  const typingDelay = getTypingDelay(text);
+  await delay(typingDelay);
+
+  // Replace typing indicator with full message (no character-by-character)
+  const contentDiv = messageDiv.querySelector('.message-content');
+  const typingIndicator = messageDiv.querySelector('.typing-indicator');
+
+  // Create the bubble with full message
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  bubble.innerHTML = text;
+
+  // Smooth transition: fade out typing indicator, fade in message
+  typingIndicator.style.transition = 'opacity 0.15s ease';
+  typingIndicator.style.opacity = '0';
+
+  await delay(150);
+
+  typingIndicator.remove();
+  bubble.style.opacity = '0';
+  bubble.style.transform = 'translateY(5px)';
+  contentDiv.appendChild(bubble);
+
+  // Animate message in
+  requestAnimationFrame(() => {
+    bubble.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    bubble.style.opacity = '1';
+    bubble.style.transform = 'translateY(0)';
+  });
+
+  setTyping(false);
+  scrollToBottom();
+
+  return messageDiv;
+}
+
+async function addUserMessage(text) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'message user';
+  messageDiv.innerHTML = `
+    <div class="message-content">
+      <div class="message-sender">
+        <span class="sender-name">You</span>
+      </div>
+      <div class="message-bubble">${text}</div>
+    </div>
+  `;
+  elements.chatArea.appendChild(messageDiv);
+  scrollToBottom();
+
+  return messageDiv;
+}
+
+// ============================================
+// EDITABLE USER MESSAGE (Key Feature!)
+// ============================================
+function addEditableUserMessage(summaryHtml, editCallback, editLabel = 'Edit') {
+  const containerDiv = document.createElement('div');
+  containerDiv.className = 'message user editable-message';
+  containerDiv.innerHTML = `
+    <div class="message-content">
+      <div class="message-bubble editable-bubble">
+        <div class="editable-content">${summaryHtml}</div>
+        <button class="edit-btn" onclick="this.closest('.editable-message').editCallback()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          ${editLabel}
+        </button>
+      </div>
+    </div>
+  `;
+  
+  // Store edit callback on the element
+  containerDiv.editCallback = () => {
+    // Remove this message and everything after it
+    const allMessages = Array.from(elements.chatArea.children);
+    const index = allMessages.indexOf(containerDiv);
+    for (let i = allMessages.length - 1; i >= index; i--) {
+      allMessages[i].remove();
+    }
+    // Call the edit callback to re-show the form
+    editCallback();
+  };
+  
+  elements.chatArea.appendChild(containerDiv);
+  scrollToBottom();
+  return containerDiv;
+}
+
+// ============================================
+// OPTIONS & BUTTONS (with staggered animations)
+// ============================================
+
+// Configuration for staggered animations
+// These values control how long users have to read before seeing options
+const ANIMATION_CONFIG = {
+  delayBeforeOptions: 800,    // Wait 0.8s after Amy's message before showing options
+  staggerDelay: 250,          // 250ms between each option appearing
+  delayBeforeCards: 600,      // Wait 0.6s before showing interactive cards
+  cardStaggerDelay: 200       // 200ms between each card appearing
+};
+
+async function addOptions(options) {
+  // Wait for user to read Amy's message before showing options
+  await delay(ANIMATION_CONFIG.delayBeforeOptions);
+
+  const optionsDiv = document.createElement('div');
+  optionsDiv.className = 'options-container';
+  elements.chatArea.appendChild(optionsDiv);
+
+  // Add each button one-by-one with staggered timing
+  for (let i = 0; i < options.length; i++) {
+    const option = options[i];
+    const btn = document.createElement('button');
+    btn.className = `option-btn ${option.primary ? 'primary' : ''} ${option.secondary ? 'secondary' : ''}`;
+    btn.innerHTML = option.icon ? `<span class="icon">${option.icon}</span>${option.text}` : option.text;
+    btn.style.opacity = '0';
+    btn.style.transform = 'translateY(20px)';
+    btn.onclick = () => {
+      optionsDiv.remove();
+      if (option.showAsMessage !== false) {
+        addUserMessage(option.text);
+      }
+      option.action();
+    };
+    optionsDiv.appendChild(btn);
+
+    // Animate this button in
+    requestAnimationFrame(() => {
+      btn.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      btn.style.opacity = '1';
+      btn.style.transform = 'translateY(0)';
+    });
+
+    // Wait before adding next button
+    if (i < options.length - 1) {
+      await delay(ANIMATION_CONFIG.staggerDelay);
+    }
+  }
+}
+
+async function addOptionsRow(options) {
+  // Wait for user to read Amy's message
+  await delay(ANIMATION_CONFIG.delayBeforeOptions);
+
+  const rowDiv = document.createElement('div');
+  rowDiv.className = 'options-container';
+
+  const innerRow = document.createElement('div');
+  innerRow.className = 'options-row';
+  rowDiv.appendChild(innerRow);
+  elements.chatArea.appendChild(rowDiv);
+
+  // Add each button one-by-one
+  for (let i = 0; i < options.length; i++) {
+    const option = options[i];
+    const btn = document.createElement('button');
+    btn.className = `option-btn ${option.primary ? 'primary' : ''} ${option.class || ''}`;
+    btn.textContent = option.text;
+    btn.style.opacity = '0';
+    btn.style.transform = 'translateY(20px)';
+    btn.onclick = () => {
+      // Prevent double-click by disabling all buttons immediately
+      innerRow.querySelectorAll('button').forEach(b => b.disabled = true);
+      rowDiv.remove();
+      if (option.showAsMessage !== false) {
+        addUserMessage(option.text);
+      }
+      option.action();
+    };
+    innerRow.appendChild(btn);
+
+    // Animate this button in
+    requestAnimationFrame(() => {
+      btn.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      btn.style.opacity = '1';
+      btn.style.transform = 'translateY(0)';
+    });
+
+    // Wait before adding next button
+    if (i < options.length - 1) {
+      await delay(ANIMATION_CONFIG.staggerDelay);
+    }
+  }
+}
+
+async function addInteractiveContent(html, delayMs = ANIMATION_CONFIG.delayBeforeCards) {
+  // Give customer time to read Amy's message before showing interactive content
+  await delay(delayMs);
+
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'interactive-content';
+  contentDiv.innerHTML = html;
+
+  // Find all child cards/items that should animate
+  const animatableItems = contentDiv.querySelectorAll('.order-card, .product-card, .form-container, .editable-summary');
+
+  if (animatableItems.length > 0) {
+    // Hide all items initially
+    animatableItems.forEach(item => {
+      item.style.opacity = '0';
+      item.style.transform = 'translateY(20px)';
+    });
+  }
+
+  elements.chatArea.appendChild(contentDiv);
+
+  // Animate items one-by-one
+  if (animatableItems.length > 0) {
+    for (let i = 0; i < animatableItems.length; i++) {
+      const item = animatableItems[i];
+      requestAnimationFrame(() => {
+        item.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        item.style.opacity = '1';
+        item.style.transform = 'translateY(0)';
+      });
+
+      if (i < animatableItems.length - 1) {
+        await delay(ANIMATION_CONFIG.cardStaggerDelay);
+      }
+    }
+  }
+
+  return contentDiv;
+}
+
+// ============================================
+// INPUT HANDLING
+// ============================================
+function showTextInput(placeholder = 'Type your message...', onSubmit) {
+  elements.inputArea.classList.add('active');
+  elements.textInput.placeholder = placeholder;
+  elements.textInput.value = '';
+  elements.textInput.focus();
+  window.currentInputHandler = onSubmit;
+}
+
+function hideTextInput() {
+  elements.inputArea.classList.remove('active');
+  window.currentInputHandler = null;
+}
+
+function sendMessage() {
+  const text = elements.textInput.value.trim();
+  if (!text) return;
+  addUserMessage(text);
+  elements.textInput.value = '';
+  if (window.currentInputHandler) window.currentInputHandler(text);
+}
+
+// ============================================
+// PROGRESS & STATUS DISPLAYS
+// ============================================
+function showProgress(message, subMessage = '') {
+  const progressDiv = document.createElement('div');
+  progressDiv.className = 'interactive-content progress-wrapper';
+  progressDiv.id = 'progressIndicator';
+  progressDiv.innerHTML = `
+    <div class="progress-container">
+      <div class="spinner"></div>
+      <div class="progress-text">${message}</div>
+      ${subMessage ? `<div class="progress-subtext">${subMessage}</div>` : ''}
+    </div>
+  `;
+  elements.chatArea.appendChild(progressDiv);
+  scrollToBottom();
+}
+
+function hideProgress() {
+  const progress = document.getElementById('progressIndicator');
+  if (progress) progress.remove();
+}
+
+async function showSuccess(title, message) {
+  // Log session completed successfully
+  Analytics.endSession(true);
+  Analytics.logEvent('flow_complete', 'resolution_success', {
+    flowType: state.flowType,
+    caseId: state.caseId
+  });
+
+  const successHtml = `
+    <div class="success-card">
+      <div class="success-icon">✓</div>
+      <div class="success-title">${title}</div>
+      <div class="success-message">${message}</div>
+    </div>
+  `;
+  await addInteractiveContent(successHtml, 300);
+
+  await delay(1000);
+
+  // Show end-of-session survey
+  await showEndOfSessionSurvey();
+}
+
+async function showEndOfSessionSurvey() {
+  await addBotMessage(MESSAGES.survey.prompt);
+
+  const surveyHtml = `
+    <div class="survey-container">
+      <div class="survey-ratings">
+        <button class="survey-rating" data-rating="1" onclick="submitSurveyRating(1, this)">
+          <span class="survey-emoji">😞</span>
+          <span class="survey-label">Poor</span>
+        </button>
+        <button class="survey-rating" data-rating="2" onclick="submitSurveyRating(2, this)">
+          <span class="survey-emoji">😐</span>
+          <span class="survey-label">Okay</span>
+        </button>
+        <button class="survey-rating" data-rating="3" onclick="submitSurveyRating(3, this)">
+          <span class="survey-emoji">🙂</span>
+          <span class="survey-label">Good</span>
+        </button>
+        <button class="survey-rating" data-rating="4" onclick="submitSurveyRating(4, this)">
+          <span class="survey-emoji">😊</span>
+          <span class="survey-label">Great</span>
+        </button>
+        <button class="survey-rating" data-rating="5" onclick="submitSurveyRating(5, this)">
+          <span class="survey-emoji">🤩</span>
+          <span class="survey-label">Amazing</span>
+        </button>
+      </div>
+      <button class="survey-skip" onclick="skipSurvey()">Skip</button>
+    </div>
+  `;
+
+  await addInteractiveContent(surveyHtml, 400);
+}
+
+async function submitSurveyRating(rating, buttonElement) {
+  // Highlight selected rating
+  document.querySelectorAll('.survey-rating').forEach(btn => {
+    btn.classList.remove('selected');
+  });
+  buttonElement.classList.add('selected');
+
+  // Remove survey container after short delay
+  await delay(300);
+  document.querySelector('.survey-container')?.closest('.interactive-content').remove();
+
+  // Log the rating to analytics
+  Analytics.logSurvey(rating);
+  Analytics.logEvent('survey', 'rating_submitted', { rating, caseId: state.caseId });
+
+  // Thank the user - uses MESSAGES.survey from config
+  if (rating >= 4) {
+    await addBotMessage(MESSAGES.survey.thankYouHigh);
+  } else if (rating >= 3) {
+    await addBotMessage(MESSAGES.survey.thankYouMedium);
+  } else {
+    await addBotMessage(MESSAGES.survey.thankYouLow);
+  }
+
+  await delay(800);
+
+  addOptions([
+    { text: 'Back to Home', primary: true, action: () => restartChat() }
+  ]);
+}
+
+async function skipSurvey() {
+  document.querySelector('.survey-container')?.closest('.interactive-content').remove();
+
+  addOptions([
+    { text: 'Back to Home', primary: true, action: () => restartChat() }
+  ]);
+}
+
+// Make survey functions available globally
+window.submitSurveyRating = submitSurveyRating;
+window.skipSurvey = skipSurvey;
+
+async function showError(title, message) {
+  const errorHtml = `
+    <div class="error-card">
+      <div class="error-icon">✕</div>
+      <div class="error-title">${title}</div>
+      <div class="error-message">${message}</div>
+    </div>
+  `;
+  await addInteractiveContent(errorHtml, 300);
+}
+
+// ============================================
+// WELCOME & HOME
+// ============================================
+
+// Welcome message shown when entering chat from home screen
+async function showWelcomeMessage(flowType) {
+  setPersona('amy');
+  state.currentStep = 'welcome';
+
+  // Uses MESSAGES.welcome from config at top of file
+  await addBotMessage(MESSAGES.welcome[flowType] || MESSAGES.welcome.help, 'amy');
+}
+
+// Legacy function - kept for backward compatibility
+async function showWelcomeScreen() {
+  // Just show home screen via the HomeScreen controller
+  HomeScreen.show();
+}
+
+async function showHomeMenu() {
+  state.currentStep = 'home';
+  await addBotMessage("What can I help you with today?");
+
+  addOptions([
+    { icon: '📦', text: 'Manage My Subscription', action: startManageSubscription },
+    { icon: '🛍️', text: 'Help With An Order', action: startHelpWithOrder },
+    { icon: '📍', text: 'Track My Order', action: startTrackOrder }
+  ]);
+}
+
+async function restartChat() {
+  // Show confirmation dialog
+  const confirmed = await showConfirmDialog(
+    'Start Over?',
+    'This will clear your current conversation and take you back to the home screen.',
+    'Yes, Start Over',
+    'Cancel'
+  );
+
+  if (!confirmed) return;
+
+  // Log session end
+  Analytics.endSession(false);
+  Analytics.logEvent('flow_end', 'user_restart');
+
+  // Reset state
+  Object.assign(state, {
+    currentStep: 'welcome',
+    customerData: { email: '', phone: '', firstName: '', lastName: '', orderNumber: '', address1: '' },
+    orders: [],
+    selectedOrder: null,
+    selectedItems: [],
+    subscriptions: [],
+    selectedSubscription: null,
+    tracking: null,
+    intent: null,
+    intentDetails: '',
+    ladderStep: 0,
+    ladderType: null,
+    uploadedFiles: [],
+    caseId: null,
+    flowType: null,
+    editHistory: [],
+    existingCaseInfo: null,
+    chargedUnexpectedlyProcessing: false,
+    chargedUnexpectedlyDelivered: null
+  });
+
+  // Clear session
+  SessionManager.clear();
+
+  // Clear chat area
+  elements.chatArea.innerHTML = '';
+  hideTextInput();
+
+  // Show home screen
+  HomeScreen.show();
+}
+
+// ============================================
+// IDENTIFY CUSTOMER FORM (with Edit support)
+// ============================================
+async function showIdentifyForm(flowType) {
+  state.flowType = flowType;
+  // Message is shown by the calling function, just render the form
+  await renderIdentifyForm(flowType);
+}
+
+async function renderIdentifyForm(flowType) {
+  // Track Order flow: simplified form (email/phone + order number)
+  // Help/Subscription flows: full form (email/phone + name + order number)
+  const isTrackFlow = flowType === 'track';
+
+  const formHtml = `
+    <div class="form-container" id="identifyForm">
+      <div class="toggle-container">
+        <div class="toggle-option ${state.identifyMethod === 'email' ? 'active' : ''}" data-method="email" onclick="toggleIdentifyMethod('email')">Email</div>
+        <div class="toggle-option ${state.identifyMethod === 'phone' ? 'active' : ''}" data-method="phone" onclick="toggleIdentifyMethod('phone')">Phone</div>
+      </div>
+
+      <div class="form-group ${state.identifyMethod !== 'email' ? 'hidden' : ''}" id="emailGroup">
+        <label>Email Address *</label>
+        <input type="email" class="form-input" id="inputEmail" placeholder="you@example.com" value="${state.customerData.email || ''}">
+        <div class="error-text">Please enter the email used at checkout.</div>
+      </div>
+
+      <div class="form-group ${state.identifyMethod !== 'phone' ? 'hidden' : ''}" id="phoneGroup">
+        <label>Phone Number *</label>
+        <div class="phone-input-wrapper">
+          ${generateCountryCodeSelector(state.selectedCountryCode || 'US')}
+          <input type="tel" class="form-input" id="inputPhone" placeholder="(555) 000-0000" value="${state.customerData.phone || ''}" oninput="formatPhoneInput(this)">
+        </div>
+        <div class="error-text">Please enter the phone number used at checkout.</div>
+      </div>
+
+      ${!isTrackFlow ? `
+      <div class="form-group">
+        <label>First Name *</label>
+        <input type="text" class="form-input" id="inputFirstName" placeholder="Your first name" value="${state.customerData.firstName || ''}">
+        <div class="error-text">Please enter the first name used at checkout.</div>
+      </div>
+      ` : ''}
+
+      <div class="form-group">
+        <label>Order Number${isTrackFlow ? ' (recommended)' : ' (optional)'}</label>
+        <input type="text" class="form-input" id="inputOrderNumber" placeholder="#12345P" value="${state.customerData.orderNumber || ''}">
+        <div class="error-text">Order number must look like #12345P.</div>
+      </div>
+
+      <button class="option-btn primary" onclick="submitIdentifyForm('${flowType}')" style="margin-top: 8px; width: 100%;">
+        ${isTrackFlow ? 'Track My Order' : 'Find My Order'}
+      </button>
+    </div>
+  `;
+
+  await addInteractiveContent(formHtml);
+}
+
+function toggleIdentifyMethod(method) {
+  state.identifyMethod = method;
+
+  // Update toggle container class for CSS animation
+  const container = document.querySelector('.toggle-container');
+  if (container) {
+    container.classList.toggle('phone', method === 'phone');
+  }
+
+  // Update active states
+  document.querySelectorAll('.toggle-option').forEach(el => {
+    el.classList.toggle('active', el.dataset.method === method);
+  });
+
+  // Show/hide relevant form groups
+  document.getElementById('emailGroup')?.classList.toggle('hidden', method !== 'email');
+  document.getElementById('phoneGroup')?.classList.toggle('hidden', method !== 'phone');
+}
+
+async function submitIdentifyForm(flowType) {
+  const email = document.getElementById('inputEmail')?.value.trim();
+  const phone = document.getElementById('inputPhone')?.value.trim();
+  const firstName = document.getElementById('inputFirstName')?.value.trim() || '';
+  const orderNumber = document.getElementById('inputOrderNumber')?.value.trim();
+
+  // Track flow only requires email/phone (firstName not required)
+  const isTrackFlow = flowType === 'track';
+
+  // Validation
+  let hasError = false;
+
+  if (state.identifyMethod === 'email') {
+    const emailInput = document.getElementById('inputEmail');
+    if (!email || !email.includes('@') || !email.includes('.')) {
+      emailInput.classList.add('error');
+      hasError = true;
+    } else {
+      emailInput.classList.remove('error');
+      state.customerData.email = email;
+    }
+  } else {
+    const phoneInput = document.getElementById('inputPhone');
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (!phone || phoneDigits.length < 7) {
+      phoneInput.classList.add('error');
+      hasError = true;
+    } else {
+      phoneInput.classList.remove('error');
+      // Combine country code with phone number
+      const countryCode = getSelectedCountryCode();
+      state.selectedCountryCode = document.getElementById('countryCodeSelect')?.value || 'US';
+      state.customerData.phone = countryCode + phoneDigits;
+    }
+  }
+
+  // First name validation - only required for non-track flows
+  const firstNameInput = document.getElementById('inputFirstName');
+  if (!isTrackFlow) {
+    if (!firstName) {
+      firstNameInput?.classList.add('error');
+      hasError = true;
+    } else {
+      firstNameInput?.classList.remove('error');
+      state.customerData.firstName = firstName;
+    }
+  } else {
+    // For track flow, just store whatever was provided (optional)
+    state.customerData.firstName = firstName;
+  }
+
+  const orderInput = document.getElementById('inputOrderNumber');
+  if (orderNumber && !orderNumber.match(/^#?\d+P?$/i)) {
+    orderInput.classList.add('error');
+    hasError = true;
+  } else {
+    orderInput?.classList.remove('error');
+    state.customerData.orderNumber = orderNumber;
+  }
+
+  if (hasError) return;
+
+  // Remove form
+  document.getElementById('identifyForm')?.closest('.interactive-content').remove();
+
+  // Create editable summary (conditionally show name for non-track flows)
+  const summaryRows = [
+    `<div class="summary-row"><span class="summary-label">${state.identifyMethod === 'email' ? 'Email' : 'Phone'}:</span> ${state.identifyMethod === 'email' ? email : phone}</div>`
+  ];
+  if (!isTrackFlow && firstName) {
+    summaryRows.push(`<div class="summary-row"><span class="summary-label">Name:</span> ${firstName}</div>`);
+  }
+  if (orderNumber) {
+    summaryRows.push(`<div class="summary-row"><span class="summary-label">Order:</span> ${orderNumber}</div>`);
+  }
+
+  const summaryHtml = `<div class="editable-summary">${summaryRows.join('')}</div>`;
+
+  addEditableUserMessage(summaryHtml, () => {
+    // Re-show the form for editing
+    renderIdentifyForm(flowType);
+  }, 'Edit Details');
+
+  await lookupOrder(flowType);
+}
+
+// ============================================
+// ORDER LOOKUP
+// ============================================
+async function lookupOrder(flowType) {
+  showProgress("Locating your order...", "Searching our database");
+
+  try {
+    // Try API call
+    if (CONFIG.API_URL) {
+      const response = await fetch(`${CONFIG.API_URL}/api/lookup-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state.customerData)
+      });
+      const data = await response.json();
+
+      hideProgress();
+
+      if (data.orders && data.orders.length > 0) {
+        state.orders = data.orders;
+        await handleOrdersFound(flowType);
+        return;
+      }
+    } else {
+      hideProgress();
+    }
+
+    // No orders found - go to deep search
+    await handleOrderNotFound(flowType);
+
+  } catch (error) {
+    console.error('Lookup error:', error);
+    hideProgress();
+    // API error - go to deep search
+    await handleOrderNotFound(flowType);
+  }
+}
+
+async function handleOrdersFound(flowType) {
+  if (state.orders.length === 0) {
+    await handleOrderNotFound(flowType);
+    return;
+  }
+
+  // Identify user in PostHog as soon as we find their order
+  const firstOrder = state.orders[0];
+  identifyUserInPostHog({
+    email: firstOrder.email,
+    name: `${firstOrder.customerFirstName || ''} ${firstOrder.customerLastName || ''}`.trim(),
+    orderNumber: firstOrder.orderNumber
+  });
+
+  // Update session with customer info
+  Analytics.logSession({
+    customerEmail: firstOrder.email,
+    customerName: `${firstOrder.customerFirstName || ''} ${firstOrder.customerLastName || ''}`.trim(),
+    orderNumber: firstOrder.orderNumber
+  });
+
+  // Show "Found your order" message first
+  const orderCount = state.orders.length;
+  const foundMessage = orderCount === 1
+    ? `Found your order! Let me pull up the details. ✨`
+    : `Found ${orderCount} orders! Let me show you what I found. ✨`;
+  await addBotMessage(foundMessage);
+
+  if (flowType === 'subscription') {
+    await handleSubscriptionFlow();
+  } else if (flowType === 'help') {
+    await handleHelpFlow();
+  } else if (flowType === 'track') {
+    await handleTrackFlow();
+  }
+}
+
+async function handleOrderNotFound(flowType) {
+  await addBotMessage("I couldn't find an order with those details. Let's try a deeper search with your shipping information.");
+  await renderDeepSearchForm(flowType);
+}
+
+async function renderDeepSearchForm(flowType) {
+  const formHtml = `
+    <div class="form-container" id="deepSearchForm">
+      <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">
+        Please provide your shipping address details to help me find your order:
+      </p>
+
+      <div class="form-group">
+        <label>First Name *</label>
+        <input type="text" class="form-input" id="inputDeepFirstName" placeholder="Your first name" value="${state.customerData.firstName || ''}">
+      </div>
+
+      <div class="form-group">
+        <label>Last Name *</label>
+        <input type="text" class="form-input" id="inputDeepLastName" placeholder="Your last name" value="${state.customerData.lastName || ''}">
+      </div>
+
+      <div class="form-group">
+        <label>Street Address *</label>
+        <input type="text" class="form-input" id="inputDeepAddress1" placeholder="123 Main Street" value="${state.customerData.address1 || ''}">
+      </div>
+
+      <div class="form-group">
+        <label>Country *</label>
+        ${generateCountryDropdown(state.customerData.country || 'US', 'inputDeepCountry')}
+      </div>
+
+      <button class="option-btn primary" onclick="submitDeepSearch('${flowType}')" style="margin-top: 8px; width: 100%;">
+        Search Again
+      </button>
+    </div>
+  `;
+
+  await addInteractiveContent(formHtml);
+}
+
+async function submitDeepSearch(flowType) {
+  const firstName = document.getElementById('inputDeepFirstName')?.value.trim();
+  const lastName = document.getElementById('inputDeepLastName')?.value.trim();
+  const address1 = document.getElementById('inputDeepAddress1')?.value.trim();
+  const country = document.getElementById('inputDeepCountry')?.value;
+
+  // Require at least firstName + lastName + address
+  if (!firstName || !lastName || !address1) {
+    await addBotMessage("Please fill in your first name, last name, and street address to continue.");
+    return;
+  }
+
+  state.customerData.firstName = firstName;
+  state.customerData.lastName = lastName;
+  state.customerData.address1 = address1;
+  state.customerData.country = country || 'US';
+
+  document.getElementById('deepSearchForm')?.closest('.interactive-content').remove();
+
+  addUserMessage(`Searching with: ${firstName} ${lastName}, ${address1}`);
+  showProgress("Searching deeper...", "Looking for orders matching your address");
+
+  try {
+    // Call the API with deep search parameters
+    const response = await fetch(`${CONFIG.API_URL}/api/lookup-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: state.customerData.email,
+        phone: state.customerData.phone,
+        firstName: state.customerData.firstName,
+        lastName: state.customerData.lastName,
+        orderNumber: state.customerData.orderNumber,
+        address1: state.customerData.address1,
+        country: state.customerData.country,
+        deepSearch: true // Flag for backend to use fuzzy matching
+      })
+    });
+
+    hideProgress();
+
+    const data = await response.json();
+
+    if (data.orders && data.orders.length > 0) {
+      state.orders = data.orders;
+      await handleOrdersFound(flowType);
+      return;
+    }
+  } catch (error) {
+    console.error('Deep search error:', error);
+    hideProgress();
+  }
+
+  // Still not found - show manual help form
+  // Store lookup attempts for the manual form
+  state.lookupAttempts = [
+    { method: state.identifyMethod === 'email' ? 'Email lookup' : 'Phone lookup', value: state.customerData.email || state.customerData.phone, result: 'no results' },
+    { method: 'Deep lookup', value: `${state.customerData.firstName} ${state.customerData.lastName}, ${state.customerData.address1}`, result: 'no results' }
+  ];
+  await showManualHelpForm();
+}
+
+async function showManualHelpForm() {
+  await addBotMessage("I'm really sorry - I still couldn't find your order in our system. But don't worry, I'll connect you with our team who can dig deeper!");
+
+  const fullName = `${state.customerData.firstName || ''} ${state.customerData.lastName || ''}`.trim();
+
+  const formHtml = `
+    <div class="form-container" id="manualHelpForm">
+      <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text-primary);">Tell Us More</h3>
+
+      <div class="form-group">
+        <label>Email Address *</label>
+        <input type="email" class="form-input" id="manualEmail" placeholder="you@example.com" value="${state.customerData.email || ''}">
+      </div>
+
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" class="form-input" id="manualFullName" placeholder="Your full name" value="${fullName}">
+      </div>
+
+      <div class="form-group">
+        <label>Phone (optional)</label>
+        <input type="tel" class="form-input" id="manualPhone" placeholder="+1 (555) 000-0000" value="${state.customerData.phone || ''}" oninput="formatPhoneInput(this)">
+      </div>
+
+      <div class="form-group">
+        <label>Order # if you have it</label>
+        <input type="text" class="form-input" id="manualOrderNumber" placeholder="#12345P" value="${state.customerData.orderNumber || ''}">
+      </div>
+
+      <div class="form-group">
+        <label>What happened? *</label>
+        <textarea class="form-input" id="manualIssue" rows="4" placeholder="I ordered 3 weeks ago, was charged $49.99 but never got confirmation..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>How should we reach you?</label>
+        <div class="contact-method-toggle">
+          <div class="contact-method-option active" onclick="selectContactMethod('email', this)">
+            <span class="checkmark">✓</span>
+            <span>Email</span>
+          </div>
+          <div class="contact-method-option" onclick="selectContactMethod('phone', this)">
+            <span class="checkmark">✓</span>
+            <span>Phone</span>
+          </div>
+        </div>
+        <input type="hidden" id="preferredContact" value="email">
+      </div>
+
+      <button class="option-btn primary" onclick="submitManualHelp()" style="margin-top: 8px; width: 100%;">
+        Submit Request
+      </button>
+    </div>
+  `;
+
+  addInteractiveContent(formHtml);
+}
+
+function selectContactMethod(method, element) {
+  // Update hidden input
+  document.getElementById('preferredContact').value = method;
+
+  // Update UI
+  document.querySelectorAll('.contact-method-option').forEach(el => {
+    el.classList.remove('active');
+  });
+  element.classList.add('active');
+}
+
+async function submitManualHelp() {
+  const email = document.getElementById('manualEmail')?.value.trim();
+  const fullName = document.getElementById('manualFullName')?.value.trim();
+  const phone = document.getElementById('manualPhone')?.value.trim();
+  const orderNumber = document.getElementById('manualOrderNumber')?.value.trim();
+  const issue = document.getElementById('manualIssue')?.value.trim();
+  const preferredContact = document.getElementById('preferredContact')?.value || 'email';
+
+  if (!email || !fullName || !issue) {
+    await addBotMessage("Please enter your email, full name, and describe what happened so we can help you.");
+    return;
+  }
+
+  // Identify user in PostHog even for manual help (no order found)
+  identifyUserInPostHog({
+    email: email,
+    name: fullName,
+    orderNumber: orderNumber
+  });
+
+  // Update session with customer info
+  Analytics.logSession({
+    customerEmail: email,
+    customerName: fullName,
+    orderNumber: orderNumber
+  });
+
+  document.getElementById('manualHelpForm')?.closest('.interactive-content').remove();
+  addUserMessage("Request submitted");
+
+  showProgress("Creating your support case...", "Our team will be notified");
+
+  // Build case data for backend
+  const caseData = {
+    email,
+    fullName,
+    phone,
+    orderNumber,
+    issue,
+    preferredContact,
+    lookupAttempts: state.lookupAttempts || [],
+    sessionId: state.sessionId,
+    sessionReplayUrl: getSessionReplayUrl()
+  };
+
+  try {
+    // Call backend to create manual help case
+    const response = await fetch(`${CONFIG.API_URL}/api/create-manual-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(caseData)
+    });
+
+    const result = await response.json();
+    hideProgress();
+
+    if (result.success && result.caseId) {
+      state.caseId = result.caseId;
+    } else {
+      state.caseId = generateCaseId('manual');
+    }
+  } catch (error) {
+    console.error('Manual help submission error:', error);
+    hideProgress();
+    state.caseId = generateCaseId('manual');
+  }
+
+  const contactMethod = preferredContact === 'email' ? `email you at ${email}` : `call you at ${phone || email}`;
+
+  await showSuccess(
+    "Request Submitted!",
+    `Got it, ${fullName.split(' ')[0]}! I've sent your request to our support team. Someone will ${contactMethod} within 24 hours to help track this down.<br><br>${getCaseIdHtml(state.caseId)}<br><br>Save this in case you need to reference it!`
+  );
+}
+
+// ============================================
+// ORDER SELECTION (with Edit support)
+// ============================================
+async function showOrderSelection(flowType) {
+  await addBotMessage(`I found ${state.orders.length} order${state.orders.length > 1 ? 's' : ''}. Which one do you need help with?`);
+  renderOrderCards(flowType);
+}
+
+function renderOrderCards(flowType) {
+  const ordersHtml = state.orders.map((order, index) => {
+    const statusClass = order.fulfillmentStatus === 'fulfilled' ? 'delivered' : 
+                       order.fulfillmentStatus === 'partial' ? 'in-transit' : 'pending';
+    const statusLabel = order.fulfillmentStatus === 'fulfilled' ? 'Shipped' : 
+                       order.fulfillmentStatus === 'partial' ? 'Partially Shipped' : 'Processing';
+    
+    const itemThumbs = order.lineItems.slice(0, 4).map(item => 
+      `<img src="${item.image || 'https://via.placeholder.com/48'}" alt="${item.title}" class="order-item-thumb">`
+    ).join('');
+    
+    return `
+      <div class="order-card" onclick="selectOrder(${index}, '${flowType}')">
+        <div class="order-header">
+          <div>
+            <div class="order-number">${order.orderNumber}</div>
+            <div class="order-date">${formatDate(order.createdAt)}</div>
+          </div>
+          <span class="order-status ${statusClass}">${statusLabel}</span>
+        </div>
+        <div class="order-items">${itemThumbs}</div>
+        <div class="order-total">Total: ${formatCurrency(order.totalPrice, order.currency)}</div>
+      </div>
+    `;
+  }).join('');
+  
+  addInteractiveContent(`<div class="orders-list">${ordersHtml}</div>`);
+}
+
+async function selectOrder(index, flowType) {
+  state.selectedOrder = state.orders[index];
+
+  // Identify user in PostHog for session searchability
+  identifyUserInPostHog();
+
+  // Update session with selected order info
+  Analytics.logSession({
+    customerEmail: state.selectedOrder.email,
+    customerName: `${state.selectedOrder.customerFirstName || ''} ${state.selectedOrder.customerLastName || ''}`.trim(),
+    orderNumber: state.selectedOrder.orderNumber
+  });
+
+  // Remove order cards
+  document.querySelector('.orders-list')?.closest('.interactive-content').remove();
+  
+  // Show editable selection
+  const summaryHtml = `
+    <div class="editable-summary">
+      <div class="summary-row"><span class="summary-label">Order:</span> ${state.selectedOrder.orderNumber}</div>
+      <div class="summary-row"><span class="summary-label">Date:</span> ${formatDate(state.selectedOrder.createdAt)}</div>
+      <div class="summary-row"><span class="summary-label">Items:</span> ${state.selectedOrder.lineItems.length} item(s)</div>
+    </div>
+  `;
+  
+  addEditableUserMessage(summaryHtml, () => {
+    state.selectedOrder = null;
+    renderOrderCards(flowType);
+  }, 'Change Order');
+  
+  // Continue based on flow
+  if (flowType === 'track') {
+    await getTrackingInfo();
+  } else if (flowType === 'help') {
+    await showItemSelection();
+  } else if (flowType === 'subscription') {
+    await handleSubscriptionFlow();
+  }
+}
+
+// ============================================
+// ITEM SELECTION (with Edit support)
+// ============================================
+async function showItemSelection() {
+  const paidItems = state.selectedOrder.lineItems.filter(item => !item.isDigital);
+  
+  if (paidItems.length === 0) {
+    await addBotMessage("This order only contains digital items which are delivered instantly. Is there something else I can help with?");
+    addOptions([
+      { text: 'Go Back', action: showHomeMenu }
+    ]);
+    return;
+  }
+  
+  await addBotMessage("Which item(s) do you need help with? Tap to select:");
+  renderItemCards();
+}
+
+function renderItemCards() {
+  state.selectedItems = []; // Reset selection
+  
+  const itemsHtml = state.selectedOrder.lineItems.map((item, index) => {
+    // Determine badges
+    let badges = '';
+    if (item.productType === 'OFFER') badges += '<span class="product-badge initial">Initial Order</span>';
+    if (item.productType === 'UPSALE') badges += '<span class="product-badge upsell">Upsell</span>';
+    if (item.isFree && !item.isDigital) badges += '<span class="product-badge free">Free Gift</span>';
+    if (item.isDigital) badges += '<span class="product-badge digital">Digital</span>';
+    
+    const disabled = item.isDigital ? 'disabled' : '';
+    const disabledNote = item.isDigital ? '<div class="product-disabled-note">Digital items are delivered instantly</div>' : '';
+    
+    return `
+      <div class="product-card ${disabled}" data-index="${index}" onclick="${item.isDigital ? '' : `toggleItemSelection(${index})`}">
+        <img src="${item.image || 'https://via.placeholder.com/60'}" alt="${item.title}" class="product-image">
+        <div class="product-info">
+          <div class="product-name">${item.title}</div>
+          <div class="product-variant">${item.variantTitle || ''} ${item.sku ? `• ${item.sku}` : ''}</div>
+          <div class="product-meta">
+            <span class="product-price">${item.isFree ? 'FREE' : formatCurrency(item.price)}</span>
+            ${badges}
+          </div>
+          ${disabledNote}
+        </div>
+        <div class="checkbox">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  const selectableItems = state.selectedOrder.lineItems.filter(i => !i.isDigital);
+  
+  const containerHtml = `
+    <div class="items-selection" id="itemsSelection">
+      ${selectableItems.length > 1 ? `<button class="select-all-btn" onclick="selectAllItems()">Select All</button>` : ''}
+      ${itemsHtml}
+      <button class="option-btn primary" onclick="confirmItemSelection()" style="margin-top: 12px; width: 100%;">
+        Continue
+      </button>
+    </div>
+  `;
+  
+  addInteractiveContent(containerHtml);
+}
+
+function toggleItemSelection(index) {
+  const item = state.selectedOrder.lineItems[index];
+  if (item.isDigital) return;
+  
+  const card = document.querySelector(`.product-card[data-index="${index}"]`);
+  const isSelected = card.classList.toggle('selected');
+  
+  if (isSelected) {
+    if (!state.selectedItems.find(i => i.id === item.id)) {
+      state.selectedItems.push(item);
+    }
+  } else {
+    state.selectedItems = state.selectedItems.filter(i => i.id !== item.id);
+  }
+}
+
+function selectAllItems() {
+  state.selectedItems = state.selectedOrder.lineItems.filter(i => !i.isDigital);
+  document.querySelectorAll('.product-card:not(.disabled)').forEach(card => {
+    card.classList.add('selected');
+  });
+}
+
+async function confirmItemSelection() {
+  if (state.selectedItems.length === 0) {
+    await addBotMessage("Please select at least one item to continue.");
+    return;
+  }
+  
+  // Check for mixed free/paid selection
+  const hasFree = state.selectedItems.some(i => i.isFree);
+  const hasPaid = state.selectedItems.some(i => !i.isFree);
+  
+  if (hasFree && hasPaid) {
+    await addBotMessage("Free items and paid items need separate requests. Please select only one type.");
+    return;
+  }
+  
+  // Remove item selection UI
+  document.getElementById('itemsSelection')?.closest('.interactive-content').remove();
+  
+  // Create editable summary
+  const itemsList = state.selectedItems.map(i => i.title).join(', ');
+  const summaryHtml = `
+    <div class="editable-summary">
+      <div class="summary-row"><span class="summary-label">Selected:</span> ${state.selectedItems.length} item(s)</div>
+      <div class="summary-row summary-items">${itemsList}</div>
+    </div>
+  `;
+  
+  addEditableUserMessage(summaryHtml, () => {
+    state.selectedItems = [];
+    renderItemCards();
+  }, 'Change Items');
+  
+  // Show intent options
+  await showIntentOptions();
+}
+
+// ============================================
+// INTENT OPTIONS
+// ============================================
+async function showIntentOptions() {
+  await addBotMessage("Got it! What's going on with your order?");
+
+  // Build dynamic intent options based on selected items
+  const isFreeItem = state.selectedItems.every(i => i.isFree);
+
+  let options = [];
+
+  // Always show "dog not using" - this is a PuppyPad store, all products are pee pads
+  options.push({ icon: '🐕', text: "My dog isn't using it", action: () => handleIntent('dog_not_using') });
+
+  if (!isFreeItem) {
+    options.push(
+      { icon: '💭', text: "I changed my mind", action: () => handleIntent('changed_mind') },
+      { icon: '😕', text: "It didn't meet expectations", action: () => handleIntent('not_met_expectations') },
+      { icon: '🔄', text: "Ordered by mistake / Change order", action: () => handleIntent('ordered_mistake') },
+      { icon: '📦', text: "Something was missing", action: () => handleIntent('missing_item') },
+      { icon: '🔀', text: "I received the wrong item", action: () => handleIntent('wrong_item') },
+      { icon: '💔', text: "My order arrived damaged", action: () => handleIntent('damaged') },
+      { icon: '💳', text: "I was charged unexpectedly", action: () => handleIntent('charged_unexpectedly') }
+    );
+  }
+
+  options.push(
+    { icon: '🚚', text: "I haven't received my order", action: () => handleIntent('not_received') }
+  );
+
+  if (!isFreeItem) {
+    options.push({ icon: '🔍', text: "Quality difference in my products", action: () => handleIntent('quality_difference') });
+  }
+
+  options.push({ icon: '❓', text: "Other reason", action: () => handleIntent('other') });
+
+  addOptions(options);
+}
+
+async function handleIntent(intent) {
+  state.intent = intent;
+  state.issueType = intent; // Also set issueType for case submission
+
+  switch (intent) {
+    case 'dog_not_using':
+      await handleDogNotUsing();
+      break;
+    case 'changed_mind':
+      await handleChangedMind();
+      break;
+    case 'not_met_expectations':
+      await handleNotMetExpectations();
+      break;
+    case 'ordered_mistake':
+      await handleOrderedMistake();
+      break;
+    case 'missing_item':
+      await handleMissingItem();
+      break;
+    case 'wrong_item':
+      await handleWrongItem();
+      break;
+    case 'damaged':
+      await handleDamaged();
+      break;
+    case 'charged_unexpectedly':
+      await handleChargedUnexpectedly();
+      break;
+    case 'not_received':
+      await handleNotReceived();
+      break;
+    case 'quality_difference':
+      await handleQualityDifference();
+      break;
+    case 'other':
+      await handleOtherReason();
+      break;
+    default:
+      await handleOtherReason();
+  }
+}
+
+// ============================================
+// DOG NOT USING FLOW (Claudia)
+// ============================================
+async function handleDogNotUsing() {
+  await addBotMessage("I understand — the main reason you purchased this was to solve your problem, and we want to make sure it works for you! 🐕<br><br>Let me get some details about your pup so we can help.");
+  
+  renderDogInfoForm();
+}
+
+let dogFormCounter = 1;
+
+function renderDogInfoForm() {
+  dogFormCounter = 1;
+  const formHtml = `
+    <div class="form-container" id="dogInfoForm">
+      <div id="dogsContainer">
+        <div class="dog-entry" data-dog-index="1">
+          <div class="dog-entry-header">
+            <span class="dog-entry-title">Dog 1</span>
+          </div>
+          <div class="form-group">
+            <label>Dog's Name *</label>
+            <input type="text" class="form-input dog-name" placeholder="e.g., Max">
+            <span class="field-error">Required</span>
+          </div>
+          <div class="form-group">
+            <label>Breed *</label>
+            <input type="text" class="form-input dog-breed" placeholder="e.g., Golden Retriever">
+            <span class="field-error">Required</span>
+          </div>
+          <div class="form-group">
+            <label>Age *</label>
+            <input type="text" class="form-input dog-age" placeholder="e.g., 2 years">
+            <span class="field-error">Required</span>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="add-dog-btn" onclick="addAnotherDog()">
+        + Add Another Dog
+      </button>
+
+      <div class="form-group" style="margin-top: 16px;">
+        <label>What have you tried so far?</label>
+        <textarea class="form-input" id="methodsTried" rows="3" placeholder="Tell us what methods you've already attempted..."></textarea>
+      </div>
+
+      <button class="option-btn primary" onclick="submitDogInfo()" style="margin-top: 12px; width: 100%;">
+        Get Personalized Tips
+      </button>
+    </div>
+  `;
+
+  addInteractiveContent(formHtml);
+}
+
+function addAnotherDog() {
+  dogFormCounter++;
+  const container = document.getElementById('dogsContainer');
+  const newDogHtml = `
+    <div class="dog-entry" data-dog-index="${dogFormCounter}">
+      <div class="dog-entry-header">
+        <span class="dog-entry-title">Dog ${dogFormCounter}</span>
+        <button type="button" class="remove-dog-btn" onclick="removeDog(this)">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Dog's Name *</label>
+        <input type="text" class="form-input dog-name" placeholder="e.g., Bella">
+        <span class="field-error">Required</span>
+      </div>
+      <div class="form-group">
+        <label>Breed *</label>
+        <input type="text" class="form-input dog-breed" placeholder="e.g., Labrador">
+        <span class="field-error">Required</span>
+      </div>
+      <div class="form-group">
+        <label>Age *</label>
+        <input type="text" class="form-input dog-age" placeholder="e.g., 3 years">
+        <span class="field-error">Required</span>
+      </div>
+    </div>
+  `;
+  container.insertAdjacentHTML('beforeend', newDogHtml);
+}
+
+function removeDog(btn) {
+  const dogEntry = btn.closest('.dog-entry');
+  dogEntry.remove();
+  // Renumber remaining dogs
+  const entries = document.querySelectorAll('.dog-entry');
+  entries.forEach((entry, idx) => {
+    entry.querySelector('.dog-entry-title').textContent = `Dog ${idx + 1}`;
+    entry.dataset.dogIndex = idx + 1;
+  });
+  dogFormCounter = entries.length;
+}
+
+async function submitDogInfo() {
+  // Collect all dogs from the form
+  const dogEntries = document.querySelectorAll('.dog-entry');
+  const dogs = [];
+  let hasValidationError = false;
+
+  // Clear previous error states
+  document.querySelectorAll('.form-input.error').forEach(el => el.classList.remove('error'));
+
+  dogEntries.forEach(entry => {
+    const nameInput = entry.querySelector('.dog-name');
+    const breedInput = entry.querySelector('.dog-breed');
+    const ageInput = entry.querySelector('.dog-age');
+
+    const name = nameInput?.value.trim();
+    const breed = breedInput?.value.trim();
+    const age = ageInput?.value.trim();
+
+    // Validate and mark errors
+    if (!name) { nameInput.classList.add('error'); hasValidationError = true; }
+    if (!breed) { breedInput.classList.add('error'); hasValidationError = true; }
+    if (!age) { ageInput.classList.add('error'); hasValidationError = true; }
+
+    if (name && breed && age) {
+      dogs.push({ name, breed, age });
+    }
+  });
+
+  if (hasValidationError || dogs.length === 0) {
+    // Errors are shown inline under each field via CSS
+    return;
+  }
+
+  const methodsTried = document.getElementById('methodsTried')?.value.trim();
+
+  // Store dog info in state for case submission
+  state.dogs = dogs;
+  state.methodsTried = methodsTried;
+
+  document.getElementById('dogInfoForm')?.closest('.interactive-content').remove();
+
+  // Build summary for multiple dogs
+  const dogsSummary = dogs.map(d => `${d.name} (${d.breed}, ${d.age})`).join(', ');
+  const dogNames = dogs.map(d => d.name).join(' and ');
+
+  const summaryHtml = `
+    <div class="editable-summary">
+      <div class="summary-row"><span class="summary-label">Dog${dogs.length > 1 ? 's' : ''}:</span> ${dogsSummary}</div>
+      ${methodsTried ? `<div class="summary-row"><span class="summary-label">Tried:</span> ${methodsTried.substring(0, 50)}${methodsTried.length > 50 ? '...' : ''}</div>` : ''}
+    </div>
+  `;
+
+  addEditableUserMessage(summaryHtml, () => renderDogInfoForm(), 'Edit Info');
+
+  await addBotMessage("Thanks for sharing! I'm connecting you with our in-house veterinarian, Dr. Claudia. She's amazing at this! 🩺❤️");
+
+  setPersona('claudia');
+
+  await addBotMessage(`Hi there! Thanks for the info about ${dogNames}. Let me review everything and give you some personalized tips...`, 'claudia');
+
+  // Get product name from order
+  const productName = state.selectedOrder?.lineItems?.[0]?.name || 'PuppyPad';
+
+  // Call AI API for Dr. Claudia tips
+  showProgress("Dr. Claudia is preparing your tips...");
+
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/ai-response`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scenarioType: 'dog_tips',
+        scenarioData: {
+          dogs,
+          dogName: dogs[0]?.name,
+          dogBreed: dogs[0]?.breed,
+          dogAge: dogs[0]?.age,
+          methodsTried,
+          productName,
+        },
+      }),
+    });
+
+    hideProgress();
+
+    if (response.ok) {
+      const data = await response.json();
+      const messages = data.messages || [];
+
+      for (const msg of messages) {
+        await addBotMessage(msg, 'claudia');
+      }
+    } else {
+      // Fallback to static tips if API fails
+      await addBotMessage(`Great news! Based on ${dogName}'s profile (${dogBreed}, ${dogAge}), here are my top recommendations:
+
+1. Scent Association - Place a small amount of ${dogName}'s urine on the PuppyPad. Dogs naturally want to go where they smell their scent.
+
+2. Positive Reinforcement - Every time ${dogName} even sniffs the pad, give praise and a small treat. Build positive associations!
+
+3. Consistent Placement - Keep the pad in the same spot. Dogs thrive on routine, and moving it can confuse them.
+
+4. Timing is Key - Take ${dogName} to the pad right after meals, naps, and play sessions — these are peak potty times!
+
+Give these a try for 5-7 days and you should see improvement!`, 'claudia');
+    }
+  } catch (error) {
+    hideProgress();
+    console.error('AI response error:', error);
+    // Fallback
+    await addBotMessage(`I've helped many ${dogBreed}s with this exact challenge! Here are my top tips for ${dogName}:
+
+Try scent association by placing a small amount of urine on the pad. Use positive reinforcement every time ${dogName} approaches the pad. Keep the pad in the same spot always, and take ${dogName} there after meals and naps.
+
+Give it 5-7 days of consistency and you should see great progress!`, 'claudia');
+  }
+
+  setPersona('amy');
+
+  // Small delay before Amy responds - feels more natural
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
+  await addBotMessage("Did Dr. Claudia's tips help? Are you happy to give these a try?");
+
+  showSatisfactionButtons();
+}
+
+// ============================================
+// CLICKUP DEDUPLICATION
+// ============================================
+async function checkExistingCase() {
+  if (!state.selectedOrder && !state.customerData?.email) {
+    return { existingCase: false };
+  }
+
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/check-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderNumber: state.selectedOrder?.orderNumber,
+        email: state.customerData?.email || state.selectedOrder?.email
+      })
+    });
+
+    if (!response.ok) {
+      console.warn('Case check API failed, continuing flow');
+      return { existingCase: false };
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Case check error:', error);
+    return { existingCase: false };
+  }
+}
+
+async function showExistingCaseMessage(caseInfo) {
+  // Store existing case info in state for potential append flow
+  state.existingCaseInfo = caseInfo;
+
+  await addBotMessage(
+    `I see we already have an open case for this order! 📋<br><br>` +
+    `Your case ID is <strong>${caseInfo.caseId || 'N/A'}</strong> and it's currently being worked on.<br><br>` +
+    `Would you like to add new information to this existing case, or do you have a different issue?`
+  );
+
+  // Log to analytics
+  Analytics.logEvent('existing_case_found', {
+    existingCaseId: caseInfo.caseId,
+    orderNumber: state.selectedOrder?.orderNumber
+  });
+
+  addOptions([
+    { icon: '📝', text: "Add info to this case", action: showAppendToExistingCase },
+    { icon: '🔄', text: "I have a different issue", action: showItemSelection },
+    { text: "Back to Home", action: () => restartChat() }
+  ]);
+}
+
+async function showAppendToExistingCase() {
+  await addBotMessage("What additional information would you like to add to your existing case?");
+
+  const html = `
+    <div class="form-container" id="appendCaseForm">
+      <div class="form-group">
+        <label>Additional Information</label>
+        <textarea class="form-input" id="additionalInfo" rows="4" placeholder="Please describe any new details about your issue..."></textarea>
+      </div>
+      <button class="option-btn primary" onclick="submitAppendToCase()" style="width: 100%;">
+        Add to My Case
+      </button>
+    </div>
+  `;
+
+  addInteractiveContent(html);
+}
+
+async function submitAppendToCase() {
+  const additionalInfo = document.getElementById('additionalInfo')?.value.trim();
+
+  if (!additionalInfo) {
+    await addBotMessage("Please enter some information to add to your case.");
+    return;
+  }
+
+  document.getElementById('appendCaseForm')?.closest('.interactive-content').remove();
+  addUserMessage(additionalInfo);
+
+  showProgress("Updating your case...", "Adding new information");
+
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/append-to-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        taskId: state.existingCaseInfo?.taskId,
+        caseData: {
+          sessionId: state.sessionId,
+          email: state.customerData?.email || state.selectedOrder?.email,
+          orderNumber: state.selectedOrder?.orderNumber,
+          selectedItems: state.selectedItems,
+          intentDetails: additionalInfo
+        },
+        additionalInfo: additionalInfo,
+        newIntent: state.currentIntent || 'Additional information'
+      })
+    });
+
+    hideProgress();
+
+    if (response.ok) {
+      await showSuccess(
+        "Case Updated!",
+        `Your additional information has been added to case <strong>${state.existingCaseInfo?.caseId || 'N/A'}</strong>.<br><br>Our team will review this and get back to you soon.`
+      );
+      Analytics.logEvent('case_appended', { caseId: state.existingCaseInfo?.caseId });
+    } else {
+      throw new Error('Failed to update case');
+    }
+  } catch (error) {
+    hideProgress();
+    console.error('Error appending to case:', error);
+    await addBotMessage("I'm sorry, there was an issue updating your case. Let me connect you with our team directly.");
+    await showManualHelpForm();
+  }
+}
+
+// Expose functions to window for onclick handlers
+window.submitAppendToCase = submitAppendToCase;
+
+// ============================================
+// 90-DAY GUARANTEE VALIDATION
+// ============================================
+async function validateGuarantee() {
+  if (!state.selectedOrder) {
+    return { eligible: true, usedFallback: true };
+  }
+
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/validate-guarantee`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderNumber: state.selectedOrder.orderNumber,
+        orderCreatedAt: state.selectedOrder.createdAt
+      })
+    });
+
+    if (!response.ok) {
+      // If API fails, allow the flow to continue (fail open)
+      console.warn('Guarantee validation API failed, allowing flow');
+      return { eligible: true, usedFallback: true };
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Guarantee validation error:', error);
+    // Fail open - allow flow to continue
+    return { eligible: true, usedFallback: true };
+  }
+}
+
+async function showGuaranteeExpired(guarantee) {
+  const daysSince = guarantee.daysSince || 0;
+
+  await addBotMessage(
+    `I really wish I could help with a refund, but I need to be upfront with you. 💔<br><br>` +
+    `Our 90-day money-back guarantee has expired — it's been <strong>${daysSince} days</strong> since your order ` +
+    `${guarantee.usedFallback ? 'was placed' : 'was delivered'}.<br><br>` +
+    `I know that's not what you wanted to hear, and I'm genuinely sorry. Is there anything else I can help you with?`
+  );
+
+  // Log policy block to analytics
+  Analytics.logPolicyBlock('90_day_guarantee', { daysSince: guarantee.daysSince });
+  Analytics.logEvent('policy_block', '90_day_guarantee_expired', {
+    orderNumber: state.selectedOrder?.orderNumber,
+    daysSince: guarantee.daysSince,
+    usedFallback: guarantee.usedFallback
+  });
+
+  addOptions([
+    { text: "Help with something else", action: showHomeMenu },
+    { text: "Contact support", action: () => showManualHelpForm() }
+  ]);
+}
+
+// ============================================
+// SATISFACTION & LADDER FLOWS
+// ============================================
+function showSatisfactionButtons() {
+  const html = `
+    <div class="satisfaction-container">
+      <button class="satisfaction-btn yes" onclick="handleSatisfied(true)">
+        <div class="satisfaction-emoji">😊</div>
+        <div class="satisfaction-text">Yes, I'll try these!</div>
+      </button>
+      <button class="satisfaction-btn no" onclick="handleSatisfied(false)">
+        <div class="satisfaction-emoji">😔</div>
+        <div class="satisfaction-text">No, I need more help</div>
+      </button>
+    </div>
+  `;
+  
+  addInteractiveContent(html);
+}
+
+async function handleSatisfied(satisfied) {
+  document.querySelector('.satisfaction-container')?.closest('.interactive-content').remove();
+  
+  addUserMessage(satisfied ? "Yes, I'll try these!" : "No, I need more help");
+  
+  if (satisfied) {
+    await addBotMessage("That's great to hear! 🎉 Give it a go and remember — consistency is key. You've got this!<br><br>Is there anything else I can help you with?");
+    
+    addOptions([
+      { text: "No, I'm all set!", action: () => showSuccess("Thanks for chatting!", "We're here whenever you need us. Have a great day! 🐕") },
+      { text: "Yes, something else", action: showHomeMenu }
+    ]);
+  } else {
+    // Start refund ladder
+    state.ladderType = 'order_refund';
+    state.ladderStep = 0;
+    await startRefundLadder();
+  }
+}
+
+async function startRefundLadder() {
+  // Check 90-day guarantee on first step only
+  if (state.ladderStep === 0) {
+    const guarantee = await validateGuarantee();
+    if (!guarantee.eligible) {
+      await showGuaranteeExpired(guarantee);
+      return;
+    }
+  }
+
+  const ladderSteps = [
+    {
+      percent: 20,
+      message: "I understand. As a valued customer, I'd like to offer you a <strong>20% partial refund</strong> while you keep the product and continue trying.",
+      needsManagerCheck: false
+    },
+    {
+      percent: 30,
+      message: "I really want to make this right. Let me offer you a <strong>30% refund</strong> — that's a significant amount back while you keep everything.",
+      needsManagerCheck: false
+    },
+    {
+      percent: 40,
+      message: "Great news! My manager has approved a <strong>40% refund</strong> for you. That's nearly half your money back and you still get to keep the products.",
+      needsManagerCheck: true
+    },
+    {
+      percent: 50,
+      message: "Okay, I've just spoken with my manager again and they've approved our <strong>maximum offer: 50% refund</strong>. This is the very best we can do — half your money back, no return needed.",
+      needsManagerCheck: true
+    }
+  ];
+
+  if (state.ladderStep >= ladderSteps.length) {
+    await handleFullRefund();
+    return;
+  }
+
+  const step = ladderSteps[state.ladderStep];
+  const totalPrice = parseFloat(state.selectedOrder?.totalPrice || 0);
+  const refundAmount = (totalPrice * step.percent / 100).toFixed(2);
+
+  // For steps that need manager check, show loading first
+  if (step.needsManagerCheck) {
+    showProgress("Checking with manager...");
+    await new Promise(resolve => setTimeout(resolve, 8000)); // 8 second delay
+    hideProgress();
+  }
+
+  await addBotMessage(step.message);
+
+  showOfferCard(step.percent, refundAmount);
+}
+
+function showOfferCard(percent, amount) {
+  const html = `
+    <div class="offer-card">
+      <div class="offer-icon">💰</div>
+      <div class="offer-amount">${percent}%</div>
+      <div class="offer-value">${formatCurrency(amount)} back to you</div>
+      <div class="offer-label">Partial refund — keep your products</div>
+      <div class="offer-buttons">
+        <button class="offer-btn accept" onclick="acceptOffer(${percent}, ${amount})">Accept Offer</button>
+        <button class="offer-btn decline" onclick="declineOffer()">No thanks</button>
+      </div>
+      <div class="offer-note">Reviewed within 1-2 days, then 3-5 days to your account</div>
+    </div>
+  `;
+  
+  addInteractiveContent(html);
+}
+
+// Partial refund card with custom callbacks (for charged unexpectedly flows)
+async function showPartialRefundCard(percent, onAccept, onDecline) {
+  const totalPrice = parseFloat(state.selectedOrder?.totalPrice || 0);
+  const amount = (totalPrice * percent / 100).toFixed(2);
+
+  const cardId = `partial-card-${Date.now()}`;
+
+  const html = `
+    <div class="offer-card" id="${cardId}">
+      <div class="offer-icon">💰</div>
+      <div class="offer-amount">${percent}%</div>
+      <div class="offer-value">${formatCurrency(amount)} back to you</div>
+      <div class="offer-label">Partial refund — keep your products</div>
+      <div class="offer-buttons">
+        <button class="offer-btn accept" id="${cardId}-accept">Accept Offer</button>
+        <button class="offer-btn decline" id="${cardId}-decline">No thanks</button>
+      </div>
+      <div class="offer-note">Reviewed within 1-2 days, then 3-5 days to your account</div>
+    </div>
+  `;
+
+  // Wait for content to be added to DOM
+  await addInteractiveContent(html);
+
+  // Now attach custom event handlers (elements exist now)
+  document.getElementById(`${cardId}-accept`).onclick = async () => {
+    document.getElementById(cardId)?.closest('.interactive-content').remove();
+    addUserMessage(`I'll accept the ${percent}% refund`);
+    await onAccept(percent, amount);
+  };
+
+  document.getElementById(`${cardId}-decline`).onclick = async () => {
+    document.getElementById(cardId)?.closest('.interactive-content').remove();
+    addUserMessage("No thanks, I need more help");
+    await onDecline();
+  };
+}
+
+async function acceptOffer(percent, amount) {
+  document.querySelector('.offer-card')?.closest('.interactive-content').remove();
+  addUserMessage(`I'll accept the ${percent}% refund`);
+
+  showProgress("Processing your refund...", "Creating your case");
+
+  // Submit to backend (ClickUp + Richpanel)
+  const result = await submitCase('refund', `partial_${percent}`, {
+    refundAmount: amount,
+    refundPercent: percent,
+    keepProduct: true,
+    issueType: state.issueType || 'not_met_expectations',
+  });
+
+  hideProgress();
+
+  state.caseId = result.caseId;
+
+  await showSuccess(
+    "Refund Approved!",
+    `Your ${percent}% refund of ${formatCurrency(amount)} has been submitted.<br><br>${MESSAGES.success.refundProcessingShort}<br><br>${getCaseIdHtml(state.caseId)}`
+  );
+}
+
+async function declineOffer() {
+  document.querySelector('.offer-card')?.closest('.interactive-content').remove();
+  addUserMessage("No thanks, I need more help");
+
+  // Get the decline message for the current step before incrementing
+  const declineMessages = [
+    "I understand that might not feel like enough. Let me see what else I can do for you.",
+    "I hear you. Please give me just a moment while I check with my manager to see if there's anything else we can offer...",
+    "I understand. Let me make one final check to see what the absolute best we can do is...",
+    null // Final step - no message needed
+  ];
+
+  const declineMessage = declineMessages[state.ladderStep];
+  if (declineMessage) {
+    await addBotMessage(declineMessage);
+  }
+
+  state.ladderStep++;
+
+  if (state.ladderStep >= 4) {
+    await handleFullRefund();
+  } else {
+    await startRefundLadder();
+  }
+}
+
+async function handleFullRefund() {
+  await addBotMessage("I completely understand. Let's proceed with a full refund. First, I need to know — has the product been used?");
+  
+  addOptionsRow([
+    { text: "Yes, it's been used", action: () => handleUsedProduct(true) },
+    { text: "No, it's unused", action: () => handleUsedProduct(false) }
+  ]);
+}
+
+async function handleUsedProduct(isUsed) {
+  const address = state.selectedOrder?.shippingAddress;
+  const country = address?.country || '';
+  const isUSorCanada = country.toLowerCase().includes('united states') || 
+                       country.toLowerCase().includes('canada') || 
+                       country.toLowerCase().includes('usa');
+  
+  if (isUsed) {
+    // Used product - full refund, keep product
+    await addBotMessage("We usually don't provide full refunds for used products, but because we genuinely value you as a customer, I'd like to make an exception. ❤️<br><br>We'll process a <strong>full refund</strong> and you can keep the product — maybe give it to a friend or neighbor with a pup!");
+    
+    await createRefundCase('full', true);
+  } else {
+    // Unused product
+    if (isUSorCanada) {
+      // Can return
+      await addBotMessage("Perfect! Since the product is unused, we'll process a <strong>full refund</strong> once we receive it back.<br><br>Please return it to our warehouse:");
+      
+      showReturnInstructions();
+    } else {
+      // International - can't return economically
+      await addBotMessage("Because you're valued as a customer, we'll process a <strong>full refund</strong> and you can keep the product. Consider giving it to someone who might find it useful! 🙂");
+      
+      await createRefundCase('full', true);
+    }
+  }
+}
+
+async function showReturnInstructions() {
+  const items = state.selectedItems;
+  const itemsList = items.map(i => `${i.title} × ${i.quantity || 1}`).join(', ');
+  const orderNumber = state.selectedOrder?.orderNumber || 'N/A';
+  const customerName = `${state.customerData?.firstName || ''} ${state.customerData?.lastName || ''}`.trim() || 'Customer';
+  const issueReason = state.intentDetails || state.issueType?.replace(/_/g, ' ') || 'Return for refund';
+
+  // Step 1: Important notice
+  await addBotMessage(`<strong>⚠️ Important:</strong> We don't provide prepaid return labels. You'll need to ship the return using a carrier of your choice (USPS, UPS, or FedEx work great).`);
+
+  await delay(800);
+
+  // Step 2: Return address card
+  const addressHtml = `
+    <div class="return-card">
+      <div class="return-card-header">📍 Return Address</div>
+      <div class="return-card-body">
+        <strong>PuppyPad Returns</strong><br>
+        1007 S 12th St.<br>
+        Watertown, WI 53094<br>
+        USA
+      </div>
+    </div>
+  `;
+  addInteractiveContent(addressHtml);
+
+  await delay(600);
+
+  // Step 3: Packing slip instructions
+  await addBotMessage(`<strong>📝 Include a note in your package</strong><br><br>Please write the following on a piece of paper and put it inside the box:`);
+
+  await delay(500);
+
+  // Packing slip template
+  const packingSlipHtml = `
+    <div class="packing-slip">
+      <div class="packing-slip-header">✂️ Packing Slip</div>
+      <div class="packing-slip-body">
+        <div class="slip-row">
+          <span class="slip-label">Order #:</span>
+          <span class="slip-value">${orderNumber}</span>
+        </div>
+        <div class="slip-row">
+          <span class="slip-label">Name:</span>
+          <span class="slip-value">${customerName}</span>
+        </div>
+        <div class="slip-row">
+          <span class="slip-label">Items:</span>
+          <span class="slip-value">${itemsList}</span>
+        </div>
+        <div class="slip-row">
+          <span class="slip-label">Reason:</span>
+          <span class="slip-value">${issueReason}</span>
+        </div>
+      </div>
+    </div>
+  `;
+  addInteractiveContent(packingSlipHtml);
+
+  await delay(600);
+
+  // Step 4: After shipping instructions
+  await addBotMessage(`<strong>📧 After you ship:</strong><br><br>Reply to your confirmation email with the tracking number so we can monitor the return and process your refund quickly.`);
+
+  await delay(500);
+
+  // Confirmation button
+  const confirmHtml = `
+    <div class="return-confirm-container">
+      <button class="option-btn primary" onclick="confirmReturn()" style="width: 100%;">
+        I Understand — Create My Case
+      </button>
+    </div>
+  `;
+  addInteractiveContent(confirmHtml);
+}
+
+async function confirmReturn() {
+  // Remove all return instruction elements
+  document.querySelectorAll('.return-card, .packing-slip, .return-confirm-container').forEach(el => {
+    el.closest('.interactive-content')?.remove();
+  });
+  addUserMessage("I understand the return process");
+
+  await createRefundCase('full', false);
+}
+
+// ============================================
+// SUBMIT CASE TO BACKEND (ClickUp + Richpanel)
+// ============================================
+async function submitCase(caseType, resolution, options = {}) {
+  const order = state.selectedOrder;
+  const items = state.selectedItems || [];
+  const subscription = state.selectedSubscription;
+
+  // For subscription cases, use clientOrderId as order number if no Shopify order
+  const orderNumber = order?.orderNumber || subscription?.clientOrderId || '';
+
+  const caseData = {
+    // Session info
+    sessionId: state.sessionId,
+    sessionReplayUrl: getSessionReplayUrl(),
+
+    // Case type
+    caseType: caseType,           // 'refund', 'return', 'shipping', 'subscription', 'manual'
+    resolution: resolution,        // 'partial_20', 'partial_50', 'full_refund', etc.
+
+    // Customer info
+    email: state.customerData?.email || order?.email || '',
+    phone: state.customerData?.phone || order?.phone || '',
+    customerName: `${state.customerData?.firstName || order?.customerFirstName || ''} ${state.customerData?.lastName || order?.customerLastName || ''}`.trim(),
+    customerFirstName: state.customerData?.firstName || order?.customerFirstName || '',
+    customerLastName: state.customerData?.lastName || order?.customerLastName || '',
+
+    // Order info (use subscription clientOrderId for subscription cases)
+    orderNumber: orderNumber,
+    orderId: order?.id || '',
+    orderUrl: order?.orderUrl || '',
+    orderDate: order?.createdAt || new Date().toISOString(),
+
+    // Items
+    selectedItems: items.map(item => ({
+      id: item.id,
+      title: item.title,
+      sku: item.sku || '',
+      price: item.price,
+      quantity: item.quantity || 1,
+    })),
+
+    // Refund details
+    refundAmount: options.refundAmount || null,
+    refundPercent: options.refundPercent || null,
+    keepProduct: options.keepProduct ?? true,
+
+    // Additional context
+    intentDetails: state.intentDetails || '',
+    notes: options.notes || '',
+
+    // Subscription-specific fields (for subscription cases)
+    purchaseId: options.purchaseId || state.selectedSubscription?.purchaseId || '',
+    clientOrderId: options.clientOrderId || state.selectedSubscription?.clientOrderId || '',
+    subscriptionProductName: options.subscriptionProductName || state.selectedSubscription?.productName || '',
+    actionType: options.actionType || '',
+    pauseDuration: options.pauseDuration || null,
+    pauseResumeDate: options.pauseResumeDate || null,
+    discountPercent: options.discountPercent || null,
+    subscriptionStatus: options.subscriptionStatus || state.selectedSubscription?.status || '',
+    cancelReason: options.cancelReason || state.cancelReason || '',
+    newFrequency: options.newFrequency || null, // For schedule changes
+    previousFrequency: options.previousFrequency || null, // For schedule changes
+    newAddress: options.newAddress || null, // For address changes
+
+    // Shipping-specific fields (for shipping cases)
+    trackingNumber: options.trackingNumber || '',
+    carrierName: options.carrierName || '',
+    trackingStatus: options.trackingStatus || '',
+    daysInTransit: options.daysInTransit || null,
+    shippingAddress: options.shippingAddress || order?.shippingAddress || null,
+    carrierIssue: options.carrierIssue || '',
+    addressChanged: options.addressChanged || false,
+    pickupReason: options.pickupReason || '',
+
+    // Missing item-specific fields
+    missingItemOrderList: options.missingItemOrderList || '',
+    missingItemDescription: options.missingItemDescription || '',
+
+    // Issue type for clear categorization
+    issueType: options.issueType || state.issueType || '',
+
+    // Dog info (for dog_not_using cases)
+    dogs: options.dogs || state.dogs || null,
+    methodsTried: options.methodsTried || state.methodsTried || '',
+
+    // Timestamps
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(caseData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    // Log success event
+    Analytics.logEvent('case_created', {
+      caseId: result.caseId,
+      caseType,
+      resolution,
+      clickupTaskId: result.clickupTaskId,
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Error creating case:', error);
+    Analytics.logEvent('case_creation_error', { error: error.message });
+
+    // Return a fallback case ID so user flow isn't broken
+    return {
+      success: false,
+      caseId: generateCaseId(caseType),
+      error: error.message,
+    };
+  }
+}
+
+async function createRefundCase(type, keepProduct) {
+  showProgress("Creating your case...", "Notifying our team");
+
+  // Calculate refund amount for full refunds
+  const totalAmount = state.selectedItems?.reduce((sum, item) => sum + parseFloat(item.price || 0), 0) || 0;
+
+  // Submit to backend (ClickUp + Richpanel)
+  const caseType = keepProduct ? 'refund' : 'return';
+  const result = await submitCase(caseType, 'full_refund', {
+    refundAmount: totalAmount,
+    refundPercent: 100,
+    keepProduct: keepProduct,
+    issueType: state.issueType || 'not_met_expectations',
+  });
+
+  hideProgress();
+
+  state.caseId = result.caseId;
+
+  const message = keepProduct
+    ? MESSAGES.success.refundProcessingShort
+    : `${MESSAGES.success.returnProcessing} Don't forget to send us the tracking number!`;
+
+  await showSuccess(
+    "Case Created!",
+    `${message}<br><br>${getCaseIdHtml(state.caseId)}`
+  );
+}
+
+// ============================================
+// OTHER INTENT HANDLERS (simplified for length)
+// ============================================
+async function handleChangedMind() {
+  await addBotMessage("No problem! Can you tell me a bit more about why you changed your mind? This helps me understand how to best help you.");
+
+  showTextInput("Tell me more...", async (text) => {
+    hideTextInput();
+    state.intentDetails = text;
+
+    // Get order items for context
+    const orderItems = state.selectedOrder?.lineItems?.map(item =>
+      `${item.title} (${item.variant || ''}) × ${item.quantity}`
+    ).join('\n') || 'PuppyPad products';
+
+    showProgress("Let me look into this for you...");
+
+    try {
+      const response = await fetch(`${CONFIG.API_URL}/api/ai-response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scenarioType: 'changed_mind',
+          scenarioData: {
+            customerName: state.customerData?.firstName || 'there',
+            customerMessage: text,
+            orderItems: orderItems,
+          },
+        }),
+      });
+
+      hideProgress();
+
+      if (response.ok) {
+        const data = await response.json();
+        const messages = data.messages || [];
+
+        for (const msg of messages) {
+          await addBotMessage(msg);
+        }
+
+        // Ask if they're satisfied with the response
+        await addBotMessage("Does this help? Would you like to keep your order?");
+
+        addOptions([
+          { text: "Yes, I'll keep it!", action: async () => {
+            await handleSatisfiedThankYou('changed_mind', text);
+          }},
+          { text: "No, I still want a refund", action: async () => {
+            state.ladderType = 'order_refund';
+            state.ladderStep = 0;
+            await startRefundLadder();
+          }}
+        ]);
+      } else {
+        await addBotMessage("I appreciate you sharing that. Let me see what I can do for you...");
+        state.ladderType = 'order_refund';
+        state.ladderStep = 0;
+        await startRefundLadder();
+      }
+    } catch (error) {
+      hideProgress();
+      console.error('AI response error:', error);
+      await addBotMessage("I appreciate you sharing that. Let me see what I can do for you...");
+      state.ladderType = 'order_refund';
+      state.ladderStep = 0;
+      await startRefundLadder();
+    }
+  });
+}
+
+async function handleNotMetExpectations() {
+  await addBotMessage("I'm really sorry to hear that 😔 We always want our products to exceed expectations. Could you share what specifically didn't meet your expectations?");
+
+  showTextInput("What disappointed you?", async (text) => {
+    hideTextInput();
+    state.intentDetails = text;
+
+    // Get order items for context
+    const orderItems = state.selectedOrder?.lineItems?.map(item =>
+      `${item.title} (${item.variant || ''}) × ${item.quantity}`
+    ).join('\n') || 'PuppyPad products';
+
+    showProgress("Let me look into this for you...");
+
+    try {
+      const response = await fetch(`${CONFIG.API_URL}/api/ai-response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scenarioType: 'changed_mind',
+          scenarioData: {
+            customerName: state.customerData?.firstName || 'there',
+            customerMessage: text,
+            orderItems: orderItems,
+          },
+        }),
+      });
+
+      hideProgress();
+
+      if (response.ok) {
+        const data = await response.json();
+        const messages = data.messages || [];
+
+        for (const msg of messages) {
+          await addBotMessage(msg);
+        }
+
+        await addBotMessage("Does this help at all?");
+
+        addOptions([
+          { text: "Yes, I'll give it another try", action: async () => {
+            await handleSatisfiedThankYou('not_met_expectations', text);
+          }},
+          { text: "No, I'd like a refund", action: async () => {
+            state.ladderType = 'order_refund';
+            state.ladderStep = 0;
+            await startRefundLadder();
+          }}
+        ]);
+      } else {
+        await addBotMessage("Thank you for that feedback — I've noted it down. Let me make this right for you.");
+        state.ladderType = 'order_refund';
+        state.ladderStep = 0;
+        await startRefundLadder();
+      }
+    } catch (error) {
+      hideProgress();
+      console.error('AI response error:', error);
+      await addBotMessage("Thank you for that feedback. Let me make this right for you.");
+      state.ladderType = 'order_refund';
+      state.ladderStep = 0;
+      await startRefundLadder();
+    }
+  });
+}
+
+// Handle satisfied customer thank you with AI
+async function handleSatisfiedThankYou(originalIntent, originalConcern) {
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/ai-response`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scenarioType: 'satisfied_thankyou',
+        scenarioData: {
+          customerName: state.customerData?.firstName || 'there',
+          originalConcern: originalConcern || 'had some concerns',
+        },
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const messages = data.messages || [];
+      for (const msg of messages) {
+        await addBotMessage(msg);
+      }
+    } else {
+      await addBotMessage("That makes me so happy to hear! I really think you're going to love it. If you ever have any questions, I'm always here to help. 😊");
+    }
+  } catch (error) {
+    await addBotMessage("That makes me so happy to hear! I really think you're going to love it. If you ever have any questions, I'm always here to help. 😊");
+  }
+
+  addOptions([
+    { text: "Back to Home", action: showHomeMenu }
+  ]);
+}
+
+async function handleOrderedMistake() {
+  await addBotMessage("No worries! Would you like to change your order to something else, or would you prefer a refund?");
+  
+  addOptions([
+    { text: "Change my order", action: handleChangeOrder },
+    { text: "I want a refund", action: async () => {
+      state.ladderType = 'order_refund';
+      state.ladderStep = 0;
+      await startRefundLadder();
+    }}
+  ]);
+}
+
+async function handleChangeOrder() {
+  await addBotMessage("Sure! What would you like instead? Tell me what product, size, or color you'd prefer:");
+  
+  showTextInput("What would you like instead?", async (text) => {
+    hideTextInput();
+    state.intentDetails = text;
+    
+    await addBotMessage("Got it! I'll create a case for our team to swap your order. Has your current product been used?");
+    
+    addOptionsRow([
+      { text: "Yes, used", action: () => handleOrderSwap(true) },
+      { text: "No, unused", action: () => handleOrderSwap(false) }
+    ]);
+  });
+}
+
+async function handleOrderSwap(isUsed) {
+  if (isUsed) {
+    await addBotMessage("Since it's been used, we'll send you the new item and give you a <strong>20% refund</strong> as well. You can keep the used one!");
+  } else {
+    await addBotMessage("Great! Once you ship back the item using a carrier of your choice, we'll send out your new order. Just reply to your confirmation email with the tracking number so we can monitor the return. Free of charge!");
+  }
+
+  showProgress("Creating your order change request...");
+
+  // Create case in ClickUp + Richpanel with change order details
+  const resolution = isUsed ? 'order_change_used_20_percent' : 'order_change_return_swap';
+  const result = await submitCase('shipping', resolution, {
+    issueType: 'order_change',
+    changeOrderDetails: state.intentDetails,   // What they want instead
+    productUsed: isUsed,
+  });
+
+  hideProgress();
+
+  if (result.success) {
+    await showSuccess(
+      "Order Change Requested!",
+      `We'll process your change to: <strong>${state.intentDetails}</strong><br><br>${getCaseIdHtml(result.caseId)}`
+    );
+  } else {
+    await showSuccess(
+      "Request Submitted",
+      `We've noted your change request for: <strong>${state.intentDetails}</strong>. Our team will reach out shortly.`
+    );
+  }
+}
+
+async function handleMissingItem() {
+  const order = state.selectedOrder;
+
+  // Build list of all items they should have received
+  const allItems = order?.lineItems?.map(item => {
+    let itemText = `• ${item.title}`;
+    if (item.quantity > 1) {
+      itemText += ` × ${item.quantity}`;
+    }
+    // Check if it's a bundle (contains keywords like "get", "free", "pack", "bundle")
+    const lowerTitle = item.title.toLowerCase();
+    if (lowerTitle.includes('get') && lowerTitle.includes('free')) {
+      // Try to extract the bundle quantity from title like "Buy 3 Get 3 Free"
+      const match = item.title.match(/(\d+).*get.*(\d+)/i);
+      if (match) {
+        const totalInBundle = parseInt(match[1]) + parseInt(match[2]);
+        itemText += ` (${totalInBundle} items included)`;
+      }
+    }
+    return itemText;
+  }).join('<br>') || 'Your order items';
+
+  state.missingItemOrderList = allItems; // Store for later use in case creation
+
+  await addBotMessage(`I'm so sorry to hear something was missing from your order!<br><br>Let me help sort this out for you. Here's what should have been in your package:<br><br>${allItems}<br><br>First, could you upload a photo of everything you actually received? Please include the packaging too... this helps our team investigate what happened.`);
+
+  showUploadArea('missing_item');
+}
+
+// After photos uploaded for missing item, ask for description
+async function handleMissingItemEvidence() {
+  await addBotMessage("Thanks for those photos!<br><br>Now, please describe exactly what was missing from your order. Include as much detail as possible... for example, how many items were missing, which specific products, any damage to the packaging, etc.");
+
+  showTextInput("e.g., I only received 4 pads instead of 6, the Beige PuppyPad was completely missing...", async (description) => {
+    hideTextInput();
+    state.missingItemDescription = description; // Store for case creation
+
+    await addBotMessage(`Thank you for letting us know. I've noted everything down and our team will look into this.<br><br>To make things right, we'd love to reship the missing items to you... and as an apology for the trouble, we'll include an extra item on us!<br><br>Our team will review your case within 1-2 days and get your missing items shipped out.<br><br>Would you like us to go ahead with this?`);
+
+    addOptions([
+      { text: "Yes, send my missing items", action: handleMissingItemReship },
+      { text: "No, I'd like a different solution", action: handleMissingItemAlternative }
+    ]);
+  });
+}
+
+// Reship missing items + bonus
+async function handleMissingItemReship() {
+  showProgress("Creating your case...");
+  await delay(1500);
+  hideProgress();
+
+  const result = await submitCase('shipping', 'reship_missing_item_bonus', {
+    missingItemOrderList: state.missingItemOrderList,
+    missingItemDescription: state.missingItemDescription,
+    notes: state.missingItemDescription,
+    issueType: 'something_missing'
+  });
+
+  state.caseId = result.caseId;
+
+  await showSuccess(
+    "Missing Items Case Created!",
+    `Our team will review your case within 1-2 days and ship your missing items plus a bonus item for the inconvenience.<br><br>You'll receive an email with tracking details once it ships!<br><br>${getCaseIdHtml(state.caseId)}`
+  );
+}
+
+// Alternative option - reveal refund
+async function handleMissingItemAlternative() {
+  await addBotMessage(`No problem at all, I understand.<br><br>We can also provide a refund for the missing items. Here's how it works... our team will review your case and calculate the refund amount based on what was missing.<br><br>Just a heads up... if your missing item was part of a bundle deal, the refund will be calculated based on the bundle pricing rather than individual item prices.<br><br>Our team typically reviews cases within 1-2 days. During this time, they'll also investigate what went wrong so we can prevent this from happening again.<br><br>Would you like to proceed with the refund?`);
+
+  addOptions([
+    { text: "Yes, request a refund", action: handleMissingItemRefund },
+    { text: "Actually, just send the items", action: handleMissingItemReship }
+  ]);
+}
+
+// Refund for missing items
+async function handleMissingItemRefund() {
+  showProgress("Submitting your refund request...");
+  await delay(1500);
+  hideProgress();
+
+  const result = await submitCase('refund', 'refund_missing_item', {
+    missingItemOrderList: state.missingItemOrderList,
+    missingItemDescription: state.missingItemDescription,
+    notes: `Missing items reported. Customer wants refund (team to calculate based on bundle pricing if applicable). Details: ${state.missingItemDescription}`,
+    issueType: 'something_missing'
+  });
+
+  state.caseId = result.caseId;
+
+  await showSuccess(
+    "Refund Request Submitted!",
+    `Our team will review your case and calculate the refund for your missing items within 1-2 days.<br><br>Once approved, expect 3-5 business days for the refund to appear in your account.<br><br>${getCaseIdHtml(state.caseId)}`
+  );
+}
+
+function showUploadArea(evidenceType = 'general') {
+  // Store the evidence type for later use
+  state.evidenceType = evidenceType;
+
+  const html = `
+    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept="image/*" multiple style="display: none" onchange="handleFileUpload(event)">
+      <div class="upload-icon">📷</div>
+      <div class="upload-text">Tap to upload photos</div>
+      <div class="upload-hint">JPG or PNG, max 5MB each</div>
+      <div class="upload-preview" id="uploadPreview"></div>
+    </div>
+    <button class="option-btn primary" onclick="submitEvidence()" style="margin-top: 12px; width: 100%;" id="submitEvidenceBtn" disabled>
+      Submit Photos
+    </button>
+  `;
+
+  addInteractiveContent(html);
+}
+
+function handleFileUpload(event) {
+  const files = Array.from(event.target.files);
+  const preview = document.getElementById('uploadPreview');
+  const submitBtn = document.getElementById('submitEvidenceBtn');
+  
+  files.forEach(file => {
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File too large. Please upload images under 5MB.');
+      return;
+    }
+    
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload only image files (JPG, PNG).');
+      return;
+    }
+    
+    state.uploadedFiles.push(file);
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const thumbContainer = document.createElement('div');
+      thumbContainer.className = 'upload-thumb-container';
+      thumbContainer.innerHTML = `
+        <img src="${e.target.result}" class="upload-thumb" alt="Upload">
+        <button class="upload-remove" onclick="removeUpload(${state.uploadedFiles.length - 1}, this)">×</button>
+      `;
+      preview.appendChild(thumbContainer);
+    };
+    reader.readAsDataURL(file);
+  });
+  
+  submitBtn.disabled = state.uploadedFiles.length === 0;
+}
+
+function removeUpload(index, btn) {
+  state.uploadedFiles.splice(index, 1);
+  btn.parentElement.remove();
+  document.getElementById('submitEvidenceBtn').disabled = state.uploadedFiles.length === 0;
+}
+
+async function submitEvidence() {
+  if (state.uploadedFiles.length === 0) {
+    await addBotMessage("Please upload at least one photo so we can help.");
+    return;
+  }
+
+  document.getElementById('uploadArea')?.closest('.interactive-content').remove();
+  addUserMessage(`Uploaded ${state.uploadedFiles.length} photo(s)`);
+
+  // Handle different evidence types with specific flows
+  switch (state.evidenceType) {
+    case 'damaged':
+      await handleDamagedEvidence();
+      break;
+    case 'wrong_item':
+      await handleWrongItemEvidence();
+      break;
+    case 'missing_item':
+      await handleMissingItemEvidence();
+      break;
+    default:
+      await handleGenericEvidence();
+  }
+}
+
+// Damaged item evidence flow
+async function handleDamagedEvidence() {
+  await addBotMessage("Thank you for the photos. I can see the damage and I'm very sorry this happened.<br><br>I'd like to make this right. Would you prefer a replacement or a refund?");
+
+  addOptions([
+    { text: "Send me a replacement", action: async () => {
+      showProgress("Creating replacement order...");
+      await delay(1500);
+      hideProgress();
+
+      await addBotMessage("Perfect! I'll ship out a replacement right away. You can keep or dispose of the damaged item - no need to return it.");
+
+      state.caseId = generateCaseId('shipping');
+      state.resolution = 'replacement_damaged';
+
+      await submitCase();
+
+      await showSuccess(
+        "Replacement Ordered!",
+        `Your replacement will ship within 1-2 business days. We'll email you the tracking info.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    }},
+    { text: "I'd prefer a refund", action: async () => {
+      await addBotMessage("No problem. Since you received a damaged item, you're entitled to a full refund. Do you want to return the damaged item or keep it?");
+
+      addOptionsRow([
+        { text: "Keep it, just refund", primary: true, action: async () => {
+          state.resolution = 'full_refund';
+          state.keepProduct = true;
+          await createRefundCase('full', true);
+        }},
+        { text: "Return it for refund", action: async () => {
+          state.resolution = 'full_refund';
+          state.keepProduct = false;
+          await showReturnInstructions();
+        }}
+      ]);
+    }}
+  ]);
+}
+
+// Wrong item evidence flow
+async function handleWrongItemEvidence() {
+  await addBotMessage("Thank you for the photos. I've confirmed you received the wrong item and I sincerely apologize for this error.<br><br>I'll ship the correct item right away. You can keep or donate the wrong item - no need to return it.");
+
+  addOptionsRow([
+    { text: "Ship correct item", primary: true, action: async () => {
+      showProgress("Creating correction order...");
+      await delay(1500);
+      hideProgress();
+
+      state.caseId = generateCaseId('shipping');
+      state.resolution = 'reship_wrong_item';
+
+      await submitCase();
+
+      await showSuccess(
+        "Correct Item Shipping!",
+        `The correct item will ship within 1-2 business days. We'll email you the tracking info. Thanks for your patience!<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    }},
+    { text: "I'd prefer a refund", action: async () => {
+      state.resolution = 'full_refund';
+      state.keepProduct = true;
+      await createRefundCase('full', true);
+    }}
+  ]);
+}
+
+// Generic evidence flow (fallback)
+async function handleGenericEvidence() {
+  await addBotMessage("Thank you for the photos. I've noted this issue and we'll investigate. Should I proceed with creating this case?");
+
+  addOptionsRow([
+    { text: "Yes, create case", primary: true, action: async () => {
+      showProgress("Creating case and uploading evidence...");
+      await delay(2000);
+      hideProgress();
+
+      state.caseId = generateCaseId('shipping');
+
+      await submitCase();
+
+      await showSuccess(
+        "Investigation Started!",
+        `We'll look into this and get back to you within 24-48 hours.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    }},
+    { text: "Cancel", action: showHomeMenu }
+  ]);
+}
+
+async function handleDamaged() {
+  await addBotMessage("I'm so sorry your order arrived damaged. To help process this quickly, please upload photos of the damage (including packaging if relevant):");
+  showUploadArea('damaged');
+}
+
+async function handleWrongItem() {
+  await addBotMessage("I'm sorry to hear you received the wrong item! To help us investigate, please upload photos of what you received:");
+  showUploadArea('wrong_item');
+}
+
+async function handleChargedUnexpectedly() {
+  const order = state.selectedOrder;
+  state.intent = 'charged_unexpectedly';
+
+  // Opening message - don't blame business, suggest other reasons
+  await addBotMessage(`I completely understand — unexpected charges can be confusing! 💳<br><br>This can happen for a few reasons: sometimes a family member places an order as a gift, it could be a subscription renewal you forgot about, or perhaps an order from a while back that slipped your mind.<br><br>Either way, I'm here to help sort this out for you! Let me pull up your order details.`);
+
+  await delay(800);
+
+  // Build items list excluding $0 items
+  const paidItems = order?.lineItems?.filter(item => parseFloat(item.price) > 0) || [];
+  const itemsList = paidItems.map(item =>
+    `• ${item.title}${item.quantity > 1 ? ` × ${item.quantity}` : ''} — ${formatCurrency(item.price)}`
+  ).join('<br>');
+
+  // Show order confirmation card
+  await addBotMessage(`Here's what I found:<br><br>
+<strong>Order:</strong> ${order?.orderNumber}<br>
+<strong>Date:</strong> ${formatDate(order?.createdAt)}<br>
+<strong>Total Charged:</strong> ${formatCurrency(order?.totalPrice)}<br><br>
+<strong>Items:</strong><br>${itemsList || 'No items found'}<br><br>
+Is this the charge you're referring to?`);
+
+  addOptionsRow([
+    { text: "Yes, this is it", action: handleChargedUnexpectedlyConfirmed },
+    { text: "No, I don't recognize this", action: handleChargedUnexpectedlyNotRecognized }
+  ]);
+}
+
+async function handleChargedUnexpectedlyConfirmed() {
+  // Prevent double execution
+  if (state.chargedUnexpectedlyProcessing) return;
+  state.chargedUnexpectedlyProcessing = true;
+
+  // They recognize the order but say they didn't place it
+  await addBotMessage("Got it! So you see the order, but you're saying you didn't place it yourself?<br><br>No worries — like I mentioned, this could be a family member, a gift, or maybe even an accidental order. Let me check a few things...");
+
+  showProgress("Checking delivery status...", "Looking up your package");
+
+  // Check delivery status - only catch fetch errors, not handler errors
+  let isDelivered = false;
+  let trackingFetched = false;
+
+  try {
+    const orderNumber = state.selectedOrder?.orderNumber;
+    const response = await fetch(`${CONFIG.API_URL}/api/tracking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderNumber: orderNumber?.replace('#', '') })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      state.tracking = data.tracking;
+      const status = data.tracking?.status?.toLowerCase() || '';
+      isDelivered = status.includes('delivered');
+      trackingFetched = true;
+    }
+  } catch (error) {
+    console.error('Tracking fetch error:', error);
+  }
+
+  hideProgress();
+
+  // Now call the appropriate handler OUTSIDE the try/catch
+  if (isDelivered) {
+    await handleChargedUnexpectedlyDelivered();
+  } else {
+    state.tracking = trackingFetched ? state.tracking : null;
+    await handleChargedUnexpectedlyNotDelivered();
+  }
+}
+
+async function handleChargedUnexpectedlyDelivered() {
+  const order = state.selectedOrder;
+  const refundAmount20 = (parseFloat(order?.totalPrice) * 0.20).toFixed(2);
+
+  await addBotMessage(`I can see this order has been <strong>delivered</strong>! 📦<br><br>Here's what I can do: since you have the products, would you like to keep them and I'll give you a <strong>20% refund (${formatCurrency(refundAmount20)})</strong> for all this confusion?<br><br>That way you get some money back and can still enjoy the products!`);
+
+  state.chargedUnexpectedlyDelivered = true;
+
+  await showPartialRefundCard(20, async () => {
+    // Accepted 20%
+    state.intentDetails = "I don't remember placing this order, but I'll keep the products with a partial refund";
+    await createRefundCase('partial_20', true);
+  }, async () => {
+    // Declined - go to refund ladder
+    state.ladderType = 'order_refund';
+    state.ladderStep = 1; // Start at 30% since we already offered 20%
+    state.intentDetails = "I didn't place this order and I'd like a higher refund";
+    await startRefundLadder();
+  });
+}
+
+async function handleChargedUnexpectedlyNotDelivered() {
+  const order = state.selectedOrder;
+  const refundAmount20 = (parseFloat(order?.totalPrice) * 0.20).toFixed(2);
+
+  // Vague message - don't mention cancel/full refund option upfront
+  await addBotMessage(`I see this order hasn't been delivered yet! 📦<br><br>Here's what I can do: I'll give you a <strong>20% refund (${formatCurrency(refundAmount20)})</strong> for all this confusion, and you can keep the order when it arrives. What do you think?`);
+
+  state.chargedUnexpectedlyDelivered = false;
+
+  // Use the same card UI as other refund flows
+  await showPartialRefundCard(20, async () => {
+    // Accepted 20%
+    state.intentDetails = "I don't remember placing this order, but I'll keep it when it arrives with a partial refund";
+    await createRefundCase('partial_20', true);
+  }, async () => {
+    // Declined - go through refund ladder (30% → 40% → 50% → full refund)
+    state.ladderType = 'order_refund';
+    state.ladderStep = 1; // Start at 30% since we already offered 20%
+    state.intentDetails = "I didn't place this order and I'd like a higher refund";
+    await startRefundLadder();
+  });
+}
+
+async function handleChargedUnexpectedlyNotRecognized() {
+  // They don't recognize the charge at all
+  await addBotMessage(`I understand — it can be confusing when you don't recognize a charge! 🤔<br><br>Here's the thing: our system doesn't store payment details or allow manual charges, so this order was definitely placed through our website. It could be:<br><br>• A family member or friend ordered for you as a surprise 🎁<br>• You might have ordered a while back and forgot<br>• Someone in your household made a purchase<br><br>But don't worry — I'm here to help either way! Let me tell you about what's actually in this order...`);
+
+  showProgress("Analyzing your products...", "Getting product information");
+
+  // Use AI to pitch the products
+  await generateProductBenefitsPitch();
+}
+
+async function generateProductBenefitsPitch() {
+  const order = state.selectedOrder;
+  const paidItems = order?.lineItems?.filter(item => parseFloat(item.price) > 0) || [];
+
+  // Get product names for the AI
+  const productNames = paidItems.map(item => item.title).join(', ');
+  const productSkus = paidItems.map(item => item.sku || item.variantId).filter(Boolean);
+
+  try {
+    // Call AI to generate product benefits pitch
+    const response = await fetch(`${CONFIG.API_URL}/api/ai-response`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scenarioType: 'product_benefits_pitch',
+        scenarioData: {
+          customerName: state.customerData?.firstName || 'there',
+          products: productNames,
+          productSkus: productSkus,
+          orderTotal: order?.totalPrice
+        }
+      })
+    });
+
+    hideProgress();
+
+    if (response.ok) {
+      const data = await response.json();
+      const pitchMessage = data.messages?.[0] || generateFallbackProductPitch(paidItems);
+      await addBotMessage(pitchMessage);
+    } else {
+      await addBotMessage(generateFallbackProductPitch(paidItems));
+    }
+  } catch (error) {
+    hideProgress();
+    await addBotMessage(generateFallbackProductPitch(paidItems));
+  }
+
+  // Now offer the partial refund
+  const refundAmount20 = (parseFloat(order?.totalPrice) * 0.20).toFixed(2);
+
+  await delay(500);
+  await addBotMessage(`For all this confusion, I'd love to offer you a <strong>20% refund (${formatCurrency(refundAmount20)})</strong> if you'd like to keep these products and give them a try! What do you think?`);
+
+  await showPartialRefundCard(20, async () => {
+    // Accepted 20%
+    state.intentDetails = "I didn't recognize this charge, but I'll keep the products with a partial refund";
+    await createRefundCase('partial_20', true);
+  }, async () => {
+    // Declined - check delivery status then go to ladder
+    showProgress("Checking delivery status...");
+
+    try {
+      const orderNumber = state.selectedOrder?.orderNumber;
+      const response = await fetch(`${CONFIG.API_URL}/api/tracking`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderNumber: orderNumber?.replace('#', '') })
+      });
+
+      hideProgress();
+
+      if (response.ok) {
+        const data = await response.json();
+        state.tracking = data.tracking;
+        const status = data.tracking?.status?.toLowerCase() || '';
+        state.chargedUnexpectedlyDelivered = status.includes('delivered');
+      } else {
+        state.chargedUnexpectedlyDelivered = false;
+      }
+    } catch (e) {
+      hideProgress();
+      state.chargedUnexpectedlyDelivered = false;
+    }
+
+    state.ladderType = 'order_refund';
+    state.ladderStep = 1; // Start at 30% since we offered 20%
+    state.intentDetails = "I didn't recognize this charge and I'd like a higher refund";
+    await startRefundLadder();
+  });
+}
+
+function generateFallbackProductPitch(items) {
+  if (!items || items.length === 0) {
+    return "Looking at your order, you've got some great products that many of our customers love!";
+  }
+
+  const itemNames = items.map(i => i.title).join(', ');
+  return `Looking at your order, you've got <strong>${itemNames}</strong>! 🐕<br><br>These are some of our most popular products — customers tell us they make a real difference for their pups. Whether it's training, comfort, or everyday use, these were designed with your dog's needs in mind.<br><br>Many pet parents who were initially unsure ended up loving them once they tried them!`;
+}
+
+async function handleQualityDifference() {
+  // Opening message 1
+  await addBotMessage("Hey! 👋<br>Thanks for reaching out... I can see you've received different materials in your order and you're wondering what's going on.<br><br>Totally get it. Let me explain because honestly... this is actually good news for you.");
+
+  await delay(300);
+
+  // Opening message 2 - Explain the two versions
+  await addBotMessage("So here's what's happening...<br><br>We've been quietly upgrading our PuppyPad materials over the past few months. Which means right now, there are two versions floating around:<br><br><strong>Original PuppyPad</strong> — our 5-layer design that earned us 37,000+ five-star reviews<br><br><strong>PuppyPad 2.0</strong> — our newer 6-layer design with upgraded materials<br><br>During this transition period, some orders ship with Original, some with 2.0... it just depends on what's available in our warehouse when your order gets packed.");
+
+  // First continue button - let customer read at their own pace
+  await new Promise(resolve => {
+    addOptions([
+      { text: "I understand, show me the differences", action: resolve, showAsMessage: false }
+    ]);
+  });
+
+  // Opening message 3 - Show comparison
+  await addBotMessage("Let me show you exactly what's different between them...");
+
+  await delay(500);
+
+  // Comparison card - friendly stacked design
+  const comparisonCard = `
+    <div style="margin: 16px 0;">
+      <!-- Original Card -->
+      <div style="background: #f8f9fa; border-radius: 16px; padding: 20px; margin-bottom: 12px; border: 2px solid #e9ecef;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+          <div>
+            <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">You may have received</div>
+            <div style="font-size: 18px; font-weight: 700; color: #495057;">Original PuppyPad</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 11px; color: #6c757d;">Retail</div>
+            <div style="font-size: 20px; font-weight: 700; color: #495057;">$50<span style="font-size: 12px; font-weight: 500;">/pad</span></div>
+          </div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <span style="background: #e9ecef; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #495057;">5 Layers</span>
+          <span style="background: #e9ecef; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #495057;">270gsm Absorber</span>
+          <span style="background: #e9ecef; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #495057;">Standard Waterproof</span>
+          <span style="background: #e9ecef; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #495057;">Anti-Slip</span>
+        </div>
+        <div style="margin-top: 12px; font-size: 13px; color: #6c757d;">
+          ⭐ 37,000+ five-star reviews • The pad that built our company
+        </div>
+      </div>
+
+      <!-- Arrow/Upgrade indicator -->
+      <div style="text-align: center; margin: 8px 0;">
+        <div style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+          <span>⬇️</span> OR <span>⬇️</span>
+        </div>
+      </div>
+
+      <!-- PuppyPad 2.0 Card -->
+      <div style="background: linear-gradient(145deg, #ffffff 0%, #f0f4ff 100%); border-radius: 16px; padding: 20px; border: 2px solid #667eea; position: relative; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);">
+        <div style="position: absolute; top: -10px; left: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 700;">NEW</div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; margin-top: 8px;">
+          <div>
+            <div style="font-size: 11px; color: #667eea; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Our Latest Version</div>
+            <div style="font-size: 18px; font-weight: 700; color: #1a1a2e;">PuppyPad 2.0</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 11px; color: #667eea;">Retail</div>
+            <div style="font-size: 20px; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">$70<span style="font-size: 12px; font-weight: 500;">/pad</span></div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+          <span style="background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #15803d; font-weight: 500;">6 Layers</span>
+          <span style="background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #15803d; font-weight: 500;">300gsm (+30%)</span>
+          <span style="background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #15803d; font-weight: 500;">Medical-Grade TPU</span>
+          <span style="background: #dcfce7; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #15803d; font-weight: 500;">Paw Grip Dots</span>
+        </div>
+
+        <div style="background: rgba(102, 126, 234, 0.1); border-radius: 12px; padding: 12px 16px;">
+          <div style="font-size: 12px; font-weight: 600; color: #667eea; margin-bottom: 8px;">✨ What's New in 2.0:</div>
+          <div style="font-size: 13px; color: #495057; line-height: 1.6;">
+            • <strong>Comfort Cushion Layer</strong> — extra padding for senior dogs<br>
+            • <strong>Reinforced Edge Binding</strong> — lasts even longer
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Note -->
+      <div style="text-align: center; margin-top: 16px; font-size: 12px; color: #6c757d;">
+        💡 Prices shown are retail — you may have paid less with a discount!
+      </div>
+    </div>
+  `;
+  await addInteractiveContent(comparisonCard, 300);
+
+  // Second continue button - let customer review comparison
+  await new Promise(resolve => {
+    addOptions([
+      { text: "Got it! What does this mean for my order?", action: resolve, showAsMessage: false }
+    ]);
+  });
+
+  // Explain the pricing
+  await addBotMessage("Now here's the important bit...<br><br>Our Original retails at $50/pad (though you may have gotten a better deal with a discount!).<br><br>During this transition, we're shipping whichever version is available... and everyone pays Original pricing, regardless of which version actually ships. We're absorbing the extra cost on our end because we wanted to test the new materials with real customers before officially launching them.<br><br>So if you received PuppyPad 2.0... you basically got a $20 upgrade per pad for free. Pretty sweet deal!<br><br>And if you received Original... you got exactly what you paid for. The same pad that thousands of customers have loved and reviewed.");
+
+  await delay(300);
+
+  // What stays the same
+  await addBotMessage("What stays the same in BOTH versions:<br><br>✓ Pheromone technology (so your dog actually uses it)<br>✓ 100% leak-proof protection<br>✓ Machine washable 300+ times<br>✓ Our full 90-day guarantee<br><br>The Original isn't a \"worse\" version... it's the pad that built this company. PuppyPad 2.0 just has some extra bells and whistles we've been developing.");
+
+  await delay(300);
+
+  // Present options
+  await addBotMessage("So that's the full picture! 💙<br><br>Now I want to make sure you're completely happy here... what would you like to do?");
+
+  addOptions([
+    { icon: '✓', text: "I'd like to keep my order as it is", action: handleQualityKeepOrder },
+    { icon: '↑', text: "I don't mind paying more to get the newer material ones", action: handleQualityPayMore },
+    { icon: '←', text: "I'd prefer a refund for the older material ones", action: handleQualityRefund }
+  ]);
+}
+
+// Branch 1: Keep order as-is
+async function handleQualityKeepOrder() {
+  await addBotMessage("Amazing... thank you so much for understanding! 💙<br><br>Give your PuppyPad a go... I think you're going to love it. And if anything doesn't feel right after a week or two, just message us. We've got you covered.<br><br>Your pup's gonna do great with it 🐾");
+
+  addOptions([
+    { text: "Thanks!", action: () => showSuccess("You're all set!", "Enjoy your PuppyPads! 🐕") }
+  ]);
+}
+
+// Branch 2: Pay more for PuppyPad 2.0
+async function handleQualityPayMore() {
+  await addBotMessage("That's really sweet of you to offer... we appreciate that so much 💙<br><br>So here's how we can make this work...<br><br>We can generate a custom checkout link for you to pay just the difference for PuppyPad 2.0. But before we do that, we'd need you to return the older material ones.<br><br>Quick question first though...<br><br>Have the Original material pads been used?");
+
+  await delay(1000);
+
+  await addBotMessage("Just so we're on the same page... by \"used\" I mean:<br><br>• Your dog has stepped on them, peed on them, or slept on them<br>• There's any fur, dirt, stains, or marks on the pad<br>• The pad has been washed<br>• The packaging is damaged and can't be resealed<br><br>If you've just opened the package to take a look and can put everything back in like it was before... that's totally fine. That counts as unused and you can still return it.");
+
+  addOptions([
+    { icon: '✓', text: "Yes, they've been used", action: handleQualityUsedItems },
+    { icon: '✕', text: "No, they're unused / can be repackaged", action: handleQualityUnusedItems }
+  ]);
+}
+
+// Branch 2A: Items have been used
+async function handleQualityUsedItems() {
+  await addBotMessage("Okay got it... let me just check with my manager quickly to see what we can do here.<br><br>Obviously we can't accept returns on used items for hygiene reasons... but let me see if there's another way we can sort this out for you.<br><br>One moment 💙");
+
+  showProgress("Checking with manager...");
+  await delay(5000);
+  hideProgress();
+
+  await addBotMessage("Great news! I spoke with my manager and here's what we can do...<br><br>You can keep the Original PuppyPads you already have. No need to return them.<br><br>We'll generate a custom checkout link for you where you'd only pay the difference between Original and PuppyPad 2.0.<br><br>So instead of paying $70 per pad for the new ones... you'd just pay the <strong>$20 difference per pad</strong>.<br><br>I'll be honest with you... this means we're losing out on our product costs here because you're keeping the Originals AND getting PuppyPad 2.0 at a reduced rate. But that's okay. We'd rather you be happy than worry about the numbers.");
+
+  await delay(1000);
+
+  await addBotMessage("So just to get this sorted for you...<br><br>Can you please confirm how many pads you have that are the older Original material?");
+
+  showTextInput("Number of Original material pads...", async (padCount) => {
+    hideTextInput();
+
+    const count = parseInt(padCount) || 1;
+    const total = count * 20;
+
+    state.qualityDetails = {
+      padCount: count,
+      itemsUsed: true,
+      upgradeTotal: total
+    };
+
+    await addBotMessage(`Perfect... so that's ${count} pad${count > 1 ? 's' : ''}.<br><br>Here's what happens next:<br><br>1️⃣ We'll create a custom checkout link for you — this will be for <strong>$${total}</strong> (${count} pad${count > 1 ? 's' : ''} × $20 difference)<br>2️⃣ We'll send that link to your email within the next few hours<br>3️⃣ Once you've made the payment, we'll pack and ship your PuppyPad 2.0 right away<br><br>You'll get a confirmation email with tracking as soon as it's dispatched.<br><br>Sound good? 💙`);
+
+    addOptions([
+      { icon: '✓', text: "Yes, sounds great!", primary: true, action: () => handleQualityConfirmUpgrade('upgrade_keep_originals') },
+      { icon: '←', text: "Actually, I've changed my mind", action: handleQualityChangedMind }
+    ]);
+  });
+}
+
+// Branch 2B: Items are unused
+async function handleQualityUnusedItems() {
+  await addBotMessage("Perfect... since they're still in returnable condition, you can send them back to us and we'll get PuppyPad 2.0 out to you.<br><br>Here's our return address:<br><br><strong>PuppyPad Returns</strong><br>123 Warehouse Way<br>Los Angeles, CA 90001<br>United States");
+
+  await delay(1500);
+
+  await addBotMessage("Now I do need to explain something about the shipping...<br><br>Unfortunately we're not able to generate prepaid return shipping labels on our end. We're a small team and our shipping system isn't set up to create labels for inbound returns... it only handles outbound shipments.<br><br>I know that's not ideal and I'm really sorry about that 😅<br><br>What we'd need you to do is arrange the return shipping yourself through your local post office or courier. It doesn't need to be anything fancy... just whatever's most convenient and affordable for you.");
+
+  await delay(1500);
+
+  await addBotMessage("Here's how the process works:<br><br>1️⃣ You ship the unused Original pads back to us using the address above<br>2️⃣ Once you've sent them, share the tracking number with us<br>3️⃣ As soon as we have the tracking, we'll send you a custom checkout link for the difference ($20 per pad)<br>4️⃣ Once you've paid, we'll pack and ship your PuppyPad 2.0 right away<br><br>So basically... while your return is on its way back to us, your new PuppyPad 2.0 will already be getting packed and shipped out to you. That way you're not waiting around too long 💙");
+
+  await delay(1000);
+
+  await addBotMessage("Quick question... how many Original material pads will you be returning?");
+
+  showTextInput("Number of pads you're returning...", async (padCount) => {
+    hideTextInput();
+
+    const count = parseInt(padCount) || 1;
+    const total = count * 20;
+
+    state.qualityDetails = {
+      padCount: count,
+      itemsUsed: false,
+      upgradeTotal: total
+    };
+
+    await addBotMessage(`Got it... ${count} pad${count > 1 ? 's' : ''}.<br><br>So just to recap:<br><br>• You'll ship back ${count} Original PuppyPad${count > 1 ? 's' : ''} to the address above<br>• Once you have a tracking number, send it to us here or via email<br>• We'll then send you a custom checkout link for <strong>$${total}</strong> (${count} pad${count > 1 ? 's' : ''} × $20 difference)<br>• After payment, your ${count} PuppyPad 2.0 will ship out immediately<br><br>Does that all make sense? 💙`);
+
+    addOptions([
+      { icon: '✓', text: "Yes, I'll arrange the return now", primary: true, action: () => handleQualityConfirmUpgrade('return_upgrade_enhanced') },
+      { icon: '?', text: "I have a question", action: handleQualityQuestion }
+    ]);
+  });
+}
+
+// Branch 3: Customer wants refund
+async function handleQualityRefund() {
+  await addBotMessage("Totally understand. Let me just check with my manager quickly to see if there's something else we can do for you here...<br><br>One moment 💙");
+
+  showProgress("Checking with manager...");
+  await delay(5000);
+  hideProgress();
+
+  await addBotMessage("Okay I'm back!<br><br>So I spoke with my manager and here's what we'd like to do...<br><br>We really value our customers and we want to make sure you're fully satisfied. So instead of a refund, what we can do is ship out our new PuppyPad 2.0 to you... <strong>completely free of charge</strong>.<br><br>No extra cost to you at all.<br><br>I'll be honest... this means we're covering the product cost AND the shipping cost on our end. We're losing out on this one. But that's okay. Your satisfaction matters more to us than the money.");
+
+  await delay(1500);
+
+  // Show standalone offer card with CTA buttons inside
+  const cardId = `quality-offer-${Date.now()}`;
+  const offerCardHtml = `
+    <div class="offer-card quality-offer" id="${cardId}">
+      <div class="offer-icon">🎁</div>
+      <div class="offer-amount" style="font-size: 24px; letter-spacing: 0;">FREE</div>
+      <div class="offer-value">PuppyPad 2.0 Reship</div>
+      <div class="offer-label">Because your satisfaction matters most</div>
+
+      <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 16px; margin: 16px 0; text-align: left;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="width: 24px; height: 24px; background: #4ade80; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✓</div>
+          <div style="font-size: 14px;"><strong>Keep your current pads</strong> — they still work great</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 24px; height: 24px; background: #4ade80; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✓</div>
+          <div style="font-size: 14px;"><strong>FREE PuppyPad 2.0</strong> — shipped within 24hrs</div>
+        </div>
+      </div>
+
+      <div style="text-align: center; font-size: 13px; opacity: 0.85; margin-bottom: 20px;">
+        You'll have both versions to compare! 💙
+      </div>
+
+      <div class="offer-buttons">
+        <button class="offer-btn accept" id="${cardId}-accept">Yes, that sounds great!</button>
+        <button class="offer-btn decline" id="${cardId}-decline">I'd still prefer a refund</button>
+      </div>
+    </div>
+  `;
+
+  await addInteractiveContent(offerCardHtml, 300);
+
+  // Attach event handlers
+  document.getElementById(`${cardId}-accept`).onclick = async () => {
+    document.getElementById(cardId)?.closest('.interactive-content').remove();
+    addUserMessage("Yes, that sounds great! Thank you!");
+    await handleQualityAcceptFreeReship();
+  };
+
+  document.getElementById(`${cardId}-decline`).onclick = async () => {
+    document.getElementById(cardId)?.closest('.interactive-content').remove();
+    addUserMessage("I'd still prefer just a refund");
+    await handleQualityStillWantRefund();
+  };
+}
+
+// Branch 3A: Accept free reship - first verify quantity
+async function handleQualityAcceptFreeReship() {
+  await addBotMessage("Awesome! Thank you so much for giving us the chance to make this right. 💙<br><br>Just one quick thing before I process this...<br><br>How many Original material pads did you receive? I need to make sure we reship the exact same quantity of Enhanced pads to you.");
+
+  await delay(500);
+
+  // Show quantity input form
+  const formId = `quality-qty-${Date.now()}`;
+  const formHtml = `
+    <div class="form-card" id="${formId}" style="background: linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%); border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(111, 66, 193, 0.1);">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 24px; margin-bottom: 8px;">📦</div>
+        <div style="font-size: 16px; font-weight: 600; color: #1a1a2e;">Number of Original Pads Received</div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-size: 13px; color: #6c757d; margin-bottom: 8px;">Enter quantity:</label>
+        <input type="number" id="${formId}-input" min="1" max="50" placeholder="e.g., 2"
+          style="width: 100%; padding: 14px 16px; border: 2px solid #e9ecef; border-radius: 10px; font-size: 18px; text-align: center; font-weight: 600; transition: border-color 0.2s;"
+          onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e9ecef'">
+      </div>
+
+      <div style="background: #fef3c7; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+          <span style="font-size: 16px;">ℹ️</span>
+          <div style="font-size: 12px; color: #92400e; line-height: 1.5;">
+            <strong>Please note:</strong> Our system tracks which material type was shipped for each order. We'll verify this against your order records to ensure everything matches up correctly.
+          </div>
+        </div>
+      </div>
+
+      <button id="${formId}-submit" class="btn-primary" style="width: 100%; padding: 14px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; font-size: 15px; border: none; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;"
+        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(102, 126, 234, 0.4)'"
+        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+        Confirm & Process Reship
+      </button>
+    </div>
+  `;
+
+  await addInteractiveContent(formHtml, 300);
+
+  // Attach submit handler
+  document.getElementById(`${formId}-submit`).onclick = async () => {
+    const input = document.getElementById(`${formId}-input`);
+    const quantity = parseInt(input.value);
+
+    if (!quantity || quantity < 1) {
+      input.style.borderColor = '#ef4444';
+      input.focus();
+      return;
+    }
+
+    if (quantity > 20) {
+      await addBotMessage("That seems like quite a lot! Please double-check the quantity. If it's correct, please enter it again.");
+      input.value = '';
+      input.focus();
+      return;
+    }
+
+    // Remove form and show user response
+    document.getElementById(formId)?.closest('.interactive-content').remove();
+    addUserMessage(`${quantity} Original material pad${quantity > 1 ? 's' : ''}`);
+
+    // Store quantity and process
+    await processQualityFreeReship(quantity);
+  };
+
+  // Allow enter key to submit
+  document.getElementById(`${formId}-input`).onkeypress = (e) => {
+    if (e.key === 'Enter') {
+      document.getElementById(`${formId}-submit`).click();
+    }
+  };
+}
+
+// Process the free reship after quantity verification
+async function processQualityFreeReship(padQuantity) {
+  const order = state.selectedOrder;
+  state.qualityDetails = {
+    padCount: padQuantity,
+    customerReportedCount: padQuantity,
+    itemsUsed: true,
+    upgradeTotal: 0
+  };
+
+  showProgress("Verifying order details...");
+  await delay(1000);
+  showProgress("Processing free reship...");
+  await delay(1500);
+
+  // Create the case
+  try {
+    const caseData = {
+      // Core identifiers
+      sessionId: state.sessionId || '',
+      sessionReplayUrl: getSessionReplayUrl(),
+      caseType: 'shipping',
+      issueType: 'quality_difference',
+      resolution: 'reship_quality_upgrade',
+
+      // Customer info
+      email: state.customerData?.email || order?.email || '',
+      customerName: order?.customerName || state.customerData?.name || '',
+      customerFirstName: order?.customerFirstName || state.customerData?.firstName || '',
+      customerLastName: order?.customerLastName || state.customerData?.lastName || '',
+
+      // Order info
+      orderNumber: order?.orderNumber || '',
+      orderDate: order?.orderDate || '',
+      orderUrl: order?.orderUrl || '',
+      refundAmount: order?.total || null,
+
+      // Selected items
+      selectedItems: (order?.lineItems || []).map(item => ({
+        id: item.id,
+        title: item.title,
+        sku: item.sku || '',
+        price: item.price,
+        quantity: item.quantity || 1,
+      })),
+
+      // Quality-specific with customer reported quantity
+      qualityDetails: state.qualityDetails,
+      keepProduct: true,
+      notes: `Customer received Original material pads instead of PuppyPad 2.0. Requesting FREE reship of ${state.qualityDetails?.customerReportedCount || 'N/A'} PuppyPad 2.0 pads.`,
+
+      // Timestamps
+      createdAt: new Date().toISOString(),
+    };
+
+    const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(caseData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    state.caseId = result.caseId;
+
+    hideProgress();
+
+    await addBotMessage(`Perfect! I've verified your order and I'm processing the reshipment of <strong>${padQuantity} PuppyPad 2.0</strong> now. 🎉<br><br>You'll get a confirmation email with tracking once it's on its way... should be within 24 hours.<br><br>Thank you for giving us the chance to make this right. It genuinely means a lot to us.<br><br>If you have any other questions at all... I'm here. 💙`);
+
+    await showSuccess(
+      "Free Reship Created!",
+      `We'll ship ${padQuantity} PuppyPad 2.0 within 24 hours. Keep the Original ones too! 🎁<br><br>${getCaseIdHtml(state.caseId)}`
+    );
+  } catch (error) {
+    hideProgress();
+    console.error('Quality reship error:', error);
+    await addBotMessage("I'm sorry, there was an issue processing your request. Please try again or contact us directly.");
+  }
+}
+
+// Branch 3B: Still want refund - strategic verification flow
+async function handleQualityStillWantRefund() {
+  await addBotMessage("No problem at all... I completely respect that. A refund it is. 💙<br><br>I do need to apologize though — I can't tell you the exact refund amount right now. Here's why...<br><br>Our team needs to look into your specific order to calculate the fair amount. Sometimes customers receive discounts or promotional pricing, so we need to verify what you actually paid versus the retail price.<br><br>We also need to cross-reference our records to confirm how many Original pads versus PuppyPad 2.0 you received in your order. We track this on our end, but I want to make sure everything matches up correctly.");
+
+  await delay(1500);
+
+  await addBotMessage("To help us process this accurately...<br><br>Could you please confirm how many Original material pads you received? This helps us verify against our shipping records and ensure we refund you the correct amount.");
+
+  await delay(500);
+
+  // Show quantity input form
+  const formId = `quality-refund-qty-${Date.now()}`;
+  const formHtml = `
+    <div class="form-card" id="${formId}" style="background: linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%); border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(111, 66, 193, 0.1);">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 24px; margin-bottom: 8px;">📦</div>
+        <div style="font-size: 16px; font-weight: 600; color: #1a1a2e;">Number of Original Pads Received</div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-size: 13px; color: #6c757d; margin-bottom: 8px;">Enter quantity:</label>
+        <input type="number" id="${formId}-input" min="1" max="50" placeholder="e.g., 2"
+          style="width: 100%; padding: 14px 16px; border: 2px solid #e9ecef; border-radius: 10px; font-size: 18px; text-align: center; font-weight: 600; transition: border-color 0.2s;"
+          onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e9ecef'">
+      </div>
+
+      <div style="background: #f0f4ff; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+          <span style="font-size: 16px;">ℹ️</span>
+          <div style="font-size: 12px; color: #495057; line-height: 1.5;">
+            We track which material type is shipped with each order. This information helps us verify your refund request accurately.
+          </div>
+        </div>
+      </div>
+
+      <button id="${formId}-submit" class="btn-primary" style="width: 100%; padding: 14px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; font-size: 15px; border: none; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;"
+        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(102, 126, 234, 0.4)'"
+        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+        Continue
+      </button>
+    </div>
+  `;
+
+  await addInteractiveContent(formHtml, 300);
+
+  // Attach submit handler
+  document.getElementById(`${formId}-submit`).onclick = async () => {
+    const input = document.getElementById(`${formId}-input`);
+    const quantity = parseInt(input.value);
+
+    if (!quantity || quantity < 1) {
+      input.style.borderColor = '#ef4444';
+      input.focus();
+      return;
+    }
+
+    if (quantity > 20) {
+      await addBotMessage("That seems like quite a lot! Please double-check the quantity. If it's correct, please enter it again.");
+      input.value = '';
+      input.focus();
+      return;
+    }
+
+    // Remove form and show user response
+    document.getElementById(formId)?.closest('.interactive-content').remove();
+    addUserMessage(`${quantity} Original pad${quantity > 1 ? 's' : ''}`);
+
+    // Store quantity and continue to usage question
+    state.qualityDetails = {
+      padCount: quantity,
+      customerReportedCount: quantity,
+      upgradeTotal: 0
+    };
+
+    await handleQualityRefundUsageCheck(quantity);
+  };
+
+  // Allow enter key to submit
+  document.getElementById(`${formId}-input`).onkeypress = (e) => {
+    if (e.key === 'Enter') {
+      document.getElementById(`${formId}-submit`).click();
+    }
+  };
+}
+
+// Ask if pads have been used - explain what "used" means FIRST (consistent with other flows)
+async function handleQualityRefundUsageCheck(quantity) {
+  await addBotMessage(`Got it — ${quantity} Original pad${quantity > 1 ? 's' : ''}. I've noted that down.<br><br>Just one more quick question before I send this to the team...`);
+
+  await delay(300);
+
+  await addBotMessage("Have the Original material pads been used at all?<br><br>Just so we're on the same page... by \"used\" I mean:<br><br>• Your dog has stepped on them, peed on them, or slept on them<br>• There's any fur, dirt, stains, or marks on the pad<br>• The pad has been washed<br>• The packaging is damaged and can't be resealed<br><br>If you've just opened the package to take a look and can put everything back like it was before... that's totally fine. That counts as unused.");
+
+  addOptions([
+    { text: "Yes, they've been used", action: () => handleQualityRefundUsed(quantity) },
+    { text: "No, they're unused / can be repackaged", action: () => handleQualityRefundUnused(quantity) }
+  ]);
+}
+
+// If pads have been used - process refund, customer keeps pads
+async function handleQualityRefundUsed(quantity) {
+  await addBotMessage("Understood. Thank you for being honest with me — I really appreciate that. 💙<br><br>Since the pads have been used, we obviously can't accept them back for hygiene reasons. That's totally fine though.<br><br>Here's what happens next:<br><br>I'll submit your refund request to our team now. They'll review your order details and calculate the fair refund amount based on the Original pads you received. This review usually takes <strong>1-2 business days</strong>.<br><br>Once approved, the refund will be processed and you should see it back in your account within <strong>3-5 business days</strong> after that, depending on your bank.<br><br>You're welcome to keep or donate the pads you have... no need to ship anything back.");
+
+  await delay(300);
+
+  await addBotMessage("Rest assured, we'll refund you fairly based on what you actually paid for the Original material pads. Our team will verify everything against your order records.");
+
+  // Process the case
+  await processQualityRefundCase(quantity, true);
+}
+
+// If pads are unused - confirm returnable condition
+async function handleQualityRefundUnused(quantity) {
+  await addBotMessage("Perfect! Since they're still in returnable condition, we can process your refund once we receive them back.<br><br>Can you confirm the pads are definitely in this returnable condition — unopened or can be repackaged as new?");
+
+  addOptions([
+    { text: "Yes, they're in returnable condition", action: () => handleQualityRefundReturn(quantity) },
+    { text: "Actually, they have been used", action: () => handleQualityRefundUsed(quantity) }
+  ]);
+}
+
+// Return flow for unused pads
+async function handleQualityRefundReturn(quantity) {
+  await addBotMessage("Perfect! Since they're in returnable condition, here's how we'll process your refund...<br><br>Please ship the Original pads back to us at:<br><br><strong>PuppyPad Returns</strong><br>123 Warehouse Way<br>Los Angeles, CA 90001<br>United States");
+
+  await delay(1500);
+
+  await addBotMessage("I do need to mention — unfortunately we're not able to generate prepaid return shipping labels. We're a small team and our system only handles outbound shipments.<br><br>What we'd need you to do is arrange the return shipping yourself through your local post office or courier. It doesn't need to be anything fancy... just whatever's most convenient for you.");
+
+  await delay(1500);
+
+  await addBotMessage(`Here's the process:<br><br>1️⃣ Ship the ${quantity} Original pad${quantity > 1 ? 's' : ''} back to the address above<br>2️⃣ Once you've sent them, share the tracking number with us<br>3️⃣ When we receive the return, our team will review and process your refund<br><br>The review takes <strong>1-2 business days</strong> once we receive the pads, then the refund hits your account within <strong>3-5 business days</strong> after that.<br><br>Our team will calculate the fair refund amount based on what you actually paid for the Original pads, taking into account any discounts you may have received.`);
+
+  await delay(500);
+
+  await addBotMessage("Does that all make sense? Ready to proceed?");
+
+  addOptions([
+    { icon: '✓', text: "Yes, I'll arrange the return", action: () => processQualityRefundCase(quantity, false) },
+    { icon: '?', text: "I have a question", action: handleQualityRefundQuestion }
+  ]);
+}
+
+// Handle questions about refund
+async function handleQualityRefundQuestion() {
+  await addBotMessage("Of course! What would you like to know?");
+
+  showTextInput("Type your question...", async (question) => {
+    hideTextInput();
+    addUserMessage(question);
+
+    await addBotMessage("That's a great question. Let me make sure I address that properly...<br><br>Our team will review your specific situation when processing your refund. If you have any concerns about the refund amount or process, they'll be able to help clarify everything.<br><br>Is there anything else you'd like to know, or are you ready to proceed with the return?");
+
+    addOptions([
+      { icon: '✓', text: "I'm ready to proceed", action: () => processQualityRefundCase(state.qualityDetails?.padCount || 1, false) },
+      { icon: '?', text: "I have another question", action: handleQualityRefundQuestion }
+    ]);
+  });
+}
+
+// Process the refund case
+async function processQualityRefundCase(quantity, itemsUsed) {
+  const order = state.selectedOrder;
+
+  state.qualityDetails = {
+    ...state.qualityDetails,
+    padCount: quantity,
+    itemsUsed: itemsUsed,
+    requiresReturn: !itemsUsed
+  };
+
+  showProgress("Submitting refund request...");
+  await delay(1500);
+
+  try {
+    const caseData = {
+      sessionId: state.sessionId || '',
+      sessionReplayUrl: getSessionReplayUrl(),
+      caseType: 'refund',
+      issueType: 'quality_difference',
+      resolution: itemsUsed ? 'full_refund_quality_used' : 'full_refund_quality_return',
+
+      email: state.customerData?.email || order?.email || '',
+      customerName: order?.customerName || state.customerData?.name || '',
+      customerFirstName: order?.customerFirstName || state.customerData?.firstName || '',
+      customerLastName: order?.customerLastName || state.customerData?.lastName || '',
+
+      orderNumber: order?.orderNumber || '',
+      orderDate: order?.orderDate || '',
+      orderUrl: order?.orderUrl || '',
+      refundAmount: null, // Team will calculate based on verification
+
+      selectedItems: (order?.lineItems || []).map(item => ({
+        id: item.id,
+        title: item.title,
+        sku: item.sku || '',
+        price: item.price,
+        quantity: item.quantity || 1,
+      })),
+
+      qualityDetails: state.qualityDetails,
+      keepProduct: itemsUsed,
+      requiresReturn: !itemsUsed,
+      notes: `Quality difference refund request. Items ${itemsUsed ? 'USED - no return required' : 'UNUSED - return required'}. Customer reported ${state.qualityDetails?.customerReportedCount || 'N/A'} pads.`,
+
+      createdAt: new Date().toISOString(),
+    };
+
+    const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(caseData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    state.caseId = result.caseId;
+
+    hideProgress();
+
+    if (itemsUsed) {
+      await addBotMessage("All done! Your refund request has been submitted to our team. 💙<br><br>They'll review your order within <strong>1-2 business days</strong> and process your refund. You should see it in your account within <strong>3-5 business days</strong> after that.<br><br>If you ever want to try us again in the future, we'll be here. Thank you for your patience and honesty throughout this... I really appreciate it.");
+
+      await showSuccess(
+        "Refund Request Submitted",
+        `Our team will review within 1-2 business days. No return needed!<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    } else {
+      await addBotMessage("Perfect! I've submitted your refund request. 💙<br><br>Once you ship the pads back and share the tracking number with us, our team will process everything. Remember — <strong>1-2 business days</strong> to review after we receive them, then <strong>3-5 business days</strong> for the refund to hit your account.<br><br>Thank you for working with us on this. We really do appreciate your patience.");
+
+      await showSuccess(
+        "Refund Request Submitted",
+        `Ship your return and share tracking. Refund processed after we receive it.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    }
+  } catch (error) {
+    hideProgress();
+    console.error('Quality refund error:', error);
+    await addBotMessage("I'm sorry, there was an issue processing your request. Please try again or contact us directly.");
+  }
+}
+
+// Confirm upgrade (for both used and unused branches)
+async function handleQualityConfirmUpgrade(resolution) {
+  showProgress("Creating your upgrade request...");
+
+  try {
+    const order = state.selectedOrder;
+    const caseType = resolution === 'upgrade_keep_originals' ? 'manual' : 'return';
+
+    const caseData = {
+      // Core identifiers
+      sessionId: state.sessionId || '',
+      sessionReplayUrl: getSessionReplayUrl(),
+      caseType: caseType,
+      issueType: 'quality_difference',
+      resolution: resolution,
+
+      // Customer info
+      email: state.customerData?.email || order?.email || '',
+      customerName: order?.customerName || state.customerData?.name || '',
+      customerFirstName: order?.customerFirstName || state.customerData?.firstName || '',
+      customerLastName: order?.customerLastName || state.customerData?.lastName || '',
+
+      // Order info
+      orderNumber: order?.orderNumber || '',
+      orderDate: order?.orderDate || '',
+      orderUrl: order?.orderUrl || '',
+      refundAmount: state.qualityDetails?.upgradeTotal || null,
+
+      // Selected items
+      selectedItems: (order?.lineItems || []).map(item => ({
+        id: item.id,
+        title: item.title,
+        sku: item.sku || '',
+        price: item.price,
+        quantity: item.quantity || 1,
+      })),
+
+      // Quality-specific
+      qualityDetails: state.qualityDetails,
+      keepProduct: resolution === 'upgrade_keep_originals',
+      notes: `Quality difference upgrade request. ${state.qualityDetails?.customerReportedCount || 'N/A'} pads at $20/each = $${state.qualityDetails?.upgradeTotal || 0} total.`,
+
+      // Timestamps
+      createdAt: new Date().toISOString(),
+    };
+
+    const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(caseData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    state.caseId = result.caseId;
+
+    hideProgress();
+
+    if (resolution === 'upgrade_keep_originals') {
+      await addBotMessage("Amazing! I'll get that sorted for you now 🎉<br><br>Keep an eye on your inbox... you should receive the custom checkout link within a few hours.<br><br>Thank you so much for working with us on this. It really means a lot that you trust us to make it right.<br><br>Any questions at all, just message us. We're always here 💙");
+
+      await showSuccess(
+        "Upgrade Request Created!",
+        `We'll email you a checkout link for $${state.qualityDetails.upgradeTotal} within a few hours.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    } else {
+      await addBotMessage("Amazing! Thank you so much for being patient with this process 💙<br><br>Just send us the tracking number once you've shipped it and we'll take care of everything from there.<br><br>You can reply here or email us at help@teampuppypad.com with the tracking info.<br><br>Chat soon! 🐾");
+
+      await showSuccess(
+        "Return & Upgrade Request Created!",
+        `Ship your return and send us the tracking number. We'll then send you a $${state.qualityDetails.upgradeTotal} checkout link.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    }
+  } catch (error) {
+    hideProgress();
+    console.error('Quality upgrade error:', error);
+    await addBotMessage("I'm sorry, there was an issue processing your request. Please try again or contact us directly.");
+  }
+}
+
+// Changed mind during upgrade flow
+async function handleQualityChangedMind() {
+  await addBotMessage("No problem at all! That's totally okay.<br><br>Would you like to:");
+
+  addOptions([
+    { icon: '✓', text: "Keep my order as it is", action: handleQualityKeepOrder },
+    { icon: '←', text: "Go back to other options", action: handleQualityDifference }
+  ]);
+}
+
+// Question during return flow
+async function handleQualityQuestion() {
+  await addBotMessage("Of course! What would you like to know?");
+
+  showTextInput("Type your question...", async (question) => {
+    hideTextInput();
+    state.intentDetails = question;
+
+    await addBotMessage("Great question! Let me connect you with our team who can help with that specific question.<br><br>I've noted your question and someone will get back to you within 24 hours.");
+
+    // Create manual case for the question
+    const order = state.selectedOrder;
+    const caseData = {
+      // Core identifiers
+      sessionId: state.sessionId || '',
+      sessionReplayUrl: getSessionReplayUrl(),
+      caseType: 'manual',
+      issueType: 'quality_difference',
+      resolution: 'manual_assistance',
+
+      // Customer info
+      email: state.customerData?.email || order?.email || '',
+      customerName: order?.customerName || state.customerData?.name || '',
+      customerFirstName: order?.customerFirstName || state.customerData?.firstName || '',
+      customerLastName: order?.customerLastName || state.customerData?.lastName || '',
+
+      // Order info
+      orderNumber: order?.orderNumber || '',
+      orderDate: order?.orderDate || '',
+      orderUrl: order?.orderUrl || '',
+
+      // Selected items
+      selectedItems: (order?.lineItems || []).map(item => ({
+        id: item.id,
+        title: item.title,
+        sku: item.sku || '',
+        price: item.price,
+        quantity: item.quantity || 1,
+      })),
+
+      // Question details
+      intentDetails: question,
+      qualityDetails: state.qualityDetails,
+      notes: `Customer question during quality difference flow: ${question}`,
+
+      // Timestamps
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(caseData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      state.caseId = result.caseId;
+
+      await showSuccess(
+        "Question Submitted",
+        `Our team will respond within 24 hours.<br><br>${getCaseIdHtml(state.caseId)}`
+      );
+    } catch (error) {
+      console.error('Quality question error:', error);
+      await addBotMessage("I've noted your question. Our team will reach out to you soon!");
+    }
+  });
+}
+
+async function handleOtherReason() {
+  await addBotMessage("No problem — tell me what's going on and I'll do my best to help:");
+  
+  showTextInput("Describe your issue...", async (text) => {
+    hideTextInput();
+    state.intentDetails = text;
+    
+    await addBotMessage("Thank you for explaining. Let me see what options I have for you.");
+    
+    state.ladderType = 'order_refund';
+    state.ladderStep = 0;
+    await startRefundLadder();
+  });
+}
+
+// ============================================
+// NOT RECEIVED / TRACKING FLOWS
+// ============================================
+async function handleNotReceived() {
+  await addBotMessage("Let me check the tracking status for your order...");
+  await getTrackingForIntent();
+}
+
+async function getTrackingForIntent() {
+  showProgress("Looking up tracking...", "Checking ParcelPanel for your package status");
+
+  try {
+    const orderNumber = state.selectedOrder?.orderNumber || state.customerData?.orderNumber;
+
+    if (!orderNumber) {
+      hideProgress();
+      state.tracking = null;
+      await handleTrackingResult();
+      return;
+    }
+
+    const response = await fetch(`${CONFIG.API_URL}/api/tracking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderNumber: orderNumber.replace('#', '') })
+    });
+
+    hideProgress();
+
+    if (!response.ok) {
+      state.tracking = null;
+      await handleTrackingResult();
+      return;
+    }
+
+    const data = await response.json();
+    state.tracking = data.tracking;
+    state.allTracking = data.allTracking; // Store all parcels if multi-parcel order
+
+    await handleTrackingResult();
+  } catch (error) {
+    console.error('Tracking lookup error:', error);
+    hideProgress();
+    state.tracking = null;
+    await handleTrackingResult();
+  }
+}
+
+async function handleTrackingResult() {
+  const tracking = state.tracking;
+
+  if (!tracking) {
+    await addBotMessage("I couldn't find tracking info for this order. Let me create a case for our team to investigate.");
+    await createShippingCase('no_tracking');
+    return;
+  }
+
+  // Handle different ParcelPanel statuses
+  switch (tracking.status) {
+    case 'delivered':
+      await handleStatusDelivered(tracking);
+      break;
+
+    case 'out_for_delivery':
+      await handleStatusOutForDelivery(tracking);
+      break;
+
+    case 'in_transit':
+      await handleStatusInTransit(tracking);
+      break;
+
+    case 'pending':
+    case 'info_received':
+      await handleStatusPending(tracking);
+      break;
+
+    case 'failed_attempt':
+      await handleStatusFailedAttempt(tracking);
+      break;
+
+    case 'pickup':
+    case 'ready_for_pickup':
+    case 'available_for_pickup':
+      await handleStatusPickup(tracking);
+      break;
+
+    case 'exception':
+    case 'expired':
+    default:
+      // Check if it's actually a pickup status that slipped through
+      if (tracking.status?.includes('pickup') || tracking.statusLabel?.toLowerCase().includes('pickup')) {
+        await handleStatusPickup(tracking);
+      } else {
+        await handleStatusException(tracking);
+      }
+      break;
+  }
+}
+
+// Status: Delivered - but customer says not received
+async function handleStatusDelivered(tracking) {
+  const deliveryDate = tracking.deliveryDate ? formatDate(tracking.deliveryDate) : 'recently';
+
+  await addBotMessage(`According to tracking, your order was delivered on <strong>${deliveryDate}</strong>.`);
+
+  await addBotMessage(`Before we investigate, could you please double-check these common locations?<br><br>
+• <strong>Neighbors</strong> - Sometimes packages are left next door<br>
+• <strong>Family/household members</strong> - Someone may have brought it inside<br>
+• <strong>Safe spots</strong> - Behind pillars, under mats, in bushes<br>
+• <strong>Front desk/mailroom</strong> - If you live in an apartment or building<br>
+• <strong>Garage or side door</strong> - Carriers sometimes leave packages there`);
+
+  addOptions([
+    { text: "I've checked all these places", action: () => handleDeliveredNotReceived() },
+    { text: "Give me time to check", action: async () => {
+      await addBotMessage("Take your time! 🙂 Feel free to come back if you still can't find it. We're here to help.");
+      // Log that customer is checking - analytics
+      Analytics.logEvent('delivered_checking_locations');
+      addOptions([{ text: "Back to Home", action: showHomeMenu }]);
+    }},
+    { text: "I found it!", action: () => showSuccess("Great!", "So glad you found your package! 🎉") }
+  ]);
+}
+
+// Status: Out for Delivery - treat same as In Transit for day thresholds
+async function handleStatusOutForDelivery(tracking) {
+  // Out for Delivery uses the same "on the way" logic as In Transit
+  await handleOnTheWay(tracking, 'out_for_delivery');
+}
+
+// Status: In Transit - check how long
+async function handleStatusInTransit(tracking) {
+  await handleOnTheWay(tracking, 'in_transit');
+}
+
+// Shared handler for "on the way" statuses (in_transit + out_for_delivery)
+async function handleOnTheWay(tracking, statusType) {
+  const daysInTransit = tracking.daysInTransit || 0;
+  const isInternational = isInternationalCarrier(tracking);
+  const isOutForDelivery = statusType === 'out_for_delivery';
+
+  // 15+ days: Auto-escalate with reship/refund options
+  if (daysInTransit >= CONFIG.IN_TRANSIT_ESCALATE_DAYS) {
+    await handleExtendedTransit(tracking, isInternational);
+    return;
+  }
+
+  // 6-14 days: Sarah voice note with reassurance
+  if (daysInTransit >= CONFIG.IN_TRANSIT_VOICE_DAYS) {
+    await showSarahVoiceNote(tracking, isInternational);
+    return;
+  }
+
+  // 0-5 days: Normal messaging
+  const estimatedDelivery = tracking.estimatedDelivery ? ` Expected delivery: <strong>${formatDate(tracking.estimatedDelivery)}</strong>` : '';
+
+  if (isOutForDelivery) {
+    // Out for delivery - should arrive today
+    await addBotMessage(`Great news! Your package is <strong>out for delivery today</strong>. It should arrive within the next few hours.${estimatedDelivery}`);
+
+    if (isInternational) {
+      await addBotMessage(`Your order is shipping from our international warehouse, which can sometimes take a bit longer but it's on its way to you!`);
+    }
+
+    addOptions([
+      { text: "Perfect, I'll wait", action: () => showSuccess("Almost there!", "Your package should arrive today!") },
+      { text: "It's been out for delivery for days", action: async () => {
+        await addBotMessage("That's unusual. Let me create a case for our team to investigate with the carrier.");
+        await createShippingCase('stuck_out_for_delivery');
+      }}
+    ]);
+  } else {
+    // In transit - normal progress
+    let message = `Your order is currently <strong>in transit</strong> and has been shipping for ${daysInTransit} day${daysInTransit !== 1 ? 's' : ''}.`;
+
+    if (isInternational) {
+      message += ` Since this is shipping from our international warehouse, it can sometimes take an additional 5 business days.`;
+    } else {
+      message += ` Delivery typically takes 5-10 business days.`;
+    }
+
+    message += `${estimatedDelivery}<br><br>It's still within the normal delivery window — your package is on its way!`;
+
+    await addBotMessage(message);
+
+    addOptions([
+      { text: "Okay, I'll wait", action: () => showSuccess("Thanks for your patience!", "Your package is on its way! 📦") },
+      { text: "I have a concern", action: () => handleExtendedTransit(tracking, isInternational) }
+    ]);
+  }
+}
+
+// Status: Pending/Info Received - not yet shipped
+async function handleStatusPending(tracking) {
+  await addBotMessage(`Your order is currently being prepared for shipment. The carrier has received the shipping information but hasn't picked up the package yet.<br><br>This typically happens within 1-2 business days of placing your order.`);
+
+  // Check if it's been too long in pending status
+  const daysInTransit = tracking.daysInTransit || 0;
+
+  if (daysInTransit > 3) {
+    await addBotMessage("However, I notice it's been a few days. Would you like me to look into this for you?");
+    addOptions([
+      { text: "Yes, please investigate", action: async () => {
+        await createShippingCase('pending_too_long');
+      }},
+      { text: "I'll wait a bit longer", action: () => showSuccess("Thanks!", "We'll ship it soon!") }
+    ]);
+  } else {
+    addOptions([
+      { text: "Got it, I'll wait", action: () => showSuccess("Thanks!", "Your order will ship soon!") },
+      { text: "I need to cancel instead", action: async () => {
+        await addBotMessage("Since your order hasn't shipped yet, I can process a full cancellation and refund.");
+        state.ladderType = 'order_refund';
+        state.ladderStep = 0;
+        await createRefundCase('full', true);
+      }}
+    ]);
+  }
+}
+
+// Status: Failed Attempt - delivery was attempted but failed
+async function handleStatusFailedAttempt(tracking) {
+  await addBotMessage(`The carrier attempted to deliver your package but was unsuccessful. This could be due to:<br><br>• No one available to sign<br>• Address access issues<br>• Weather conditions<br><br>They'll typically try again within 1-2 business days.`);
+
+  addOptions([
+    { text: "I'll be home next time", action: () => showSuccess("Sounds good!", "The carrier will attempt delivery again soon.") },
+    { text: "I need to change my address", action: () => handleFailedAttemptAddressChange(tracking) },
+    { text: "They've tried multiple times", action: () => handleMultipleFailedAttempts(tracking) }
+  ]);
+}
+
+// Handle address change request for failed attempts
+async function handleFailedAttemptAddressChange(tracking) {
+  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+
+  await addBotMessage(`Since your package is already with ${carrierInfo.name}, you'll need to contact them directly to update the delivery address or arrange a pickup.`);
+
+  let contactMessage = `<strong>${carrierInfo.name} Contact Information:</strong><br><br>`;
+
+  if (carrierInfo.phone) {
+    contactMessage += `📞 Phone: <strong>${carrierInfo.phone}</strong><br>`;
+  }
+  if (carrierInfo.website) {
+    contactMessage += `🌐 Website: <strong>${carrierInfo.website}</strong><br>`;
+  }
+  contactMessage += `📦 Tracking: <strong>${tracking?.trackingNumber || 'Check your email'}</strong>`;
+
+  await addBotMessage(contactMessage);
+
+  await addBotMessage(`When you call, they can help you:<br>• Update the delivery address<br>• Schedule a redelivery<br>• Arrange a pickup at a local facility`);
+
+  addOptions([
+    { text: "Thanks, I'll contact them", action: () => showSuccess("Good luck!", "The carrier should be able to help you with the address change.") },
+    { text: "I'd rather get a reship", action: async () => {
+      await addBotMessage("No problem! If you'd prefer, I can create a new shipment to your address once this one is returned to us, or you can provide a different address.");
+      await handleReship();
+    }}
+  ]);
+}
+
+// Handle multiple failed delivery attempts
+async function handleMultipleFailedAttempts(tracking) {
+  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+
+  await addBotMessage(`I'm really sorry you're dealing with this — multiple failed attempts is frustrating. Let me help you figure out the best solution.`);
+
+  await addBotMessage(`Is your address correct, or do you need to update it?`);
+
+  addOptions([
+    { text: "My address is correct", action: async () => {
+      await addBotMessage(`Got it. Since ${carrierInfo.name} has been unable to deliver, here are your options:`);
+
+      let optionsMessage = `<strong>Option 1: Contact ${carrierInfo.name}</strong><br>`;
+      if (carrierInfo.phone) {
+        optionsMessage += `Call ${carrierInfo.phone} to schedule a specific delivery time or arrange pickup.<br><br>`;
+      } else {
+        optionsMessage += `Contact them to schedule a specific delivery time or arrange pickup.<br><br>`;
+      }
+      optionsMessage += `<strong>Option 2: We reship to a different address</strong><br>If you have an alternate address (work, neighbor, etc.) that might work better.`;
+
+      await addBotMessage(optionsMessage);
+
+      addOptions([
+        { text: "I'll contact the carrier", action: () => showSuccess("Sounds good!", "The carrier can help you schedule a specific delivery time.") },
+        { text: "Reship to different address", action: () => handleReship() },
+        { text: "I want a refund instead", action: async () => {
+          state.ladderType = 'shipping';
+          state.ladderStep = 0;
+          await startShippingLadder();
+        }}
+      ]);
+    }},
+    { text: "I need to update my address", action: () => handleFailedAttemptAddressChange(tracking) }
+  ]);
+}
+
+// Status: Pickup - ready for customer pickup
+async function handleStatusPickup(tracking) {
+  // Transitional message to set context
+  await addBotMessage("Good news! Your package has arrived and is ready for you.");
+
+  // Show loading while we parse the pickup location with AI
+  await addBotMessage("Let me find the exact pickup location for you...");
+  showProgress("Finding pickup location...");
+
+  // Get shipping address from selected order for web search
+  const shippingAddress = state.selectedOrder?.shippingAddress || null;
+
+  // Debug logging
+  console.log('Pickup location lookup - Data being sent:', {
+    carrier: tracking?.carrier,
+    lastMile: tracking?.lastMile,
+    checkpointsCount: tracking?.checkpoints?.length || 0,
+    shippingAddress: shippingAddress,
+  });
+
+  // Call API to parse pickup location from tracking data
+  let pickupData = null;
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/parse-pickup-location`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tracking: tracking,
+        carrier: tracking?.carrier,
+        checkpoints: tracking?.checkpoints || [],
+        lastMile: tracking?.lastMile || null,
+        shippingAddress: shippingAddress,
+      }),
+    });
+    pickupData = await response.json();
+    console.log('Pickup location lookup - Response:', pickupData);
+  } catch (error) {
+    console.error('Failed to parse pickup location:', error);
+  }
+
+  hideProgress();
+
+  // Extract pickup details from response
+  const pickupLocationName = pickupData?.pickupLocationName;
+  const lastMileTracking = pickupData?.lastMileTrackingNumber;
+  const lastMileCarrierUrl = pickupData?.lastMileCarrierUrl;
+  const isMainCarrierChina = pickupData?.isMainCarrierChina || false;
+
+  // Use last-mile tracking if available, otherwise use main tracking ONLY if not China carrier
+  const displayTracking = lastMileTracking || (!isMainCarrierChina ? tracking?.trackingNumber : null);
+
+  // Get carrier info - use displayCarrier from backend (already filtered for China carriers)
+  const rawCarrier = pickupData?.displayCarrier;
+  const displayCarrier = rawCarrier && !['unknown', 'null', 'undefined'].includes((rawCarrier || '').toLowerCase())
+    ? rawCarrier
+    : null;
+
+  // Store parsed data for later use in investigation flow
+  state.pickupData = pickupData;
+
+  // Build pickup info message
+  let message = `Your package is <strong>ready for pickup</strong>`;
+  if (pickupLocationName) {
+    message += ` at <strong>${pickupLocationName}</strong>`;
+  }
+  message += `!<br><br>`;
+
+  // Show carrier if we have a valid one
+  if (displayCarrier) {
+    message += `<strong>Carrier:</strong> ${displayCarrier}<br>`;
+  }
+
+  // Show tracking number if we have a valid one
+  if (displayTracking) {
+    message += `<strong>Tracking:</strong> ${displayTracking}<br>`;
+  }
+
+  // Show tracking link - this is where customers find the full location details
+  if (lastMileCarrierUrl) {
+    message += `<br><a href="${lastMileCarrierUrl}" target="_blank" style="color: #4A90A4;">View tracking here</a><br>`;
+    message += `<em>This should show the pickup location and hours. If not, give them a call - you can usually find the number on their website.</em><br><br>`;
+  } else {
+    message += `<br>`;
+  }
+
+  message += `<em>Packages are usually held for 5-7 days before being returned to sender.</em>`;
+
+  await addBotMessage(message);
+
+  addOptions([
+    { text: "I'll go pick it up", action: async () => {
+      let pickupMessage = `Perfect! `;
+
+      if (pickupLocationName) {
+        pickupMessage += `Head to <strong>${pickupLocationName}</strong> with your ID to collect your package.`;
+      } else {
+        pickupMessage += `Bring your ID to collect your package.`;
+      }
+
+      if (lastMileCarrierUrl) {
+        pickupMessage += `<br><br><a href="${lastMileCarrierUrl}" target="_blank" style="color: #4A90A4;">View tracking for location details</a>`;
+      }
+
+      if (displayTracking) {
+        pickupMessage += `<br><br><strong>Tracking:</strong> ${displayTracking}`;
+      }
+
+      await addBotMessage(pickupMessage);
+      await addBotMessage("Let me know if you have any trouble finding it!");
+      addOptions([{ text: "Back to Home", action: showHomeMenu }]);
+    }},
+    { text: "It wasn't there when I tried", action: () => handlePickupNotThere(tracking) }
+  ]);
+}
+
+// Get pickup location from tracking checkpoints if available
+function getPickupLocationFromTracking(tracking) {
+  if (!tracking?.checkpoints?.length) return null;
+
+  // Look for pickup-related checkpoint
+  const pickupCheckpoint = tracking.checkpoints.find(cp =>
+    cp.message?.toLowerCase().includes('pickup') ||
+    cp.message?.toLowerCase().includes('ready') ||
+    cp.message?.toLowerCase().includes('available')
+  );
+
+  return pickupCheckpoint?.location || tracking.checkpoints[0]?.location || null;
+}
+
+// Handle when customer says package wasn't at pickup location
+async function handlePickupNotThere(tracking) {
+  // Use parsed pickup data from the initial flow
+  const pickupData = state.pickupData || {};
+  const pickupLocationName = pickupData.pickupLocationName || getPickupLocationFromTracking(tracking);
+  const displayCarrier = pickupData.displayCarrier || tracking?.carrier || 'the carrier';
+  const displayTracking = pickupData.lastMileTrackingNumber || tracking?.trackingNumber;
+  const carrierInfo = getCarrierContactInfo(displayCarrier);
+
+  // First, validate they went to the right place
+  if (pickupLocationName) {
+    await addBotMessage(`Just to make sure we're on the same page, the tracking shows your package should be at:<br><br><strong>${pickupLocationName}</strong><br><br>Is this where you went?`);
+  } else {
+    await addBotMessage(`Let me help figure this out. Can you tell me where you went to pick up the package?<br><br>You can find the pickup location by checking your email from ${carrierInfo.name} or visiting their website with your tracking number.`);
+  }
+
+  addOptions([
+    { text: "Yes, that's where I went", action: () => handleConfirmedWrongLocation(tracking) },
+    { text: "No, I went somewhere else", action: async () => {
+      if (pickupLocationName) {
+        await addBotMessage(`Got it! Your package is actually at <strong>${pickupLocationName}</strong>. Please try picking it up from there and let me know if you still have issues.`);
+      } else {
+        await addBotMessage(`No worries! Check your email from ${carrierInfo.name} for the exact pickup location, or visit their website with tracking number <strong>${displayTracking}</strong> to find it.`);
+      }
+      addOptions([
+        { text: "Thanks, I'll go there", action: () => showSuccess("Good luck!", "Hope you get your package!") },
+        { text: "I still need help", action: () => handleConfirmedWrongLocation(tracking) }
+      ]);
+    }}
+  ]);
+}
+
+// Customer confirmed they went to the right place but package wasn't there
+async function handleConfirmedWrongLocation(tracking) {
+  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+
+  // Collect details about their pickup attempt
+  await addBotMessage("I'm sorry to hear that. Could you share a few details about your pickup attempt? This will help us investigate.");
+
+  const formHtml = `
+    <div class="form-container" id="pickupAttemptForm">
+      <div class="form-group">
+        <label>When did you try to pick it up?</label>
+        <input type="date" class="form-input" id="pickupDate" max="${new Date().toISOString().split('T')[0]}">
+      </div>
+      <div class="form-group">
+        <label>What location did you go to?</label>
+        <input type="text" class="form-input" id="pickupLocationInput" placeholder="e.g., USPS on Main Street, UPS Store downtown">
+      </div>
+      <div class="form-group">
+        <label>What did they tell you? (optional)</label>
+        <textarea class="form-input" id="pickupNotes" rows="2" placeholder="e.g., They said they couldn't find it, no record of the package, etc."></textarea>
+      </div>
+      <button class="form-button" onclick="submitPickupAttempt()">Submit</button>
+    </div>
+  `;
+
+  addInteractiveContent(formHtml);
+}
+
+// Submit pickup attempt details and show investigation warning
+async function submitPickupAttempt() {
+  const dateEl = document.getElementById('pickupDate');
+  const locationEl = document.getElementById('pickupLocationInput');
+  const notesEl = document.getElementById('pickupNotes');
+
+  const pickupDate = dateEl?.value;
+  const pickupLocationInput = locationEl?.value?.trim();
+  const pickupNotes = notesEl?.value?.trim();
+
+  if (!pickupDate) {
+    showToast("Please enter when you tried to pick it up");
+    return;
+  }
+
+  if (!pickupLocationInput) {
+    showToast("Please enter which location you went to");
+    return;
+  }
+
+  document.getElementById('pickupAttemptForm')?.closest('.interactive-content').remove();
+
+  const formattedDate = new Date(pickupDate).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric'
+  });
+  addUserMessage(`Went to ${pickupLocationInput} on ${formattedDate}${pickupNotes ? `. ${pickupNotes}` : ''}`);
+
+  // Store for case creation
+  state.pickupAttemptDetails = {
+    date: pickupDate,
+    location: pickupLocationInput,
+    notes: pickupNotes
+  };
+
+  // Investigation warning to deter scammers - use parsed pickup data for correct carrier
+  const pickupData = state.pickupData || {};
+  const displayCarrier = pickupData.displayCarrier || state.tracking?.carrier || 'the carrier';
+  const carrierInfo = getCarrierContactInfo(displayCarrier);
+  const pickupLocationName = pickupData.pickupLocationName || getPickupLocationFromTracking(state.tracking);
+  const customerLocation = state.pickupAttemptDetails?.location || pickupLocationName || 'the pickup location';
+
+  await addBotMessage(`Thanks for those details. This is quite rare so we'll need to open a formal investigation. Just so you know, PuppyPad and ${carrierInfo.name} are two separate companies. Our responsibility is to pack your order and hand it off to them safely, which we did. But we always go above and beyond to help when things go wrong on their end.`);
+
+  await addBotMessage(`Here's how the investigation works:<br><br>
+• We'll contact ${carrierInfo.name} and <strong>${customerLocation}</strong> directly<br>
+• They'll review the security camera footage from that day<br>
+• They'll pull scan records to see when your package arrived and if anyone collected it<br>
+• Staff logs and handover records will be checked<br>
+• ${carrierInfo.name} will file a police report as part of their missing package process`);
+
+  await addBotMessage(`Your local police may reach out to you for a statement since you're the intended recipient. This helps if they need to pull CCTV footage or follow up with ${customerLocation}. We want to make this right, so while that's happening, we can reship your order. Would you like us to proceed?`);
+
+  addOptions([
+    { text: "Yes, please investigate and reship", action: () => handleInvestigationReship() },
+    { text: "Actually, let me check again first", action: async () => {
+      await addBotMessage("No worries at all! Sometimes packages show up in unexpected places. Take your time to have another look and just come back if you still need help.");
+      addOptions([{ text: "Back to Home", action: showHomeMenu }]);
+    }}
+  ]);
+}
+
+// Handle investigation + reship flow
+async function handleInvestigationReship() {
+  await addBotMessage("Okay, I'll get that started for you. Our team will open the investigation with the carrier and we'll reship your order in the meantime.");
+
+  // Store that this is an investigation case
+  state.pickupReason = `Package not at pickup location. Attempted pickup on ${state.pickupAttemptDetails?.date} at ${state.pickupAttemptDetails?.location}. ${state.pickupAttemptDetails?.notes || ''}`.trim();
+  state.carrierIssue = 'pickup_investigation';
+
+  await handleReship();
+}
+
+// Make functions available globally
+window.submitPickupAttempt = submitPickupAttempt;
+
+// Status: Exception/Expired/Unknown - problem with delivery
+async function handleStatusException(tracking) {
+  const isExpired = tracking?.status === 'expired';
+  const isInternational = isInternationalCarrier(tracking);
+
+  if (isExpired) {
+    await addBotMessage(`I see that your shipment tracking has expired. This usually means the package was returned to sender or the tracking timed out.`);
+
+    if (isInternational) {
+      await addBotMessage(`Since this was shipping from our international warehouse, transit times can vary. Let me help make this right.`);
+    }
+
+    await addBotMessage(`Don't worry — I'll take care of this for you. Would you like me to reship your order or process a refund?`);
+  } else {
+    await addBotMessage(`There seems to be an issue with your delivery (Status: <strong>${tracking?.statusLabel || 'Exception'}</strong>). This could be due to:<br><br>• An address issue<br>• Customs hold (for international shipments)<br>• Carrier problem<br><br>I'm sorry for the trouble — let me help you resolve this.`);
+  }
+
+  addOptions([
+    { text: "Reship my order (free)", action: () => handleReship() },
+    { text: "I'd prefer a refund", action: async () => {
+      state.ladderType = 'shipping';
+      state.ladderStep = 0;
+      await startShippingLadder();
+    }}
+  ]);
+}
+
+async function showSarahVoiceNote(tracking, isInternational = false) {
+  const daysInTransit = tracking?.daysInTransit || 0;
+
+  let introMessage = `Your package has been in transit for ${daysInTransit} days now.`;
+  if (isInternational) {
+    introMessage += ` Since it's shipping from our international warehouse, it can take a bit longer than usual.`;
+  }
+  introMessage += ` Our CX lead Sarah has a quick update for you...`;
+
+  await addBotMessage(introMessage);
+
+  setPersona('sarah');
+
+  // Waveform-style audio player
+  const audioHtml = `
+    <div class="voice-note-card" id="audioPlayer">
+      <div class="voice-note-header">
+        <img src="${CONFIG.AVATARS.sarah}" alt="Sarah" class="voice-note-avatar">
+        <div class="voice-note-info">
+          <div class="voice-note-name">Sarah</div>
+          <div class="voice-note-role">Customer Experience Lead</div>
+        </div>
+      </div>
+      <div class="voice-note-player">
+        <button class="voice-note-play-btn" onclick="playAudio()">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="play-icon">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          <svg viewBox="0 0 24 24" fill="currentColor" class="pause-icon" style="display:none;">
+            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+          </svg>
+        </button>
+        <div class="voice-note-waveform">
+          <div class="waveform-bars">
+            ${Array.from({length: 40}, () => `<div class="waveform-bar" style="height: ${20 + Math.random() * 60}%"></div>`).join('')}
+          </div>
+          <div class="waveform-progress" id="waveformProgress"></div>
+        </div>
+        <div class="voice-note-duration" id="audioDuration">0:00</div>
+      </div>
+    </div>
+    <audio id="voiceNote" preload="metadata">
+      <source src="/audio/Sarah%20USA%20In%20Transit%20Shipping%20Update.mp3" type="audio/mpeg">
+    </audio>
+  `;
+
+  addInteractiveContent(audioHtml);
+
+  setPersona('amy');
+
+  await delay(1000);
+
+  let followUpMessage = "Your package is still on its way and we're keeping an eye on it.";
+  if (isInternational) {
+    followUpMessage += " International shipments can sometimes take an additional 5 business days, but rest assured it's moving.";
+  }
+  followUpMessage += " Is there anything specific you'd like me to help with while you wait?";
+
+  await addBotMessage(followUpMessage);
+
+  addOptions([
+    { text: "I'll wait a bit longer", action: () => showSuccess("Thanks for your patience!", "Your package is on its way! 📦") },
+    { text: "I'd like to explore my options", action: () => handleExtendedTransit(tracking, isInternational) }
+  ]);
+}
+
+function playAudio() {
+  const audio = document.getElementById('voiceNote');
+  const waveformProgress = document.getElementById('waveformProgress');
+  const durationEl = document.getElementById('audioDuration');
+  const playIcon = document.querySelector('.play-icon');
+  const pauseIcon = document.querySelector('.pause-icon');
+  const playerEl = document.getElementById('audioPlayer');
+
+  // Format time as M:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Handle audio errors
+  audio.onerror = () => {
+    console.error('[Audio] Failed to load audio file');
+    if (durationEl) durationEl.textContent = 'Unavailable';
+    if (playerEl) {
+      playerEl.style.opacity = '0.6';
+      playerEl.title = 'Audio not available';
+    }
+  };
+
+  if (audio.paused) {
+    audio.play().then(() => {
+      if (playIcon) playIcon.style.display = 'none';
+      if (pauseIcon) pauseIcon.style.display = 'block';
+    }).catch((err) => {
+      console.error('[Audio] Playback failed:', err.message);
+      if (durationEl) durationEl.textContent = 'Unavailable';
+    });
+
+    audio.ontimeupdate = () => {
+      const percent = (audio.currentTime / audio.duration) * 100;
+      if (waveformProgress) waveformProgress.style.width = percent + '%';
+      if (durationEl) durationEl.textContent = formatTime(audio.currentTime);
+    };
+
+    audio.onloadedmetadata = () => {
+      if (durationEl) durationEl.textContent = formatTime(audio.duration);
+    };
+
+    audio.onended = () => {
+      if (playIcon) playIcon.style.display = 'block';
+      if (pauseIcon) pauseIcon.style.display = 'none';
+      if (waveformProgress) waveformProgress.style.width = '0%';
+      if (durationEl) durationEl.textContent = formatTime(audio.duration);
+    };
+  } else {
+    audio.pause();
+    if (playIcon) playIcon.style.display = 'block';
+    if (pauseIcon) pauseIcon.style.display = 'none';
+  }
+}
+
+async function handleExtendedTransit(tracking, isInternational = false) {
+  const daysInTransit = tracking?.daysInTransit || 0;
+
+  // First message: Acknowledge and explain possible reasons
+  let message = `I see your package has been in transit for <strong>${daysInTransit} days</strong> — that's definitely longer than expected, and I completely understand your frustration.`;
+  await addBotMessage(message);
+
+  // Second message: Explain why this might have happened
+  let explanationMessage = `There could be a few reasons why this has happened:<br><br>`;
+  explanationMessage += `<strong>1. International warehouse shipping:</strong> Due to high demand, your order may have shipped from one of our international warehouses instead of a local one. We try to keep all our warehouses stocked, but sometimes items go out of stock locally.<br><br>`;
+  explanationMessage += `<strong>2. Address issues:</strong> Sometimes there are problems with the delivery address — a missing apartment number, incorrect postcode, or the carrier couldn't access the location.<br><br>`;
+  explanationMessage += `<strong>3. Customs or carrier delays:</strong> Packages can get held up in customs processing or experience unexpected carrier delays along the route.`;
+  await addBotMessage(explanationMessage);
+
+  // Third message: Offer resolution with empathy
+  let resolutionMessage = `Whatever the reason, ${daysInTransit} days is too long and we want to make this right for you.<br><br>`;
+  resolutionMessage += `Here's the thing — we don't charge you for shipping, so if we reship your order, we'll likely lose money on both the shipping costs and the product itself. But your satisfaction matters more to us, and we want to make sure you receive your order.`;
+  await addBotMessage(resolutionMessage);
+
+  await addBotMessage(`So here's what I can offer you:`);
+
+  addOptions([
+    { text: "Reship my order (free)", action: () => handleReship() },
+    { text: "I'd prefer a refund", action: async () => {
+      state.ladderType = 'shipping';
+      state.ladderStep = 0;
+      await startShippingLadder();
+    }}
+  ]);
+}
+
+async function handleReship() {
+  const address = state.selectedOrder?.shippingAddress;
+
+  if (!address || !address.address1) {
+    await addBotMessage("I'll create a free reship for you! Please provide your shipping address:");
+    showAddressForm(null);
+    return;
+  }
+
+  // Format the current address for display
+  const formattedAddress = formatAddressForDisplay(address);
+
+  await addBotMessage(`I'll create a free reship for you! First, let me confirm your shipping address:<br><br><div class="address-display">${formattedAddress}</div>`);
+
+  await addBotMessage("Is this address correct, or would you like to update it?");
+
+  addOptions([
+    { text: "This address is correct", action: () => confirmReshipWithAddress(address) },
+    { text: "I need to update it", action: () => showAddressForm(address) }
+  ]);
+}
+
+// Format address for display
+function formatAddressForDisplay(address) {
+  const lines = [];
+  if (address.address1) lines.push(`<strong>${address.address1}</strong>`);
+  if (address.address2) lines.push(address.address2);
+
+  const cityLine = [];
+  if (address.city) cityLine.push(address.city);
+  if (address.province || address.provinceCode) cityLine.push(address.province || address.provinceCode);
+  if (address.zip) cityLine.push(address.zip);
+  if (cityLine.length > 0) lines.push(cityLine.join(', '));
+
+  if (address.country) lines.push(address.country);
+
+  return lines.join('<br>');
+}
+
+// Show address form with country-specific fields (Shopify format)
+function showAddressForm(currentAddress) {
+  const address = currentAddress || {};
+  const country = address.country || 'United States';
+
+  // Country-specific field configurations (Shopify format)
+  const countryConfigs = {
+    'United States': {
+      provinceLabel: 'State',
+      provinces: ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'],
+      zipLabel: 'ZIP Code',
+      zipPlaceholder: '12345'
+    },
+    'Canada': {
+      provinceLabel: 'Province',
+      provinces: ['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'],
+      zipLabel: 'Postal Code',
+      zipPlaceholder: 'A1A 1A1'
+    },
+    'United Kingdom': {
+      provinceLabel: 'County',
+      provinces: null, // Text input
+      zipLabel: 'Postcode',
+      zipPlaceholder: 'SW1A 1AA'
+    },
+    'Australia': {
+      provinceLabel: 'State',
+      provinces: ['ACT','NSW','NT','QLD','SA','TAS','VIC','WA'],
+      zipLabel: 'Postcode',
+      zipPlaceholder: '2000'
+    }
+  };
+
+  const config = countryConfigs[country] || countryConfigs['United States'];
+
+  // Build province field (dropdown or text input)
+  let provinceField;
+  if (config.provinces) {
+    const provinceOptions = config.provinces.map(p =>
+      `<option value="${p}" ${(address.province === p || address.provinceCode === p) ? 'selected' : ''}>${p}</option>`
+    ).join('');
+    provinceField = `<select class="form-input" id="province">${provinceOptions}</select>`;
+  } else {
+    provinceField = `<input type="text" class="form-input" id="province" value="${address.province || ''}" placeholder="${config.provinceLabel}">`;
+  }
+
+  // Build country dropdown
+  const countries = ['United States', 'Canada', 'United Kingdom', 'Australia'];
+  const countryOptions = countries.map(c =>
+    `<option value="${c}" ${country === c ? 'selected' : ''}>${c}</option>`
+  ).join('');
+
+  const addressHtml = `
+    <div class="form-container" id="addressForm">
+      <div class="form-group">
+        <label>Country *</label>
+        <select class="form-input" id="country" onchange="updateAddressFieldsForCountry()">
+          ${countryOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Street Address *</label>
+        <input type="text" class="form-input" id="address1" value="${address.address1 || ''}" placeholder="123 Main St">
+      </div>
+      <div class="form-group">
+        <label>Apt/Suite/Unit</label>
+        <input type="text" class="form-input" id="address2" value="${address.address2 || ''}" placeholder="Apt 4B">
+      </div>
+      <div class="form-group">
+        <label>City *</label>
+        <input type="text" class="form-input" id="city" value="${address.city || ''}" placeholder="City">
+      </div>
+      <div class="form-group" id="provinceGroup">
+        <label>${config.provinceLabel} *</label>
+        ${provinceField}
+      </div>
+      <div class="form-group">
+        <label>${config.zipLabel} *</label>
+        <input type="text" class="form-input" id="zip" value="${address.zip || ''}" placeholder="${config.zipPlaceholder}">
+      </div>
+      <button class="option-btn primary" onclick="submitAddressForm()" style="width: 100%;">
+        Confirm & Reship
+      </button>
+    </div>
+  `;
+
+  addInteractiveContent(addressHtml);
+}
+
+// Update address fields when country changes
+function updateAddressFieldsForCountry() {
+  const country = document.getElementById('country')?.value || 'United States';
+
+  const configs = {
+    'United States': { label: 'State', provinces: ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'], zipLabel: 'ZIP Code', zipPlaceholder: '12345' },
+    'Canada': { label: 'Province', provinces: ['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT'], zipLabel: 'Postal Code', zipPlaceholder: 'A1A 1A1' },
+    'United Kingdom': { label: 'County', provinces: null, zipLabel: 'Postcode', zipPlaceholder: 'SW1A 1AA' },
+    'Australia': { label: 'State', provinces: ['ACT','NSW','NT','QLD','SA','TAS','VIC','WA'], zipLabel: 'Postcode', zipPlaceholder: '2000' }
+  };
+
+  const config = configs[country] || configs['United States'];
+  const provinceGroup = document.getElementById('provinceGroup');
+  const zipInput = document.getElementById('zip');
+
+  if (provinceGroup) {
+    let provinceField;
+    if (config.provinces) {
+      const options = config.provinces.map(p => `<option value="${p}">${p}</option>`).join('');
+      provinceField = `<select class="form-input" id="province">${options}</select>`;
+    } else {
+      provinceField = `<input type="text" class="form-input" id="province" placeholder="${config.label}">`;
+    }
+    provinceGroup.innerHTML = `<label>${config.label} *</label>${provinceField}`;
+  }
+
+  if (zipInput) {
+    zipInput.placeholder = config.zipPlaceholder;
+    const zipLabel = zipInput.parentElement?.querySelector('label');
+    if (zipLabel) zipLabel.textContent = config.zipLabel + ' *';
+  }
+}
+
+// Make function globally available
+window.updateAddressFieldsForCountry = updateAddressFieldsForCountry;
+
+// Submit address form and create reship
+async function submitAddressForm() {
+  const address1 = document.getElementById('address1')?.value.trim();
+  const address2 = document.getElementById('address2')?.value.trim();
+  const city = document.getElementById('city')?.value.trim();
+  const province = document.getElementById('province')?.value.trim();
+  const zip = document.getElementById('zip')?.value.trim();
+  const country = document.getElementById('country')?.value;
+
+  if (!address1 || !city || !zip) {
+    showToast("Please fill in all required address fields");
+    return;
+  }
+
+  const newAddress = { address1, address2, city, province, zip, country };
+  state.addressChanged = true;
+  state.newAddress = newAddress;
+
+  document.getElementById('addressForm')?.closest('.interactive-content').remove();
+  addUserMessage(`Updated address: ${address1}, ${city}, ${province} ${zip}`);
+
+  // Check if we're processing a shipping offer or regular reship
+  if (state.afterAddressAction === 'shipping_offer') {
+    await processShippingOfferWithAddress(newAddress);
+  } else {
+    await confirmReshipWithAddress(newAddress);
+  }
+}
+
+window.submitAddressForm = submitAddressForm;
+
+// Confirm reship with address (new or existing)
+async function confirmReshipWithAddress(address) {
+  showProgress("Creating your free reship order...", "This will ship within 1-3 business days");
+
+  const tracking = state.tracking || {};
+  const addressChanged = state.addressChanged || false;
+
+  // Determine carrier issue based on tracking status
+  let carrierIssue = 'extendedTransit';
+  if (tracking.status === 'exception') carrierIssue = 'exception';
+  else if (tracking.status === 'expired') carrierIssue = 'expiredTracking';
+  else if (tracking.status === 'failed_attempt') carrierIssue = 'failedDelivery';
+  else if (tracking.status === 'delivered') carrierIssue = 'deliveredNotReceived';
+
+  const result = await submitCase('shipping', 'reship', {
+    issueType: 'reship_request',
+    carrierIssue: carrierIssue,
+    carrierName: tracking.carrier || 'Unknown',
+    trackingNumber: tracking.trackingNumber || '',
+    daysInTransit: tracking.daysInTransit || 0,
+    trackingStatus: tracking.status || '',
+    pickupReason: state.pickupReason || '',
+    addressChanged: addressChanged,
+    shippingAddress: address,
+    notes: addressChanged
+      ? `Free reship requested with NEW address: ${address.address1}, ${address.city}, ${address.province} ${address.zip}, ${address.country}`
+      : `Free reship requested to SAME address: ${address.address1}, ${address.city}, ${address.province} ${address.zip}, ${address.country}`,
+  });
+
+  hideProgress();
+
+  // Clear state
+  state.addressChanged = false;
+  state.newAddress = null;
+
+  if (result.success) {
+    state.caseId = result.caseId;
+    await showSuccess(
+      "Reship Request Received!",
+      `<strong>What happens next:</strong><br><br>
+      Our team has received your reship request and will process it within <strong>1-3 business days</strong>.<br><br>
+      Once your order ships, we'll send you a confirmation email with tracking information.<br><br>
+      ${getCaseIdHtml(result.caseId)}`
+    );
+  } else {
+    state.caseId = generateCaseId('shipping');
+    await showSuccess(
+      "Reship Request Received!",
+      `<strong>What happens next:</strong><br><br>
+      Our team has received your reship request and will process it within <strong>1-3 business days</strong>.<br><br>
+      Once your order ships, we'll send you a confirmation email with tracking information.<br><br>
+      ${getCaseIdHtml(state.caseId)}`
+    );
+  }
+}
+
+async function confirmReship() {
+  // Legacy function - redirect to new flow
+  await submitAddressForm();
+}
+
+async function startShippingLadder() {
+  const steps = [
+    {
+      percent: 20,
+      message: "I'd love to make this right for you. How about a <strong>20% refund PLUS we'll reship your order</strong> free of charge? That way you get some money back AND your products!",
+      declineMessage: "I understand that might not feel like enough. Let me see what else I can do for you."
+    },
+    {
+      percent: 30,
+      message: "I really want to help you here. Let me offer you a <strong>30% refund AND a free reship</strong>. You'll get a good chunk of money back plus we'll send out a new shipment right away.",
+      declineMessage: "I hear you. Please give me just a moment while I check with my manager to see if there's anything else we can offer..."
+    },
+    {
+      percent: 40,
+      message: "Great news! My manager has approved a <strong>40% refund PLUS a free reship</strong> for you. This is a significant discount and we really want to make sure you're happy.",
+      declineMessage: "I understand. Let me make one final check to see what the absolute best we can do is...",
+      needsManagerCheck: true
+    },
+    {
+      percent: 50,
+      message: "Okay, I've just spoken with my manager again and they've approved our <strong>maximum offer: 50% refund PLUS a free reship</strong>. This is the very best we can do — you'll get half your money back and still receive your products.",
+      declineMessage: null, // Final step - no decline message needed
+      needsManagerCheck: true
+    }
+  ];
+
+  if (state.ladderStep >= steps.length) {
+    await addBotMessage("I completely understand. Let me process a full refund for you right away.");
+    await createRefundCase('full', true);
+    return;
+  }
+
+  const step = steps[state.ladderStep];
+  const totalPrice = parseFloat(state.selectedOrder?.totalPrice || 0);
+  const refundAmount = (totalPrice * step.percent / 100).toFixed(2);
+
+  // For steps that need manager check, show loading first
+  if (step.needsManagerCheck) {
+    showProgress("Checking with manager...");
+    await new Promise(resolve => setTimeout(resolve, 8000)); // 8 second delay
+    hideProgress();
+  }
+
+  await addBotMessage(step.message);
+
+  const html = `
+    <div class="offer-card">
+      <div class="offer-icon">🎁</div>
+      <div class="offer-amount">${step.percent}% + Free Reship</div>
+      <div class="offer-value">${formatCurrency(refundAmount)} back + new shipment</div>
+      <div class="offer-label">Get your money back AND your products</div>
+      <div class="offer-buttons">
+        <button class="offer-btn accept" onclick="acceptShippingOffer(${step.percent}, ${refundAmount})">Accept This Offer</button>
+        <button class="offer-btn decline" onclick="declineShippingOffer()">I just want a refund</button>
+      </div>
+    </div>
+  `;
+
+  addInteractiveContent(html);
+}
+
+async function acceptShippingOffer(percent, amount) {
+  document.querySelector('.offer-card')?.closest('.interactive-content').remove();
+  addUserMessage(`I'll take the ${percent}% refund + reship`);
+
+  // Store the offer details for after address validation
+  state.pendingOffer = { percent, amount: parseFloat(amount) };
+
+  // Now validate the address before processing
+  const address = state.selectedOrder?.shippingAddress;
+
+  if (!address || !address.address1) {
+    await addBotMessage("Great choice! Before we process this, please provide your shipping address:");
+    showAddressForm(null);
+    state.afterAddressAction = 'shipping_offer';
+    return;
+  }
+
+  // Show address and ask for confirmation
+  const formattedAddress = formatAddressForDisplay(address);
+  await addBotMessage(`Great choice! Before we process your ${percent}% refund and reship, let me confirm your shipping address:<br><br><div class="address-display">${formattedAddress}</div>`);
+
+  addOptions([
+    { text: "This address is correct", action: () => processShippingOfferWithAddress(address) },
+    { text: "I need to update it", action: () => {
+      state.afterAddressAction = 'shipping_offer';
+      showAddressForm(address);
+    }}
+  ]);
+}
+
+// Process shipping offer after address is confirmed
+async function processShippingOfferWithAddress(address) {
+  const { percent, amount } = state.pendingOffer || { percent: 0, amount: 0 };
+
+  showProgress("Processing your refund and creating reship...");
+
+  const tracking = state.tracking || {};
+  const addressChanged = state.addressChanged || false;
+
+  // Determine carrier issue based on tracking status
+  let carrierIssue = 'extendedTransit';
+  if (tracking.status === 'exception') carrierIssue = 'exception';
+  else if (tracking.status === 'expired') carrierIssue = 'expiredTracking';
+  else if (tracking.status === 'failed_attempt') carrierIssue = 'failedDelivery';
+  else if (tracking.status === 'delivered') carrierIssue = 'deliveredNotReceived';
+
+  const result = await submitCase('shipping', `partial_${percent}_reship`, {
+    issueType: 'shipping_partial_refund_reship',
+    carrierIssue: carrierIssue,
+    refundPercent: percent,
+    refundAmount: amount,
+    carrierName: tracking.carrier || 'Unknown',
+    trackingNumber: tracking.trackingNumber || '',
+    daysInTransit: tracking.daysInTransit || 0,
+    addressChanged: addressChanged,
+    shippingAddress: address,
+    notes: `Process ${percent}% partial refund ($${amount.toFixed(2)}) and create free reship. ${addressChanged ? 'NEW ADDRESS' : 'Same address'}: ${address.address1}, ${address.city}, ${address.province} ${address.zip}`,
+  });
+
+  hideProgress();
+
+  // Clear state
+  state.pendingOffer = null;
+  state.addressChanged = false;
+  state.afterAddressAction = null;
+
+  const refundAmountFormatted = formatCurrency(amount);
+
+  if (result.success) {
+    state.caseId = result.caseId;
+    await showSuccess(
+      "Request Received!",
+      `<strong>What happens next:</strong><br><br>
+      <strong>Refund:</strong> ${percent}% (${refundAmountFormatted}) will be processed within <strong>1-2 business days</strong>. Once processed, it takes 3-5 business days to appear in your account depending on your bank.<br><br>
+      <strong>Reship:</strong> Your new order will ship within <strong>1-3 business days</strong>. We'll email you tracking information once it's on its way.<br><br>
+      ${getCaseIdHtml(result.caseId)}`
+    );
+  } else {
+    state.caseId = generateCaseId('shipping');
+    await showSuccess(
+      "Request Received!",
+      `<strong>What happens next:</strong><br><br>
+      <strong>Refund:</strong> ${percent}% (${refundAmountFormatted}) will be processed within <strong>1-2 business days</strong>. Once processed, it takes 3-5 business days to appear in your account depending on your bank.<br><br>
+      <strong>Reship:</strong> Your new order will ship within <strong>1-3 business days</strong>. We'll email you tracking information once it's on its way.<br><br>
+      ${getCaseIdHtml(state.caseId)}`
+    );
+  }
+}
+
+async function declineShippingOffer() {
+  document.querySelector('.offer-card')?.closest('.interactive-content').remove();
+  addUserMessage("I just want a full refund");
+
+  // Get the decline message for the current step before incrementing
+  const steps = [
+    { declineMessage: "I understand that might not feel like enough. Let me see what else I can do for you." },
+    { declineMessage: "I hear you. Please give me just a moment while I check with my manager to see if there's anything else we can offer..." },
+    { declineMessage: "I understand. Let me make one final check to see what the absolute best we can do is..." },
+    { declineMessage: null }
+  ];
+
+  const currentStep = steps[state.ladderStep];
+  if (currentStep?.declineMessage) {
+    await addBotMessage(currentStep.declineMessage);
+  }
+
+  state.ladderStep++;
+
+  if (state.ladderStep >= 4) {
+    await addBotMessage("I completely understand. Let me process a full refund for you.");
+    await createRefundCase('full', true);
+  } else {
+    await startShippingLadder();
+  }
+}
+
+async function handleDeliveredNotReceived() {
+  const tracking = state.tracking || state.trackingInfo || {};
+  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+  const shippingAddress = state.selectedOrder?.shippingAddress;
+  const deliveryLocation = shippingAddress
+    ? `${shippingAddress.city || ''}${shippingAddress.province ? ', ' + shippingAddress.province : ''}`.trim() || 'your address'
+    : 'your address';
+
+  await addBotMessage(`I'm really sorry to hear that. This is frustrating and I want to help you. Just so you know, PuppyPad and ${carrierInfo.name} are two separate companies. Our job is to pack your order and hand it to them safely, which we did. But we always go above and beyond to help when things go wrong on their end.`);
+
+  await addBotMessage(`Here's how our investigation works:<br><br>
+• We'll contact ${carrierInfo.name} directly to verify the delivery<br>
+• They'll pull the GPS coordinates from where the driver scanned your package<br>
+• Any delivery photos taken will be reviewed<br>
+• Driver logs and route data from that day will be checked<br>
+• We'll contact the local ${carrierInfo.name} facility near ${deliveryLocation}`);
+
+  await addBotMessage(`${carrierInfo.name} will file a police report as part of their missing package process. Your local police may reach out to you for a statement since you're the intended recipient. This helps if they need to pull CCTV footage from cameras near your address. Would you like us to proceed?`);
+
+  addOptions([
+    { text: "Yes, please investigate", action: async () => {
+      await handleDeliveredInvestigation(tracking);
+    }},
+    { text: "Actually, let me check again first", action: async () => {
+      await addBotMessage("No worries! Sometimes packages turn up in unexpected spots. Take your time and come back if you still can't find it.");
+      Analytics.logEvent('delivered_check_again');
+      addOptions([{ text: "Back to Home", action: showHomeMenu }]);
+    }}
+  ]);
+}
+
+// Proceed with delivered not received investigation
+async function handleDeliveredInvestigation(tracking) {
+  showProgress("Creating investigation case...");
+
+  const result = await submitCase('shipping', 'investigation_delivered_not_received', {
+    issueType: 'delivered_not_received',
+    carrierName: tracking.carrier || 'Unknown',
+    trackingNumber: tracking.trackingNumber || '',
+    deliveryDate: tracking.deliveryDate || '',
+    notes: 'Customer confirmed they checked all locations and package is not found.',
+  });
+
+  hideProgress();
+
+  if (result.success) {
+    await showSuccess(
+      "Investigation Started",
+      `We've opened a case and will investigate with ${tracking.carrier?.toUpperCase() || 'the carrier'}. We'll get back to you within 48 hours.<br><br>
+If we can't locate your package, we'll either reship or refund your order — whichever you prefer.<br><br>
+<strong>Optional:</strong> If you'd like to file a police report, your local department can request CCTV footage from nearby cameras.<br><br>${getCaseIdHtml(result.caseId)}`
+    );
+  } else {
+    await showSuccess(
+      "Investigation Started",
+      `Our team will investigate and contact the carrier. We'll reach out within 48 hours. If we can't locate it, we'll reship or refund your order.`
+    );
+  }
+}
+
+async function createShippingCase(type, options = {}) {
+  showProgress("Creating case...");
+
+  const tracking = state.tracking || {};
+
+  const result = await submitCase('shipping', type, {
+    issueType: type,
+    carrierName: tracking.carrier || options.carrier || 'Unknown',
+    trackingNumber: tracking.trackingNumber || options.trackingNumber || '',
+    deliveryDate: tracking.deliveryDate || '',
+    daysInTransit: tracking.daysInTransit || 0,
+    trackingStatus: tracking.status || '',
+    customerReason: options.customerReason || '',
+    notes: options.notes || `Shipping issue: ${type}`,
+    ...options,
+  });
+
+  hideProgress();
+
+  if (result.success) {
+    state.caseId = result.caseId;
+    await showSuccess(
+      "Case Created!",
+      `Our team will investigate and get back to you within 24-48 hours.<br><br>${getCaseIdHtml(result.caseId)}`
+    );
+  } else {
+    state.caseId = generateCaseId('shipping');
+    await showSuccess(
+      "Case Created!",
+      `Our team will investigate and get back to you within 24-48 hours.<br><br>${getCaseIdHtml(state.caseId)}`
+    );
+  }
+}
+
+// ============================================
+// TRACK ORDER FLOW
+// ============================================
+async function startTrackOrder() {
+  state.flowType = 'track';
+  // Log session and flow start
+  Analytics.logSession({ flowType: 'track' });
+  Analytics.logEvent('flow_start', 'track_order');
+  await showWelcomeMessage('track');
+  await showIdentifyForm('track');
+}
+
+async function handleTrackFlow() {
+  if (state.orders.length === 1) {
+    state.selectedOrder = state.orders[0];
+    await getTrackingInfo();
+  } else {
+    await showOrderSelection('track');
+  }
+}
+
+async function getTrackingInfo() {
+  showProgress("Looking up tracking...", "Checking ParcelPanel for your package status");
+
+  try {
+    const orderNumber = state.selectedOrder?.orderNumber || state.customerData?.orderNumber;
+
+    if (!orderNumber) {
+      hideProgress();
+      state.tracking = null;
+      await addBotMessage("I couldn't find tracking information for your order. Would you like to contact support?");
+      addOptions([
+        { text: "Contact Support", action: () => startHelpFlow() },
+        { text: "Back to Home", action: showHomeMenu }
+      ]);
+      return;
+    }
+
+    const response = await fetch(`${CONFIG.API_URL}/api/tracking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderNumber: orderNumber.replace('#', '') })
+    });
+
+    hideProgress();
+
+    if (!response.ok) {
+      state.tracking = null;
+      await addBotMessage("I couldn't retrieve tracking information right now. Would you like to contact support?");
+      addOptions([
+        { text: "Contact Support", action: () => startHelpFlow() },
+        { text: "Back to Home", action: showHomeMenu }
+      ]);
+      return;
+    }
+
+    const data = await response.json();
+    state.tracking = data.tracking;
+    state.allTracking = data.allTracking;
+
+    if (!state.tracking) {
+      await addBotMessage("Tracking information isn't available yet. Your order may still be processing. Would you like to check back later or contact support?");
+      addOptions([
+        { text: "Contact Support", action: () => startHelpFlow() },
+        { text: "Back to Home", action: showHomeMenu }
+      ]);
+      return;
+    }
+
+    await showTrackingCard();
+  } catch (error) {
+    console.error('Tracking lookup error:', error);
+    hideProgress();
+    state.tracking = null;
+    await addBotMessage("Something went wrong while looking up your tracking. Would you like to try again or contact support?");
+    addOptions([
+      { text: "Try Again", action: () => getTrackingInfo() },
+      { text: "Contact Support", action: () => startHelpFlow() }
+    ]);
+  }
+}
+
+async function showTrackingCard() {
+  const tracking = state.tracking;
+  const statusClass = tracking.status === 'delivered' ? 'delivered' : 
+                     tracking.status === 'in_transit' ? 'in-transit' : 'exception';
+  
+  const checkpointsHtml = tracking.checkpoints.slice(0, 5).map(cp => `
+    <div class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="timeline-date">${formatDate(cp.checkpoint_time)}</div>
+      <div class="timeline-text">${cp.message}</div>
+      ${cp.location ? `<div class="timeline-location">📍 ${cp.location}</div>` : ''}
+    </div>
+  `).join('');
+  
+  const trackingHtml = `
+    <div class="tracking-card">
+      <div class="tracking-header">
+        <div>
+          <div style="font-weight: 600; margin-bottom: 4px;">${state.selectedOrder?.orderNumber}</div>
+          <div class="tracking-number">${tracking.carrier} • ${tracking.trackingNumber}</div>
+        </div>
+        <span class="tracking-status order-status ${statusClass}">${tracking.statusLabel}</span>
+      </div>
+      ${tracking.estimatedDelivery && tracking.status !== 'delivered' ? `
+        <div class="tracking-eta">
+          <strong>📅 Estimated Delivery</strong>
+          ${formatDate(tracking.estimatedDelivery)}
+        </div>
+      ` : ''}
+      <div class="tracking-timeline">
+        ${checkpointsHtml}
+      </div>
+    </div>
+  `;
+  
+  addInteractiveContent(trackingHtml);
+  
+  await addBotMessage(tracking.status === 'delivered' 
+    ? "Your order has been delivered! 🎉" 
+    : "Your package is on its way! Is there anything else you need help with?");
+  
+  addOptions([
+    { text: "I need help with this order", action: async () => {
+      state.flowType = 'help';
+      await showItemSelection();
+    }},
+    { text: "All good, thanks!", action: () => showSuccess("You're welcome!", "Have a great day! 🐕") }
+  ]);
+}
+
+// ============================================
+// MANAGE SUBSCRIPTION FLOW
+// ============================================
+async function startManageSubscription() {
+  state.flowType = 'subscription';
+  // Log session and flow start
+  Analytics.logSession({ flowType: 'subscription' });
+  Analytics.logEvent('flow_start', 'manage_subscription');
+  await showWelcomeMessage('subscription');
+  await showIdentifyForm('subscription');
+}
+
+async function handleSubscriptionFlow() {
+  await addBotMessage("Let me check for any active subscriptions on your account...");
+
+  // If we have Shopify orders from lookup but no selected order, use the first one
+  // This captures the Shopify order number for subscription cases
+  if (!state.selectedOrder && state.orders && state.orders.length > 0) {
+    state.selectedOrder = state.orders[0];
+    console.log('Set selectedOrder from orders for subscription flow:', state.selectedOrder.orderNumber);
+  }
+
+  // Get both clientOrderId and email for lookup (backend will try both)
+  const clientOrderId = state.selectedOrder?.clientOrderId;
+  const email = state.selectedOrder?.email || state.customerData?.email;
+
+  if (!clientOrderId && !email) {
+    // No identifiers available
+    await addBotMessage("I couldn't find the information needed to look up subscriptions. Would you like help with something else?");
+    addOptions([
+      { text: "Help with an order", action: startHelpWithOrder },
+      { text: "Back to home", action: showHomeMenu }
+    ]);
+    return;
+  }
+
+  try {
+    showProgress("Checking subscriptions...", "Looking up your subscription details");
+
+    // Send both identifiers - backend will try clientOrderId first, then email
+    const response = await fetch(`${CONFIG.API_URL}/api/subscription`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientOrderId, email })
+    });
+
+    hideProgress();
+
+    if (!response.ok) {
+      throw new Error('Subscription lookup failed');
+    }
+
+    const data = await response.json();
+    console.log('Subscription lookup result:', data);
+
+    state.subscriptions = data.subscriptions || [];
+
+    // Add clientOrderId to each subscription for case creation
+    // Backend sends clientOrderId, not orderId
+    state.subscriptions = state.subscriptions.map(sub => ({
+      ...sub,
+      clientOrderId: sub.clientOrderId || clientOrderId
+    }));
+
+  } catch (error) {
+    hideProgress();
+    console.error('Subscription fetch error:', error);
+    await addBotMessage("I had trouble looking up your subscription. Would you like to try again or get help from our team?");
+    addOptions([
+      { text: "Try again", action: handleSubscriptionFlow },
+      { text: "Contact support", action: startHelpWithOrder },
+      { text: "Back to home", action: showHomeMenu }
+    ]);
+    return;
+  }
+
+  if (state.subscriptions.length === 0) {
+    await addBotMessage("I couldn't find any active subscriptions on your account. This order might be a one-time purchase. Would you like help with something else?");
+    addOptions([
+      { text: "Help with an order", action: startHelpWithOrder },
+      { text: "Back to home", action: showHomeMenu }
+    ]);
+    return;
+  }
+
+  await showSubscriptionCards();
+}
+
+async function showSubscriptionCards() {
+  await addBotMessage(`I found ${state.subscriptions.length} subscription(s). Which one would you like to manage?`);
+
+  const subsHtml = state.subscriptions.map((sub, index) => {
+    // Normalize status (CheckoutChamp may return uppercase)
+    const status = (sub.status || 'unknown').toLowerCase();
+    const statusClass = status === 'active' ? 'active' :
+                       status === 'paused' ? 'paused' : 'cancelled';
+    const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+
+    // Handle frequency display
+    const frequencyText = sub.frequency ? `Every ${sub.frequency} days` : 'N/A';
+
+    return `
+      <div class="subscription-card clickable-card" onclick="selectSubscription(${index})">
+        <div class="subscription-header">
+          <div>
+            <div class="subscription-name">${sub.productName || 'Subscription'}</div>
+          </div>
+          <span class="subscription-status ${statusClass}">${statusLabel}</span>
+        </div>
+        <div class="subscription-details">
+          <div class="subscription-detail">
+            <div class="subscription-detail-label">Last Billing</div>
+            <div class="subscription-detail-value">${sub.lastBillingDate ? formatDate(sub.lastBillingDate) : 'N/A'}</div>
+          </div>
+          <div class="subscription-detail">
+            <div class="subscription-detail-label">Next Billing</div>
+            <div class="subscription-detail-value">${sub.nextBillingDate ? formatDate(sub.nextBillingDate) : 'N/A'}</div>
+          </div>
+          <div class="subscription-detail">
+            <div class="subscription-detail-label">Delivery Schedule</div>
+            <div class="subscription-detail-value">${frequencyText}</div>
+          </div>
+          <div class="subscription-detail">
+            <div class="subscription-detail-label">Price</div>
+            <div class="subscription-detail-value">${sub.price ? formatCurrency(sub.price) : 'N/A'}</div>
+          </div>
+        </div>
+        <div class="card-action-footer">
+          <span>Click to manage</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  addInteractiveContent(`<div class="subscriptions-list">${subsHtml}</div>`);
+}
+
+async function selectSubscription(index) {
+  state.selectedSubscription = state.subscriptions[index];
+
+  document.querySelector('.subscriptions-list')?.closest('.interactive-content').remove();
+
+  // Normalize status for display
+  const status = (state.selectedSubscription.status || 'unknown').toLowerCase();
+  const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+
+  const summaryHtml = `
+    <div class="editable-summary">
+      <div class="summary-row"><span class="summary-label">Product:</span> ${state.selectedSubscription.productName || 'Subscription'}</div>
+      <div class="summary-row"><span class="summary-label">Status:</span> ${statusLabel}</div>
+    </div>
+  `;
+
+  addEditableUserMessage(summaryHtml, () => {
+    state.selectedSubscription = null;
+    showSubscriptionCards();
+  }, 'Change');
+
+  await showSubscriptionActions();
+}
+
+async function showSubscriptionActions() {
+  await addBotMessage("What would you like to do with this subscription?");
+  
+  addOptions([
+    { icon: '⏸️', text: 'Pause Subscription', action: handlePauseSubscription },
+    { icon: '❌', text: 'Cancel Subscription', action: handleCancelSubscription },
+    { icon: '📅', text: 'Change Delivery Schedule', action: handleChangeSchedule },
+    { icon: '📍', text: 'Change Shipping Address', action: handleChangeAddress }
+  ]);
+}
+
+async function handlePauseSubscription() {
+  await addBotMessage("How long would you like to pause your subscription?");
+  
+  addOptions([
+    { text: '30 days', action: () => confirmPause(30) },
+    { text: '60 days', action: () => confirmPause(60) },
+    { text: '90 days', action: () => confirmPause(90) },
+    { text: 'Custom date', action: showCustomPauseDate }
+  ]);
+}
+
+async function confirmPause(days) {
+  const resumeDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+  showProgress("Pausing your subscription...", "Creating case...");
+
+  // Submit case to ClickUp/Richpanel with subscription fields
+  const result = await submitCase('subscription', 'subscription_paused', {
+    actionType: 'pause',
+    pauseDuration: days,
+    pauseResumeDate: resumeDate.toISOString(),
+    notes: `Pause for ${days} days. Resume on ${formatDate(resumeDate.toISOString())}`,
+  });
+
+  hideProgress();
+
+  state.caseId = result.caseId;
+
+  await showSuccess(
+    "Subscription Paused!",
+    `Your subscription will automatically resume on <strong>${formatDate(resumeDate.toISOString())}</strong>.<br><br>${getCaseIdHtml(state.caseId)}`
+  );
+}
+
+function showCustomPauseDate() {
+  const html = `
+    <div class="form-container">
+      <div class="form-group">
+        <label>Resume subscription on:</label>
+        <input type="date" class="form-input" id="customPauseDate" min="${new Date().toISOString().split('T')[0]}">
+      </div>
+      <button class="option-btn primary" onclick="submitCustomPause()" style="width: 100%;">
+        Confirm Pause
+      </button>
+    </div>
+  `;
+  
+  addInteractiveContent(html);
+}
+
+async function submitCustomPause() {
+  const dateInput = document.getElementById('customPauseDate')?.value;
+
+  if (!dateInput) {
+    await addBotMessage("Please select a date.");
+    return;
+  }
+
+  document.querySelector('.form-container')?.closest('.interactive-content').remove();
+
+  // Calculate days until resume
+  const resumeDate = new Date(dateInput);
+  const today = new Date();
+  const diffTime = resumeDate.getTime() - today.getTime();
+  const pauseDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  showProgress("Pausing your subscription...", "Creating case...");
+
+  // Submit case to ClickUp/Richpanel with subscription fields
+  const result = await submitCase('subscription', 'subscription_paused', {
+    actionType: 'pause',
+    pauseDuration: pauseDays,
+    pauseResumeDate: resumeDate.toISOString(),
+    notes: `Pause for ${pauseDays} days. Resume on ${formatDate(dateInput)}`,
+  });
+
+  hideProgress();
+
+  state.caseId = result.caseId;
+
+  await showSuccess(
+    "Subscription Paused!",
+    `Your subscription will resume on <strong>${formatDate(dateInput)}</strong>.<br><br>${getCaseIdHtml(state.caseId)}`
+  );
+}
+
+async function handleCancelSubscription() {
+  await addBotMessage("I'm sorry to see you go 😔 Can you tell me why you'd like to cancel?");
+  
+  addOptions([
+    { text: "It's too expensive", action: () => handleCancelReason('expensive') },
+    { text: "I have too many", action: () => handleCancelReason('too_many') },
+    { text: "They don't work as described", action: () => handleCancelReason('not_working') },
+    { text: "I'm moving", action: () => handleCancelReason('moving') },
+    { text: "Other reason", action: () => handleCancelReason('other') }
+  ]);
+}
+
+async function handleCancelReason(reason) {
+  state.cancelReason = reason;
+  
+  if (reason === 'expensive') {
+    await addBotMessage("I completely understand — budgets matter! Before you go, let me see if I can help make this more affordable...");
+    state.ladderType = 'subscription';
+    state.ladderStep = 0;
+    await startSubscriptionLadder();
+  } else if (reason === 'too_many') {
+    await addBotMessage("Got it! Instead of cancelling, would you like to pause your subscription and have it resume later? That way you're locked in at the same price — prices may increase in the future!");
+    
+    addOptions([
+      { text: "Yes, pause instead", action: handlePauseSubscription },
+      { text: "No, I want to cancel", action: async () => {
+        state.ladderType = 'subscription';
+        state.ladderStep = 0;
+        await startSubscriptionLadder();
+      }}
+    ]);
+  } else if (reason === 'not_working') {
+    await addBotMessage("I'm sorry to hear that! Could you tell me more about what's not working? I'd love to try to help.");
+    
+    showTextInput("What's not working?", async (text) => {
+      hideTextInput();
+      state.intentDetails = text;
+      
+      await addBotMessage("Thank you for sharing that. Let me see what I can offer to make this right...");
+      state.ladderType = 'subscription';
+      state.ladderStep = 0;
+      await startSubscriptionLadder();
+    });
+  } else if (reason === 'moving') {
+    await addBotMessage("No problem! Would you like to update your shipping address instead of cancelling? We can ship to your new location!");
+    
+    addOptions([
+      { text: "Yes, update my address", action: handleChangeAddress },
+      { text: "No, I still want to cancel", action: async () => {
+        state.ladderType = 'subscription';
+        state.ladderStep = 0;
+        await startSubscriptionLadder();
+      }}
+    ]);
+  } else {
+    await addBotMessage("Thank you for letting me know. Before you go, let me see if there's anything I can offer...");
+    state.ladderType = 'subscription';
+    state.ladderStep = 0;
+    await startSubscriptionLadder();
+  }
+}
+
+async function startSubscriptionLadder() {
+  const steps = [
+    { percent: 10, message: "How about <strong>10% off all future shipments</strong>? That's ongoing savings on every delivery!" },
+    { percent: 15, message: "Let me do better — <strong>15% off all future shipments</strong>. That really adds up over time!" },
+    { percent: 20, message: "My best offer: <strong>20% off all future shipments</strong>. That's significant savings!" }
+  ];
+  
+  if (state.ladderStep >= steps.length) {
+    await handleFullSubscriptionCancel();
+    return;
+  }
+  
+  const step = steps[state.ladderStep];
+  const price = parseFloat(state.selectedSubscription?.price || 0);
+  const discount = (price * step.percent / 100).toFixed(2);
+  const newPrice = (price - discount).toFixed(2);
+  
+  await addBotMessage(step.message);
+  
+  const html = `
+    <div class="offer-card">
+      <div class="offer-icon">🎁</div>
+      <div class="offer-amount">${step.percent}% OFF</div>
+      <div class="offer-value">New price: ${formatCurrency(newPrice)}/shipment</div>
+      <div class="offer-label">Applied to all future deliveries</div>
+      <div class="offer-buttons">
+        <button class="offer-btn accept" onclick="acceptSubscriptionOffer(${step.percent})">Keep Subscription</button>
+        <button class="offer-btn decline" onclick="declineSubscriptionOffer()">Still cancel</button>
+      </div>
+      <div class="offer-note">You save ${formatCurrency(discount)} every shipment!</div>
+    </div>
+  `;
+  
+  addInteractiveContent(html);
+}
+
+async function acceptSubscriptionOffer(percent) {
+  document.querySelector('.offer-card')?.closest('.interactive-content').remove();
+  addUserMessage(`I'll keep my subscription with ${percent}% off`);
+
+  showProgress("Applying your discount...", "Creating case...");
+
+  // Submit case to ClickUp/Richpanel with discount info
+  const result = await submitCase('subscription', 'discount_applied', {
+    actionType: 'discount_accepted', // Customer accepted discount offer
+    discountPercent: percent,
+    cancelReason: state.cancelReason || '', // Include original cancel reason
+    notes: `Customer retained with ${percent}% discount on future shipments. Original cancel reason: ${state.cancelReason || 'Not specified'}.`,
+  });
+
+  hideProgress();
+
+  state.caseId = result.caseId;
+
+  await showSuccess(
+    "Discount Applied!",
+    `Great choice! Your ${percent}% discount will apply to all future shipments automatically.<br><br>${getCaseIdHtml(state.caseId)}`
+  );
+}
+
+async function declineSubscriptionOffer() {
+  document.querySelector('.offer-card')?.closest('.interactive-content').remove();
+  addUserMessage("I still want to cancel");
+  
+  state.ladderStep++;
+  await startSubscriptionLadder();
+}
+
+async function handleFullSubscriptionCancel() {
+  await addBotMessage("I understand. Before I process the cancellation, has the product been used?");
+  
+  addOptionsRow([
+    { text: "Yes, used", action: () => processSubscriptionCancel(true) },
+    { text: "No, unused", action: () => processSubscriptionCancel(false) }
+  ]);
+}
+
+async function processSubscriptionCancel(isUsed) {
+  const address = state.selectedOrder?.shippingAddress;
+  const country = address?.country || 'United States';
+  const isUSorCanada = country.toLowerCase().includes('united states') || country.toLowerCase().includes('canada');
+  const keepProduct = isUsed || !isUSorCanada;
+
+  if (keepProduct) {
+    await addBotMessage("Because we value you as a customer, we'll process a <strong>full refund</strong> and cancel your subscription. You can keep the product! ❤️");
+  } else {
+    await addBotMessage("We'll process a <strong>full refund</strong> once we receive the product back. Here are the return details:");
+    showReturnInstructions();
+    return;
+  }
+
+  showProgress("Cancelling subscription and processing refund...", "Creating case...");
+
+  // Submit case to ClickUp/Richpanel with cancel details
+  const result = await submitCase('subscription', 'subscription_cancelled', {
+    actionType: 'cancel',
+    keepProduct: keepProduct,
+    cancelReason: state.cancelReason || '', // Include cancel reason
+    issueType: 'subscription_cancel',
+    notes: `Full cancellation. Reason: ${state.cancelReason || 'Not specified'}. Keep product: ${keepProduct ? 'Yes' : 'No (return required)'}`,
+  });
+
+  hideProgress();
+
+  state.caseId = result.caseId;
+
+  await showSuccess(
+    "Subscription Cancelled",
+    `Your subscription has been cancelled and your refund request has been submitted.<br><br>${MESSAGES.success.refundProcessingShort}<br><br>${getCaseIdHtml(state.caseId)}`
+  );
+}
+
+async function handleChangeSchedule() {
+  await addBotMessage("How often would you like to receive your deliveries?");
+  
+  addOptions([
+    { text: 'Every 30 days', action: () => confirmScheduleChange(30) },
+    { text: 'Every 45 days', action: () => confirmScheduleChange(45) },
+    { text: 'Every 60 days', action: () => confirmScheduleChange(60) },
+    { text: 'Every 90 days', action: () => confirmScheduleChange(90) }
+  ]);
+}
+
+async function confirmScheduleChange(days) {
+  const previousFrequency = state.selectedSubscription?.frequency || 'Unknown';
+
+  showProgress("Updating your delivery schedule...", "Creating case...");
+
+  // Submit case to ClickUp/Richpanel with schedule change
+  const result = await submitCase('subscription', 'schedule_changed', {
+    actionType: 'changeSchedule',
+    newFrequency: days, // New delivery frequency
+    previousFrequency: previousFrequency, // Previous delivery frequency
+    notes: `Schedule changed from every ${previousFrequency} days to every ${days} days.`,
+  });
+
+  hideProgress();
+
+  state.caseId = result.caseId;
+
+  await showSuccess(
+    "Schedule Updated!",
+    `Your deliveries will now arrive every <strong>${days} days</strong>.<br><br>${getCaseIdHtml(state.caseId)}`
+  );
+}
+
+async function handleChangeAddress() {
+  await addBotMessage("Please enter your new shipping address:");
+  
+  const html = `
+    <div class="form-container" id="newAddressForm">
+      <div class="form-group">
+        <label>Street Address *</label>
+        <input type="text" class="form-input" id="newAddress1" placeholder="123 Main St">
+      </div>
+      <div class="form-group">
+        <label>Apt/Suite</label>
+        <input type="text" class="form-input" id="newAddress2" placeholder="Apt 4B">
+      </div>
+      <div class="form-group">
+        <label>City *</label>
+        <input type="text" class="form-input" id="newCity" placeholder="City">
+      </div>
+      <div class="form-group">
+        <label>State/Province *</label>
+        <input type="text" class="form-input" id="newProvince" placeholder="State">
+      </div>
+      <div class="form-group">
+        <label>ZIP/Postal Code *</label>
+        <input type="text" class="form-input" id="newZip" placeholder="12345">
+      </div>
+      <div class="form-group">
+        <label>Country *</label>
+        <select class="form-input" id="newCountry" onchange="updateAddressFields('new')">
+          <option value="United States">United States</option>
+          <option value="Canada">Canada</option>
+          <option value="United Kingdom">United Kingdom</option>
+          <option value="Australia">Australia</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Phone Number</label>
+        <input type="tel" class="form-input" id="newPhone" placeholder="+1 (555) 000-0000" oninput="formatPhoneInput(this)">
+      </div>
+      <button class="option-btn primary" onclick="submitNewAddress()" style="width: 100%;">
+        Update Address
+      </button>
+    </div>
+  `;
+  
+  addInteractiveContent(html);
+}
+
+async function submitNewAddress() {
+  const address1 = document.getElementById('newAddress1')?.value.trim();
+  const address2 = document.getElementById('newAddress2')?.value.trim();
+  const city = document.getElementById('newCity')?.value.trim();
+  const province = document.getElementById('newProvince')?.value.trim();
+  const zip = document.getElementById('newZip')?.value.trim();
+  const country = document.getElementById('newCountry')?.value;
+
+  if (!address1 || !city || !zip) {
+    await addBotMessage("Please fill in all required fields.");
+    return;
+  }
+
+  document.getElementById('newAddressForm')?.closest('.interactive-content').remove();
+  addUserMessage("New address submitted");
+
+  const newAddressFormatted = [address1, address2, `${city}, ${province} ${zip}`, country].filter(Boolean).join(', ');
+
+  // Build new address object
+  const newAddress = {
+    address1: address1,
+    address2: address2 || '',
+    city: city,
+    state: province,
+    zip: zip,
+    country: country
+  };
+
+  showProgress("Updating your shipping address...", "Creating case...");
+
+  // Submit case to ClickUp/Richpanel with address change
+  const result = await submitCase('subscription', 'address_changed', {
+    actionType: 'changeAddress',
+    newAddress: newAddress, // Include structured address data
+    notes: `New address: ${newAddressFormatted}`,
+  });
+
+  hideProgress();
+
+  state.caseId = result.caseId;
+
+  await showSuccess(
+    "Address Updated!",
+    `Your new shipping address has been saved and will be used for all future deliveries.<br><br>${getCaseIdHtml(state.caseId)}`
+  );
+}
+
+// ============================================
+// HELP WITH ORDER FLOW
+// ============================================
+async function startHelpWithOrder() {
+  state.flowType = 'help';
+  // Log session and flow start
+  Analytics.logSession({ flowType: 'help' });
+  Analytics.logEvent('flow_start', 'help_with_order');
+  await showWelcomeMessage('help');
+  await showIdentifyForm('help');
+}
+
+async function startHelpWithOrderDirect() {
+  state.flowType = 'help';
+  Analytics.logEvent('flow_start', 'help_direct');
+  await showItemSelection();
+}
+
+async function handleHelpFlow() {
+  if (state.orders.length === 1) {
+    state.selectedOrder = state.orders[0];
+  } else {
+    await showOrderSelection('help');
+    return;
+  }
+
+  // Check for existing open case (dedupe)
+  const existingCase = await checkExistingCase();
+  if (existingCase.existingCase) {
+    await showExistingCaseMessage(existingCase);
+    return;
+  }
+
+  // Check if within fulfillment window (backend-enforced via canModify flag)
+  // The backend computes this based on created_at + fulfillment_status
+  if (state.selectedOrder.canModify) {
+    await handleUnfulfilledOrder();
+  } else {
+    await showItemSelection();
+  }
+}
+
+async function handleUnfulfilledOrder() {
+  await addBotMessage(`Great news! Your order hasn't shipped yet, so I can still make changes. Would you like to change or cancel your order?`);
+  
+  addOptions([
+    { text: "Change my order", action: handleChangeOrder },
+    { text: "Cancel my order", action: async () => {
+      await addBotMessage("I'll help you cancel. Can you tell me why you'd like to cancel?");
+      await showIntentOptions();
+    }},
+    { text: "Actually, keep it as is", action: () => showSuccess("Perfect!", "Your order will ship soon. 📦") }
+  ]);
+}
+
+// ============================================
+// ADDITIONAL CSS FOR EDITABLE MESSAGES
+// ============================================
+const additionalStyles = `
+  .editable-bubble {
+    position: relative;
+  }
+  
+  .editable-content {
+    margin-bottom: 8px;
+  }
+  
+  .editable-summary {
+    font-size: 14px;
+  }
+  
+  .summary-row {
+    margin-bottom: 4px;
+  }
+  
+  .summary-label {
+    opacity: 0.8;
+    font-size: 12px;
+  }
+  
+  .summary-items {
+    font-size: 13px;
+    opacity: 0.9;
+  }
+  
+  .edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    color: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .edit-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  .edit-btn svg {
+    opacity: 0.8;
+  }
+  
+  .option-btn.secondary {
+    background: transparent;
+    border: 1px solid var(--navy);
+    color: var(--navy);
+  }
+  
+  .option-btn.secondary:hover {
+    background: var(--navy-soft);
+  }
+  
+  .product-disabled-note {
+    font-size: 11px;
+    color: #999;
+    margin-top: 4px;
+    font-style: italic;
+  }
+`;
+
+// Inject additional styles
+const styleSheet = document.createElement('style');
+styleSheet.textContent = additionalStyles;
+document.head.appendChild(styleSheet);
+
+// ============================================
+// TROUBLE REPORT MODAL FUNCTIONS
+// ============================================
+
+function openTroubleReport(event) {
+  if (event) event.preventDefault();
+
+  const modal = document.getElementById('troubleModal');
+  const form = document.getElementById('troubleForm');
+  const success = document.getElementById('troubleSuccess');
+
+  if (!modal || !form) {
+    console.error('Trouble modal elements not found');
+    return;
+  }
+
+  // Reset form and show it
+  form.style.display = 'block';
+  if (success) success.style.display = 'none';
+  form.reset();
+
+  // Pre-fill known data from session (if available)
+  try {
+    if (typeof sessionData !== 'undefined' && sessionData) {
+      if (sessionData.customerEmail) {
+        document.getElementById('troubleEmail').value = sessionData.customerEmail;
+      }
+      if (sessionData.customerName) {
+        document.getElementById('troubleName').value = sessionData.customerName;
+      }
+      if (sessionData.currentOrder?.order_number) {
+        document.getElementById('troubleOrder').value = sessionData.currentOrder.order_number;
+      }
+    }
+  } catch (e) {
+    // Session data not available, that's fine
+    console.log('Session data not available for pre-fill');
+  }
+
+  modal.classList.add('active');
+}
+
+function closeTroubleReport() {
+  document.getElementById('troubleModal').classList.remove('active');
+  // Reset modal state for next open
+  setTimeout(() => {
+    document.querySelector('.trouble-header').style.display = '';
+    document.getElementById('troubleForm').style.display = '';
+    document.getElementById('troubleSuccess').style.display = 'none';
+    document.getElementById('troubleForm').reset();
+  }, 300);
+}
+
+async function submitTroubleReport(event) {
+  event.preventDefault();
+
+  const submitBtn = document.getElementById('troubleSubmitBtn');
+  const submitText = submitBtn.querySelector('.submit-text');
+  const submitLoading = submitBtn.querySelector('.submit-loading');
+
+  // Show loading state
+  submitBtn.disabled = true;
+  submitText.style.display = 'none';
+  submitLoading.style.display = 'inline';
+
+  // Safely get session data if available
+  let sessionInfo = { sessionId: null, currentFlow: 'unknown', customerEmail: null, currentOrder: null };
+  try {
+    if (typeof sessionData !== 'undefined' && sessionData) {
+      sessionInfo = sessionData;
+    }
+  } catch (e) {
+    // Session data not available
+  }
+
+  // Get PostHog session replay URL for watching the session recording
+  let sessionReplayUrl = '';
+  try {
+    if (typeof posthog !== 'undefined' && posthog.get_session_replay_url) {
+      sessionReplayUrl = posthog.get_session_replay_url({ withTimestamp: true }) || '';
+    }
+  } catch (e) {
+    console.warn('Could not get PostHog session replay URL:', e);
+  }
+
+  // Get current step from the visible screen
+  let currentStep = 'unknown';
+  try {
+    const currentScreen = document.querySelector('.screen.active');
+    if (currentScreen) {
+      currentStep = currentScreen.id || 'unknown';
+    }
+  } catch (e) {
+    // Fall back to sessionInfo
+    currentStep = sessionInfo.currentFlow || 'unknown';
+  }
+
+  const reportData = {
+    name: document.getElementById('troubleName').value,
+    email: document.getElementById('troubleEmail').value,
+    description: document.getElementById('troubleDescription').value,
+    // Include debug info (if available)
+    sessionId: sessionInfo.sessionId || null,
+    currentStep: currentStep,
+    customerEmail: sessionInfo.customerEmail || null,
+    orderData: sessionInfo.currentOrder ? {
+      orderNumber: sessionInfo.currentOrder.order_number,
+      orderDate: sessionInfo.currentOrder.created_at
+    } : null,
+    browser: navigator.userAgent,
+    timestamp: new Date().toISOString(),
+    sessionReplayUrl: sessionReplayUrl
+  };
+
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/trouble-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reportData)
+    });
+
+    if (!response.ok) throw new Error('Failed to submit report');
+
+    // Show success state - hide header and form, show success
+    document.querySelector('.trouble-header').style.display = 'none';
+    document.getElementById('troubleForm').style.display = 'none';
+    document.getElementById('troubleSuccess').style.display = 'block';
+
+  } catch (error) {
+    console.error('Trouble report submission error:', error);
+    alert('Sorry, we couldn\'t submit your report. Please try again or email us directly at support@puppypad.com');
+  } finally {
+    // Reset button state
+    submitBtn.disabled = false;
+    submitText.style.display = 'inline';
+    submitLoading.style.display = 'none';
+  }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+  const modal = document.getElementById('troubleModal');
+  if (event.target === modal) {
+    closeTroubleReport();
+  }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeTroubleReport();
+  }
+});
+
+// ============================================
+// MAKE FUNCTIONS GLOBALLY ACCESSIBLE
+// ============================================
+window.toggleIdentifyMethod = toggleIdentifyMethod;
+window.submitIdentifyForm = submitIdentifyForm;
+window.submitDeepSearch = submitDeepSearch;
+window.submitManualHelp = submitManualHelp;
+window.selectOrder = selectOrder;
+window.toggleItemSelection = toggleItemSelection;
+window.selectAllItems = selectAllItems;
+window.confirmItemSelection = confirmItemSelection;
+window.submitDogInfo = submitDogInfo;
+window.handleSatisfied = handleSatisfied;
+window.acceptOffer = acceptOffer;
+window.declineOffer = declineOffer;
+window.confirmReturn = confirmReturn;
+window.handleFileUpload = handleFileUpload;
+window.removeUpload = removeUpload;
+window.submitEvidence = submitEvidence;
+window.selectSubscription = selectSubscription;
+window.confirmPause = confirmPause;
+window.submitCustomPause = submitCustomPause;
+window.acceptSubscriptionOffer = acceptSubscriptionOffer;
+window.declineSubscriptionOffer = declineSubscriptionOffer;
+window.confirmScheduleChange = confirmScheduleChange;
+window.submitNewAddress = submitNewAddress;
+window.confirmReship = confirmReship;
+window.acceptShippingOffer = acceptShippingOffer;
+window.declineShippingOffer = declineShippingOffer;
+window.playAudio = playAudio;
+window.restartChat = restartChat;
+window.formatPhoneInput = formatPhoneInput;
+window.updateAddressFields = updateAddressFields;
+window.selectContactMethod = selectContactMethod;
+window.openTroubleReport = openTroubleReport;
+window.closeTroubleReport = closeTroubleReport;
+window.submitTroubleReport = submitTroubleReport;
