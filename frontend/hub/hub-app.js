@@ -2195,9 +2195,58 @@ const HubAnalytics = {
       
       // Render Resolution Time Distribution
       this.renderResolutionTimeDistribution(data);
+      
+      // Apply dark text colors to colored stat cards for better readability
+      this.applyStatCardTextColors();
     } catch (e) {
       console.error('Error rendering analytics:', e);
       HubUI.showToast('Error rendering analytics data', 'error');
+    }
+  },
+
+  applyStatCardTextColors() {
+    // Yellow card - Pending Cases
+    const pendingCard = document.querySelector('.stat-card.highlight[style*="FEF3C7"]');
+    if (pendingCard) {
+      const label = pendingCard.querySelector('.stat-label');
+      const value = pendingCard.querySelector('.stat-value');
+      const change = pendingCard.querySelector('.stat-change');
+      if (label) label.style.color = '#78350F';
+      if (value) value.style.color = '#92400E';
+      if (change) change.style.color = '#B45309';
+    }
+
+    // Green card - Completed, SLA Compliance
+    const completedCards = document.querySelectorAll('.stat-card.highlight[style*="D1FAE5"]');
+    completedCards.forEach(card => {
+      const label = card.querySelector('.stat-label');
+      const value = card.querySelector('.stat-value');
+      const change = card.querySelector('.stat-change');
+      if (label) label.style.color = '#065F46';
+      if (value) value.style.color = '#047857';
+      if (change) change.style.color = '#059669';
+    });
+
+    // Pink card - Refunds (30d)
+    const refundsCard = document.querySelector('.stat-card.highlight[style*="FCE7F3"]');
+    if (refundsCard) {
+      const label = refundsCard.querySelector('.stat-label');
+      const value = refundsCard.querySelector('.stat-value');
+      const change = refundsCard.querySelector('.stat-change');
+      if (label) label.style.color = '#831843';
+      if (value) value.style.color = '#9F1239';
+      if (change) change.style.color = '#BE185D';
+    }
+
+    // Red card - Root Cause Categories
+    const rootCauseCard = document.querySelector('.stat-card.highlight[style*="FEE2E2"]');
+    if (rootCauseCard) {
+      const label = rootCauseCard.querySelector('.stat-label');
+      const value = rootCauseCard.querySelector('.stat-value');
+      const change = rootCauseCard.querySelector('.stat-change');
+      if (label) label.style.color = '#991B1B';
+      if (value) value.style.color = '#B91C1C';
+      if (change) change.style.color = '#DC2626';
     }
   },
 
