@@ -10434,6 +10434,11 @@ function getResolutionHubHTML() {
       }
     }
 
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', () => {
+      initFromURL();
+    });
+
     // Initialize from URL when page loads (after hub-app.js is loaded)
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
