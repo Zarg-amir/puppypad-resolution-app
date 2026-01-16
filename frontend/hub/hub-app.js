@@ -1763,7 +1763,7 @@ const HubNavigation = {
     return baseTitles[page] || 'Dashboard';
   },
 
-  updateURL(page, filter) {
+  updateURL(page, filter, replace = false) {
     let path = '/hub';
     
     if (page === 'dashboard') {
@@ -1784,53 +1784,68 @@ const HubNavigation = {
       path = '/hub/users';
     }
 
-    // Update URL without reload
-    if (window.history && window.history.pushState) {
-      window.history.pushState({ page, filter }, '', path);
+    // Only update URL if it's different from current path
+    const currentPath = window.location.pathname;
+    const normalizedPath = path.endsWith('/') ? path.slice(0, -1) : path;
+    const normalizedCurrent = currentPath.endsWith('/') ? currentPath.slice(0, -1) : currentPath;
+
+    if (normalizedPath !== normalizedCurrent && window.history && window.history.pushState) {
+      if (replace) {
+        window.history.replaceState({ page, filter }, '', path);
+      } else {
+        window.history.pushState({ page, filter }, '', path);
+      }
     }
   },
 
   init() {
+    // Prevent double initialization
+    if (this._initialized) return;
+    this._initialized = true;
+
     // Handle browser back/forward buttons
     window.addEventListener('popstate', (e) => {
       if (e.state) {
         const { page, filter } = e.state;
-        this.goto(page, filter);
+        this.goto(page, filter, true); // Use replaceState to avoid adding to history
       } else {
         // Parse URL to determine page/filter
         this.parseURL();
       }
     });
 
-    // Parse initial URL on load
-    this.parseURL();
+    // Don't parse URL here - let HubApp.handleDeepLink() do it after everything is initialized
   },
 
   parseURL() {
     const path = window.location.pathname;
+    // Normalize path (remove trailing slash)
+    const normalizedPath = path.endsWith('/') && path !== '/' ? path.slice(0, -1) : path;
     
     // Parse /hub/cases/shipping -> page: cases, filter: shipping
-    if (path.startsWith('/hub/cases/')) {
-      const filter = path.split('/hub/cases/')[1];
-      this.goto('cases', filter || 'all');
-    } else if (path === '/hub/cases' || path === '/hub/cases/') {
-      this.goto('cases', 'all');
-    } else if (path === '/hub/sessions' || path === '/hub/sessions/') {
-      this.goto('sessions');
-    } else if (path === '/hub/events' || path === '/hub/events/') {
-      this.goto('events');
-    } else if (path === '/hub/issues' || path === '/hub/issues/') {
-      this.goto('issues');
-    } else if (path === '/hub/analytics' || path === '/hub/analytics/') {
-      this.goto('analytics');
-    } else if (path === '/hub/audit' || path === '/hub/audit/') {
-      this.goto('audit');
-    } else if (path === '/hub/users' || path === '/hub/users/') {
-      this.goto('users');
-    } else if (path === '/hub' || path === '/hub/') {
-      this.goto('dashboard');
+    if (normalizedPath.startsWith('/hub/cases/')) {
+      const filter = normalizedPath.split('/hub/cases/')[1].split('/')[0]; // Get first segment only
+      this.goto('cases', filter || 'all', true); // Use replace=true to avoid double state push
+    } else if (normalizedPath === '/hub/cases') {
+      this.goto('cases', 'all', true);
+    } else if (normalizedPath === '/hub/sessions') {
+      this.goto('sessions', null, true);
+    } else if (normalizedPath === '/hub/events') {
+      this.goto('events', null, true);
+    } else if (normalizedPath === '/hub/issues') {
+      this.goto('issues', null, true);
+    } else if (normalizedPath === '/hub/analytics') {
+      this.goto('analytics', null, true);
+    } else if (normalizedPath === '/hub/audit') {
+      this.goto('audit', null, true);
+    } else if (normalizedPath === '/hub/users') {
+      this.goto('users', null, true);
+    } else if (normalizedPath === '/hub' || normalizedPath === '/') {
+      this.goto('dashboard', null, true);
+    } else {
+      // If no match, default to dashboard
+      this.goto('dashboard', null, true);
     }
-    // If no match, default to dashboard
   }
 };
 
@@ -2419,10 +2434,10 @@ const HubApp = {
     const caseId = params.get('case');
 
     if (caseId) {
-      HubNavigation.goto('cases');
+      HubNavigation.goto('cases', 'all', true);
       setTimeout(() => HubCases.openCase(caseId), 500);
     } else {
-      // Parse URL to determine initial page
+      // Parse URL to determine initial page (use replaceState to avoid double state)
       HubNavigation.parseURL();
     }
   }
