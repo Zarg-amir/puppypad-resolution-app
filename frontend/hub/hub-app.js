@@ -2452,15 +2452,21 @@ const HubAnalytics = {
       const count = s.count || 0;
       const width = maxCount > 0 ? (count / maxCount) * 100 : 0;
       const color = colors[status] || 'var(--gray-100)';
+      const statusColors = {
+        'completed': { bg: 'linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)', text: '#059669', bar: '#10B981' },
+        'in_progress': { bg: 'linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)', text: '#2563EB', bar: '#3B82F6' },
+        'pending': { bg: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)', text: '#D97706', bar: '#F59E0B' }
+      };
+      const statusStyle = statusColors[status] || { bg: 'var(--gray-100)', text: 'var(--gray-700)', bar: 'var(--gray-400)' };
       
       return `
-        <div style="margin-bottom: 12px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-            <span style="font-size: 13px; color: var(--gray-700);">${this.escapeHtml(status)}</span>
-            <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${count}</span>
+        <div style="margin-bottom: 16px; padding: 14px 16px; background: ${statusStyle.bg}; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.5);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-size: 13px; font-weight: 600; color: ${statusStyle.text}; text-transform: capitalize;">${this.escapeHtml(status.replace('_', ' '))}</span>
+            <span style="font-size: 18px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; color: ${statusStyle.text};">${count}</span>
           </div>
-          <div style="width: 100%; height: 8px; background: var(--gray-100); border-radius: 4px; overflow: hidden;">
-            <div style="width: ${width}%; height: 100%; background: ${color}; transition: width 0.3s ease;"></div>
+          <div style="width: 100%; height: 10px; background: rgba(255, 255, 255, 0.6); border-radius: 6px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);">
+            <div style="width: ${width}%; height: 100%; background: ${statusStyle.bar}; border-radius: 6px; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);"></div>
           </div>
         </div>
       `;
@@ -2481,10 +2487,10 @@ const HubAnalytics = {
       return;
     }
 
-    container.innerHTML = flows.map(f => `
-      <div style="padding: 12px 0; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between;">
-        <span style="font-size: 13px; color: var(--gray-700);">${this.escapeHtml(f.flow_type || 'Unknown')}</span>
-        <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${f.count || 0}</span>
+    container.innerHTML = flows.map((f, idx) => `
+      <div style="padding: 14px 16px; border-bottom: 1px solid rgba(229, 231, 235, 0.5); border-radius: 12px; margin-bottom: 8px; background: ${idx % 2 === 0 ? 'rgba(249, 250, 251, 0.5)' : 'transparent'}; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
+        <span style="font-size: 13px; font-weight: 500; color: var(--gray-700);">${this.escapeHtml(f.flow_type || 'Unknown')}</span>
+        <span style="font-size: 16px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; color: var(--brand-navy); padding: 4px 12px; background: rgba(26, 54, 93, 0.1); border-radius: 8px;">${f.count || 0}</span>
       </div>
     `).join('');
   },
@@ -2503,14 +2509,21 @@ const HubAnalytics = {
       return;
     }
 
-    container.innerHTML = team.map(t => `
-      <div style="padding: 12px 0; border-bottom: 1px solid var(--gray-100);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${this.escapeHtml(t.user_name || 'Unassigned')}</span>
-          <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${t.cases_completed || 0}</span>
+    container.innerHTML = team.map((t, idx) => `
+      <div style="padding: 16px; border-bottom: 1px solid rgba(229, 231, 235, 0.5); border-radius: 12px; margin-bottom: 12px; background: ${idx % 2 === 0 ? 'rgba(249, 250, 251, 0.5)' : 'transparent'}; transition: all 0.2s ease;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 14px; font-weight: 600; color: var(--gray-900); font-family: 'Space Grotesk', sans-serif;">${this.escapeHtml(t.user_name || 'Unassigned')}</span>
+          <span style="font-size: 18px; font-weight: 700; color: var(--brand-navy); padding: 4px 12px; background: rgba(26, 54, 93, 0.1); border-radius: 8px;">${t.cases_completed || 0}</span>
         </div>
-        <div style="font-size: 11px; color: var(--gray-500);">
-          ${this.formatHours(t.avg_resolution_hours || 0)} avg, ${this.formatCurrency(t.total_refunds || 0)} refunds
+        <div style="display: flex; gap: 16px; font-size: 12px; color: var(--gray-600);">
+          <span style="display: flex; align-items: center; gap: 4px;">
+            <span style="font-weight: 600;">⏱</span>
+            ${this.formatHours(t.avg_resolution_hours || 0)} avg
+          </span>
+          <span style="display: flex; align-items: center; gap: 4px; color: var(--success-600);">
+            <span style="font-weight: 600;">💰</span>
+            ${this.formatCurrency(t.total_refunds || 0)}
+          </span>
         </div>
       </div>
     `).join('');
@@ -2530,10 +2543,10 @@ const HubAnalytics = {
       return;
     }
 
-    container.innerHTML = causes.slice(0, 10).map(c => `
-      <div style="padding: 12px 0; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between;">
-        <span style="font-size: 13px; color: var(--gray-700);">${this.escapeHtml(c.reason || 'Unknown')}</span>
-        <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${c.count || 0}</span>
+    container.innerHTML = causes.slice(0, 10).map((c, idx) => `
+      <div style="padding: 14px 16px; border-bottom: 1px solid rgba(229, 231, 235, 0.5); border-radius: 12px; margin-bottom: 8px; background: ${idx % 2 === 0 ? 'rgba(254, 242, 242, 0.5)' : 'transparent'}; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
+        <span style="font-size: 13px; font-weight: 500; color: var(--gray-700); flex: 1; margin-right: 12px;">${this.escapeHtml(c.reason || 'Unknown')}</span>
+        <span style="font-size: 16px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; color: var(--error-600); padding: 4px 12px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; white-space: nowrap;">${c.count || 0}</span>
       </div>
     `).join('');
   },
@@ -2552,10 +2565,10 @@ const HubAnalytics = {
       return;
     }
 
-    container.innerHTML = dist.map(d => `
-      <div style="padding: 12px 0; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between;">
-        <span style="font-size: 13px; color: var(--gray-700);">${this.escapeHtml(d.time_bucket || 'Unknown')}</span>
-        <span style="font-size: 13px; font-weight: 600; color: var(--gray-900);">${d.count || 0}</span>
+    container.innerHTML = dist.map((d, idx) => `
+      <div style="padding: 14px 16px; border-bottom: 1px solid rgba(229, 231, 235, 0.5); border-radius: 12px; margin-bottom: 8px; background: ${idx % 2 === 0 ? 'rgba(249, 250, 251, 0.5)' : 'transparent'}; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
+        <span style="font-size: 13px; font-weight: 500; color: var(--gray-700);">${this.escapeHtml(d.time_bucket || 'Unknown')}</span>
+        <span style="font-size: 16px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; color: var(--brand-navy); padding: 4px 12px; background: rgba(26, 54, 93, 0.1); border-radius: 8px;">${d.count || 0}</span>
       </div>
     `).join('');
   },
