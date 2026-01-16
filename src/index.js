@@ -10460,7 +10460,7 @@ function getResolutionHubHTML() {
       console.log('Logout clicked');
     }
   </script>
-  <script src="hub-app.js"></script>
+  <script src="/hub/hub-app.js"></script>
 </body>
 </html>
 `;
