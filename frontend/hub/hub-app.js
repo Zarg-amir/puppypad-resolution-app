@@ -4022,10 +4022,7 @@ The PuppyPad Team`,
                 <div class="template-card-header">
                   <h3 class="template-card-title">${this.escapeHtml(template.template_name)}</h3>
                 </div>
-                <div class="template-card-subject">
-                  <strong>Subject:</strong> ${this.escapeHtml(template.subject)}
-                </div>
-                <div class="template-card-preview">${this.escapeHtml(template.body.substring(0, 120))}...</div>
+                <div class="template-card-preview">${this.escapeHtml(template.body.substring(0, 150))}...</div>
                 <div class="template-card-variables">
                   <span class="variables-label">Variables:</span>
                   ${(template.variables || []).map(v => `<span class="template-variable">{{${v}}}</span>`).join('')}
@@ -4055,8 +4052,7 @@ The PuppyPad Team`,
     const template = templates.find(t => t.id === templateId);
     if (!template) return;
 
-    const textToCopy = `Subject: ${template.subject}\n\n${template.body}`;
-    navigator.clipboard.writeText(textToCopy).then(() => {
+    navigator.clipboard.writeText(template.body).then(() => {
       HubUI.showToast('Template copied! Variables will need to be replaced manually.', 'success');
     }).catch(() => {
       HubUI.showToast('Failed to copy template', 'error');
@@ -4091,17 +4087,8 @@ The PuppyPad Team`,
           <div class="modal-body" style="padding: 24px;">
             <!-- Template Preview Section -->
             <div class="template-preview-section">
-              <div style="margin-bottom: 16px;">
-                <strong style="color: var(--gray-600);">Subject:</strong>
-                <div id="previewSubject" class="template-preview-content" style="padding: 12px; background: var(--gray-50); border-radius: 8px; margin-top: 8px;">
-                  ${this.escapeHtml(template.subject)}
-                </div>
-              </div>
-              <div>
-                <strong style="color: var(--gray-600);">Body:</strong>
-                <div id="previewBody" class="template-preview-content" style="padding: 16px; background: var(--gray-50); border-radius: 8px; margin-top: 8px; white-space: pre-wrap; font-size: 14px; line-height: 1.6; max-height: 300px; overflow-y: auto;">
+              <div id="previewBody" class="template-preview-content" style="padding: 20px; background: var(--gray-50); border-radius: 8px; white-space: pre-wrap; font-size: 14px; line-height: 1.7; max-height: 350px; overflow-y: auto;">
 ${this.escapeHtml(template.body)}
-                </div>
               </div>
             </div>
             
@@ -4127,12 +4114,59 @@ ${this.escapeHtml(template.body)}
           </div>
           <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center;">
             <span id="previewStatus" style="font-size: 12px; color: var(--gray-500);">Showing template with variables</span>
-            <button class="btn btn-primary" onclick="HubEmailTemplates.copyPlaceholder('${template.id}'); document.getElementById('templatePreviewModal').remove();">Copy Template</button>
+            <button class="btn btn-primary" onclick="HubEmailTemplates.copyTemplateBody('${template.id}'); document.getElementById('templatePreviewModal').remove();">Copy Template</button>
           </div>
         </div>
       </div>
     `;
     document.body.insertAdjacentHTML('beforeend', html);
+    
+    // Store selected case data for copy function
+    this.currentPreviewCaseData = null;
+  },
+
+  copyTemplateBody(templateId) {
+    const templates = this.getPlaceholderTemplates();
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    let textToCopy = template.body;
+    
+    // If we have case data loaded, use the rendered version
+    if (this.currentPreviewCaseData) {
+      textToCopy = this.renderTemplateWithCase(template.body, this.currentPreviewCaseData);
+    }
+    
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      HubUI.showToast('Email template copied!', 'success');
+    }).catch(() => {
+      HubUI.showToast('Failed to copy template', 'error');
+    });
+  },
+
+  renderTemplateWithCase(body, caseData) {
+    const replacements = {
+      'customer_name': caseData.customer_name || 'Valued Customer',
+      'customer_first_name': (caseData.customer_name || 'Valued Customer').split(' ')[0],
+      'order_number': caseData.order_number || 'N/A',
+      'refund_amount': caseData.refund_amount ? '$' + parseFloat(caseData.refund_amount).toFixed(2) : '$0.00',
+      'resolution': caseData.resolution || 'your request',
+      'case_id': caseData.case_id || '',
+      'case_type': caseData.case_type || '',
+      'tracking_number': caseData.tracking_number || 'N/A',
+      'new_tracking_number': caseData.new_tracking_number || 'N/A',
+      'discount_code': caseData.discount_code || 'PUPPYPAD10',
+      'discount_amount': caseData.discount_amount || '10%',
+      'pause_date': caseData.pause_date || 'your requested date',
+      'resume_date': caseData.resume_date || 'when you\'re ready'
+    };
+
+    let rendered = body;
+    Object.entries(replacements).forEach(([key, value]) => {
+      const regex = new RegExp('\\{\\{' + key + '\\}\\}', 'g');
+      rendered = rendered.replace(regex, value);
+    });
+    return rendered;
   },
 
   async updateLivePreview(templateId, caseId) {
@@ -4140,16 +4174,15 @@ ${this.escapeHtml(template.body)}
     const template = templates.find(t => t.id === templateId);
     if (!template) return;
 
-    const previewSubject = document.getElementById('previewSubject');
     const previewBody = document.getElementById('previewBody');
     const previewStatus = document.getElementById('previewStatus');
 
     if (!caseId) {
       // Reset to template with variables
-      previewSubject.innerHTML = this.escapeHtml(template.subject);
       previewBody.innerHTML = this.escapeHtml(template.body);
       previewStatus.textContent = 'Showing template with variables';
       previewStatus.style.color = 'var(--gray-500)';
+      this.currentPreviewCaseData = null;
       return;
     }
 
@@ -4158,35 +4191,17 @@ ${this.escapeHtml(template.body)}
 
     try {
       // Fetch case data
-      const caseData = await HubAPI.get('/hub/api/case/' + caseId);
+      const response = await HubAPI.get('/hub/api/case/' + caseId);
       
-      // Replace variables in template
-      const replacements = {
-        'customer_name': caseData.customer_name || 'Valued Customer',
-        'customer_first_name': (caseData.customer_name || 'Valued Customer').split(' ')[0],
-        'order_number': caseData.order_number || 'N/A',
-        'refund_amount': caseData.refund_amount ? '$' + parseFloat(caseData.refund_amount).toFixed(2) : '$0.00',
-        'resolution': caseData.resolution || 'your request',
-        'case_id': caseData.case_id || '',
-        'case_type': caseData.case_type || '',
-        'tracking_number': caseData.tracking_number || 'N/A',
-        'new_tracking_number': caseData.new_tracking_number || 'N/A',
-        'discount_code': caseData.discount_code || 'PUPPYPAD10',
-        'discount_amount': caseData.discount_amount || '10%',
-        'pause_date': caseData.pause_date || 'your requested date',
-        'resume_date': caseData.resume_date || 'when you\'re ready'
-      };
+      // Handle both direct response and nested response
+      const caseData = response.case || response;
+      
+      // Store for copy function
+      this.currentPreviewCaseData = caseData;
+      
+      // Render the template
+      const renderedBody = this.renderTemplateWithCase(template.body, caseData);
 
-      let renderedSubject = template.subject;
-      let renderedBody = template.body;
-
-      Object.entries(replacements).forEach(([key, value]) => {
-        const regex = new RegExp('\\{\\{' + key + '\\}\\}', 'g');
-        renderedSubject = renderedSubject.replace(regex, value);
-        renderedBody = renderedBody.replace(regex, value);
-      });
-
-      previewSubject.innerHTML = this.escapeHtml(renderedSubject);
       previewBody.innerHTML = this.escapeHtml(renderedBody);
       previewStatus.innerHTML = '✓ Showing live preview for <strong>' + this.escapeHtml(caseData.customer_name || 'Unknown') + '</strong>';
       previewStatus.style.color = 'var(--success-600)';
@@ -4194,6 +4209,7 @@ ${this.escapeHtml(template.body)}
       console.error('Failed to load case data:', e);
       previewStatus.textContent = 'Failed to load case data';
       previewStatus.style.color = 'var(--error-600)';
+      this.currentPreviewCaseData = null;
     }
   },
 
@@ -4895,7 +4911,6 @@ const HubCaseDetail = {
     const template = this.getEmailTemplateForResolution(c);
     
     // Pre-fill the template with actual case data
-    const filledSubject = this.fillTemplateVariables(template.subject, c);
     const filledBody = this.fillTemplateVariables(template.body, c);
     
     const html = `
@@ -4905,20 +4920,14 @@ const HubCaseDetail = {
             <h3>${this.escapeHtml(template.name)}</h3>
             <button class="modal-close" onclick="document.getElementById('emailTemplateModal').remove()">×</button>
           </div>
-          <div class="modal-body" style="padding: 0;">
-            <div style="padding: 20px; background: var(--gray-50); border-bottom: 1px solid var(--gray-200);">
-              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Subject</div>
-              <div style="font-size: 15px; font-weight: 500; color: var(--gray-900);">${this.escapeHtml(filledSubject)}</div>
-            </div>
-            <div style="padding: 24px; max-height: 350px; overflow-y: auto;">
-              <div style="font-size: 14px; line-height: 1.7; color: var(--gray-800); white-space: pre-line;">${this.escapeHtml(filledBody)}</div>
-            </div>
-            <div style="padding: 16px 24px; background: var(--gray-50); border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end;">
-              <button class="btn btn-primary" onclick="HubCaseDetail.copyFilledTemplate()" style="display: flex; align-items: center; gap: 8px;">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-                Copy to Clipboard
-              </button>
-            </div>
+          <div class="modal-body" style="padding: 24px; max-height: 400px; overflow-y: auto;">
+            <div style="font-size: 14px; line-height: 1.7; color: var(--gray-800); white-space: pre-line;">${this.escapeHtml(filledBody)}</div>
+          </div>
+          <div style="padding: 16px 24px; background: var(--gray-50); border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end;">
+            <button class="btn btn-primary" onclick="HubCaseDetail.copyFilledTemplate()" style="display: flex; align-items: center; gap: 8px;">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+              Copy to Clipboard
+            </button>
           </div>
         </div>
       </div>
@@ -5085,12 +5094,9 @@ The PuppyPad Team`
     const c = this.caseData;
     const template = this.getEmailTemplateForResolution(c);
     
-    const filledSubject = this.fillTemplateVariables(template.subject, c);
     const filledBody = this.fillTemplateVariables(template.body, c);
-
-    const fullEmail = `Subject: ${filledSubject}\n\n${filledBody}`;
     
-    navigator.clipboard.writeText(fullEmail).then(() => {
+    navigator.clipboard.writeText(filledBody).then(() => {
       HubUI.showToast('Email copied to clipboard!', 'success');
       document.getElementById('emailTemplateModal')?.remove();
       this.logActivity('copied_email_template', { template_name: template.name });
