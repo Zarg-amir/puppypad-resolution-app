@@ -1012,26 +1012,34 @@
     });
 
     function navigateTo(page, filter) {
-      // Update active nav
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      document.querySelector(`.nav-item[data-page="${page}"]${filter ? `[data-filter="${filter}"]` : ''}`).classList.add('active');
+      // Use HubNavigation if available (from hub-app.js), otherwise fallback to basic navigation
+      if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+        HubNavigation.goto(page, filter);
+      } else {
+        // Fallback: Update active nav
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        const selector = filter
+          ? `.nav-item[data-page="${page}"][data-filter="${filter}"]`
+          : `.nav-item[data-page="${page}"]`;
+        document.querySelector(selector)?.classList.add('active');
 
-      // Update page title
-      const titles = {
-        'dashboard': 'Dashboard',
-        'cases': 'Cases',
-        'sessions': 'Sessions',
-        'events': 'Event Log',
-        'analytics': 'Performance'
-      };
-      document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';
+        // Update page title
+        const titles = {
+          'dashboard': 'Dashboard',
+          'cases': 'Cases',
+          'sessions': 'Sessions',
+          'events': 'Event Log',
+          'analytics': 'Performance'
+        };
+        document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';
 
-      // Show/hide views
-      document.getElementById('dashboardView').style.display = page === 'dashboard' ? 'block' : 'none';
-      document.getElementById('casesView').style.display = page === 'cases' ? 'block' : 'none';
-      document.getElementById('sessionsView').style.display = page === 'sessions' ? 'block' : 'none';
-      document.getElementById('eventsView').style.display = page === 'events' ? 'block' : 'none';
-      document.getElementById('analyticsView').style.display = page === 'analytics' ? 'block' : 'none';
+        // Show/hide views
+        document.getElementById('dashboardView').style.display = page === 'dashboard' ? 'block' : 'none';
+        document.getElementById('casesView').style.display = page === 'cases' ? 'block' : 'none';
+        document.getElementById('sessionsView').style.display = page === 'sessions' ? 'block' : 'none';
+        document.getElementById('eventsView').style.display = page === 'events' ? 'block' : 'none';
+        document.getElementById('analyticsView').style.display = page === 'analytics' ? 'block' : 'none';
+      }
     }
 
     function refreshData() {
