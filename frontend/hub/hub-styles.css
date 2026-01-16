@@ -882,6 +882,25 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--success-700);
 }
 
+.status-badge.overdue {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.due-date {
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+.resolution-text {
+  font-size: 13px;
+  color: var(--gray-700);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .type-badge {
   display: inline-block;
   padding: 4px 10px;
