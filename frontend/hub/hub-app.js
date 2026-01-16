@@ -6,8 +6,23 @@
 // ============================================
 // CONFIGURATION
 // ============================================
+// Auto-detect API base URL based on environment
+// If on Pages domain, use Worker domain for API calls
+// If on Worker domain or localhost, use same origin
+const getApiBase = () => {
+  const hostname = window.location.hostname;
+  
+  // If we're on Pages domain, use Worker domain for API
+  if (hostname.includes('pages.dev') || hostname.includes('pages.cloudflare.com')) {
+    return 'https://puppypad-resolution-worker.gulfam.workers.dev';
+  }
+  
+  // If on Worker domain or localhost, use same origin
+  return '';
+};
+
 const HubConfig = {
-  API_BASE: '', // Same origin
+  API_BASE: getApiBase(),
   REFRESH_INTERVAL: 30000, // 30 seconds
   MAX_BULK_SELECT: 100,
   ITEMS_PER_PAGE: 50
