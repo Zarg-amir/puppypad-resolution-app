@@ -1726,6 +1726,8 @@ const HubNavigation = {
       HubEvents.load();
     } else if (page === 'issues') {
       HubIssues.load();
+    } else if (page === 'analytics') {
+      HubAnalytics.load();
     } else if (page === 'audit') {
       HubEnhancedAuditLog.show();
     } else if (page === 'users') {
@@ -1935,6 +1937,65 @@ const HubIssues = {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+};
+
+// ============================================
+// ANALYTICS / PERFORMANCE
+// ============================================
+const HubAnalytics = {
+  async load() {
+    HubUI.showLoading();
+    try {
+      const result = await HubAPI.get('/hub/api/analytics');
+      
+      // Update stat cards
+      if (document.getElementById('analyticsTotalSessions')) {
+        document.getElementById('analyticsTotalSessions').textContent = result.totalSessions || 0;
+      }
+      if (document.getElementById('analyticsCompletedCases')) {
+        document.getElementById('analyticsCompletedCases').textContent = result.completedCases || 0;
+      }
+      if (document.getElementById('analyticsAvgResolution')) {
+        document.getElementById('analyticsAvgResolution').textContent = result.avgResolutionTime || '-';
+      }
+      if (document.getElementById('analyticsSatisfaction')) {
+        document.getElementById('analyticsSatisfaction').textContent = result.satisfactionRate || '-';
+      }
+
+      // Render detailed analytics
+      this.renderAnalytics(result);
+    } catch (e) {
+      console.error('Failed to load analytics:', e);
+      HubUI.showToast('Failed to load analytics', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
+  },
+
+  renderAnalytics(data) {
+    const container = document.getElementById('analyticsContent');
+    if (!container) return;
+
+    container.innerHTML = `
+      <div style="display: grid; gap: 24px;">
+        <div>
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Case Resolution Trends</h3>
+          <div style="padding: 20px; background: var(--gray-50); border-radius: 12px; color: var(--gray-600);">
+            ${data.resolutionTrends ? JSON.stringify(data.resolutionTrends, null, 2) : 'No data available'}
+          </div>
+        </div>
+        <div>
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--gray-900);">Performance Summary</h3>
+          <div style="padding: 20px; background: var(--gray-50); border-radius: 12px; color: var(--gray-600);">
+            Total Cases: ${data.totalCases || 0}<br>
+            Pending: ${data.pendingCases || 0}<br>
+            In Progress: ${data.inProgressCases || 0}<br>
+            Completed: ${data.completedCases || 0}
+          </div>
+        </div>
+      </div>
+    `;
   }
 };
 
@@ -2808,6 +2869,7 @@ window.HubKeyboard = HubKeyboard;
 window.HubSessions = HubSessions;
 window.HubEvents = HubEvents;
 window.HubIssues = HubIssues;
+window.HubAnalytics = HubAnalytics;
 // Phase 2 exports
 window.HubSOPLinks = HubSOPLinks;
 window.HubEnhancedAuditLog = HubEnhancedAuditLog;

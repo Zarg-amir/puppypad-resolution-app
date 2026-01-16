@@ -413,10 +413,33 @@
       background: var(--gray-50);
     }
 
-    /* Page Content */
+    /* Page Content with Animated Gradient Background */
     .page-content {
       flex: 1;
       padding: 32px;
+      position: relative;
+      background: linear-gradient(135deg, #FFF8E7 0%, #FFF5F5 50%, #F0F7FF 100%);
+      background-attachment: fixed;
+      min-height: calc(100vh - 80px);
+    }
+
+    /* Animated Gradient Orbs for Page Content */
+    .page-content::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      background: linear-gradient(135deg, #FFF8E7 0%, #FFF5F5 50%, #F0F7FF 100%);
+      background-attachment: fixed;
+    }
+
+    .page-content > * {
+      position: relative;
+      z-index: 1;
     }
 
     .logout-btn:hover {
@@ -434,23 +457,31 @@
     }
 
     .stat-card {
-      background: white;
-      border-radius: 16px;
-      padding: 24px;
-      border: 1px solid var(--gray-100);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      transition: all 0.2s;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+      transition: all 0.3s ease;
     }
 
     .stat-card:hover {
-      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+      transform: translateY(-4px);
     }
 
     .stat-card.highlight {
       background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
       color: white;
       border: none;
+      box-shadow: 0 12px 40px rgba(26, 54, 93, 0.25), 0 4px 12px rgba(26, 54, 93, 0.15);
+    }
+
+    .stat-card.highlight:hover {
+      box-shadow: 0 16px 48px rgba(26, 54, 93, 0.3), 0 6px 16px rgba(26, 54, 93, 0.2);
+      transform: translateY(-4px);
     }
 
     .stat-label {
@@ -536,26 +567,39 @@
       background: rgba(255,255,255,0.2);
     }
 
-    /* Cases Table */
+    /* Cases Table - Beautiful Redesign */
     .cases-card {
-      background: white;
-      border-radius: 16px;
-      border: 1px solid var(--gray-100);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
       overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .cases-card:hover {
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+      transform: translateY(-2px);
     }
 
     .cases-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--gray-100);
+      padding: 24px 28px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(10px);
     }
 
     .cases-title {
-      font-size: 16px;
-      font-weight: 600;
+      font-family: 'Space Grotesk', 'Poppins', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gray-900);
+      letter-spacing: -0.02em;
     }
 
     .cases-filters {
@@ -575,32 +619,45 @@
 
     .cases-table {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
     }
 
     .cases-table th,
     .cases-table td {
-      padding: 14px 20px;
+      padding: 16px 20px;
       text-align: left;
-      border-bottom: 1px solid var(--gray-100);
     }
 
     .cases-table th {
-      background: var(--gray-50);
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--gray-500);
+      background: rgba(249, 250, 251, 0.8);
+      backdrop-filter: blur(10px);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gray-600);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.08em;
+      border-bottom: 2px solid rgba(0, 0, 0, 0.06);
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
-    .cases-table tr {
+    .cases-table tbody tr {
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s ease;
+      background: rgba(255, 255, 255, 0.6);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
     }
 
     .cases-table tbody tr:hover {
-      background: var(--gray-50);
+      background: rgba(255, 255, 255, 0.9);
+      transform: scale(1.001);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .cases-table tbody tr:last-child td {
+      border-bottom: none;
     }
 
     .case-id {
@@ -613,27 +670,31 @@
     .customer-info {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 4px;
     }
 
     .customer-name {
-      font-weight: 500;
-      color: var(--gray-800);
+      font-weight: 600;
+      color: var(--gray-900);
+      font-size: 14px;
     }
 
     .customer-email {
       font-size: 12px;
       color: var(--gray-500);
+      font-weight: 400;
     }
 
     .status-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 12px;
+      padding: 6px 14px;
       border-radius: 20px;
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .status-badge.pending {
@@ -657,10 +718,12 @@
     }
 
     .type-badge {
-      padding: 4px 10px;
-      border-radius: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .type-badge.refund { background: #fee2e2; color: #dc2626; }
@@ -987,7 +1050,27 @@
 
         <!-- Sessions View -->
         <div id="sessionsView" style="display: none;">
-          <!-- Sessions content will be rendered here -->
+          <div class="cases-card">
+            <div class="cases-header">
+              <h2 class="cases-title">Sessions</h2>
+            </div>
+            <table class="cases-table">
+              <thead>
+                <tr>
+                  <th>Started</th>
+                  <th>Customer</th>
+                  <th>Order</th>
+                  <th>Flow Type</th>
+                  <th>Status</th>
+                  <th>Recording</th>
+                </tr>
+              </thead>
+              <tbody id="sessionsTableBody">
+                <tr><td colspan="6" class="loading-spinner"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+            <div id="sessionsPagination" class="pagination"></div>
+          </div>
         </div>
 
         <!-- Events View -->
@@ -1041,7 +1124,34 @@
 
         <!-- Analytics View -->
         <div id="analyticsView" style="display: none;">
-          <!-- Analytics content will be rendered here -->
+          <div class="stats-grid" style="margin-bottom: 32px;">
+            <div class="stat-card">
+              <div class="stat-label">Total Sessions</div>
+              <div class="stat-value" id="analyticsTotalSessions">-</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Completed Cases</div>
+              <div class="stat-value" id="analyticsCompletedCases">-</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Avg. Resolution Time</div>
+              <div class="stat-value" id="analyticsAvgResolution">-</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Customer Satisfaction</div>
+              <div class="stat-value" id="analyticsSatisfaction">-</div>
+            </div>
+          </div>
+          <div class="cases-card">
+            <div class="cases-header">
+              <h2 class="cases-title">Performance Metrics</h2>
+            </div>
+            <div style="padding: 24px;">
+              <div id="analyticsContent">
+                <div class="loading-spinner"><div class="spinner"></div></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </main>
