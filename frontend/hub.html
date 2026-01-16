@@ -992,7 +992,51 @@
 
         <!-- Events View -->
         <div id="eventsView" style="display: none;">
-          <!-- Events content will be rendered here -->
+          <div class="cases-card">
+            <div class="cases-header">
+              <h2 class="cases-title">Event Log</h2>
+            </div>
+            <table class="cases-table">
+              <thead>
+                <tr>
+                  <th>Session ID</th>
+                  <th>Event Type</th>
+                  <th>Event Name</th>
+                  <th>Event Data</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="eventsTableBody">
+                <tr><td colspan="5" class="loading-spinner"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+            <div id="eventsPagination" class="pagination"></div>
+          </div>
+        </div>
+
+        <!-- Issues View -->
+        <div id="issuesView" style="display: none;">
+          <div class="cases-card">
+            <div class="cases-header">
+              <h2 class="cases-title">Issue Reports</h2>
+            </div>
+            <table class="cases-table">
+              <thead>
+                <tr>
+                  <th>Report ID</th>
+                  <th>Customer Email</th>
+                  <th>Issue Type</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="issuesTableBody">
+                <tr><td colspan="6" class="loading-spinner"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+            <div id="issuesPagination" class="pagination"></div>
+          </div>
         </div>
 
         <!-- Analytics View -->

@@ -1833,6 +1833,112 @@ const HubNavigation = {
 };
 
 // ============================================
+// ISSUES (TROUBLE REPORTS)
+// ============================================
+const HubIssues = {
+  async load(page = 1) {
+    HubUI.showLoading();
+    try {
+      const result = await HubAPI.get(`/hub/api/issues?limit=50&offset=${(page - 1) * 50}`);
+      this.renderIssues(result.issues || []);
+      this.renderPagination(page, result.issues?.length || 0);
+    } catch (e) {
+      console.error('Failed to load issues:', e);
+      HubUI.showToast('Failed to load issues', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
+  },
+
+  renderIssues(issues) {
+    const container = document.getElementById('issuesTableBody');
+    if (!container) return;
+
+    if (issues.length === 0) {
+      container.innerHTML = `
+        <tr>
+          <td colspan="6" class="empty-state">No issues found</td>
+        </tr>
+      `;
+      return;
+    }
+
+    container.innerHTML = issues.map(issue => {
+      const statusClass = issue.status === 'resolved' ? 'completed' : issue.status === 'in_progress' ? 'in-progress' : 'pending';
+      return `
+        <tr onclick="HubIssues.openIssue('${issue.report_id}')">
+          <td class="case-id">${this.escapeHtml(issue.report_id || '-')}</td>
+          <td>${this.escapeHtml(issue.customer_email || '-')}</td>
+          <td>${this.escapeHtml(issue.issue_type || '-')}</td>
+          <td><span class="status-badge ${statusClass}">${this.formatStatus(issue.status || 'pending')}</span></td>
+          <td class="time-ago">${this.timeAgo(issue.created_at)}</td>
+          <td>
+            <button class="btn-icon" onclick="event.stopPropagation(); HubIssues.openIssue('${issue.report_id}')" title="View Details">View</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  renderPagination(page, total) {
+    const container = document.getElementById('issuesPagination');
+    if (!container) return;
+
+    const totalPages = Math.ceil(total / 50);
+    if (totalPages <= 1) {
+      container.innerHTML = '';
+      return;
+    }
+
+    let html = '';
+    if (page > 1) {
+      html += `<button onclick="HubIssues.load(${page - 1})">Previous</button>`;
+    }
+    html += `<span>Page ${page} of ${totalPages}</span>`;
+    if (page < totalPages) {
+      html += `<button onclick="HubIssues.load(${page + 1})">Next</button>`;
+    }
+    container.innerHTML = html;
+  },
+
+  async openIssue(reportId) {
+    try {
+      const result = await HubAPI.get(`/hub/api/issues/${reportId}`);
+      if (result.report_id) {
+        // Show issue in a modal or detail view
+        HubUI.showToast('Issue details loaded', 'info');
+        // TODO: Implement issue detail modal
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to load issue', 'error');
+    }
+  },
+
+  formatStatus(status) {
+    return status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  },
+
+  timeAgo(timestamp) {
+    if (!timestamp) return '-';
+    const seconds = Math.floor((Date.now() - new Date(timestamp)) / 1000);
+
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+
+    return new Date(timestamp).toLocaleDateString();
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+};
+
+// ============================================
 // DASHBOARD
 // ============================================
 const HubDashboard = {
@@ -2699,6 +2805,9 @@ window.HubAssignment = HubAssignment;
 window.HubUI = HubUI;
 window.HubNavigation = HubNavigation;
 window.HubKeyboard = HubKeyboard;
+window.HubSessions = HubSessions;
+window.HubEvents = HubEvents;
+window.HubIssues = HubIssues;
 // Phase 2 exports
 window.HubSOPLinks = HubSOPLinks;
 window.HubEnhancedAuditLog = HubEnhancedAuditLog;
