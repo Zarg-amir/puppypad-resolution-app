@@ -1390,5 +1390,17 @@
     }
   </script>
   <script src="/hub/hub-app.js"></script>
+  <script>
+    // Cache busting - add timestamp to force reload on every page load
+    (function() {
+      const timestamp = Date.now();
+      const scripts = document.querySelectorAll('script[src*="hub-app.js"]');
+      scripts.forEach(el => {
+        const url = new URL(el.src, window.location.href);
+        url.searchParams.set('v', timestamp);
+        el.src = url.pathname + url.search;
+      });
+    })();
+  </script>
 </body>
 </html>

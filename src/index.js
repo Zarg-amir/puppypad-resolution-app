@@ -7070,7 +7070,9 @@ async function serveHubAsset(type, corsHeaders) {
     headers: {
       ...corsHeaders,
       'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=3600'
+      'Cache-Control': 'no-cache, no-store, must-revalidate', // Disable caching for development
+      'Pragma': 'no-cache',
+      'Expires': '0'
     }
   });
 }
@@ -10616,6 +10618,18 @@ function getResolutionHubHTML() {
     }
   </script>
   <script src="/hub/hub-app.js"></script>
+  <script>
+    // Cache busting - add timestamp to force reload on every page load
+    (function() {
+      const timestamp = Date.now();
+      const scripts = document.querySelectorAll('script[src*="hub-app.js"]');
+      scripts.forEach(el => {
+        const url = new URL(el.src, window.location.href);
+        url.searchParams.set('v', timestamp);
+        el.src = url.pathname + url.search;
+      });
+    })();
+  </script>
 </body>
 </html>
 `;
@@ -12210,15 +12224,18 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .stat-card.highlight[style*="background: #FEF3C7"] .stat-label {
-  color: var(--gray-800);
+  color: #78350F !important; /* Dark amber for contrast */
+  font-weight: 700;
 }
 
 .stat-card.highlight[style*="background: #FEF3C7"] .stat-value {
-  color: var(--gray-900);
+  color: #92400E !important; /* Dark amber for contrast */
+  font-weight: 800;
 }
 
 .stat-card.highlight[style*="background: #FEF3C7"] .stat-change {
-  color: var(--gray-700);
+  color: #B45309 !important; /* Medium amber for contrast */
+  font-weight: 600;
 }
 
 .stat-card.highlight[style*="background: #D1FAE5"] {
@@ -12227,15 +12244,18 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .stat-card.highlight[style*="background: #D1FAE5"] .stat-label {
-  color: var(--gray-800);
+  color: #065F46 !important; /* Dark green for contrast */
+  font-weight: 700;
 }
 
 .stat-card.highlight[style*="background: #D1FAE5"] .stat-value {
-  color: var(--gray-900);
+  color: #047857 !important; /* Dark green for contrast */
+  font-weight: 800;
 }
 
 .stat-card.highlight[style*="background: #D1FAE5"] .stat-change {
-  color: var(--gray-700);
+  color: #059669 !important; /* Medium green for contrast */
+  font-weight: 600;
 }
 
 .stat-card.highlight[style*="background: #FCE7F3"] {
@@ -12244,15 +12264,18 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .stat-card.highlight[style*="background: #FCE7F3"] .stat-label {
-  color: var(--gray-800);
+  color: #831843 !important; /* Dark pink for contrast */
+  font-weight: 700;
 }
 
 .stat-card.highlight[style*="background: #FCE7F3"] .stat-value {
-  color: var(--gray-900);
+  color: #9F1239 !important; /* Dark pink for contrast */
+  font-weight: 800;
 }
 
 .stat-card.highlight[style*="background: #FCE7F3"] .stat-change {
-  color: var(--gray-700);
+  color: #BE185D !important; /* Medium pink for contrast */
+  font-weight: 600;
 }
 
 .stat-card.highlight[style*="background: #FEE2E2"] {
@@ -12261,15 +12284,18 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .stat-card.highlight[style*="background: #FEE2E2"] .stat-label {
-  color: var(--gray-800);
+  color: #991B1B !important; /* Dark red for contrast */
+  font-weight: 700;
 }
 
 .stat-card.highlight[style*="background: #FEE2E2"] .stat-value {
-  color: var(--gray-900);
+  color: #B91C1C !important; /* Dark red for contrast */
+  font-weight: 800;
 }
 
 .stat-card.highlight[style*="background: #FEE2E2"] .stat-change {
-  color: var(--gray-700);
+  color: #DC2626 !important; /* Medium red for contrast */
+  font-weight: 600;
 }
 
 /* Enhanced Chart Cards */
