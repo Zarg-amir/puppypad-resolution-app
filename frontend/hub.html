@@ -46,6 +46,115 @@
       min-height: 100vh;
     }
 
+    /* Login Screen */
+    #loginScreen {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, #FFF8E7 0%, #FFF5F5 50%, #F0F7FF 100%);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-container {
+      background: white;
+      border-radius: 20px;
+      padding: 48px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-header img {
+      height: 40px;
+      margin-bottom: 16px;
+    }
+
+    .login-header h1 {
+      font-family: 'Space Grotesk', 'Poppins', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 8px;
+    }
+
+    .login-header p {
+      color: var(--gray-500);
+      font-size: 14px;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-group label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-700);
+    }
+
+    .form-group input {
+      padding: 12px 16px;
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--brand-navy);
+      box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.1);
+    }
+
+    .login-error {
+      display: none;
+      padding: 12px;
+      background: #fee2e2;
+      color: #dc2626;
+      border-radius: 8px;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--brand-navy);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .login-btn:hover {
+      background: var(--brand-navy-light);
+    }
+
+    .login-btn:active {
+      transform: scale(0.98);
+    }
+
     /* Layout */
     .app-container {
       display: flex;
@@ -668,7 +777,31 @@
   </style>
 </head>
 <body>
-  <div class="app-container">
+  <!-- Login Screen -->
+  <div id="loginScreen">
+    <div class="login-container">
+      <div class="login-header">
+        <img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad">
+        <h1>Resolution Hub</h1>
+        <p>Sign in to access the admin dashboard</p>
+      </div>
+      <form class="login-form" onsubmit="handleLogin(event)">
+        <div id="loginError" class="login-error"></div>
+        <div class="form-group">
+          <label for="loginUsername">Email</label>
+          <input type="text" id="loginUsername" name="username" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" name="password" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="login-btn">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- App Container -->
+  <div id="appContainer" class="app-container">
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
