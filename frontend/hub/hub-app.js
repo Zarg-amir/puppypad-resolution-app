@@ -1455,6 +1455,11 @@ const HubCases = {
       HubState.casesPage = page;
       HubState.totalPages = result.totalPages || 1;
 
+      // Update navigation counts if provided
+      if (result.counts) {
+        this.updateNavigationCounts(result.counts);
+      }
+
       this.renderCasesList();
     } catch (e) {
       console.error('Failed to load cases:', e);
@@ -1471,20 +1476,29 @@ const HubCases = {
     if (HubState.cases.length === 0) {
       container.innerHTML = `
         <tr>
-          <td colspan="7" class="empty-state">No cases found</td>
+          <td colspan="8" class="empty-state">No cases found</td>
         </tr>
       `;
       return;
     }
 
-    container.innerHTML = HubState.cases.map((c, idx) => `
+    container.innerHTML = HubState.cases.map((c, idx) => {
+      // Calculate due date (24 hours from creation)
+      const createdDate = new Date(c.created_at);
+      const dueDate = new Date(createdDate.getTime() + (24 * 60 * 60 * 1000));
+      const now = new Date();
+      const isOverdue = now > dueDate && c.status !== 'completed';
+      
+      // Format resolution text
+      const resolutionText = this.formatResolution(c.resolution) || 'Pending Review';
+      
+      return `
       <tr onclick="HubCases.openCase('${c.case_id}')" class="${idx === 0 ? 'keyboard-selected' : ''}">
         <td>
           <input type="checkbox" class="case-checkbox" data-case-id="${c.case_id}"
                  onclick="event.stopPropagation(); HubBulkActions.toggleSelect('${c.case_id}')"
                  ${HubState.selectedCaseIds.has(c.case_id) ? 'checked' : ''}>
         </td>
-        <td class="case-id">${c.case_id}</td>
         <td>
           <div class="customer-info">
             <span class="customer-name">${this.escapeHtml(c.customer_name || 'Unknown')}</span>
@@ -1493,12 +1507,36 @@ const HubCases = {
         </td>
         <td><span class="type-badge ${c.case_type}">${c.case_type}</span></td>
         <td><span class="status-badge ${c.status.replace('_', '-')}">${this.formatStatus(c.status)}</span></td>
-        <td>${c.assigned_to || '-'}</td>
+        <td>
+          ${isOverdue ? '<span class="status-badge overdue">Overdue</span>' : '<span class="due-date">' + this.formatDueDate(dueDate) + '</span>'}
+        </td>
+        <td class="resolution-text">${this.escapeHtml(resolutionText)}</td>
+        <td>${c.assigned_to || 'Unassigned'}</td>
         <td class="time-ago">${this.timeAgo(c.created_at)}</td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
 
     this.renderPagination();
+  },
+
+  updateNavigationCounts(counts) {
+    const badgeMap = {
+      'all': 'allCasesCount',
+      'shipping': 'shippingCount',
+      'refund': 'refundsCount',
+      'return': 'returnsCount',
+      'subscription': 'subscriptionsCount',
+      'manual': 'manualCount'
+    };
+
+    Object.keys(badgeMap).forEach(key => {
+      const badgeId = badgeMap[key];
+      const badge = document.getElementById(badgeId);
+      if (badge) {
+        badge.textContent = counts[key] || 0;
+      }
+    });
   },
 
   renderPagination() {
@@ -1596,6 +1634,50 @@ const HubCases = {
     return new Date(timestamp).toLocaleDateString();
   },
 
+  formatDueDate(dueDate) {
+    const now = new Date();
+    const diffMs = dueDate - now;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffHours < 0) return 'Overdue';
+    if (diffHours < 24) return `${diffHours}h left`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d left`;
+  },
+
+  formatResolution(resolution) {
+    if (!resolution) return null;
+    
+    // Format common resolution codes to readable text
+    const resolutionMap = {
+      'full_refund': 'Process full refund',
+      'partial_20': 'Process 20% partial refund',
+      'partial_30': 'Process 30% partial refund',
+      'partial_50': 'Process 50% partial refund',
+      'reship_missing_item': 'Reship missing item',
+      'reship_missing_item_bonus': 'Reship missing item with bonus',
+      'subscription_paused': 'Subscription paused',
+      'subscription_cancelled': 'Subscription cancelled',
+      'subscription_updated': 'Subscription updated',
+      'discount_applied': 'Discount applied',
+      'manual_assistance': 'Manual assistance required'
+    };
+    
+    // Check for partial refund patterns
+    const partialMatch = resolution.match(/^partial_(\d+)$/);
+    if (partialMatch) {
+      return `Process ${partialMatch[1]}% partial refund`;
+    }
+    
+    // Check for partial refund + reship
+    const partialReshipMatch = resolution.match(/^partial_(\d+)_reship$/);
+    if (partialReshipMatch) {
+      return `Process ${partialReshipMatch[1]}% refund + reship`;
+    }
+    
+    return resolutionMap[resolution] || resolution.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  },
+
   escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -1643,6 +1725,10 @@ const HubNavigation = {
       HubCases.loadCases();
     } else if (page === 'dashboard') {
       HubDashboard.load();
+    } else if (page === 'sessions') {
+      HubSessions.load();
+    } else if (page === 'events') {
+      HubEvents.load();
     } else if (page === 'audit') {
       HubEnhancedAuditLog.show();
     } else if (page === 'users') {
