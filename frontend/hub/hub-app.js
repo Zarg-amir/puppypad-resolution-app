@@ -1542,23 +1542,158 @@ const HubSearch = {
     this.selectedIndex = -1;
 
     try {
-      // Context-aware search: check current page
-      const currentPage = HubState.currentPage;
-      if (currentPage === 'issues') {
-        // Search issues
-        const result = await HubAPI.get(`/hub/api/issues/search?q=${encodeURIComponent(query)}&limit=10`);
-        this.searchResults = result.results || [];
-        this.renderDropdown('issues');
-      } else {
-        // Search cases (default)
-        const result = await HubAPI.get(`/hub/api/cases/search?q=${encodeURIComponent(query)}&limit=10`);
-        this.searchResults = result.results || [];
-        this.renderDropdown('cases');
-      }
+      // Use unified search API for grouped results
+      const result = await HubAPI.get(`/hub/api/search?q=${encodeURIComponent(query)}&limit=5`);
+      this.unifiedResults = {
+        cases: result.cases || [],
+        sessions: result.sessions || [],
+        issues: result.issues || []
+      };
+      // Flatten results for keyboard navigation
+      this.searchResults = [
+        ...this.unifiedResults.cases.map(c => ({ ...c, _type: 'case' })),
+        ...this.unifiedResults.sessions.map(s => ({ ...s, _type: 'session' })),
+        ...this.unifiedResults.issues.map(i => ({ ...i, _type: 'issue' }))
+      ];
+      this.renderUnifiedDropdown(query);
     } catch (e) {
       console.error('Search error:', e);
       dropdown.innerHTML = '<div class="search-dropdown-empty">Search failed. Try again.</div>';
     }
+  },
+
+  renderUnifiedDropdown(query) {
+    const dropdown = document.getElementById('searchDropdown');
+    if (!dropdown) return;
+
+    const { cases, sessions, issues } = this.unifiedResults;
+    const hasResults = cases.length > 0 || sessions.length > 0 || issues.length > 0;
+
+    if (!hasResults) {
+      dropdown.innerHTML = '<div class="search-dropdown-empty">No results found</div>';
+      return;
+    }
+
+    const highlightText = (text) => {
+      if (!text || !query) return this.escapeHtml(text || '');
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp('(' + escaped + ')', 'gi');
+      return this.escapeHtml(text).replace(regex, '<span class="search-dropdown-item-highlight">$1</span>');
+    };
+
+    let html = '';
+    let flatIndex = 0;
+
+    // Cases section
+    if (cases.length > 0) {
+      html += `<div class="search-dropdown-section-title">CASES</div>`;
+      html += cases.map((c) => {
+        const idx = flatIndex++;
+        return `
+          <div class="search-dropdown-item ${idx === this.selectedIndex ? 'selected' : ''}" 
+               onclick="HubSearch.selectUnifiedResult('case', '${c.case_id}')"
+               data-index="${idx}">
+            <div class="search-dropdown-item-icon" style="background: var(--primary-50); color: var(--primary-600);">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            </div>
+            <div class="search-dropdown-item-content">
+              <div class="search-dropdown-item-header">
+                <span class="type-badge ${c.case_type}" style="font-size: 10px;">${c.case_type}</span>
+                ${highlightText(c.customer_name || 'Unknown')}
+              </div>
+              <div class="search-dropdown-item-meta">
+                ${highlightText(c.customer_email || '')} · ${c.order_number || ''} · ${c.status || 'pending'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Sessions section
+    if (sessions.length > 0) {
+      html += `<div class="search-dropdown-section-title">SESSIONS</div>`;
+      html += sessions.map((s) => {
+        const idx = flatIndex++;
+        const timeAgo = this.timeAgo(s.started_at);
+        return `
+          <div class="search-dropdown-item ${idx === this.selectedIndex ? 'selected' : ''}" 
+               onclick="HubSearch.selectUnifiedResult('session', '${s.session_id}')"
+               data-index="${idx}">
+            <div class="search-dropdown-item-icon" style="background: var(--warning-50); color: var(--warning-600);">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            </div>
+            <div class="search-dropdown-item-content">
+              <div class="search-dropdown-item-header">
+                <span style="color: var(--gray-500); font-size: 11px;">[Recording]</span>
+                ${highlightText(s.customer_email || 'Unknown')}
+              </div>
+              <div class="search-dropdown-item-meta">
+                ${s.flow_type || ''} · ${s.outcome || ''} · ${timeAgo}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Issues section
+    if (issues.length > 0) {
+      html += `<div class="search-dropdown-section-title">ISSUES</div>`;
+      html += issues.map((i) => {
+        const idx = flatIndex++;
+        return `
+          <div class="search-dropdown-item ${idx === this.selectedIndex ? 'selected' : ''}" 
+               onclick="HubSearch.selectUnifiedResult('issue', '${i.report_id}')"
+               data-index="${idx}">
+            <div class="search-dropdown-item-icon" style="background: var(--error-50); color: var(--error-600);">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <div class="search-dropdown-item-content">
+              <div class="search-dropdown-item-header">
+                <span style="color: var(--gray-500); font-size: 11px;">[${i.issue_type || 'Issue'}]</span>
+                ${highlightText(i.customer_email || 'Unknown')}
+              </div>
+              <div class="search-dropdown-item-meta">
+                ${i.status || 'pending'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    dropdown.innerHTML = html;
+  },
+
+  selectUnifiedResult(type, id) {
+    this.hideDropdown();
+    document.getElementById('searchInput').value = '';
+    
+    if (type === 'case') {
+      HubNavigation.goto('case-detail', id);
+    } else if (type === 'session') {
+      // Find session and open replay URL if available
+      const session = this.unifiedResults?.sessions?.find(s => s.session_id === id);
+      if (session?.session_replay_url) {
+        window.open(session.session_replay_url, '_blank');
+      } else {
+        HubNavigation.goto('sessions');
+      }
+    } else if (type === 'issue') {
+      HubNavigation.goto('issues');
+      // Could implement issue detail view later
+    }
+  },
+
+  timeAgo(timestamp) {
+    if (!timestamp) return '';
+    const seconds = Math.floor((Date.now() - new Date(timestamp)) / 1000);
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return new Date(timestamp).toLocaleDateString();
   },
 
   renderDropdown(context = 'cases') {
@@ -1810,11 +1945,11 @@ const HubFilters = {
       // Reload issues
       HubIssues.load(1);
     } else {
-      // Apply case filters (default)
-      const status = document.getElementById('statusFilter')?.value || '';
-      const assignee = document.getElementById('assigneeFilter')?.value || '';
-      const dateRange = document.getElementById('dateRangeFilter')?.value || '';
-      const sortBy = document.getElementById('sortBy')?.value || 'created_desc';
+      // Apply case filters (default) - check both inline and header filters
+      const status = document.getElementById('casesStatusFilter')?.value || document.getElementById('statusFilter')?.value || '';
+      const assignee = document.getElementById('casesAssigneeFilter')?.value || document.getElementById('assigneeFilter')?.value || '';
+      const dateRange = document.getElementById('casesDateFilter')?.value || document.getElementById('dateRangeFilter')?.value || '';
+      const sortBy = document.getElementById('casesSortFilter')?.value || document.getElementById('sortBy')?.value || 'created_desc';
       const search = HubState.currentSearch || '';
 
       // Save filters
@@ -1828,8 +1963,34 @@ const HubFilters = {
       HubState.currentDateRange = dateRange;
       HubState.currentSortBy = sortBy;
 
+      // Sync inline filters with header filters
+      this.syncFilters();
+
       // Reload cases
       HubCases.loadCases(1);
+    }
+  },
+
+  syncFilters() {
+    // Sync inline filters with header filters
+    const headerStatus = document.getElementById('statusFilter');
+    const inlineStatus = document.getElementById('casesStatusFilter');
+    if (headerStatus && inlineStatus && headerStatus.value !== inlineStatus.value) {
+      if (document.activeElement === headerStatus) {
+        inlineStatus.value = headerStatus.value;
+      } else if (document.activeElement === inlineStatus) {
+        headerStatus.value = inlineStatus.value;
+      }
+    }
+
+    const headerAssignee = document.getElementById('assigneeFilter');
+    const inlineAssignee = document.getElementById('casesAssigneeFilter');
+    if (headerAssignee && inlineAssignee && headerAssignee.value !== inlineAssignee.value) {
+      if (document.activeElement === headerAssignee) {
+        inlineAssignee.value = headerAssignee.value;
+      } else if (document.activeElement === inlineAssignee) {
+        headerAssignee.value = inlineAssignee.value;
+      }
     }
   },
 
@@ -1896,36 +2057,55 @@ const HubCases = {
   },
 
   updateAssigneeFilter(assignees) {
-    const assigneeFilter = document.getElementById('assigneeFilter');
-    if (!assigneeFilter) return;
+    // Update both header and inline assignee filters
+    const filters = [
+      document.getElementById('assigneeFilter'),
+      document.getElementById('casesAssigneeFilter')
+    ].filter(Boolean);
 
-    // Keep "All Assignees" and "Unassigned" options
-    const currentValue = assigneeFilter.value;
-    assigneeFilter.innerHTML = '<option value="">All Assignees</option><option value="unassigned">Unassigned</option>';
-    
-    // Add unique assignees
     const uniqueAssignees = [...new Set(assignees.filter(a => a && a !== 'Unassigned'))];
-    uniqueAssignees.forEach(assignee => {
-      const option = document.createElement('option');
-      option.value = assignee;
-      option.textContent = assignee;
-      assigneeFilter.appendChild(option);
-    });
 
-    // Restore selection
-    if (currentValue) {
-      assigneeFilter.value = currentValue;
-    }
+    filters.forEach(assigneeFilter => {
+      // Keep "All Assignees" and "Unassigned" options
+      const currentValue = assigneeFilter.value;
+      assigneeFilter.innerHTML = '<option value="">All Assignees</option><option value="unassigned">Unassigned</option>';
+      
+      // Add unique assignees
+      uniqueAssignees.forEach(assignee => {
+        const option = document.createElement('option');
+        option.value = assignee;
+        option.textContent = assignee;
+        assigneeFilter.appendChild(option);
+      });
+
+      // Restore selection
+      if (currentValue) {
+        assigneeFilter.value = currentValue;
+      }
+    });
   },
 
   renderCasesList() {
     const container = document.getElementById('casesTableBody');
     if (!container) return;
 
+    // Update result count
+    const resultCount = document.getElementById('casesResultCount');
+    if (resultCount) {
+      const total = HubState.totalCases || HubState.cases.length;
+      resultCount.textContent = `${total} case${total !== 1 ? 's' : ''} found`;
+    }
+
     if (HubState.cases.length === 0) {
       container.innerHTML = `
         <tr>
-          <td colspan="8" class="empty-state">No cases found</td>
+          <td colspan="8" class="empty-state">
+            <div style="padding: 40px; text-align: center;">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="48" height="48" style="color: var(--gray-300); margin-bottom: 16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+              <h3 style="color: var(--gray-700); margin-bottom: 8px;">No cases found</h3>
+              <p style="color: var(--gray-500); font-size: 14px;">Try adjusting your filters or search query</p>
+            </div>
+          </td>
         </tr>
       `;
       return;
@@ -1937,31 +2117,32 @@ const HubCases = {
       const dueDate = new Date(createdDate.getTime() + (24 * 60 * 60 * 1000));
       const now = new Date();
       const isOverdue = now > dueDate && c.status !== 'completed';
+      const hoursLeft = Math.max(0, Math.round((dueDate - now) / (1000 * 60 * 60)));
+      const dueClass = isOverdue ? 'overdue' : hoursLeft < 8 ? 'warning' : 'ok';
       
       // Format resolution text
       const resolutionText = this.formatResolution(c.resolution) || 'Pending Review';
+      const statusClass = c.status ? c.status.replace('_', '-') : 'pending';
       
       return `
-      <tr onclick="HubCases.openCase('${c.case_id}')" class="${idx === 0 ? 'keyboard-selected' : ''}">
+      <tr onclick="HubCases.openCase('${c.case_id}')" class="${idx === 0 ? 'keyboard-selected' : ''}" data-case-id="${c.case_id}">
         <td>
           <input type="checkbox" class="case-checkbox" data-case-id="${c.case_id}"
                  onclick="event.stopPropagation(); HubBulkActions.toggleSelect('${c.case_id}')"
                  ${HubState.selectedCaseIds.has(c.case_id) ? 'checked' : ''}>
         </td>
-        <td>
-          <div class="customer-info">
-            <span class="customer-name">${this.escapeHtml(c.customer_name || 'Unknown')}</span>
-            <span class="customer-email">${this.escapeHtml(c.customer_email || '-')}</span>
-          </div>
+        <td class="td-customer">
+          <div class="td-customer-name">${this.escapeHtml(c.customer_name || 'Unknown')}</div>
+          <div class="td-customer-email">${this.escapeHtml(c.customer_email || '-')}</div>
         </td>
         <td><span class="type-badge ${c.case_type}">${c.case_type}</span></td>
-        <td><span class="status-badge ${c.status.replace('_', '-')}">${this.formatStatus(c.status)}</span></td>
-        <td>
-          ${isOverdue ? '<span class="status-badge overdue">Overdue</span>' : '<span class="due-date">' + this.formatDueDate(dueDate) + '</span>'}
+        <td><span class="status-badge ${statusClass}">${this.formatStatus(c.status)}</span></td>
+        <td class="td-due ${dueClass}">
+          ${isOverdue ? 'Overdue' : hoursLeft + 'h left'}
         </td>
-        <td class="resolution-text">${this.escapeHtml(resolutionText)}</td>
-        <td>${c.assigned_to || 'Unassigned'}</td>
-        <td class="time-ago">${this.timeAgo(c.created_at)}</td>
+        <td class="td-resolution">${this.escapeHtml(resolutionText)}</td>
+        <td class="${c.assigned_to ? '' : 'td-assignee-unassigned'}">${c.assigned_to || 'Unassigned'}</td>
+        <td class="td-created">${this.timeAgo(c.created_at)}</td>
       </tr>
     `;
     }).join('');
@@ -2008,16 +2189,9 @@ const HubCases = {
   },
 
   async openCase(caseId) {
-    try {
-      const result = await HubAPI.get(`/hub/api/case/${caseId}`);
-      if (result.case) {
-        HubState.currentCase = result.case;
-        HubState.currentCaseIndex = HubState.cases.findIndex(c => c.case_id === caseId);
-        HubUI.showCaseModal(result.case);
-      }
-    } catch (e) {
-      HubUI.showToast('Failed to load case', 'error');
-    }
+    // Navigate to full-page case detail view
+    HubState.currentCaseIndex = HubState.cases.findIndex(c => c.case_id === caseId);
+    HubNavigation.goto('case-detail', caseId);
   },
 
   async updateStatus(status) {
@@ -2166,7 +2340,7 @@ const HubNavigation = {
     this.updateURL(page, filter);
 
     // Show/hide views
-    ['dashboard', 'cases', 'sessions', 'events', 'issues', 'analytics', 'audit', 'users'].forEach(v => {
+    ['dashboard', 'cases', 'sessions', 'events', 'issues', 'analytics', 'audit', 'users', 'sop', 'emailTemplates', 'caseDetail'].forEach(v => {
       const el = document.getElementById(v + 'View');
       if (el) el.style.display = v === page ? 'block' : 'none';
     });
@@ -2189,6 +2363,13 @@ const HubNavigation = {
       HubEnhancedAuditLog.show();
     } else if (page === 'users') {
       HubUsers.show();
+    } else if (page === 'sop') {
+      HubSOP.load();
+    } else if (page === 'email-templates') {
+      HubEmailTemplates.load();
+    } else if (page === 'case-detail') {
+      // filter here is actually the caseId
+      HubCaseDetail.load(filter);
     }
   },
 
@@ -2202,7 +2383,10 @@ const HubNavigation = {
       issues: 'Issue Reports',
       analytics: 'Performance',
       audit: 'Audit Log',
-      users: 'User Management'
+      users: 'User Management',
+      sop: 'SOP Links',
+      'email-templates': 'Email Templates',
+      'case-detail': 'Case Details'
     };
 
     // If cases page with filter, show filter name
@@ -2240,6 +2424,12 @@ const HubNavigation = {
       path = '/hub/audit';
     } else if (page === 'users') {
       path = '/hub/users';
+    } else if (page === 'sop') {
+      path = '/hub/sop';
+    } else if (page === 'email-templates') {
+      path = '/hub/email-templates';
+    } else if (page === 'case-detail') {
+      path = `/hub/case/${filter}`;
     }
 
     // Update URL without reload
@@ -3167,6 +3357,1073 @@ const HubAnalytics = {
     } catch {
       return '-';
     }
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+};
+
+// ============================================
+// SOP LINKS PAGE
+// ============================================
+const HubSOP = {
+  sops: [],
+  currentCategory: '',
+
+  async load() {
+    HubUI.showLoading();
+    try {
+      const url = this.currentCategory 
+        ? `/hub/api/sop?category=${this.currentCategory}` 
+        : '/hub/api/sop';
+      const result = await HubAPI.get(url);
+      this.sops = result.sops || [];
+      this.render();
+      
+      // Show add button for admins
+      const addBtn = document.getElementById('addSopBtn');
+      if (addBtn) {
+        addBtn.style.display = HubAuth.isAdmin() ? 'inline-flex' : 'none';
+      }
+    } catch (e) {
+      console.error('Failed to load SOPs:', e);
+      HubUI.showToast('Failed to load SOP links', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
+  },
+
+  render() {
+    const container = document.getElementById('sopList');
+    if (!container) return;
+
+    if (this.sops.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          <h3>No SOP Links Found</h3>
+          <p>Add SOP links to help your team access procedures quickly.</p>
+          ${HubAuth.isAdmin() ? '<button class="btn btn-primary" onclick="HubSOP.showAddModal()">Add First SOP</button>' : ''}
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = this.sops.map(sop => `
+      <div class="sop-card">
+        <div class="sop-card-header">
+          <h3 class="sop-card-title">${this.escapeHtml(sop.scenario_name)}</h3>
+          <span class="sop-card-category ${sop.case_type}">${sop.case_type}</span>
+        </div>
+        ${sop.description ? `<p class="sop-card-description">${this.escapeHtml(sop.description)}</p>` : ''}
+        <div class="sop-card-actions">
+          <a href="${sop.sop_url}" target="_blank" class="sop-card-link" onclick="HubSOP.logClick(${sop.id}, '${this.escapeHtml(sop.scenario_name)}')">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+            Open SOP
+          </a>
+          ${HubAuth.isAdmin() ? `
+            <button class="btn btn-secondary" onclick="HubSOP.showEditModal(${sop.id})">Edit</button>
+            <button class="btn btn-secondary" style="color: var(--error-600);" onclick="HubSOP.delete(${sop.id})">Delete</button>
+          ` : ''}
+        </div>
+      </div>
+    `).join('');
+  },
+
+  filterByCategory(category) {
+    this.currentCategory = category;
+    
+    // Update tab states
+    document.querySelectorAll('.sop-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.category === category);
+    });
+    
+    this.load();
+  },
+
+  async logClick(sopId, sopName) {
+    // Log activity if there's a current case
+    if (HubState.currentCase) {
+      try {
+        await HubAPI.post('/hub/api/activity', {
+          case_id: HubState.currentCase.case_id,
+          activity_type: 'clicked_sop',
+          details: { sop_id: sopId, sop_name: sopName }
+        });
+      } catch (e) {
+        // Silent fail for activity logging
+      }
+    }
+  },
+
+  showAddModal() {
+    const html = `
+      <div class="modal-overlay active" id="sopModal">
+        <div class="modal" style="max-width: 500px;">
+          <div class="modal-header">
+            <h2 class="modal-title">Add SOP Link</h2>
+            <button class="modal-close" onclick="document.getElementById('sopModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px;">
+            <div class="form-group">
+              <label>Scenario Key *</label>
+              <input type="text" id="sopKey" placeholder="e.g., refund_partial_20">
+            </div>
+            <div class="form-group">
+              <label>Scenario Name *</label>
+              <input type="text" id="sopName" placeholder="e.g., Partial Refund 20%">
+            </div>
+            <div class="form-group">
+              <label>Category *</label>
+              <select id="sopCategory">
+                <option value="refund">Refund</option>
+                <option value="return">Return</option>
+                <option value="shipping">Shipping</option>
+                <option value="subscription">Subscription</option>
+                <option value="manual">Manual</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>SOP URL *</label>
+              <input type="url" id="sopUrl" placeholder="https://...">
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea id="sopDescription" rows="3" placeholder="Brief description..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end; gap: 12px;">
+            <button class="btn btn-secondary" onclick="document.getElementById('sopModal').remove()">Cancel</button>
+            <button class="btn btn-primary" onclick="HubSOP.save()">Save</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  async showEditModal(sopId) {
+    const sop = this.sops.find(s => s.id === sopId);
+    if (!sop) return;
+
+    const html = `
+      <div class="modal-overlay active" id="sopModal">
+        <div class="modal" style="max-width: 500px;">
+          <div class="modal-header">
+            <h2 class="modal-title">Edit SOP Link</h2>
+            <button class="modal-close" onclick="document.getElementById('sopModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px;">
+            <input type="hidden" id="sopEditId" value="${sop.id}">
+            <div class="form-group">
+              <label>Scenario Name *</label>
+              <input type="text" id="sopName" value="${this.escapeHtml(sop.scenario_name)}">
+            </div>
+            <div class="form-group">
+              <label>Category *</label>
+              <select id="sopCategory">
+                ${['refund', 'return', 'shipping', 'subscription', 'manual'].map(c =>
+                  `<option value="${c}" ${sop.case_type === c ? 'selected' : ''}>${c.charAt(0).toUpperCase() + c.slice(1)}</option>`
+                ).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>SOP URL *</label>
+              <input type="url" id="sopUrl" value="${this.escapeHtml(sop.sop_url)}">
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea id="sopDescription" rows="3">${this.escapeHtml(sop.description || '')}</textarea>
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end; gap: 12px;">
+            <button class="btn btn-secondary" onclick="document.getElementById('sopModal').remove()">Cancel</button>
+            <button class="btn btn-primary" onclick="HubSOP.update()">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  async save() {
+    const data = {
+      scenario_key: document.getElementById('sopKey')?.value.trim(),
+      scenario_name: document.getElementById('sopName')?.value.trim(),
+      case_type: document.getElementById('sopCategory')?.value,
+      sop_url: document.getElementById('sopUrl')?.value.trim(),
+      description: document.getElementById('sopDescription')?.value.trim()
+    };
+
+    if (!data.scenario_key || !data.scenario_name || !data.sop_url) {
+      HubUI.showToast('Please fill in all required fields', 'error');
+      return;
+    }
+
+    try {
+      const result = await HubAPI.post('/hub/api/sop', data);
+      if (result.success) {
+        HubUI.showToast('SOP link added successfully', 'success');
+        document.getElementById('sopModal')?.remove();
+        this.load();
+      } else {
+        HubUI.showToast(result.error || 'Failed to add SOP', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to add SOP', 'error');
+    }
+  },
+
+  async update() {
+    const sopId = document.getElementById('sopEditId')?.value;
+    const data = {
+      scenario_name: document.getElementById('sopName')?.value.trim(),
+      case_type: document.getElementById('sopCategory')?.value,
+      sop_url: document.getElementById('sopUrl')?.value.trim(),
+      description: document.getElementById('sopDescription')?.value.trim()
+    };
+
+    if (!data.scenario_name || !data.sop_url) {
+      HubUI.showToast('Please fill in all required fields', 'error');
+      return;
+    }
+
+    try {
+      const result = await HubAPI.put(`/hub/api/sop/${sopId}`, data);
+      if (result.success) {
+        HubUI.showToast('SOP link updated successfully', 'success');
+        document.getElementById('sopModal')?.remove();
+        this.load();
+      } else {
+        HubUI.showToast(result.error || 'Failed to update SOP', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to update SOP', 'error');
+    }
+  },
+
+  async delete(sopId) {
+    if (!confirm('Are you sure you want to delete this SOP link?')) return;
+
+    try {
+      const result = await HubAPI.delete(`/hub/api/sop/${sopId}`);
+      if (result.success) {
+        HubUI.showToast('SOP link deleted', 'success');
+        this.load();
+      } else {
+        HubUI.showToast(result.error || 'Failed to delete SOP', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to delete SOP', 'error');
+    }
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+};
+
+// ============================================
+// EMAIL TEMPLATES PAGE
+// ============================================
+const HubEmailTemplates = {
+  templates: [],
+  currentCategory: '',
+
+  async load() {
+    HubUI.showLoading();
+    try {
+      const url = this.currentCategory 
+        ? `/hub/api/email-templates?category=${this.currentCategory}` 
+        : '/hub/api/email-templates';
+      const result = await HubAPI.get(url);
+      this.templates = result.templates || [];
+      this.render();
+      
+      // Show add button for admins
+      const addBtn = document.getElementById('addTemplateBtn');
+      if (addBtn) {
+        addBtn.style.display = HubAuth.isAdmin() ? 'inline-flex' : 'none';
+      }
+    } catch (e) {
+      console.error('Failed to load email templates:', e);
+      HubUI.showToast('Failed to load email templates', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
+  },
+
+  render() {
+    const container = document.getElementById('emailTemplatesList');
+    if (!container) return;
+
+    if (this.templates.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+          <h3>No Email Templates Found</h3>
+          <p>Add email templates to help your team respond quickly.</p>
+          ${HubAuth.isAdmin() ? '<button class="btn btn-primary" onclick="HubEmailTemplates.showAddModal()">Add First Template</button>' : ''}
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = this.templates.map(template => `
+      <div class="template-card">
+        <div class="template-card-header">
+          <h3 class="template-card-title">${this.escapeHtml(template.template_name)}</h3>
+          <span class="sop-card-category ${template.category}">${template.category}</span>
+        </div>
+        <div class="template-card-subject">Subject: ${this.escapeHtml(template.subject)}</div>
+        <div class="template-card-preview">${this.escapeHtml(template.body.substring(0, 150))}...</div>
+        <div class="template-card-variables">
+          ${(template.variables || []).map(v => `<span class="template-variable">{{${v}}}</span>`).join('')}
+        </div>
+        <div class="template-card-actions">
+          <button class="btn btn-primary" onclick="HubEmailTemplates.copyToClipboard(${template.id})">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+            Copy
+          </button>
+          <button class="btn btn-secondary" onclick="HubEmailTemplates.preview(${template.id})">Preview</button>
+          ${HubAuth.isAdmin() ? `
+            <button class="btn btn-secondary" onclick="HubEmailTemplates.showEditModal(${template.id})">Edit</button>
+            <button class="btn btn-secondary" style="color: var(--error-600);" onclick="HubEmailTemplates.delete(${template.id})">Delete</button>
+          ` : ''}
+        </div>
+      </div>
+    `).join('');
+  },
+
+  filterByCategory(category) {
+    this.currentCategory = category;
+    
+    // Update tab states
+    document.querySelectorAll('.template-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.category === category);
+    });
+    
+    this.load();
+  },
+
+  async copyToClipboard(templateId) {
+    const template = this.templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const textToCopy = `Subject: ${template.subject}\n\n${template.body}`;
+    
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      HubUI.showToast('Template copied to clipboard', 'success');
+    } catch (e) {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = textToCopy;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      HubUI.showToast('Template copied to clipboard', 'success');
+    }
+  },
+
+  preview(templateId) {
+    const template = this.templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const html = `
+      <div class="modal-overlay active" id="templatePreviewModal">
+        <div class="modal" style="max-width: 600px;">
+          <div class="modal-header">
+            <h2 class="modal-title">${this.escapeHtml(template.template_name)}</h2>
+            <button class="modal-close" onclick="document.getElementById('templatePreviewModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px;">
+            <div style="margin-bottom: 16px;">
+              <strong style="color: var(--gray-600);">Subject:</strong>
+              <div style="padding: 12px; background: var(--gray-50); border-radius: 8px; margin-top: 8px;">
+                ${this.escapeHtml(template.subject)}
+              </div>
+            </div>
+            <div>
+              <strong style="color: var(--gray-600);">Body:</strong>
+              <div style="padding: 16px; background: var(--gray-50); border-radius: 8px; margin-top: 8px; white-space: pre-wrap; font-size: 14px; line-height: 1.6;">
+${this.escapeHtml(template.body)}
+              </div>
+            </div>
+            <div style="margin-top: 16px;">
+              <strong style="color: var(--gray-600);">Variables:</strong>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                ${(template.variables || []).map(v => `<span class="template-variable">{{${v}}}</span>`).join('')}
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end;">
+            <button class="btn btn-primary" onclick="HubEmailTemplates.copyToClipboard(${template.id}); document.getElementById('templatePreviewModal').remove();">Copy Template</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  showAddModal() {
+    const html = `
+      <div class="modal-overlay active" id="templateModal">
+        <div class="modal" style="max-width: 600px;">
+          <div class="modal-header">
+            <h2 class="modal-title">Add Email Template</h2>
+            <button class="modal-close" onclick="document.getElementById('templateModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px; max-height: 70vh; overflow-y: auto;">
+            <div class="form-group">
+              <label>Template Key *</label>
+              <input type="text" id="templateKey" placeholder="e.g., refund_confirmation">
+            </div>
+            <div class="form-group">
+              <label>Template Name *</label>
+              <input type="text" id="templateName" placeholder="e.g., Refund Confirmation">
+            </div>
+            <div class="form-group">
+              <label>Category *</label>
+              <select id="templateCategory">
+                <option value="refund">Refund</option>
+                <option value="return">Return</option>
+                <option value="shipping">Shipping</option>
+                <option value="subscription">Subscription</option>
+                <option value="manual">Manual</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Subject *</label>
+              <input type="text" id="templateSubject" placeholder="Use {{variables}} for dynamic content">
+            </div>
+            <div class="form-group">
+              <label>Body *</label>
+              <textarea id="templateBody" rows="10" placeholder="Use {{variables}} like {{first_name}}, {{order_number}}, {{refund_amount}}"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" id="templateDescription" placeholder="When to use this template">
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end; gap: 12px;">
+            <button class="btn btn-secondary" onclick="document.getElementById('templateModal').remove()">Cancel</button>
+            <button class="btn btn-primary" onclick="HubEmailTemplates.save()">Save</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  async showEditModal(templateId) {
+    const template = this.templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const html = `
+      <div class="modal-overlay active" id="templateModal">
+        <div class="modal" style="max-width: 600px;">
+          <div class="modal-header">
+            <h2 class="modal-title">Edit Email Template</h2>
+            <button class="modal-close" onclick="document.getElementById('templateModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px; max-height: 70vh; overflow-y: auto;">
+            <input type="hidden" id="templateEditId" value="${template.id}">
+            <div class="form-group">
+              <label>Template Name *</label>
+              <input type="text" id="templateName" value="${this.escapeHtml(template.template_name)}">
+            </div>
+            <div class="form-group">
+              <label>Category *</label>
+              <select id="templateCategory">
+                ${['refund', 'return', 'shipping', 'subscription', 'manual'].map(c =>
+                  `<option value="${c}" ${template.category === c ? 'selected' : ''}>${c.charAt(0).toUpperCase() + c.slice(1)}</option>`
+                ).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Subject *</label>
+              <input type="text" id="templateSubject" value="${this.escapeHtml(template.subject)}">
+            </div>
+            <div class="form-group">
+              <label>Body *</label>
+              <textarea id="templateBody" rows="10">${this.escapeHtml(template.body)}</textarea>
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" id="templateDescription" value="${this.escapeHtml(template.description || '')}">
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end; gap: 12px;">
+            <button class="btn btn-secondary" onclick="document.getElementById('templateModal').remove()">Cancel</button>
+            <button class="btn btn-primary" onclick="HubEmailTemplates.update()">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  extractVariables(text) {
+    const matches = text.match(/\{\{(\w+)\}\}/g) || [];
+    return [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '')))];
+  },
+
+  async save() {
+    const body = document.getElementById('templateBody')?.value.trim() || '';
+    const subject = document.getElementById('templateSubject')?.value.trim() || '';
+    const variables = [...new Set([...this.extractVariables(subject), ...this.extractVariables(body)])];
+
+    const data = {
+      template_key: document.getElementById('templateKey')?.value.trim(),
+      template_name: document.getElementById('templateName')?.value.trim(),
+      category: document.getElementById('templateCategory')?.value,
+      subject,
+      body,
+      variables,
+      description: document.getElementById('templateDescription')?.value.trim()
+    };
+
+    if (!data.template_key || !data.template_name || !data.subject || !data.body) {
+      HubUI.showToast('Please fill in all required fields', 'error');
+      return;
+    }
+
+    try {
+      const result = await HubAPI.post('/hub/api/email-templates', data);
+      if (result.success) {
+        HubUI.showToast('Email template added successfully', 'success');
+        document.getElementById('templateModal')?.remove();
+        this.load();
+      } else {
+        HubUI.showToast(result.error || 'Failed to add template', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to add template', 'error');
+    }
+  },
+
+  async update() {
+    const templateId = document.getElementById('templateEditId')?.value;
+    const body = document.getElementById('templateBody')?.value.trim() || '';
+    const subject = document.getElementById('templateSubject')?.value.trim() || '';
+    const variables = [...new Set([...this.extractVariables(subject), ...this.extractVariables(body)])];
+
+    const data = {
+      template_name: document.getElementById('templateName')?.value.trim(),
+      category: document.getElementById('templateCategory')?.value,
+      subject,
+      body,
+      variables,
+      description: document.getElementById('templateDescription')?.value.trim()
+    };
+
+    if (!data.template_name || !data.subject || !data.body) {
+      HubUI.showToast('Please fill in all required fields', 'error');
+      return;
+    }
+
+    try {
+      const result = await HubAPI.put(`/hub/api/email-templates/${templateId}`, data);
+      if (result.success) {
+        HubUI.showToast('Email template updated successfully', 'success');
+        document.getElementById('templateModal')?.remove();
+        this.load();
+      } else {
+        HubUI.showToast(result.error || 'Failed to update template', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to update template', 'error');
+    }
+  },
+
+  async delete(templateId) {
+    if (!confirm('Are you sure you want to delete this email template?')) return;
+
+    try {
+      const result = await HubAPI.delete(`/hub/api/email-templates/${templateId}`);
+      if (result.success) {
+        HubUI.showToast('Email template deleted', 'success');
+        this.load();
+      } else {
+        HubUI.showToast(result.error || 'Failed to delete template', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to delete template', 'error');
+    }
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+};
+
+// ============================================
+// CASE DETAIL PAGE (Full Page View)
+// ============================================
+const HubCaseDetail = {
+  caseData: null,
+  activities: [],
+  comments: [],
+  sopLink: null,
+  emailTemplates: [],
+  shopifyOrder: null,
+
+  async load(caseId) {
+    if (!caseId) {
+      HubNavigation.goto('cases');
+      return;
+    }
+
+    HubUI.showLoading();
+    try {
+      const result = await HubAPI.get(`/hub/api/case/${caseId}`);
+      if (!result.case) {
+        HubUI.showToast('Case not found', 'error');
+        HubNavigation.goto('cases');
+        return;
+      }
+
+      this.caseData = result.case;
+      this.activities = result.activities || [];
+      this.comments = result.comments || [];
+      this.sopLink = result.sop_link;
+      this.emailTemplates = result.email_templates || [];
+      this.shopifyOrder = result.shopify_order;
+
+      // Store in HubState for keyboard shortcuts etc
+      HubState.currentCase = this.caseData;
+
+      this.render();
+    } catch (e) {
+      console.error('Failed to load case:', e);
+      HubUI.showToast('Failed to load case details', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
+  },
+
+  render() {
+    const container = document.getElementById('caseDetailContent');
+    if (!container || !this.caseData) return;
+
+    const c = this.caseData;
+    const dueDate = c.due_date ? new Date(c.due_date) : null;
+    const isOverdue = c.is_overdue;
+    const hoursLeft = dueDate ? Math.max(0, Math.round((dueDate - new Date()) / (1000 * 60 * 60))) : null;
+
+    container.innerHTML = `
+      <!-- Back Button -->
+      <button class="back-to-cases" onclick="HubNavigation.goto('cases')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Back to Cases
+      </button>
+
+      <!-- Case Header -->
+      <div class="case-detail-header">
+        <div class="case-detail-title">
+          <span class="case-detail-id">${this.escapeHtml(c.case_id)}</span>
+          <span class="status-badge ${(c.status || 'pending').replace('_', '-')}">${this.formatStatus(c.status)}</span>
+          <span class="type-badge ${c.case_type}">${c.case_type}</span>
+        </div>
+        <div class="case-detail-due ${isOverdue ? 'overdue' : hoursLeft < 8 ? 'warning' : 'ok'}">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          ${isOverdue ? 'Overdue' : hoursLeft !== null ? `${hoursLeft}h left` : 'No due date'}
+        </div>
+      </div>
+
+      <!-- Main Grid -->
+      <div class="case-detail-grid">
+        <!-- Left Column - Main Info -->
+        <div class="case-detail-main">
+          <!-- Customer Info -->
+          <div class="case-detail-section">
+            <div class="case-detail-section-header">Customer Information</div>
+            <div class="case-detail-section-content">
+              <div class="case-info-row">
+                <div class="case-info-label">Name</div>
+                <div class="case-info-value">${this.escapeHtml(c.customer_name || 'Unknown')}</div>
+              </div>
+              <div class="case-info-row">
+                <div class="case-info-label">Email</div>
+                <div class="case-info-value"><a href="mailto:${c.customer_email}">${this.escapeHtml(c.customer_email || '-')}</a></div>
+              </div>
+              ${c.customer_phone ? `
+              <div class="case-info-row">
+                <div class="case-info-label">Phone</div>
+                <div class="case-info-value">${this.escapeHtml(c.customer_phone)}</div>
+              </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Order Details -->
+          <div class="case-detail-section">
+            <div class="case-detail-section-header">Order Details</div>
+            <div class="case-detail-section-content">
+              <div class="case-info-row">
+                <div class="case-info-label">Order Number</div>
+                <div class="case-info-value">
+                  ${c.order_url ? `<a href="${c.order_url}" target="_blank">${this.escapeHtml(c.order_number || '-')}</a>` : this.escapeHtml(c.order_number || '-')}
+                </div>
+              </div>
+              <div class="case-info-row">
+                <div class="case-info-label">Order Date</div>
+                <div class="case-info-value">${c.order_date ? this.formatDate(c.order_date) : '-'}</div>
+              </div>
+              ${this.shopifyOrder ? `
+              <div class="case-info-row">
+                <div class="case-info-label">Financial Status</div>
+                <div class="case-info-value">${this.escapeHtml(this.shopifyOrder.financial_status || '-')}</div>
+              </div>
+              <div class="case-info-row">
+                <div class="case-info-label">Fulfillment</div>
+                <div class="case-info-value">${this.escapeHtml(this.shopifyOrder.fulfillment_status || 'Unfulfilled')}</div>
+              </div>
+              ` : ''}
+              ${c.tracking_number ? `
+              <div class="case-info-row">
+                <div class="case-info-label">Tracking</div>
+                <div class="case-info-value">${this.escapeHtml(c.tracking_number)}</div>
+              </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Issue & Resolution -->
+          <div class="case-detail-section">
+            <div class="case-detail-section-header">Issue & Resolution</div>
+            <div class="case-detail-section-content">
+              <div class="case-info-row">
+                <div class="case-info-label">Issue Type</div>
+                <div class="case-info-value">${this.escapeHtml(c.category || c.case_type || '-')}</div>
+              </div>
+              <div class="case-info-row">
+                <div class="case-info-label">Resolution</div>
+                <div class="case-info-value">${this.formatResolution(c.resolution)}</div>
+              </div>
+              ${c.refund_amount ? `
+              <div class="case-info-row">
+                <div class="case-info-label">Refund Amount</div>
+                <div class="case-info-value" style="font-weight: 600; color: var(--error-600);">$${parseFloat(c.refund_amount).toFixed(2)}</div>
+              </div>
+              ` : ''}
+              ${c.selected_items && c.selected_items.length > 0 ? `
+              <div style="margin-top: 16px;">
+                <div class="case-info-label" style="margin-bottom: 8px;">Selected Items</div>
+                <div class="selected-items-list">
+                  ${c.selected_items.map(item => `
+                    <div class="selected-item">
+                      <span class="selected-item-name">${this.escapeHtml(item.title || item.name || 'Unknown Item')}</span>
+                      <span class="selected-item-qty">x${item.quantity || 1}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Activity & Comments -->
+          <div class="case-detail-section">
+            <div class="case-detail-section-header">Activity & Comments</div>
+            <div class="case-detail-section-content">
+              <div class="activity-feed">
+                ${this.renderActivities()}
+              </div>
+              <form class="comment-form" onsubmit="HubCaseDetail.addComment(event)">
+                <textarea id="newCommentText" placeholder="Add a comment..." rows="2"></textarea>
+                <button type="submit" class="btn btn-primary" style="align-self: flex-end;">Add Comment</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column - Quick Actions -->
+        <div class="case-detail-sidebar">
+          <!-- Status Update -->
+          <div class="case-detail-section">
+            <div class="case-detail-section-header">Status</div>
+            <div class="case-detail-section-content">
+              <select class="status-select-inline" onchange="HubCaseDetail.updateStatus(this.value)">
+                <option value="pending" ${c.status === 'pending' ? 'selected' : ''}>Pending</option>
+                <option value="in_progress" ${c.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                <option value="completed" ${c.status === 'completed' ? 'selected' : ''}>Completed</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="case-detail-section">
+            <div class="case-detail-section-header">Quick Actions</div>
+            <div class="case-detail-section-content">
+              <div class="quick-actions-grid">
+                ${c.order_url ? `
+                <a href="${c.order_url}" target="_blank" class="quick-action-btn" onclick="HubCaseDetail.logActivity('viewed_shopify_order')">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                  View Shopify Order
+                </a>
+                ` : ''}
+                
+                ${c.session_replay_url ? `
+                <a href="${c.session_replay_url}" target="_blank" class="quick-action-btn" onclick="HubCaseDetail.logActivity('viewed_session_recording')">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                  View Session Recording
+                </a>
+                ` : ''}
+                
+                ${c.checkout_champ_url ? `
+                <a href="${c.checkout_champ_url}" target="_blank" class="quick-action-btn" onclick="HubCaseDetail.logActivity('viewed_subscription')">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                  View Subscription
+                </a>
+                ` : ''}
+                
+                ${this.sopLink ? `
+                <a href="${this.sopLink.sop_url}" target="_blank" class="quick-action-btn primary" onclick="HubCaseDetail.logActivity('clicked_sop', {sop_name: '${this.escapeHtml(this.sopLink.scenario_name)}'})">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                  View SOP: ${this.escapeHtml(this.sopLink.scenario_name)}
+                </a>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+
+          <!-- Email Templates -->
+          ${this.emailTemplates.length > 0 ? `
+          <div class="case-detail-section">
+            <div class="case-detail-section-header">Email Templates</div>
+            <div class="case-detail-section-content">
+              <div class="quick-actions-grid">
+                ${this.emailTemplates.map(t => `
+                  <button class="quick-action-btn" onclick="HubCaseDetail.copyEmailTemplate(${t.id}, '${this.escapeHtml(t.template_name)}')">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    ${this.escapeHtml(t.template_name)}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+          ` : ''}
+
+          <!-- Case Meta -->
+          <div class="case-detail-section">
+            <div class="case-detail-section-header">Case Information</div>
+            <div class="case-detail-section-content">
+              <div class="case-info-row">
+                <div class="case-info-label">Case ID</div>
+                <div class="case-info-value" style="font-family: var(--font-mono); font-size: 12px;">${this.escapeHtml(c.case_id)}</div>
+              </div>
+              <div class="case-info-row">
+                <div class="case-info-label">Created</div>
+                <div class="case-info-value">${this.formatDate(c.created_at)}</div>
+              </div>
+              <div class="case-info-row">
+                <div class="case-info-label">Assigned To</div>
+                <div class="case-info-value">${this.escapeHtml(c.assigned_to || 'Unassigned')}</div>
+              </div>
+              ${c.clickup_task_url ? `
+              <div class="case-info-row">
+                <div class="case-info-label">ClickUp</div>
+                <div class="case-info-value"><a href="${c.clickup_task_url}" target="_blank">View Task</a></div>
+              </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderActivities() {
+    // Combine activities and comments, sorted by date
+    const allActivities = [
+      ...this.activities.map(a => ({ ...a, _type: 'activity' })),
+      ...this.comments.map(c => ({ ...c, _type: 'comment', created_at: c.created_at }))
+    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    if (allActivities.length === 0) {
+      return '<div style="text-align: center; color: var(--gray-400); padding: 20px;">No activity yet</div>';
+    }
+
+    return allActivities.slice(0, 20).map(item => {
+      if (item._type === 'comment') {
+        return `
+          <div class="activity-item">
+            <div class="activity-icon" style="background: var(--primary-50);">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--primary-600);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+            </div>
+            <div class="activity-content">
+              <div class="activity-text"><strong>${this.escapeHtml(item.author_name || 'Team Member')}</strong> commented: ${this.escapeHtml(item.content)}</div>
+              <div class="activity-time">${this.timeAgo(item.created_at)}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="activity-item">
+            <div class="activity-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div class="activity-content">
+              <div class="activity-text">${this.formatActivityText(item)}</div>
+              <div class="activity-time">${this.timeAgo(item.created_at)}</div>
+            </div>
+          </div>
+        `;
+      }
+    }).join('');
+  },
+
+  formatActivityText(activity) {
+    const actorName = activity.actor || activity.actor_email || 'System';
+    switch (activity.activity_type) {
+      case 'status_changed':
+        return `<strong>${this.escapeHtml(actorName)}</strong> changed status to <strong>${activity.new_value}</strong>`;
+      case 'clicked_sop':
+        return `<strong>${this.escapeHtml(actorName)}</strong> viewed SOP`;
+      case 'copied_email_template':
+        return `<strong>${this.escapeHtml(actorName)}</strong> copied email template`;
+      case 'viewed_session_recording':
+        return `<strong>${this.escapeHtml(actorName)}</strong> viewed session recording`;
+      case 'viewed_shopify_order':
+        return `<strong>${this.escapeHtml(actorName)}</strong> viewed Shopify order`;
+      case 'assigned':
+        return `<strong>${this.escapeHtml(actorName)}</strong> assigned to ${activity.new_value}`;
+      default:
+        return `<strong>${this.escapeHtml(actorName)}</strong>: ${activity.activity_type}`;
+    }
+  },
+
+  async updateStatus(newStatus) {
+    try {
+      const result = await HubAPI.put(`/hub/api/case/${this.caseData.case_id}/status`, {
+        status: newStatus,
+        actor: HubState.currentUser?.name,
+        actor_email: HubState.currentUser?.email
+      });
+
+      if (result.success) {
+        this.caseData.status = newStatus;
+        HubUI.showToast(`Status updated to ${newStatus}`, 'success');
+        // Refresh to get updated activities
+        this.load(this.caseData.case_id);
+      } else {
+        HubUI.showToast(result.error || 'Failed to update status', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to update status', 'error');
+    }
+  },
+
+  async addComment(event) {
+    event.preventDefault();
+    const textarea = document.getElementById('newCommentText');
+    const content = textarea?.value.trim();
+
+    if (!content) return;
+
+    try {
+      const result = await HubAPI.post(`/hub/api/case/${this.caseData.case_id}/comments`, {
+        content,
+        author_name: HubState.currentUser?.name || 'Team Member',
+        author_email: HubState.currentUser?.email || ''
+      });
+
+      if (result.success) {
+        textarea.value = '';
+        HubUI.showToast('Comment added', 'success');
+        this.load(this.caseData.case_id);
+      } else {
+        HubUI.showToast(result.error || 'Failed to add comment', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to add comment', 'error');
+    }
+  },
+
+  async logActivity(activityType, details = {}) {
+    try {
+      await HubAPI.post('/hub/api/activity', {
+        case_id: this.caseData.case_id,
+        activity_type: activityType,
+        details
+      });
+    } catch (e) {
+      // Silent fail for activity logging
+    }
+  },
+
+  async copyEmailTemplate(templateId, templateName) {
+    try {
+      const result = await HubAPI.post(`/hub/api/email-templates/${templateId}/render`, {
+        case_id: this.caseData.case_id
+      });
+
+      if (result.subject && result.body) {
+        const textToCopy = `Subject: ${result.subject}\n\n${result.body}`;
+        await navigator.clipboard.writeText(textToCopy);
+        HubUI.showToast('Email template copied with case data', 'success');
+        this.logActivity('copied_email_template', { template_name: templateName });
+      } else {
+        HubUI.showToast('Failed to render template', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to copy template', 'error');
+    }
+  },
+
+  formatStatus(status) {
+    if (!status) return 'Pending';
+    return status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  },
+
+  formatResolution(resolution) {
+    if (!resolution) return 'Pending Review';
+    
+    const resolutionMap = {
+      'full_refund': 'Process Full Refund',
+      'partial_20': 'Process 20% Partial Refund',
+      'partial_30': 'Process 30% Partial Refund',
+      'partial_50': 'Process 50% Partial Refund',
+      'reship_missing_item': 'Reship Missing Item',
+      'subscription_paused': 'Subscription Paused',
+      'subscription_cancelled': 'Subscription Cancelled',
+      'manual_assistance': 'Manual Assistance Required'
+    };
+
+    return resolutionMap[resolution] || resolution.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  },
+
+  formatDate(timestamp) {
+    if (!timestamp) return '-';
+    return new Date(timestamp).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  },
+
+  timeAgo(timestamp) {
+    const seconds = Math.floor((Date.now() - new Date(timestamp)) / 1000);
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return new Date(timestamp).toLocaleDateString();
   },
 
   escapeHtml(text) {

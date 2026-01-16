@@ -940,6 +940,18 @@
             Performance
           </a>
         </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Resources</div>
+          <a href="/hub/sop" class="nav-item" data-page="sop">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            SOP Links
+          </a>
+          <a href="/hub/email-templates" class="nav-item" data-page="email-templates">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+            Email Templates
+          </a>
+        </div>
       </nav>
 
       <div class="sidebar-footer">
@@ -1071,23 +1083,51 @@
 
         <!-- Cases View (will be shown/hidden) -->
         <div id="casesView" style="display: none;">
-          <div class="cases-card">
-            <div class="cases-header">
-              <h2 class="cases-title">Cases</h2>
+          <!-- Filters Bar Above Table -->
+          <div class="cases-filters-bar">
+            <div class="cases-filters-left">
+              <select id="casesStatusFilter" class="filter-select-inline" onchange="HubFilters.applyFilters()">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+              <select id="casesAssigneeFilter" class="filter-select-inline" onchange="HubFilters.applyFilters()">
+                <option value="">All Assignees</option>
+                <option value="unassigned">Unassigned</option>
+              </select>
+              <select id="casesDateFilter" class="filter-select-inline" onchange="HubFilters.applyFilters()">
+                <option value="">All Time</option>
+                <option value="today">Today</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+              </select>
+              <select id="casesSortFilter" class="filter-select-inline" onchange="HubFilters.applyFilters()">
+                <option value="created_desc">Newest First</option>
+                <option value="created_asc">Oldest First</option>
+                <option value="due_asc">Due Date</option>
+                <option value="status_asc">Status</option>
+              </select>
             </div>
-            <table class="cases-table">
+            <div class="cases-filters-right">
+              <span id="casesResultCount" class="cases-result-count">Loading...</span>
+            </div>
+          </div>
+
+          <div class="cases-card cases-card-enhanced">
+            <table class="cases-table cases-table-enhanced">
               <thead>
                 <tr>
                   <th style="width: 40px;">
                     <input type="checkbox" id="selectAllCases" onclick="HubBulkActions.selectAll()">
                   </th>
-                  <th>CUSTOMER</th>
-                  <th>TYPE</th>
-                  <th>STATUS</th>
-                  <th>DUE</th>
-                  <th>RESOLUTION</th>
-                  <th>ASSIGNEE</th>
-                  <th>CREATED</th>
+                  <th class="th-customer">CUSTOMER</th>
+                  <th class="th-type">TYPE</th>
+                  <th class="th-status">STATUS</th>
+                  <th class="th-due">DUE</th>
+                  <th class="th-resolution">RESOLUTION</th>
+                  <th class="th-assignee">ASSIGNEE</th>
+                  <th class="th-created">CREATED</th>
                 </tr>
               </thead>
               <tbody id="casesTableBody">
@@ -1358,6 +1398,63 @@
             </div>
           </div>
         </div>
+
+        <!-- SOP Links View -->
+        <div id="sopView" style="display: none;">
+          <div class="cases-card">
+            <div class="cases-header" style="display: flex; justify-content: space-between; align-items: center;">
+              <h2 class="cases-title">SOP Links</h2>
+              <button id="addSopBtn" class="btn btn-primary admin-only" onclick="HubSOP.showAddModal()" style="display: none;">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Add SOP
+              </button>
+            </div>
+            <!-- Category Tabs -->
+            <div style="padding: 16px 24px; border-bottom: 1px solid var(--gray-200); display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="sop-tab active" data-category="" onclick="HubSOP.filterByCategory('')">All</button>
+              <button class="sop-tab" data-category="refund" onclick="HubSOP.filterByCategory('refund')">Refunds</button>
+              <button class="sop-tab" data-category="return" onclick="HubSOP.filterByCategory('return')">Returns</button>
+              <button class="sop-tab" data-category="shipping" onclick="HubSOP.filterByCategory('shipping')">Shipping</button>
+              <button class="sop-tab" data-category="subscription" onclick="HubSOP.filterByCategory('subscription')">Subscriptions</button>
+              <button class="sop-tab" data-category="manual" onclick="HubSOP.filterByCategory('manual')">Manual</button>
+            </div>
+            <div id="sopList" style="padding: 24px;">
+              <div class="loading-spinner"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Email Templates View -->
+        <div id="emailTemplatesView" style="display: none;">
+          <div class="cases-card">
+            <div class="cases-header" style="display: flex; justify-content: space-between; align-items: center;">
+              <h2 class="cases-title">Email Templates</h2>
+              <button id="addTemplateBtn" class="btn btn-primary admin-only" onclick="HubEmailTemplates.showAddModal()" style="display: none;">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Add Template
+              </button>
+            </div>
+            <!-- Category Tabs -->
+            <div style="padding: 16px 24px; border-bottom: 1px solid var(--gray-200); display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="template-tab active" data-category="" onclick="HubEmailTemplates.filterByCategory('')">All</button>
+              <button class="template-tab" data-category="refund" onclick="HubEmailTemplates.filterByCategory('refund')">Refunds</button>
+              <button class="template-tab" data-category="return" onclick="HubEmailTemplates.filterByCategory('return')">Returns</button>
+              <button class="template-tab" data-category="shipping" onclick="HubEmailTemplates.filterByCategory('shipping')">Shipping</button>
+              <button class="template-tab" data-category="subscription" onclick="HubEmailTemplates.filterByCategory('subscription')">Subscriptions</button>
+              <button class="template-tab" data-category="manual" onclick="HubEmailTemplates.filterByCategory('manual')">Manual</button>
+            </div>
+            <div id="emailTemplatesList" style="padding: 24px;">
+              <div class="loading-spinner"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Case Detail View (Full Page) -->
+        <div id="caseDetailView" style="display: none;">
+          <div id="caseDetailContent">
+            <div class="loading-spinner"><div class="spinner"></div></div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -1407,6 +1504,19 @@
       } else if (path === '/hub/analytics' || path === '/hub/analytics/') {
         if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
           HubNavigation.goto('analytics');
+        }
+      } else if (path === '/hub/sop' || path === '/hub/sop/') {
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto('sop');
+        }
+      } else if (path === '/hub/email-templates' || path === '/hub/email-templates/') {
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto('email-templates');
+        }
+      } else if (path.startsWith('/hub/case/')) {
+        const caseId = path.split('/hub/case/')[1].split('/')[0];
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto('case-detail', caseId);
         }
       } else if (path === '/hub' || path === '/hub/') {
         if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
