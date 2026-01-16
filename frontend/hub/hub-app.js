@@ -2149,6 +2149,7 @@ const HubAnalytics = {
 // ============================================
 const HubDashboard = {
   async load() {
+    HubUI.showLoading();
     try {
       // Load stats
       const result = await HubAPI.get('/hub/api/stats');
@@ -2168,21 +2169,27 @@ const HubDashboard = {
       await this.loadRecentCases();
     } catch (e) {
       console.error('Failed to load dashboard:', e);
+      HubUI.showToast('Failed to load dashboard stats', 'error');
       // Still try to load recent cases even if stats fail
       await this.loadRecentCases();
+    } finally {
+      HubUI.hideLoading();
     }
   },
 
   async loadRecentCases() {
+    const container = document.getElementById('recentCasesBody');
+    if (!container) return;
+
+    // Show loading spinner
+    container.innerHTML = '<tr><td colspan="5" class="loading-spinner"><div class="spinner"></div></td></tr>';
+
     try {
       const result = await HubAPI.get('/hub/api/cases?page=1&limit=10');
       this.renderRecentCases(result.cases || []);
     } catch (e) {
       console.error('Failed to load recent cases:', e);
-      const container = document.getElementById('recentCasesBody');
-      if (container) {
-        container.innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load recent cases</td></tr>';
-      }
+      container.innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load recent cases</td></tr>';
     }
   },
 
