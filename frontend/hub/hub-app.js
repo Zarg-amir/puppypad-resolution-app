@@ -4076,48 +4076,138 @@ The PuppyPad Team`,
     });
   },
 
-  previewPlaceholder(templateId) {
+  async previewPlaceholder(templateId) {
     const templates = this.getPlaceholderTemplates();
     const template = templates.find(t => t.id === templateId);
     if (!template) return;
 
+    // Fetch cases for this template's category
+    let relatedCases = [];
+    try {
+      const response = await HubAPI.get('/hub/api/cases/by-category?category=' + encodeURIComponent(template.category) + '&limit=15');
+      relatedCases = response.cases || [];
+    } catch (e) {
+      console.warn('Could not load related cases:', e);
+    }
+
+    const casesDropdownOptions = relatedCases.length > 0 
+      ? relatedCases.map(c => `<option value="${c.case_id}">${c.customer_name || 'Unknown'} - ${c.order_number || 'N/A'} (${c.status})</option>`).join('')
+      : '<option value="">No cases available for this category</option>';
+
     const html = `
       <div class="modal-overlay active" id="templatePreviewModal">
-        <div class="modal" style="max-width: 600px;">
+        <div class="modal email-template-modal" style="max-width: 700px;">
           <div class="modal-header">
             <h2 class="modal-title">${this.escapeHtml(template.template_name)}</h2>
             <button class="modal-close" onclick="document.getElementById('templatePreviewModal').remove()">&times;</button>
           </div>
           <div class="modal-body" style="padding: 24px;">
-            <div style="margin-bottom: 16px;">
-              <strong style="color: var(--gray-600);">Subject:</strong>
-              <div style="padding: 12px; background: var(--gray-50); border-radius: 8px; margin-top: 8px;">
-                ${this.escapeHtml(template.subject)}
+            <!-- Template Preview Section -->
+            <div class="template-preview-section">
+              <div style="margin-bottom: 16px;">
+                <strong style="color: var(--gray-600);">Subject:</strong>
+                <div id="previewSubject" class="template-preview-content" style="padding: 12px; background: var(--gray-50); border-radius: 8px; margin-top: 8px;">
+                  ${this.escapeHtml(template.subject)}
+                </div>
               </div>
-            </div>
-            <div>
-              <strong style="color: var(--gray-600);">Body:</strong>
-              <div style="padding: 16px; background: var(--gray-50); border-radius: 8px; margin-top: 8px; white-space: pre-wrap; font-size: 14px; line-height: 1.6;">
+              <div>
+                <strong style="color: var(--gray-600);">Body:</strong>
+                <div id="previewBody" class="template-preview-content" style="padding: 16px; background: var(--gray-50); border-radius: 8px; margin-top: 8px; white-space: pre-wrap; font-size: 14px; line-height: 1.6; max-height: 300px; overflow-y: auto;">
 ${this.escapeHtml(template.body)}
+                </div>
               </div>
             </div>
-            <div style="margin-top: 16px;">
-              <strong style="color: var(--gray-600);">Dynamic Variables:</strong>
-              <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
-                ${(template.variables || []).map(v => `<span class="template-variable">{{${v}}}</span>`).join('')}
+            
+            <!-- Variables Info -->
+            <div style="margin-top: 16px; padding: 12px; background: var(--primary-50); border-radius: 8px; border: 1px solid var(--primary-200);">
+              <strong style="color: var(--primary-700); font-size: 13px;">Dynamic Variables:</strong>
+              <div class="template-variables-list" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+                ${(template.variables || []).map(v => `<span class="template-variable-badge">{{${v}}}</span>`).join('')}
               </div>
-              <p style="font-size: 12px; color: var(--gray-500); margin-top: 8px;">
-                These variables will be automatically replaced with case data when copying from a case detail page.
+            </div>
+
+            <!-- Live Preview Section -->
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--gray-200);">
+              <strong style="color: var(--gray-700); font-size: 14px;">📋 Live Preview with Real Case Data</strong>
+              <p style="font-size: 12px; color: var(--gray-500); margin-top: 4px; margin-bottom: 12px;">
+                Select a case below to see how the email would look with actual customer data.
               </p>
+              <select id="livePreviewCaseSelect" class="case-selector-dropdown" onchange="HubEmailTemplates.updateLivePreview('${template.id}', this.value)" style="width: 100%; padding: 10px 12px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; background: white;">
+                <option value="">-- Select a case for live preview --</option>
+                ${casesDropdownOptions}
+              </select>
             </div>
           </div>
-          <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end;">
+          <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center;">
+            <span id="previewStatus" style="font-size: 12px; color: var(--gray-500);">Showing template with variables</span>
             <button class="btn btn-primary" onclick="HubEmailTemplates.copyPlaceholder('${template.id}'); document.getElementById('templatePreviewModal').remove();">Copy Template</button>
           </div>
         </div>
       </div>
     `;
     document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  async updateLivePreview(templateId, caseId) {
+    const templates = this.getPlaceholderTemplates();
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const previewSubject = document.getElementById('previewSubject');
+    const previewBody = document.getElementById('previewBody');
+    const previewStatus = document.getElementById('previewStatus');
+
+    if (!caseId) {
+      // Reset to template with variables
+      previewSubject.innerHTML = this.escapeHtml(template.subject);
+      previewBody.innerHTML = this.escapeHtml(template.body);
+      previewStatus.textContent = 'Showing template with variables';
+      previewStatus.style.color = 'var(--gray-500)';
+      return;
+    }
+
+    previewStatus.textContent = 'Loading case data...';
+    previewStatus.style.color = 'var(--primary-600)';
+
+    try {
+      // Fetch case data
+      const caseData = await HubAPI.get('/hub/api/case/' + caseId);
+      
+      // Replace variables in template
+      const replacements = {
+        'customer_name': caseData.customer_name || 'Valued Customer',
+        'customer_first_name': (caseData.customer_name || 'Valued Customer').split(' ')[0],
+        'order_number': caseData.order_number || 'N/A',
+        'refund_amount': caseData.refund_amount ? '$' + parseFloat(caseData.refund_amount).toFixed(2) : '$0.00',
+        'resolution': caseData.resolution || 'your request',
+        'case_id': caseData.case_id || '',
+        'case_type': caseData.case_type || '',
+        'tracking_number': caseData.tracking_number || 'N/A',
+        'new_tracking_number': caseData.new_tracking_number || 'N/A',
+        'discount_code': caseData.discount_code || 'PUPPYPAD10',
+        'discount_amount': caseData.discount_amount || '10%',
+        'pause_date': caseData.pause_date || 'your requested date',
+        'resume_date': caseData.resume_date || 'when you\'re ready'
+      };
+
+      let renderedSubject = template.subject;
+      let renderedBody = template.body;
+
+      Object.entries(replacements).forEach(([key, value]) => {
+        const regex = new RegExp('\\{\\{' + key + '\\}\\}', 'g');
+        renderedSubject = renderedSubject.replace(regex, value);
+        renderedBody = renderedBody.replace(regex, value);
+      });
+
+      previewSubject.innerHTML = this.escapeHtml(renderedSubject);
+      previewBody.innerHTML = this.escapeHtml(renderedBody);
+      previewStatus.innerHTML = '✓ Showing live preview for <strong>' + this.escapeHtml(caseData.customer_name || 'Unknown') + '</strong>';
+      previewStatus.style.color = 'var(--success-600)';
+    } catch (e) {
+      console.error('Failed to load case data:', e);
+      previewStatus.textContent = 'Failed to load case data';
+      previewStatus.style.color = 'var(--error-600)';
+    }
   },
 
   filterByCategory(category) {
