@@ -2203,10 +2203,14 @@ const HubAnalytics = {
 
   renderTrendChart(data) {
     const container = document.getElementById('analyticsTrendChart');
-    if (!container) return;
+    if (!container) {
+      console.error('analyticsTrendChart container not found');
+      return;
+    }
 
     const casesByDay = data.casesByDay || [];
     const sessionsByDay = data.sessionsByDay || [];
+    console.log('Rendering trend chart - casesByDay:', casesByDay, 'sessionsByDay:', sessionsByDay);
 
     if (casesByDay.length === 0 && sessionsByDay.length === 0) {
       container.innerHTML = '<p style="color: var(--gray-500); text-align: center; padding: 40px;">No data available</p>';
@@ -2261,8 +2265,15 @@ const HubAnalytics = {
     // Draw date labels
     sortedDates.forEach((date, idx) => {
       const x = padding + idx * barWidth + barWidth / 2;
-      const dateStr = new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      svg += `<text x="${x}" y="${chartHeight - 10}" text-anchor="middle" font-size="10" fill="var(--gray-600)">${dateStr}</text>`;
+      try {
+        // Handle both date strings and Date objects
+        const dateObj = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
+        const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        svg += `<text x="${x}" y="${chartHeight - 10}" text-anchor="middle" font-size="10" fill="var(--gray-600)">${dateStr}</text>`;
+      } catch (e) {
+        console.error('Error formatting date:', date, e);
+        svg += `<text x="${x}" y="${chartHeight - 10}" text-anchor="middle" font-size="10" fill="var(--gray-600)">${date}</text>`;
+      }
     });
 
     svg += '</svg>';
@@ -2356,9 +2367,13 @@ const HubAnalytics = {
 
   renderStatusDistribution(data) {
     const container = document.getElementById('analyticsStatusDistribution');
-    if (!container) return;
+    if (!container) {
+      console.error('analyticsStatusDistribution container not found');
+      return;
+    }
 
     const statuses = data.casesByStatus || [];
+    console.log('Rendering status distribution - statuses:', statuses);
     if (statuses.length === 0) {
       container.innerHTML = '<p style="color: var(--gray-500);">No data available</p>';
       return;
@@ -2389,9 +2404,13 @@ const HubAnalytics = {
 
   renderFlowTypes(data) {
     const container = document.getElementById('analyticsFlowTypes');
-    if (!container) return;
+    if (!container) {
+      console.error('analyticsFlowTypes container not found');
+      return;
+    }
 
     const flows = data.flowTypes || [];
+    console.log('Rendering flow types - flows:', flows);
     if (flows.length === 0) {
       container.innerHTML = '<p style="color: var(--gray-500);">No data available</p>';
       return;
@@ -2407,9 +2426,13 @@ const HubAnalytics = {
 
   renderTeamLeaderboard(data) {
     const container = document.getElementById('analyticsTeamLeaderboard');
-    if (!container) return;
+    if (!container) {
+      console.error('analyticsTeamLeaderboard container not found');
+      return;
+    }
 
     const team = data.teamPerformance || [];
+    console.log('Rendering team leaderboard - team:', team);
     if (team.length === 0) {
       container.innerHTML = '<p style="color: var(--gray-500);">No data available</p>';
       return;
@@ -2430,9 +2453,13 @@ const HubAnalytics = {
 
   renderRootCauseAnalysis(data) {
     const container = document.getElementById('analyticsRootCauseAnalysis');
-    if (!container) return;
+    if (!container) {
+      console.error('analyticsRootCauseAnalysis container not found');
+      return;
+    }
 
     const causes = data.rootCauses || [];
+    console.log('Rendering root cause analysis - causes:', causes);
     if (causes.length === 0) {
       container.innerHTML = '<p style="color: var(--gray-500);">No data</p>';
       return;
@@ -2448,9 +2475,13 @@ const HubAnalytics = {
 
   renderResolutionTimeDistribution(data) {
     const container = document.getElementById('analyticsResolutionTimeDist');
-    if (!container) return;
+    if (!container) {
+      console.error('analyticsResolutionTimeDist container not found');
+      return;
+    }
 
     const dist = data.resolutionDistribution || [];
+    console.log('Rendering resolution time distribution - dist:', dist);
     if (dist.length === 0) {
       container.innerHTML = '<p style="color: var(--gray-500);">No data available</p>';
       return;
