@@ -4536,23 +4536,53 @@ const HubCaseDetail = {
     const isOverdue = c.is_overdue;
     const hoursLeft = dueDate ? Math.max(0, Math.round((dueDate - new Date()) / (1000 * 60 * 60))) : null;
 
-    container.innerHTML = `
-      <!-- Back Button -->
-      <button class="back-to-cases" onclick="HubNavigation.goto('cases')">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        Back to Cases
-      </button>
+    // Get prev/next case info
+    const currentIndex = HubState.currentCaseIndex;
+    const prevCase = currentIndex > 0 ? HubState.cases[currentIndex - 1] : null;
+    const nextCase = currentIndex < HubState.cases.length - 1 ? HubState.cases[currentIndex + 1] : null;
 
-      <!-- Case Header -->
+    container.innerHTML = `
+      <!-- Case Navigation -->
+      <div class="case-nav-buttons">
+        <button class="case-nav-btn" onclick="HubNavigation.goto('cases')">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          Back to Cases
+        </button>
+        <span class="case-nav-divider"></span>
+        <button class="case-nav-btn" onclick="HubCases.navigateCase('prev')" ${!prevCase ? 'disabled' : ''}>
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+          Previous
+        </button>
+        <button class="case-nav-btn" onclick="HubCases.navigateCase('next')" ${!nextCase ? 'disabled' : ''}>
+          Next
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+      </div>
+
+      <!-- Case Header - Customer Name as Title -->
       <div class="case-detail-header">
         <div class="case-detail-title">
-          <span class="case-detail-id">${this.escapeHtml(c.case_id)}</span>
-          <span class="status-badge ${(c.status || 'pending').replace('_', '-')}">${this.formatStatus(c.status)}</span>
-          <span class="type-badge ${c.case_type}">${c.case_type}</span>
+          <div class="case-detail-customer-name">
+            ${this.escapeHtml(c.customer_name || 'Unknown Customer')}
+            <span class="status-badge ${(c.status || 'pending').replace('_', '-')}">${this.formatStatus(c.status)}</span>
+            <span class="type-badge ${c.case_type}">${c.case_type}</span>
+          </div>
+          <div class="case-detail-email-row">
+            <a href="mailto:${c.customer_email}">${this.escapeHtml(c.customer_email || '-')}</a>
+            <button class="copy-btn" onclick="HubCaseDetail.copyToClipboard('${this.escapeHtml(c.customer_email || '')}', this)" title="Copy email">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            </button>
+          </div>
+          <div class="case-detail-id-row">
+            <span>${this.escapeHtml(c.case_id)}</span>
+            <button class="copy-btn" onclick="HubCaseDetail.copyToClipboard('${this.escapeHtml(c.case_id)}', this)" title="Copy case ID">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            </button>
+          </div>
         </div>
         <div class="case-detail-due ${isOverdue ? 'overdue' : hoursLeft < 8 ? 'warning' : 'ok'}">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          ${isOverdue ? 'Overdue' : hoursLeft !== null ? `${hoursLeft}h left` : 'No due date'}
+          ${isOverdue ? 'Overdue' : hoursLeft !== null ? hoursLeft + 'h left' : 'No due date'}
         </div>
       </div>
 
@@ -4560,27 +4590,6 @@ const HubCaseDetail = {
       <div class="case-detail-grid">
         <!-- Left Column - Main Info -->
         <div class="case-detail-main">
-          <!-- Customer Info -->
-          <div class="case-detail-section">
-            <div class="case-detail-section-header">Customer Information</div>
-            <div class="case-detail-section-content">
-              <div class="case-info-row">
-                <div class="case-info-label">Name</div>
-                <div class="case-info-value">${this.escapeHtml(c.customer_name || 'Unknown')}</div>
-              </div>
-              <div class="case-info-row">
-                <div class="case-info-label">Email</div>
-                <div class="case-info-value"><a href="mailto:${c.customer_email}">${this.escapeHtml(c.customer_email || '-')}</a></div>
-              </div>
-              ${c.customer_phone ? `
-              <div class="case-info-row">
-                <div class="case-info-label">Phone</div>
-                <div class="case-info-value">${this.escapeHtml(c.customer_phone)}</div>
-              </div>
-              ` : ''}
-            </div>
-          </div>
-
           <!-- Order Details -->
           <div class="case-detail-section">
             <div class="case-detail-section-header">Order Details</div>
@@ -4686,11 +4695,23 @@ const HubCaseDetail = {
           <div class="case-detail-section">
             <div class="case-detail-section-header">Status</div>
             <div class="case-detail-section-content">
-              <select class="status-select-inline" onchange="HubCaseDetail.updateStatus(this.value)">
-                <option value="pending" ${c.status === 'pending' ? 'selected' : ''}>Pending</option>
-                <option value="in_progress" ${c.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
-                <option value="completed" ${c.status === 'completed' ? 'selected' : ''}>Completed</option>
-              </select>
+              <div class="status-radio-group">
+                <label class="status-radio-item ${c.status === 'pending' ? 'selected' : ''}" data-status="pending" onclick="HubCaseDetail.selectStatus('pending', this)">
+                  <input type="radio" name="caseStatus" value="pending" ${c.status === 'pending' ? 'checked' : ''}>
+                  <span class="status-radio-check"></span>
+                  <span class="status-radio-label">Pending</span>
+                </label>
+                <label class="status-radio-item ${c.status === 'in_progress' ? 'selected' : ''}" data-status="in_progress" onclick="HubCaseDetail.selectStatus('in_progress', this)">
+                  <input type="radio" name="caseStatus" value="in_progress" ${c.status === 'in_progress' ? 'checked' : ''}>
+                  <span class="status-radio-check"></span>
+                  <span class="status-radio-label">In Progress</span>
+                </label>
+                <label class="status-radio-item ${c.status === 'completed' ? 'selected' : ''}" data-status="completed" onclick="HubCaseDetail.selectStatus('completed', this)">
+                  <input type="radio" name="caseStatus" value="completed" ${c.status === 'completed' ? 'checked' : ''}>
+                  <span class="status-radio-check"></span>
+                  <span class="status-radio-label">Completed</span>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -5147,6 +5168,41 @@ The PuppyPad Team`
       }
     } catch (e) {
       HubUI.showToast('Failed to update status', 'error');
+    }
+  },
+
+  selectStatus(status, element) {
+    // Update visual selection
+    const group = element.closest('.status-radio-group');
+    if (group) {
+      group.querySelectorAll('.status-radio-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+    }
+    element.classList.add('selected');
+    
+    // Trigger status update
+    this.updateStatus(status);
+  },
+
+  async copyToClipboard(text, button) {
+    try {
+      await navigator.clipboard.writeText(text);
+      
+      // Visual feedback
+      button.classList.add('copied');
+      const originalHTML = button.innerHTML;
+      button.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+      
+      HubUI.showToast('Copied to clipboard!', 'success');
+      
+      // Reset after delay
+      setTimeout(() => {
+        button.classList.remove('copied');
+        button.innerHTML = originalHTML;
+      }, 2000);
+    } catch (e) {
+      HubUI.showToast('Failed to copy', 'error');
     }
   },
 
