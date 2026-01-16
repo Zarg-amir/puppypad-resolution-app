@@ -1570,7 +1570,7 @@ const HubSearch = {
     const hasResults = cases.length > 0 || sessions.length > 0 || issues.length > 0;
 
     if (!hasResults) {
-      dropdown.innerHTML = '<div class="search-dropdown-empty">No results found</div>';
+      dropdown.innerHTML = '<div class="search-dropdown-empty">No results found for "' + this.escapeHtml(query) + '"</div>';
       return;
     }
 
@@ -1578,7 +1578,7 @@ const HubSearch = {
       if (!text || !query) return this.escapeHtml(text || '');
       const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp('(' + escaped + ')', 'gi');
-      return this.escapeHtml(text).replace(regex, '<span class="search-dropdown-item-highlight">$1</span>');
+      return this.escapeHtml(text).replace(regex, '<mark>$1</mark>');
     };
 
     let html = '';
@@ -1586,24 +1586,20 @@ const HubSearch = {
 
     // Cases section
     if (cases.length > 0) {
-      html += `<div class="search-dropdown-section-title">CASES</div>`;
+      html += `<div class="search-section-header">Cases <span class="search-count">${cases.length}</span></div>`;
       html += cases.map((c) => {
         const idx = flatIndex++;
         return `
-          <div class="search-dropdown-item ${idx === this.selectedIndex ? 'selected' : ''}" 
+          <div class="search-result-item ${idx === this.selectedIndex ? 'selected' : ''}" 
                onclick="HubSearch.selectUnifiedResult('case', '${c.case_id}')"
                data-index="${idx}">
-            <div class="search-dropdown-item-icon" style="background: var(--primary-50); color: var(--primary-600);">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            <div class="search-result-main">
+              <span class="search-result-name">${highlightText(c.customer_name || 'Unknown')}</span>
+              <span class="search-result-badge ${c.case_type}">${c.case_type}</span>
+              <span class="search-result-status ${c.status}">${c.status || 'pending'}</span>
             </div>
-            <div class="search-dropdown-item-content">
-              <div class="search-dropdown-item-header">
-                <span class="type-badge ${c.case_type}" style="font-size: 10px;">${c.case_type}</span>
-                ${highlightText(c.customer_name || 'Unknown')}
-              </div>
-              <div class="search-dropdown-item-meta">
-                ${highlightText(c.customer_email || '')} · ${c.order_number || ''} · ${c.status || 'pending'}
-              </div>
+            <div class="search-result-details">
+              ${highlightText(c.customer_email || '')} ${c.order_number ? '• ' + c.order_number : ''}
             </div>
           </div>
         `;
@@ -1612,25 +1608,20 @@ const HubSearch = {
 
     // Sessions section
     if (sessions.length > 0) {
-      html += `<div class="search-dropdown-section-title">SESSIONS</div>`;
+      html += `<div class="search-section-header">Sessions <span class="search-count">${sessions.length}</span></div>`;
       html += sessions.map((s) => {
         const idx = flatIndex++;
         const timeAgo = this.timeAgo(s.started_at);
         return `
-          <div class="search-dropdown-item ${idx === this.selectedIndex ? 'selected' : ''}" 
+          <div class="search-result-item ${idx === this.selectedIndex ? 'selected' : ''}" 
                onclick="HubSearch.selectUnifiedResult('session', '${s.session_id}')"
                data-index="${idx}">
-            <div class="search-dropdown-item-icon" style="background: var(--warning-50); color: var(--warning-600);">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            <div class="search-result-main">
+              <span class="search-result-name">${highlightText(s.customer_name || s.customer_email || 'Unknown')}</span>
+              <span class="search-result-badge session">${s.flow_type || 'Session'}</span>
             </div>
-            <div class="search-dropdown-item-content">
-              <div class="search-dropdown-item-header">
-                <span style="color: var(--gray-500); font-size: 11px;">[Recording]</span>
-                ${highlightText(s.customer_email || 'Unknown')}
-              </div>
-              <div class="search-dropdown-item-meta">
-                ${s.flow_type || ''} · ${s.outcome || ''} · ${timeAgo}
-              </div>
+            <div class="search-result-details">
+              ${highlightText(s.customer_email || '')} • ${s.outcome || ''} • ${timeAgo}
             </div>
           </div>
         `;
@@ -1639,24 +1630,20 @@ const HubSearch = {
 
     // Issues section
     if (issues.length > 0) {
-      html += `<div class="search-dropdown-section-title">ISSUES</div>`;
+      html += `<div class="search-section-header">Issues <span class="search-count">${issues.length}</span></div>`;
       html += issues.map((i) => {
         const idx = flatIndex++;
         return `
-          <div class="search-dropdown-item ${idx === this.selectedIndex ? 'selected' : ''}" 
+          <div class="search-result-item ${idx === this.selectedIndex ? 'selected' : ''}" 
                onclick="HubSearch.selectUnifiedResult('issue', '${i.report_id}')"
                data-index="${idx}">
-            <div class="search-dropdown-item-icon" style="background: var(--error-50); color: var(--error-600);">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            <div class="search-result-main">
+              <span class="search-result-name">${highlightText(i.customer_email || 'Unknown')}</span>
+              <span class="search-result-badge issue">${i.issue_type || 'Issue'}</span>
+              <span class="search-result-status ${i.status}">${i.status || 'pending'}</span>
             </div>
-            <div class="search-dropdown-item-content">
-              <div class="search-dropdown-item-header">
-                <span style="color: var(--gray-500); font-size: 11px;">[${i.issue_type || 'Issue'}]</span>
-                ${highlightText(i.customer_email || 'Unknown')}
-              </div>
-              <div class="search-dropdown-item-meta">
-                ${i.status || 'pending'}
-              </div>
+            <div class="search-result-details">
+              ${i.description ? highlightText(i.description.substring(0, 60) + '...') : ''}
             </div>
           </div>
         `;
@@ -4904,35 +4891,33 @@ const HubCaseDetail = {
     const c = this.caseData;
     if (!c) return;
 
-    // Get templates for this case type
-    const templates = this.getEmailTemplatesForCase(c);
+    // Get the SINGLE matching template based on resolution
+    const template = this.getEmailTemplateForResolution(c);
+    
+    // Pre-fill the template with actual case data
+    const filledSubject = this.fillTemplateVariables(template.subject, c);
+    const filledBody = this.fillTemplateVariables(template.body, c);
     
     const html = `
       <div class="modal-overlay active" id="emailTemplateModal" onclick="if(event.target.id==='emailTemplateModal')this.remove()">
-        <div class="modal" style="max-width: 700px;">
+        <div class="modal" style="max-width: 650px;">
           <div class="modal-header">
-            <h3>Copy Email Template</h3>
+            <h3>${this.escapeHtml(template.name)}</h3>
             <button class="modal-close" onclick="document.getElementById('emailTemplateModal').remove()">×</button>
           </div>
-          <div class="modal-body" style="max-height: 500px; overflow-y: auto;">
-            <p style="color: var(--gray-500); margin-bottom: 16px;">Select a template to copy. Variables will be replaced with case data.</p>
-            <div class="email-template-list">
-              ${templates.map(t => `
-                <div class="email-template-card">
-                  <div class="email-template-header">
-                    <span class="email-template-name">${this.escapeHtml(t.name)}</span>
-                    <span class="type-badge ${c.case_type}">${c.case_type}</span>
-                  </div>
-                  <div class="email-template-subject">
-                    <strong>Subject:</strong> ${this.escapeHtml(t.subject)}
-                  </div>
-                  <div class="email-template-preview">${this.escapeHtml(t.body.substring(0, 150))}...</div>
-                  <button class="btn btn-primary" onclick="HubCaseDetail.copyTemplate('${t.id}')">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-                    Copy to Clipboard
-                  </button>
-                </div>
-              `).join('')}
+          <div class="modal-body" style="padding: 0;">
+            <div style="padding: 20px; background: var(--gray-50); border-bottom: 1px solid var(--gray-200);">
+              <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 4px;">Subject</div>
+              <div style="font-size: 15px; font-weight: 500; color: var(--gray-900);">${this.escapeHtml(filledSubject)}</div>
+            </div>
+            <div style="padding: 24px; max-height: 350px; overflow-y: auto;">
+              <div style="font-size: 14px; line-height: 1.7; color: var(--gray-800); white-space: pre-line;">${this.escapeHtml(filledBody)}</div>
+            </div>
+            <div style="padding: 16px 24px; background: var(--gray-50); border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end;">
+              <button class="btn btn-primary" onclick="HubCaseDetail.copyFilledTemplate()" style="display: flex; align-items: center; gap: 8px;">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                Copy to Clipboard
+              </button>
             </div>
           </div>
         </div>
@@ -4941,11 +4926,23 @@ const HubCaseDetail = {
     document.body.insertAdjacentHTML('beforeend', html);
   },
 
-  getEmailTemplatesForCase(c) {
-    // Return templates based on case type and resolution
-    const baseTemplates = {
-      'refund': [
-        {
+  fillTemplateVariables(text, c) {
+    return text
+      .replace(/\{\{customer_name\}\}/g, c.customer_name || 'Valued Customer')
+      .replace(/\{\{order_number\}\}/g, c.order_number || '')
+      .replace(/\{\{refund_amount\}\}/g, c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '')
+      .replace(/\{\{resolution\}\}/g, c.resolution || '')
+      .replace(/\{\{customer_email\}\}/g, c.customer_email || '');
+  },
+
+  getEmailTemplateForResolution(c) {
+    const resolution = (c.resolution || '').toLowerCase().replace(/_/g, ' ');
+    const caseType = c.case_type || 'refund';
+    
+    // Determine the single best template based on resolution
+    if (caseType === 'refund') {
+      if (resolution.includes('full refund') || resolution.includes('full') && !resolution.includes('partial')) {
+        return {
           id: 'refund_full',
           name: 'Full Refund Confirmation',
           subject: 'Your Refund Has Been Processed - Order {{order_number}}',
@@ -4961,8 +4958,10 @@ Thank you for your patience!
 
 Best regards,
 The PuppyPad Team`
-        },
-        {
+        };
+      } else {
+        // Default to partial refund for any other refund scenario
+        return {
           id: 'refund_partial',
           name: 'Partial Refund Confirmation',
           subject: 'Partial Refund Processed - Order {{order_number}}',
@@ -4970,18 +4969,17 @@ The PuppyPad Team`
 
 We've processed a partial refund of {{refund_amount}} for your order {{order_number}}.
 
-This refund was applied because: {{resolution}}
-
 Please allow 5-10 business days for the refund to appear in your account.
 
 Thank you for your understanding!
 
 Best regards,
 The PuppyPad Team`
-        }
-      ],
-      'shipping': [
-        {
+        };
+      }
+    } else if (caseType === 'shipping') {
+      if (resolution.includes('reship')) {
+        return {
           id: 'reship_confirmation',
           name: 'Reship Confirmation',
           subject: 'Your Replacement Order is On the Way! - Order {{order_number}}',
@@ -4995,25 +4993,25 @@ We apologize for any inconvenience and appreciate your patience!
 
 Best regards,
 The PuppyPad Team`
-        },
-        {
+        };
+      } else {
+        return {
           id: 'tracking_update',
-          name: 'Tracking Update',
+          name: 'Shipping Update',
           subject: 'Update on Your Order {{order_number}}',
           body: `Hi {{customer_name}},
 
 We wanted to give you an update on your order {{order_number}}.
 
-Your package is currently: {{resolution}}
-
 If you need any assistance, please don't hesitate to reach out.
 
 Best regards,
 The PuppyPad Team`
-        }
-      ],
-      'subscription': [
-        {
+        };
+      }
+    } else if (caseType === 'subscription') {
+      if (resolution.includes('pause')) {
+        return {
           id: 'sub_paused',
           name: 'Subscription Paused Confirmation',
           subject: 'Your PuppyPad Subscription Has Been Paused',
@@ -5027,8 +5025,9 @@ We'll be here when you're ready to continue!
 
 Best regards,
 The PuppyPad Team`
-        },
-        {
+        };
+      } else {
+        return {
           id: 'sub_cancelled',
           name: 'Subscription Cancelled Confirmation',
           subject: 'Your PuppyPad Subscription Has Been Cancelled',
@@ -5042,14 +5041,14 @@ You're always welcome back anytime.
 
 Best regards,
 The PuppyPad Team`
-        }
-      ],
-      'return': [
-        {
-          id: 'return_approved',
-          name: 'Return Approved',
-          subject: 'Your Return Has Been Approved - Order {{order_number}}',
-          body: `Hi {{customer_name}},
+        };
+      }
+    } else if (caseType === 'return') {
+      return {
+        id: 'return_approved',
+        name: 'Return Approved',
+        subject: 'Your Return Has Been Approved - Order {{order_number}}',
+        body: `Hi {{customer_name}},
 
 Your return request for order {{order_number}} has been approved!
 
@@ -5063,35 +5062,36 @@ Thank you!
 
 Best regards,
 The PuppyPad Team`
-        }
-      ]
-    };
+      };
+    }
+    
+    // Default generic template
+    return {
+      id: 'generic',
+      name: 'Resolution Confirmation',
+      subject: 'Update on Your Request - Order {{order_number}}',
+      body: `Hi {{customer_name}},
 
-    return baseTemplates[c.case_type] || baseTemplates['refund'];
+We've resolved your request regarding order {{order_number}}.
+
+If you have any questions, feel free to reach out.
+
+Best regards,
+The PuppyPad Team`
+    };
   },
 
-  copyTemplate(templateId) {
+  copyFilledTemplate() {
     const c = this.caseData;
-    const templates = this.getEmailTemplatesForCase(c);
-    const template = templates.find(t => t.id === templateId);
+    const template = this.getEmailTemplateForResolution(c);
     
-    if (!template) return;
+    const filledSubject = this.fillTemplateVariables(template.subject, c);
+    const filledBody = this.fillTemplateVariables(template.body, c);
 
-    // Replace variables
-    let body = template.body
-      .replace(/\{\{customer_name\}\}/g, c.customer_name || 'Valued Customer')
-      .replace(/\{\{order_number\}\}/g, c.order_number || '')
-      .replace(/\{\{refund_amount\}\}/g, c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '')
-      .replace(/\{\{resolution\}\}/g, c.resolution || '')
-      .replace(/\{\{customer_email\}\}/g, c.customer_email || '');
-
-    let subject = template.subject
-      .replace(/\{\{order_number\}\}/g, c.order_number || '');
-
-    const fullEmail = `Subject: ${subject}\n\n${body}`;
+    const fullEmail = `Subject: ${filledSubject}\n\n${filledBody}`;
     
     navigator.clipboard.writeText(fullEmail).then(() => {
-      HubUI.showToast('Email template copied to clipboard!', 'success');
+      HubUI.showToast('Email copied to clipboard!', 'success');
       document.getElementById('emailTemplateModal')?.remove();
       this.logActivity('copied_email_template', { template_name: template.name });
     }).catch(() => {
