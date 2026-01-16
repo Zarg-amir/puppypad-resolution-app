@@ -2240,7 +2240,7 @@ const HubAnalytics = {
       svg += `<line x1="${padding}" y1="${y}" x2="${chartWidth - padding}" y2="${y}" stroke="var(--gray-200)" stroke-width="1"/>`;
     }
 
-    // Draw cases line
+    // Draw cases line with gradient
     if (casesByDay.length > 0) {
       const points = sortedDates.map((date, idx) => {
         const caseData = casesByDay.find(c => c.date === date);
@@ -2248,10 +2248,28 @@ const HubAnalytics = {
         const y = chartHeight - padding - ((caseData?.count || 0) / maxValue) * (chartHeight - padding * 2);
         return `${x},${y}`;
       }).join(' ');
-      svg += `<polyline points="${points}" fill="none" stroke="#3B82F6" stroke-width="2"/>`;
+      
+      // Add area fill under line
+      const areaPoints = points + ` ${chartWidth - padding},${chartHeight - padding} ${padding},${chartHeight - padding}`;
+      svg += `<defs>
+        <linearGradient id="casesGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#1a365d;stop-opacity:0.3" />
+          <stop offset="100%" style="stop-color:#1a365d;stop-opacity:0.05" />
+        </linearGradient>
+      </defs>`;
+      svg += `<polygon points="${areaPoints}" fill="url(#casesGradient)"/>`;
+      svg += `<polyline points="${points}" fill="none" stroke="#1a365d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+      
+      // Add dots on line
+      sortedDates.forEach((date, idx) => {
+        const caseData = casesByDay.find(c => c.date === date);
+        const x = padding + idx * barWidth + barWidth / 2;
+        const y = chartHeight - padding - ((caseData?.count || 0) / maxValue) * (chartHeight - padding * 2);
+        svg += `<circle cx="${x}" cy="${y}" r="4" fill="#1a365d" stroke="white" stroke-width="2"/>`;
+      });
     }
 
-    // Draw sessions line
+    // Draw sessions line with gradient
     if (sessionsByDay.length > 0) {
       const points = sortedDates.map((date, idx) => {
         const sessionData = sessionsByDay.find(s => s.date === date);
@@ -2259,7 +2277,25 @@ const HubAnalytics = {
         const y = chartHeight - padding - ((sessionData?.count || 0) / maxValue) * (chartHeight - padding * 2);
         return `${x},${y}`;
       }).join(' ');
-      svg += `<polyline points="${points}" fill="none" stroke="#10B981" stroke-width="2"/>`;
+      
+      // Add area fill under line
+      const areaPoints = points + ` ${chartWidth - padding},${chartHeight - padding} ${padding},${chartHeight - padding}`;
+      svg += `<defs>
+        <linearGradient id="sessionsGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#10B981;stop-opacity:0.3" />
+          <stop offset="100%" style="stop-color:#10B981;stop-opacity:0.05" />
+        </linearGradient>
+      </defs>`;
+      svg += `<polygon points="${areaPoints}" fill="url(#sessionsGradient)"/>`;
+      svg += `<polyline points="${points}" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+      
+      // Add dots on line
+      sortedDates.forEach((date, idx) => {
+        const sessionData = sessionsByDay.find(s => s.date === date);
+        const x = padding + idx * barWidth + barWidth / 2;
+        const y = chartHeight - padding - ((sessionData?.count || 0) / maxValue) * (chartHeight - padding * 2);
+        svg += `<circle cx="${x}" cy="${y}" r="4" fill="#10B981" stroke="white" stroke-width="2"/>`;
+      });
     }
 
     // Draw date labels
@@ -2301,12 +2337,36 @@ const HubAnalytics = {
       return;
     }
 
-    const colors = ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
-    const size = 150;
-    const radius = size / 2 - 10;
+    // Use brand colors with gradients
+    const colors = [
+      'url(#donutGradient1)', // Red gradient
+      'url(#donutGradient2)', // Blue gradient  
+      'url(#donutGradient3)', // Green gradient
+      'url(#donutGradient4)', // Amber gradient
+      'url(#donutGradient5)'  // Purple gradient
+    ];
+    const colorStops = [
+      { start: '#EF4444', end: '#F87171' },
+      { start: '#1a365d', end: '#2c5282' },
+      { start: '#10B981', end: '#34D399' },
+      { start: '#F59E0B', end: '#FBBF24' },
+      { start: '#8B5CF6', end: '#A78BFA' }
+    ];
+    const size = 180;
+    const radius = size / 2 - 12;
     const center = size / 2;
 
-    let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display: block; margin: 0 auto;">`;
+    let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display: block; margin: 0 auto; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));">`;
+    
+    // Add gradient definitions
+    svg += '<defs>';
+    colorStops.forEach((stop, idx) => {
+      svg += `<linearGradient id="donutGradient${idx + 1}" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:${stop.start};stop-opacity:1" />
+        <stop offset="100%" style="stop-color:${stop.end};stop-opacity:1" />
+      </linearGradient>`;
+    });
+    svg += '</defs>';
     
     let currentAngle = -90;
     casesByType.forEach((item, idx) => {
@@ -2321,27 +2381,32 @@ const HubAnalytics = {
       
       const largeArc = angle > 180 ? 1 : 0;
       
-      svg += `<path d="M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${colors[idx % colors.length]}" stroke="white" stroke-width="2"/>`;
+      svg += `<path d="M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${colors[idx % colors.length]}" stroke="white" stroke-width="3" opacity="0.95"/>`;
       
       currentAngle += angle;
     });
 
-    // Center text
-    svg += `<text x="${center}" y="${center - 5}" text-anchor="middle" font-size="20" font-weight="700" fill="var(--gray-900)">${total}</text>`;
-    svg += `<text x="${center}" y="${center + 15}" text-anchor="middle" font-size="12" fill="var(--gray-600)">Total</text>`;
+    // Center circle with gradient background
+    svg += `<circle cx="${center}" cy="${center}" r="${radius - 20}" fill="white" opacity="0.9"/>`;
+    
+    // Center text with better styling
+    svg += `<text x="${center}" y="${center - 8}" text-anchor="middle" font-size="28" font-weight="700" font-family="Space Grotesk, sans-serif" fill="#1a365d">${total}</text>`;
+    svg += `<text x="${center}" y="${center + 12}" text-anchor="middle" font-size="13" font-weight="600" fill="#6b7280">Total Cases</text>`;
 
     svg += '</svg>';
 
-    // Add legend
+    // Add enhanced legend
     const legend = casesByType.map((item, idx) => `
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-        <div style="width: 12px; height: 12px; background: ${colors[idx % colors.length]}; border-radius: 2px;"></div>
-        <span style="font-size: 13px; color: var(--gray-700);">${this.escapeHtml(item.case_type || 'Unknown')}</span>
-        <span style="font-size: 13px; font-weight: 600; color: var(--gray-900); margin-left: auto;">${item.count || 0}</span>
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 8px 12px; border-radius: 8px; transition: all 0.2s ease; cursor: pointer;" 
+           onmouseover="this.style.background='rgba(249, 250, 251, 0.8)'" 
+           onmouseout="this.style.background='transparent'">
+        <div style="width: 16px; height: 16px; background: linear-gradient(135deg, ${colorStops[idx % colorStops.length].start} 0%, ${colorStops[idx % colorStops.length].end} 100%); border-radius: 4px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);"></div>
+        <span style="font-size: 13px; font-weight: 500; color: var(--gray-700); flex: 1;">${this.escapeHtml(item.case_type || 'Unknown')}</span>
+        <span style="font-size: 14px; font-weight: 700; color: var(--gray-900); font-family: 'Space Grotesk', sans-serif;">${item.count || 0}</span>
       </div>
     `).join('');
 
-    container.innerHTML = `<div style="text-align: center;">${svg}</div><div style="margin-top: 16px;">${legend}</div>`;
+    container.innerHTML = `<div style="text-align: center; margin-bottom: 24px;">${svg}</div><div style="margin-top: 24px; padding: 0 8px;">${legend}</div>`;
   },
 
   renderResolutionTypes(data) {
