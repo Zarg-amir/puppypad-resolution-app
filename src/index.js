@@ -1155,12 +1155,7 @@ export default {
         return await serveHubAsset('css', corsHeaders);
       }
 
-      // Serve Resolution Hub - handle all /hub/* routes (SPA fallback)
-      // This must come AFTER the static asset routes above
-      if (pathname.startsWith('/hub')) {
-        return await serveResolutionHub(env, corsHeaders);
-      }
-
+      // Hub API routes (must come BEFORE /hub/* catch-all)
       // Hub API - Stats
       if (pathname === '/hub/api/stats' && request.method === 'GET') {
         return await handleHubStats(request, env, corsHeaders);
