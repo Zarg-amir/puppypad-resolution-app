@@ -1577,7 +1577,7 @@ const HubSearch = {
       dropdown.innerHTML = this.searchResults.map((item, idx) => {
         const highlightText = (text) => {
           if (!text || !query) return this.escapeHtml(text || '');
-          const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+          const regex = new RegExp(`(${query.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\$&')})`, 'gi');
           return this.escapeHtml(text).replace(regex, '<span class="search-dropdown-item-highlight">$1</span>');
         };
 
@@ -1602,7 +1602,7 @@ const HubSearch = {
       dropdown.innerHTML = this.searchResults.map((item, idx) => {
         const highlightText = (text) => {
           if (!text || !query) return this.escapeHtml(text || '');
-          const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+          const regex = new RegExp(`(${query.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\$&')})`, 'gi');
           return this.escapeHtml(text).replace(regex, '<span class="search-dropdown-item-highlight">$1</span>');
         };
 
