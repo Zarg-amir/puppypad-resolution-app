@@ -962,14 +962,64 @@
       <header class="top-header">
         <h1 class="page-title" id="pageTitle">Dashboard</h1>
         <div class="header-actions">
-          <div class="search-box">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input type="text" placeholder="Search cases, orders, customers..." id="searchInput">
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <!-- Enhanced Search with Dropdown -->
+            <div style="position: relative; flex: 1; min-width: 300px; max-width: 500px;">
+              <div class="search-box" id="searchBoxContainer">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input type="text" placeholder="Search anything: name, email, case ID, order, resolution..." id="searchInput" autocomplete="off">
+                <button id="clearSearchBtn" style="display: none; background: none; border: none; cursor: pointer; padding: 4px; color: var(--gray-400);" onclick="HubSearch.clear()">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
+              <div id="searchDropdown" class="search-dropdown" style="display: none;"></div>
+            </div>
+
+            <!-- Filters -->
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <!-- Status Filter -->
+              <select id="statusFilter" class="filter-select" onchange="HubFilters.applyFilters()">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="overdue">Overdue</option>
+              </select>
+
+              <!-- Assignee Filter -->
+              <select id="assigneeFilter" class="filter-select" onchange="HubFilters.applyFilters()">
+                <option value="">All Assignees</option>
+                <option value="unassigned">Unassigned</option>
+              </select>
+
+              <!-- Date Range Filter -->
+              <select id="dateRangeFilter" class="filter-select" onchange="HubFilters.applyFilters()">
+                <option value="">All Time</option>
+                <option value="today">Today</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+                <option value="custom">Custom Range</option>
+              </select>
+
+              <!-- Sort By -->
+              <select id="sortBy" class="filter-select" onchange="HubFilters.applyFilters()">
+                <option value="created_desc">Newest First</option>
+                <option value="created_asc">Oldest First</option>
+                <option value="due_asc">Due Date (Earliest)</option>
+                <option value="due_desc">Due Date (Latest)</option>
+                <option value="customer_asc">Customer (A-Z)</option>
+                <option value="customer_desc">Customer (Z-A)</option>
+                <option value="status_asc">Status</option>
+                <option value="type_asc">Type</option>
+                <option value="assignee_asc">Assignee</option>
+              </select>
+
+              <button class="btn btn-secondary" onclick="refreshData()" style="display: flex; align-items: center; gap: 6px; padding: 10px 20px; background: white; border: 1px solid var(--gray-200); border-radius: 12px; font-size: 14px; font-weight: 600; color: var(--gray-700); cursor: pointer; transition: all 0.2s;">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16" stroke-width="2"><polyline points="23,4 23,10 17,10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
+                Refresh
+              </button>
+            </div>
           </div>
-          <button class="btn btn-secondary" onclick="refreshData()" style="display: flex; align-items: center; gap: 6px; padding: 10px 20px; background: white; border: 1px solid var(--gray-200); border-radius: 12px; font-size: 14px; font-weight: 600; color: var(--gray-700); cursor: pointer; transition: all 0.2s;">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16" stroke-width="2"><polyline points="23,4 23,10 17,10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
-            Refresh
-          </button>
         </div>
       </header>
 

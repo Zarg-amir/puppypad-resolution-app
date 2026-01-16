@@ -48,6 +48,9 @@ const HubState = {
   currentFilter: 'all',
   currentStatus: null,
   currentSearch: '',
+  currentAssignee: '',
+  currentDateRange: '',
+  currentSortBy: 'created_desc',
   casesPage: 1,  // Renamed from currentPage to avoid conflict with navigation
   totalPages: 1,
 
@@ -1433,6 +1436,242 @@ const HubAssignment = {
 // ============================================
 // CASES
 // ============================================
+// ============================================
+// ENHANCED SEARCH WITH DROPDOWN
+// ============================================
+const HubSearch = {
+  searchTimeout: null,
+  searchResults: [],
+  selectedIndex: -1,
+
+  init() {
+    const searchInput = document.getElementById('searchInput');
+    const searchDropdown = document.getElementById('searchDropdown');
+    const clearBtn = document.getElementById('clearSearchBtn');
+
+    if (!searchInput) return;
+
+    // Debounced search
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.trim();
+      
+      if (query.length === 0) {
+        this.hideDropdown();
+        clearBtn.style.display = 'none';
+        HubState.currentSearch = '';
+        HubFilters.applyFilters();
+        return;
+      }
+
+      clearBtn.style.display = 'block';
+      
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = setTimeout(() => {
+        this.performSearch(query);
+      }, 300);
+    });
+
+    // Keyboard navigation
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this.selectedIndex = Math.min(this.selectedIndex + 1, this.searchResults.length - 1);
+        this.highlightSelected();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this.selectedIndex = Math.max(this.selectedIndex - 1, -1);
+        this.highlightSelected();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (this.selectedIndex >= 0 && this.searchResults[this.selectedIndex]) {
+          this.selectResult(this.searchResults[this.selectedIndex]);
+        } else {
+          // Apply search directly
+          HubState.currentSearch = searchInput.value.trim();
+          HubFilters.applyFilters();
+          this.hideDropdown();
+        }
+      } else if (e.key === 'Escape') {
+        this.hideDropdown();
+      }
+    });
+
+    // Click outside to close
+    document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target) && !searchDropdown?.contains(e.target)) {
+        this.hideDropdown();
+      }
+    });
+  },
+
+  async performSearch(query) {
+    if (query.length < 2) {
+      this.hideDropdown();
+      return;
+    }
+
+    const dropdown = document.getElementById('searchDropdown');
+    if (!dropdown) return;
+
+    dropdown.innerHTML = '<div class="search-dropdown-loading">Searching...</div>';
+    dropdown.style.display = 'block';
+    this.selectedIndex = -1;
+
+    try {
+      // Search across all fields
+      const result = await HubAPI.get(`/hub/api/cases/search?q=${encodeURIComponent(query)}&limit=10`);
+      this.searchResults = result.results || [];
+      this.renderDropdown();
+    } catch (e) {
+      console.error('Search error:', e);
+      dropdown.innerHTML = '<div class="search-dropdown-empty">Search failed. Try again.</div>';
+    }
+  },
+
+  renderDropdown() {
+    const dropdown = document.getElementById('searchDropdown');
+    if (!dropdown) return;
+
+    if (this.searchResults.length === 0) {
+      dropdown.innerHTML = '<div class="search-dropdown-empty">No results found</div>';
+      return;
+    }
+
+    const query = document.getElementById('searchInput')?.value.trim().toLowerCase() || '';
+    
+    dropdown.innerHTML = this.searchResults.map((item, idx) => {
+      const highlightText = (text) => {
+        if (!text || !query) return this.escapeHtml(text || '');
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return this.escapeHtml(text).replace(regex, '<span class="search-dropdown-item-highlight">$1</span>');
+      };
+
+      return `
+        <div class="search-dropdown-item ${idx === this.selectedIndex ? 'selected' : ''}" 
+             onclick="HubSearch.selectResult(${JSON.stringify(item).replace(/"/g, '&quot;')})"
+             data-index="${idx}">
+          <div class="search-dropdown-item-header">
+            ${highlightText(item.customer_name || 'Unknown Customer')}
+            <span style="font-size: 11px; color: var(--gray-500);">${item.case_id?.substring(0, 8)}</span>
+          </div>
+          <div class="search-dropdown-item-meta">
+            <span>${highlightText(item.customer_email || '')}</span>
+            <span>${item.case_type || ''}</span>
+            <span>${item.status || ''}</span>
+            ${item.order_number ? `<span>Order: ${highlightText(item.order_number)}</span>` : ''}
+            ${item.resolution ? `<span>${highlightText(item.resolution.substring(0, 50))}...</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  highlightSelected() {
+    const items = document.querySelectorAll('.search-dropdown-item');
+    items.forEach((item, idx) => {
+      if (idx === this.selectedIndex) {
+        item.classList.add('selected');
+        item.scrollIntoView({ block: 'nearest' });
+      } else {
+        item.classList.remove('selected');
+      }
+    });
+  },
+
+  selectResult(result) {
+    document.getElementById('searchInput').value = result.customer_name || result.customer_email || '';
+    HubState.currentSearch = result.customer_name || result.customer_email || '';
+    this.hideDropdown();
+    HubFilters.applyFilters();
+    
+    // Optionally open the case
+    if (result.case_id) {
+      setTimeout(() => HubCases.openCase(result.case_id), 100);
+    }
+  },
+
+  hideDropdown() {
+    const dropdown = document.getElementById('searchDropdown');
+    if (dropdown) dropdown.style.display = 'none';
+    this.selectedIndex = -1;
+    this.searchResults = [];
+  },
+
+  clear() {
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    if (searchInput) {
+      searchInput.value = '';
+      HubState.currentSearch = '';
+      clearBtn.style.display = 'none';
+      this.hideDropdown();
+      HubFilters.applyFilters();
+    }
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+};
+
+// ============================================
+// FILTERS & SORTING
+// ============================================
+const HubFilters = {
+  init() {
+    // Load saved filter state from URL or localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const savedFilters = localStorage.getItem('hub_filters');
+    
+    if (savedFilters) {
+      try {
+        const filters = JSON.parse(savedFilters);
+        if (filters.status) document.getElementById('statusFilter').value = filters.status;
+        if (filters.assignee) document.getElementById('assigneeFilter').value = filters.assignee;
+        if (filters.dateRange) document.getElementById('dateRangeFilter').value = filters.dateRange;
+        if (filters.sortBy) document.getElementById('sortBy').value = filters.sortBy;
+      } catch (e) {
+        console.error('Failed to load saved filters:', e);
+      }
+    }
+  },
+
+  applyFilters() {
+    const status = document.getElementById('statusFilter')?.value || '';
+    const assignee = document.getElementById('assigneeFilter')?.value || '';
+    const dateRange = document.getElementById('dateRangeFilter')?.value || '';
+    const sortBy = document.getElementById('sortBy')?.value || 'created_desc';
+    const search = HubState.currentSearch || '';
+
+    // Save filters
+    localStorage.setItem('hub_filters', JSON.stringify({
+      status, assignee, dateRange, sortBy
+    }));
+
+    // Update state
+    HubState.currentStatus = status;
+    HubState.currentAssignee = assignee;
+    HubState.currentDateRange = dateRange;
+    HubState.currentSortBy = sortBy;
+
+    // Reload cases
+    HubCases.loadCases(1);
+  },
+
+  getFilterParams() {
+    return {
+      status: HubState.currentStatus || '',
+      assignee: HubState.currentAssignee || '',
+      dateRange: HubState.currentDateRange || '',
+      sortBy: HubState.currentSortBy || 'created_desc',
+      search: HubState.currentSearch || ''
+    };
+  }
+};
+
 const HubCases = {
   async loadCases(page = 1) {
     HubUI.showLoading();
@@ -1445,6 +1684,16 @@ const HubCases = {
       }
       if (HubState.currentStatus) {
         url += `&status=${HubState.currentStatus}`;
+      }
+      if (HubState.currentAssignee) {
+        url += `&assignee=${encodeURIComponent(HubState.currentAssignee)}`;
+      }
+      if (HubState.currentDateRange) {
+        url += `&dateRange=${HubState.currentDateRange}`;
+      }
+      if (HubState.currentSortBy) {
+        const [field, order] = HubState.currentSortBy.split('_');
+        url += `&sortBy=${field}&sortOrder=${order}`;
       }
       if (HubState.currentSearch) {
         url += `&search=${encodeURIComponent(HubState.currentSearch)}`;
@@ -1460,12 +1709,40 @@ const HubCases = {
         this.updateNavigationCounts(result.counts);
       }
 
+      // Load assignees for filter dropdown
+      if (result.assignees) {
+        this.updateAssigneeFilter(result.assignees);
+      }
+
       this.renderCasesList();
     } catch (e) {
       console.error('Failed to load cases:', e);
       HubUI.showToast('Failed to load cases', 'error');
     } finally {
       HubUI.hideLoading();
+    }
+  },
+
+  updateAssigneeFilter(assignees) {
+    const assigneeFilter = document.getElementById('assigneeFilter');
+    if (!assigneeFilter) return;
+
+    // Keep "All Assignees" and "Unassigned" options
+    const currentValue = assigneeFilter.value;
+    assigneeFilter.innerHTML = '<option value="">All Assignees</option><option value="unassigned">Unassigned</option>';
+    
+    // Add unique assignees
+    const uniqueAssignees = [...new Set(assignees.filter(a => a && a !== 'Unassigned'))];
+    uniqueAssignees.forEach(assignee => {
+      const option = document.createElement('option');
+      option.value = assignee;
+      option.textContent = assignee;
+      assigneeFilter.appendChild(option);
+    });
+
+    // Restore selection
+    if (currentValue) {
+      assigneeFilter.value = currentValue;
     }
   },
 
@@ -2919,6 +3196,8 @@ const HubApp = {
       HubUI.init();
       HubKeyboard.init();
       HubViews.load();
+      HubSearch.init();
+      HubFilters.init();
 
       // Check URL for case deep link
       this.handleDeepLink();
