@@ -2040,30 +2040,41 @@ h1, h2, h3, h4, h5, h6 {
    ============================================ */
 
 /* Category Tabs */
-.sop-tab,
-.template-tab {
-  padding: 8px 16px;
-  border: 1px solid var(--gray-300);
-  border-radius: 20px;
-  background: white;
-  color: var(--gray-600);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
+button.sop-tab,
+button.template-tab {
+  padding: 10px 20px !important;
+  border: 2px solid var(--gray-200) !important;
+  border-radius: 24px !important;
+  background: white !important;
+  color: var(--gray-600) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  font-family: inherit !important;
 }
 
-.sop-tab:hover,
-.template-tab:hover {
-  border-color: var(--brand-navy-light);
-  color: var(--brand-navy);
+button.sop-tab:hover,
+button.template-tab:hover {
+  border-color: var(--brand-navy) !important;
+  color: var(--brand-navy) !important;
+  background: var(--gray-50) !important;
+  transform: translateY(-1px) !important;
 }
 
-.sop-tab.active,
-.template-tab.active {
-  background: var(--brand-navy);
-  border-color: var(--brand-navy);
-  color: white;
+button.sop-tab.active,
+button.template-tab.active {
+  background: var(--brand-navy) !important;
+  border-color: var(--brand-navy) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(30, 41, 59, 0.25) !important;
+}
+
+button.sop-tab:focus,
+button.template-tab:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.15) !important;
 }
 
 /* SOP Card */

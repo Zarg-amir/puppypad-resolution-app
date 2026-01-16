@@ -4145,9 +4145,11 @@ ${this.escapeHtml(template.body)}
   },
 
   renderTemplateWithCase(body, caseData) {
+    // Use first name only for more personal greeting
+    const firstName = (caseData.customer_name || 'Valued Customer').split(' ')[0];
     const replacements = {
-      'customer_name': caseData.customer_name || 'Valued Customer',
-      'customer_first_name': (caseData.customer_name || 'Valued Customer').split(' ')[0],
+      'customer_name': firstName,
+      'customer_first_name': firstName,
       'order_number': caseData.order_number || 'N/A',
       'refund_amount': caseData.refund_amount ? '$' + parseFloat(caseData.refund_amount).toFixed(2) : '$0.00',
       'resolution': caseData.resolution || 'your request',
@@ -4936,8 +4938,10 @@ const HubCaseDetail = {
   },
 
   fillTemplateVariables(text, c) {
+    // Use first name only for more personal greeting
+    const firstName = (c.customer_name || 'Valued Customer').split(' ')[0];
     return text
-      .replace(/\{\{customer_name\}\}/g, c.customer_name || 'Valued Customer')
+      .replace(/\{\{customer_name\}\}/g, firstName)
       .replace(/\{\{order_number\}\}/g, c.order_number || '')
       .replace(/\{\{refund_amount\}\}/g, c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '')
       .replace(/\{\{resolution\}\}/g, c.resolution || '')
