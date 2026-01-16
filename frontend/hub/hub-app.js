@@ -1692,6 +1692,7 @@ const HubCases = {
 const HubNavigation = {
   goto(page, filter = null) {
     HubState.currentPage = page;
+    HubState.currentFilter = filter || null;
 
     // Update nav items
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1700,18 +1701,12 @@ const HubNavigation = {
       : `.nav-item[data-page="${page}"]`;
     document.querySelector(selector)?.classList.add('active');
 
-    // Update page title
-    const titles = {
-      dashboard: 'Dashboard',
-      cases: 'Cases',
-      sessions: 'Sessions',
-      events: 'Event Log',
-      issues: 'Issue Reports',
-      analytics: 'Performance',
-      audit: 'Audit Log',
-      users: 'User Management'
-    };
-    document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';
+    // Update page title dynamically based on page and filter
+    const pageTitle = this.getPageTitle(page, filter);
+    document.getElementById('pageTitle').textContent = pageTitle;
+
+    // Update URL with slug
+    this.updateURL(page, filter);
 
     // Show/hide views
     ['dashboard', 'cases', 'sessions', 'events', 'issues', 'analytics', 'audit', 'users'].forEach(v => {
@@ -1729,11 +1724,111 @@ const HubNavigation = {
       HubSessions.load();
     } else if (page === 'events') {
       HubEvents.load();
+    } else if (page === 'issues') {
+      HubIssues.load();
     } else if (page === 'audit') {
       HubEnhancedAuditLog.show();
     } else if (page === 'users') {
       HubUsers.show();
     }
+  },
+
+  getPageTitle(page, filter) {
+    // Base titles
+    const baseTitles = {
+      dashboard: 'Dashboard',
+      cases: 'Cases',
+      sessions: 'Sessions',
+      events: 'Event Log',
+      issues: 'Issue Reports',
+      analytics: 'Performance',
+      audit: 'Audit Log',
+      users: 'User Management'
+    };
+
+    // If cases page with filter, show filter name
+    if (page === 'cases' && filter && filter !== 'all') {
+      const filterTitles = {
+        shipping: 'Shipping',
+        refund: 'Refunds',
+        return: 'Returns',
+        subscription: 'Subscriptions',
+        manual: 'Manual Review'
+      };
+      return filterTitles[filter] || baseTitles[page];
+    }
+
+    return baseTitles[page] || 'Dashboard';
+  },
+
+  updateURL(page, filter) {
+    let path = '/hub';
+    
+    if (page === 'dashboard') {
+      path = '/hub';
+    } else if (page === 'cases') {
+      path = filter && filter !== 'all' ? `/hub/cases/${filter}` : '/hub/cases';
+    } else if (page === 'sessions') {
+      path = '/hub/sessions';
+    } else if (page === 'events') {
+      path = '/hub/events';
+    } else if (page === 'issues') {
+      path = '/hub/issues';
+    } else if (page === 'analytics') {
+      path = '/hub/analytics';
+    } else if (page === 'audit') {
+      path = '/hub/audit';
+    } else if (page === 'users') {
+      path = '/hub/users';
+    }
+
+    // Update URL without reload
+    if (window.history && window.history.pushState) {
+      window.history.pushState({ page, filter }, '', path);
+    }
+  },
+
+  init() {
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', (e) => {
+      if (e.state) {
+        const { page, filter } = e.state;
+        this.goto(page, filter);
+      } else {
+        // Parse URL to determine page/filter
+        this.parseURL();
+      }
+    });
+
+    // Parse initial URL on load
+    this.parseURL();
+  },
+
+  parseURL() {
+    const path = window.location.pathname;
+    
+    // Parse /hub/cases/shipping -> page: cases, filter: shipping
+    if (path.startsWith('/hub/cases/')) {
+      const filter = path.split('/hub/cases/')[1];
+      this.goto('cases', filter || 'all');
+    } else if (path === '/hub/cases' || path === '/hub/cases/') {
+      this.goto('cases', 'all');
+    } else if (path === '/hub/sessions' || path === '/hub/sessions/') {
+      this.goto('sessions');
+    } else if (path === '/hub/events' || path === '/hub/events/') {
+      this.goto('events');
+    } else if (path === '/hub/issues' || path === '/hub/issues/') {
+      this.goto('issues');
+    } else if (path === '/hub/analytics' || path === '/hub/analytics/') {
+      this.goto('analytics');
+    } else if (path === '/hub/audit' || path === '/hub/audit/') {
+      this.goto('audit');
+    } else if (path === '/hub/users' || path === '/hub/users/') {
+      this.goto('users');
+    } else if (path === '/hub' || path === '/hub/') {
+      this.goto('dashboard');
+    }
+    // If no match, default to dashboard
   }
 };
 
@@ -1888,10 +1983,10 @@ const HubApp = {
       HubUI.showApp();
       HubUI.init();
       HubKeyboard.init();
-      HubDashboard.load();
+      HubNavigation.init(); // Initialize URL routing
       HubViews.load();
 
-      // Check URL for case deep link
+      // Check URL for case deep link or parse URL
       this.handleDeepLink();
     } else {
       HubUI.showLoginScreen();
@@ -1905,6 +2000,9 @@ const HubApp = {
     if (caseId) {
       HubNavigation.goto('cases');
       setTimeout(() => HubCases.openCase(caseId), 500);
+    } else {
+      // Parse URL to determine initial page
+      HubNavigation.parseURL();
     }
   }
 };
