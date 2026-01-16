@@ -13,7 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const HUB_HTML_PATH = path.join(__dirname, 'frontend/hub.html');
+const HUB_HTML_PATH = path.join(__dirname, 'frontend/hub/index.html');
 const HUB_APP_PATH = path.join(__dirname, 'frontend/hub/hub-app.js');
 const HUB_CSS_PATH = path.join(__dirname, 'frontend/hub/hub-styles.css');
 const INDEX_PATH = path.join(__dirname, 'src/index.js');
