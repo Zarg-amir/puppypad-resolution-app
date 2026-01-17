@@ -11296,7 +11296,7 @@ function getResolutionHubHTML() {
         <div class="progress-labels">
           <span class="progress-label-pending">
             <span class="progress-dot pending"></span>
-            <span id="progressPending">0</span> pending
+            <span id="progressPending">0</span> to-do
           </span>
           <span class="progress-label-completed">
             <span class="progress-dot completed"></span>
