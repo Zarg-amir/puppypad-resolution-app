@@ -5973,12 +5973,12 @@ const HubDashboard = {
 
   updateSidebarProgress(stats) {
     const pending = stats.pending || 0;
-    const completed = stats.completedToday || 0;
     const inProgress = stats.inProgress || 0;
+    const completed = stats.completed || 0; // ALL completed cases, not just today
     
     // Merge pending and inProgress together as "work to do"
     const workToDo = pending + inProgress;
-    const total = workToDo + completed;
+    const total = workToDo + completed; // Now matches "All Cases" count
 
     // Update stats text
     const progressCompleted = document.getElementById('progressCompleted');
