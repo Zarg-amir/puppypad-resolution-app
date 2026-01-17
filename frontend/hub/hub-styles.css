@@ -1945,8 +1945,7 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 13px;
   font-weight: 600;
   color: var(--gray-500);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
   margin-bottom: 8px;
   display: flex;
   align-items: center;
@@ -3362,6 +3361,39 @@ button.template-tab:focus {
   font-weight: 500;
 }
 
+/* Clickable Assignee Column */
+.td-assignee {
+  transition: all 0.2s ease;
+}
+
+.td-assignee:hover {
+  background: var(--gray-50);
+}
+
+.assignee-clickable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.assignee-clickable:hover {
+  background: var(--primary-50);
+  color: var(--brand-navy);
+}
+
+.td-assignee-unassigned .assignee-clickable {
+  color: var(--gray-400);
+  font-style: italic;
+}
+
+.td-assignee-unassigned .assignee-clickable:hover {
+  color: var(--brand-navy);
+  font-style: normal;
+}
+
 /* Enhanced Card */
 .cases-card-enhanced {
   background: white;
@@ -4657,8 +4689,7 @@ button.template-tab:focus {
 .progress-title {
   font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
   color: rgba(255, 255, 255, 0.7);
 }
 

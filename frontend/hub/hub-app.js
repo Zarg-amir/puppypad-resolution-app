@@ -383,18 +383,18 @@ const HubBulkActions = {
             <button class="modal-close" onclick="document.getElementById('bulkStatusModal').remove()">×</button>
           </div>
           <div class="modal-body" style="padding: 24px;">
-            <div class="status-radio-group">
-              <label class="status-radio-item" data-status="pending">
+            <div class="status-radio-group" id="bulkStatusRadioGroup">
+              <label class="status-radio-item" data-status="pending" onclick="HubBulkActions.selectStatusRadio(this, 'pending')">
                 <input type="radio" name="bulkStatus" value="pending">
                 <span class="status-radio-check"></span>
                 <span class="status-radio-label">Pending</span>
               </label>
-              <label class="status-radio-item" data-status="in_progress">
+              <label class="status-radio-item" data-status="in_progress" onclick="HubBulkActions.selectStatusRadio(this, 'in_progress')">
                 <input type="radio" name="bulkStatus" value="in_progress">
                 <span class="status-radio-check"></span>
                 <span class="status-radio-label">In Progress</span>
               </label>
-              <label class="status-radio-item" data-status="completed">
+              <label class="status-radio-item" data-status="completed" onclick="HubBulkActions.selectStatusRadio(this, 'completed')">
                 <input type="radio" name="bulkStatus" value="completed">
                 <span class="status-radio-check"></span>
                 <span class="status-radio-label">Completed</span>
@@ -409,6 +409,17 @@ const HubBulkActions = {
       </div>
     `;
     document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  selectStatusRadio(element, status) {
+    // Remove selected class from all items
+    document.querySelectorAll('#bulkStatusRadioGroup .status-radio-item').forEach(item => {
+      item.classList.remove('selected');
+    });
+    // Add selected class to clicked item
+    element.classList.add('selected');
+    // Check the radio input
+    element.querySelector('input[type="radio"]').checked = true;
   },
 
   applyBulkStatus() {
@@ -448,11 +459,13 @@ const HubBulkActions = {
           HubDashboard.selectedDashboardCases.clear();
           HubDashboard.updateBulkActionBar();
         }
-        // Refresh current view
+        // Refresh current view and stats
         if (HubState.currentPage === 'dashboard') {
           HubDashboard.load();
         } else if (HubState.currentPage === 'cases') {
           HubCases.loadCases(HubState.casesPage);
+          // Also refresh dashboard stats for the progress bar
+          HubDashboard.loadStats();
         }
       } else {
         HubUI.showToast(result.error || 'Update failed', 'error');
@@ -2376,7 +2389,9 @@ const HubCases = {
           ${isOverdue ? 'Overdue' : hoursLeft + 'h left'}
         </td>
         <td class="td-resolution">${this.escapeHtml(resolutionText)}</td>
-        <td class="${c.assigned_to ? '' : 'td-assignee-unassigned'}">${c.assigned_to || 'Unassigned'}</td>
+        <td class="td-assignee ${c.assigned_to ? '' : 'td-assignee-unassigned'}" onclick="event.stopPropagation(); HubUsers.showAssignModal(['${c.case_id}'])" style="cursor: pointer;" title="Click to assign">
+          <span class="assignee-clickable">${c.assigned_to || 'Unassigned'}</span>
+        </td>
         <td class="td-created">${this.timeAgo(c.created_at)}</td>
       </tr>
     `;
@@ -5051,7 +5066,7 @@ const HubCaseDetail = {
               </div>
               <div class="case-info-row">
                 <div class="case-info-label">Assigned To</div>
-                <div class="case-info-value">${this.escapeHtml(c.assigned_to || 'Unassigned')}</div>
+                <div class="case-info-value assignee-clickable" onclick="HubUsers.showAssignModal(['${c.case_id}'])" style="cursor: pointer; color: var(--brand-navy);" title="Click to assign">${this.escapeHtml(c.assigned_to || 'Unassigned')}</div>
               </div>
               ${c.clickup_task_url ? `
               <div class="case-info-row">
@@ -5850,7 +5865,9 @@ const HubDashboard = {
           <td><span class="status-badge ${statusClass}">${this.formatStatus(c.status || 'pending')}</span></td>
           <td class="td-due ${dueClass}">${isOverdue ? 'Overdue' : hoursLeft !== null ? hoursLeft + 'h left' : '-'}</td>
           <td class="td-resolution">${this.escapeHtml(c.resolution || '-')}</td>
-          <td class="${c.assigned_to ? '' : 'td-assignee-unassigned'}">${c.assigned_to || 'Unassigned'}</td>
+          <td class="td-assignee ${c.assigned_to ? '' : 'td-assignee-unassigned'}" onclick="event.stopPropagation(); HubUsers.showAssignModal(['${c.case_id}'])" style="cursor: pointer;" title="Click to assign">
+            <span class="assignee-clickable">${c.assigned_to || 'Unassigned'}</span>
+          </td>
           <td class="td-created">${this.timeAgo(c.created_at)}</td>
         </tr>
       `;
