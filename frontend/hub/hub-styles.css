@@ -1432,6 +1432,55 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
+   Actor Badges (Event Log)
+   ============================================ */
+.actor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.actor-badge.actor-team {
+  background: linear-gradient(135deg, rgba(26, 54, 93, 0.1) 0%, rgba(26, 54, 93, 0.05) 100%);
+  color: var(--brand-navy);
+  border: 1px solid rgba(26, 54, 93, 0.15);
+}
+
+.actor-badge.actor-customer {
+  background: linear-gradient(135deg, rgba(168, 216, 234, 0.2) 0%, rgba(168, 216, 234, 0.1) 100%);
+  color: #1e6091;
+  border: 1px solid rgba(168, 216, 234, 0.3);
+}
+
+.actor-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--brand-navy);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.actor-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+}
+
+.actor-name {
+  white-space: nowrap;
+}
+
+/* ============================================
    Empty States
    ============================================ */
 .empty-state {

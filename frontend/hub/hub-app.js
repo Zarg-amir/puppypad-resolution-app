@@ -3512,7 +3512,7 @@ const HubEvents = {
     if (!container) return;
 
     if (events.length === 0) {
-      container.innerHTML = `<tr><td colspan="5" class="empty-state">No events found</td></tr>`;
+      container.innerHTML = `<tr><td colspan="6" class="empty-state">No events found</td></tr>`;
       return;
     }
 
@@ -3520,16 +3520,49 @@ const HubEvents = {
       const eventData = e.event_data ? (typeof e.event_data === 'string' ? e.event_data : JSON.stringify(e.event_data)) : '{}';
       const truncatedData = eventData.length > 50 ? eventData.substring(0, 50) + '...' : eventData;
       
+      // Determine actor - if from chat app show "Customer", otherwise show the actor name
+      const isHubEvent = e.actor || e.actor_email || (e.event_type === 'Status_change') || (e.event_type === 'Assignment');
+      const actorDisplay = this.renderActor(e);
+      
       return `
         <tr>
           <td><code style="font-size: 12px; color: var(--gray-600);">${this.escapeHtml((e.session_id || '').substring(0, 12))}...</code></td>
+          <td>${actorDisplay}</td>
           <td><span class="type-badge">${this.escapeHtml(e.event_type || 'N/A')}</span></td>
           <td>${this.escapeHtml(e.event_name || 'N/A')}</td>
-          <td><code style="font-size: 11px; color: var(--gray-500); max-width: 200px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(truncatedData)}</code></td>
+          <td><code style="font-size: 11px; color: var(--gray-500); max-width: 180px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(truncatedData)}</code></td>
           <td class="time-ago">${this.formatDate(e.created_at)}</td>
         </tr>
       `;
     }).join('');
+  },
+
+  renderActor(event) {
+    // Check if this is a hub-originated event (has actor info or is a status change type)
+    const isHubAction = event.actor || event.actor_email || 
+                        ['Status_change', 'Assignment', 'Comment', 'status_change', 'assignment'].includes(event.event_type);
+    
+    if (isHubAction && (event.actor || event.actor_email)) {
+      // Hub team member action
+      const name = event.actor || event.actor_email?.split('@')[0] || 'Team';
+      const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+      return `
+        <div class="actor-badge actor-team" title="${this.escapeHtml(event.actor_email || name)}">
+          <span class="actor-avatar">${initials}</span>
+          <span class="actor-name">${this.escapeHtml(name.split(' ')[0])}</span>
+        </div>
+      `;
+    } else {
+      // Customer action from chat app
+      return `
+        <div class="actor-badge actor-customer">
+          <svg class="actor-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+          <span class="actor-name">Customer</span>
+        </div>
+      `;
+    }
   },
 
   renderPagination(total, currentCount, currentPage, limit) {
