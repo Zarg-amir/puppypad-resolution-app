@@ -5610,7 +5610,7 @@ button.template-tab:focus {
   background: white;
   border: 2px solid var(--gray-300);
   border-radius: 8px;
-  color: var(--gray-700);
+  color: var(--gray-800);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -5621,7 +5621,7 @@ button.template-tab:focus {
   width: 18px;
   height: 18px;
   stroke-width: 2.5;
-  color: var(--gray-600);
+  color: var(--gray-700);
 }
 
 .pagination-btn:hover:not(:disabled) {
@@ -5651,12 +5651,10 @@ button.template-tab:focus {
   border-color: var(--brand-navy);
   color: white;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(26, 54, 93, 0.3);
 }
 
 .pagination-btn.active:hover {
   background: #1a365d;
-  box-shadow: 0 4px 12px rgba(26, 54, 93, 0.4);
 }
 
 .pagination-info {
