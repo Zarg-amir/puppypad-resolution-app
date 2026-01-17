@@ -2950,6 +2950,7 @@ const HubNavigation = {
       'sessions': 'sessionsView',
       'events': 'eventsView',
       'issues': 'issuesView',
+      'duplicates': 'duplicatesView',
       'analytics': 'analyticsView',
       'audit': 'auditView',
       'users': 'usersView',
@@ -2985,6 +2986,8 @@ const HubNavigation = {
       HubEvents.load();
     } else if (page === 'issues') {
       HubIssues.load();
+    } else if (page === 'duplicates') {
+      HubDuplicates.load();
     } else if (page === 'analytics') {
       HubAnalytics.load();
     } else if (page === 'audit') {
@@ -3046,6 +3049,8 @@ const HubNavigation = {
       path = '/hub/events';
     } else if (page === 'issues') {
       path = '/hub/issues';
+    } else if (page === 'duplicates') {
+      path = '/hub/duplicates';
     } else if (page === 'analytics') {
       path = '/hub/analytics';
     } else if (page === 'audit') {
@@ -4006,6 +4011,190 @@ const HubAnalytics = {
       });
     } catch {
       return '-';
+    }
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+};
+
+// ============================================
+// DUPLICATES PAGE
+// ============================================
+const HubDuplicates = {
+  data: null,
+
+  async load() {
+    HubUI.showLoading();
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (HubState.token) {
+        headers['Authorization'] = `Bearer ${HubState.token}`;
+      }
+      const response = await fetch('/hub/api/duplicates', { headers });
+      
+      if (!response.ok) throw new Error('Failed to load duplicates');
+      
+      this.data = await response.json();
+      this.render();
+      this.updateBadge();
+    } catch (error) {
+      console.error('Error loading duplicates:', error);
+      HubUI.showToast('Failed to load duplicate cases', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
+  },
+
+  updateBadge() {
+    const badge = document.getElementById('duplicatesCount');
+    if (badge && this.data) {
+      badge.textContent = this.data.summary.total_duplicate_groups || 0;
+    }
+  },
+
+  render() {
+    // Update summary stats
+    document.getElementById('duplicateGroupsCount').textContent = this.data.summary.total_duplicate_groups || 0;
+    document.getElementById('duplicateCasesCount').textContent = this.data.summary.total_duplicate_cases || 0;
+    document.getElementById('duplicateCustomersCount').textContent = this.data.summary.unique_customers_affected || 0;
+
+    const container = document.getElementById('duplicatesContent');
+    
+    if (!this.data.groups || this.data.groups.length === 0) {
+      container.innerHTML = `
+        <div class="duplicates-empty">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <h3>No Duplicate Cases Found</h3>
+          <p>Great news! There are no cases with the same email and order number.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = this.data.groups.map((group, index) => {
+      const initials = this.getInitials(group.cases[0]?.customer_name || group.customer_email);
+      const casesHtml = this.renderCasesTable(group.cases);
+      
+      return `
+        <div class="duplicate-group" id="duplicate-group-${index}">
+          <div class="duplicate-group-header" onclick="HubDuplicates.toggleGroup(${index})">
+            <div class="duplicate-group-info">
+              <div class="duplicate-group-customer">
+                <div class="duplicate-customer-avatar">${initials}</div>
+                <div class="duplicate-customer-details">
+                  <h3>${this.escapeHtml(group.cases[0]?.customer_name || 'Unknown')}</h3>
+                  <span>${this.escapeHtml(group.customer_email)}</span>
+                </div>
+              </div>
+              <div class="duplicate-order-info">
+                <div class="duplicate-order-badge">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                  Order: ${this.escapeHtml(group.order_number || 'N/A')}
+                </div>
+                <div class="duplicate-order-badge">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  First: ${this.formatDate(group.first_created)}
+                </div>
+                <div class="duplicate-order-badge">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  Last: ${this.formatDate(group.last_created)}
+                </div>
+              </div>
+            </div>
+            <div class="duplicate-group-badge">
+              <span class="duplicate-count">${group.duplicate_count}</span>
+              <span class="duplicate-count-label">duplicates</span>
+            </div>
+            <div class="duplicate-toggle-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
+          <div class="duplicate-cases-wrapper">
+            ${casesHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  renderCasesTable(cases) {
+    return `
+      <table class="duplicate-cases-table">
+        <thead>
+          <tr>
+            <th>Case ID</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Resolution</th>
+            <th>Refund</th>
+            <th>Assigned</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${cases.map(c => `
+            <tr>
+              <td>
+                <span class="duplicate-case-id" onclick="HubNavigation.openCase('${c.case_id}')">${c.case_id}</span>
+              </td>
+              <td><span class="type-badge">${this.escapeHtml(c.case_type || '-')}</span></td>
+              <td>
+                <span class="duplicate-case-status ${this.getStatusClass(c.status)}">
+                  ${this.formatStatus(c.status)}
+                </span>
+              </td>
+              <td>${this.escapeHtml(c.resolution || '-')}</td>
+              <td>${c.refund_amount ? '$' + parseFloat(c.refund_amount).toFixed(2) : '-'}</td>
+              <td>${this.escapeHtml(c.assigned_to || 'Unassigned')}</td>
+              <td>${this.formatDate(c.created_at)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  },
+
+  toggleGroup(index) {
+    const group = document.getElementById(`duplicate-group-${index}`);
+    if (group) {
+      group.classList.toggle('expanded');
+    }
+  },
+
+  getInitials(name) {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  },
+
+  getStatusClass(status) {
+    if (status === 'completed') return 'completed';
+    if (status === 'in_progress') return 'in-progress';
+    return 'pending';
+  },
+
+  formatStatus(status) {
+    if (!status) return 'Pending';
+    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  },
+
+  formatDate(dateStr) {
+    if (!dateStr) return '-';
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+      });
+    } catch {
+      return dateStr;
     }
   },
 
@@ -7157,6 +7346,7 @@ window.HubKeyboard = HubKeyboard;
 window.HubSessions = HubSessions;
 window.HubEvents = HubEvents;
 window.HubIssues = HubIssues;
+window.HubDuplicates = HubDuplicates;
 window.HubAnalytics = HubAnalytics;
 // Phase 2 exports
 window.HubSOPLinks = HubSOPLinks;

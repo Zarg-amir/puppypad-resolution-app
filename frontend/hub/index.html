@@ -1006,6 +1006,11 @@
             Issue Reports
             <span class="nav-badge" id="issuesCount">0</span>
           </a>
+          <a href="/hub/duplicates" class="nav-item" data-page="duplicates">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            Duplicates
+            <span class="nav-badge" id="duplicatesCount">0</span>
+          </a>
         </div>
 
         <div class="nav-section">
@@ -1311,6 +1316,36 @@
           </div>
         </div>
 
+        <!-- Duplicates View -->
+        <div id="duplicatesView" style="display: none;">
+          <!-- Summary Stats -->
+          <div class="duplicates-summary">
+            <div class="duplicate-stat-card">
+              <div class="duplicate-stat-value" id="duplicateGroupsCount">0</div>
+              <div class="duplicate-stat-label">Duplicate Groups</div>
+            </div>
+            <div class="duplicate-stat-card">
+              <div class="duplicate-stat-value" id="duplicateCasesCount">0</div>
+              <div class="duplicate-stat-label">Total Duplicate Cases</div>
+            </div>
+            <div class="duplicate-stat-card">
+              <div class="duplicate-stat-value" id="duplicateCustomersCount">0</div>
+              <div class="duplicate-stat-label">Customers Affected</div>
+            </div>
+          </div>
+
+          <!-- Duplicate Groups List -->
+          <div class="cases-card">
+            <div class="cases-header">
+              <h2 class="cases-title">Duplicate Cases</h2>
+              <p class="duplicates-description">Cases with the same email address AND order number</p>
+            </div>
+            <div id="duplicatesContent">
+              <div class="loading-spinner"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Analytics View -->
         <div id="analyticsView" style="display: none;">
           <!-- Row 1: Cases Metrics -->
@@ -1599,6 +1634,10 @@
       } else if (path === '/hub/issues' || path === '/hub/issues/') {
         if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
           HubNavigation.goto('issues');
+        }
+      } else if (path === '/hub/duplicates' || path === '/hub/duplicates/') {
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto('duplicates');
         }
       } else if (path === '/hub/analytics' || path === '/hub/analytics/') {
         if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
