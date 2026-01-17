@@ -2483,13 +2483,54 @@ const HubFilters = {
     if (savedFilters) {
       try {
         const filters = JSON.parse(savedFilters);
-        if (filters.status) document.getElementById('statusFilter').value = filters.status;
-        if (filters.assignee) document.getElementById('assigneeFilter').value = filters.assignee;
-        if (filters.dateRange) document.getElementById('dateRangeFilter').value = filters.dateRange;
-        if (filters.sortBy) document.getElementById('sortBy').value = filters.sortBy;
+        // Use the inline filter IDs (casesStatusFilter, etc.)
+        const statusEl = document.getElementById('casesStatusFilter');
+        const assigneeEl = document.getElementById('casesAssigneeFilter');
+        const dateEl = document.getElementById('casesDateFilter');
+        const sortEl = document.getElementById('casesSortFilter');
+        
+        if (filters.status && statusEl) statusEl.value = filters.status;
+        if (filters.assignee && assigneeEl) assigneeEl.value = filters.assignee;
+        if (filters.dateRange && dateEl) dateEl.value = filters.dateRange;
+        if (filters.sortBy && sortEl) sortEl.value = filters.sortBy;
+        
+        // Handle custom date range
+        if (filters.dateRange === 'custom') {
+          this.handleDateFilterChange('custom');
+          if (filters.dateFrom) document.getElementById('dateFrom').value = filters.dateFrom;
+          if (filters.dateTo) document.getElementById('dateTo').value = filters.dateTo;
+        }
       } catch (e) {
         console.error('Failed to load saved filters:', e);
       }
+    }
+
+    // Load saved views (only after login)
+    if (HubState.token) {
+      HubSavedViews.load();
+    }
+  },
+
+  handleDateFilterChange(value) {
+    const customDateRange = document.getElementById('customDateRange');
+    if (value === 'custom') {
+      // Show custom date picker
+      if (customDateRange) {
+        customDateRange.style.display = 'flex';
+        // Set default dates (last 30 days)
+        const today = new Date();
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+        
+        document.getElementById('dateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
+        document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+      }
+    } else {
+      // Hide custom date picker
+      if (customDateRange) {
+        customDateRange.style.display = 'none';
+      }
+      this.applyFilters();
     }
   },
 
@@ -2518,23 +2559,36 @@ const HubFilters = {
       // Apply case filters (default) - check both inline and header filters
       const status = document.getElementById('casesStatusFilter')?.value || document.getElementById('statusFilter')?.value || '';
       const assignee = document.getElementById('casesAssigneeFilter')?.value || document.getElementById('assigneeFilter')?.value || '';
-      const dateRange = document.getElementById('casesDateFilter')?.value || document.getElementById('dateRangeFilter')?.value || '';
+      let dateRange = document.getElementById('casesDateFilter')?.value || document.getElementById('dateRangeFilter')?.value || '';
       const sortBy = document.getElementById('casesSortFilter')?.value || document.getElementById('sortBy')?.value || 'created_desc';
       const search = HubState.currentSearch || '';
 
+      // Handle custom date range
+      let dateFrom = null;
+      let dateTo = null;
+      if (dateRange === 'custom') {
+        dateFrom = document.getElementById('dateFrom')?.value || null;
+        dateTo = document.getElementById('dateTo')?.value || null;
+      }
+
       // Save filters
       localStorage.setItem('hub_filters', JSON.stringify({
-        status, assignee, dateRange, sortBy
+        status, assignee, dateRange, sortBy, dateFrom, dateTo
       }));
 
       // Update state
       HubState.currentStatus = status;
       HubState.currentAssignee = assignee;
       HubState.currentDateRange = dateRange;
+      HubState.currentDateFrom = dateFrom;
+      HubState.currentDateTo = dateTo;
       HubState.currentSortBy = sortBy;
 
       // Sync inline filters with header filters
       this.syncFilters();
+
+      // Clear active saved view (user modified filters)
+      HubSavedViews.clearActive();
 
       // Reload cases
       HubCases.loadCases(1);
@@ -2565,13 +2619,268 @@ const HubFilters = {
   },
 
   getFilterParams() {
-    return {
+    const params = {
       status: HubState.currentStatus || '',
       assignee: HubState.currentAssignee || '',
       dateRange: HubState.currentDateRange || '',
       sortBy: HubState.currentSortBy || 'created_desc',
       search: HubState.currentSearch || ''
     };
+
+    // Add custom date range if applicable
+    if (HubState.currentDateRange === 'custom') {
+      params.dateFrom = HubState.currentDateFrom || '';
+      params.dateTo = HubState.currentDateTo || '';
+    }
+
+    return params;
+  },
+
+  getCurrentFilters() {
+    return {
+      status: document.getElementById('casesStatusFilter')?.value || '',
+      assignee: document.getElementById('casesAssigneeFilter')?.value || '',
+      dateRange: document.getElementById('casesDateFilter')?.value || '',
+      dateFrom: document.getElementById('dateFrom')?.value || '',
+      dateTo: document.getElementById('dateTo')?.value || '',
+      sortBy: document.getElementById('casesSortFilter')?.value || 'created_desc',
+      type: HubState.currentFilter || 'all'
+    };
+  },
+
+  setFilters(filters) {
+    if (filters.status) {
+      const statusEl = document.getElementById('casesStatusFilter');
+      if (statusEl) statusEl.value = filters.status;
+    }
+    if (filters.assignee) {
+      const assigneeEl = document.getElementById('casesAssigneeFilter');
+      if (assigneeEl) assigneeEl.value = filters.assignee;
+    }
+    if (filters.dateRange) {
+      const dateEl = document.getElementById('casesDateFilter');
+      if (dateEl) dateEl.value = filters.dateRange;
+      
+      // Handle custom date range
+      if (filters.dateRange === 'custom') {
+        this.handleDateFilterChange('custom');
+        if (filters.dateFrom) document.getElementById('dateFrom').value = filters.dateFrom;
+        if (filters.dateTo) document.getElementById('dateTo').value = filters.dateTo;
+      } else {
+        const customDateRange = document.getElementById('customDateRange');
+        if (customDateRange) customDateRange.style.display = 'none';
+      }
+    }
+    if (filters.sortBy) {
+      const sortEl = document.getElementById('casesSortFilter');
+      if (sortEl) sortEl.value = filters.sortBy;
+    }
+  }
+};
+
+// ============================================
+// SAVED VIEWS
+// ============================================
+const HubSavedViews = {
+  views: [],
+  activeViewId: null,
+
+  async load() {
+    try {
+      const result = await HubAPI.get('/hub/api/saved-views');
+      this.views = result.views || [];
+      this.render();
+    } catch (e) {
+      console.error('Failed to load saved views:', e);
+    }
+  },
+
+  render() {
+    const section = document.getElementById('savedViewsSection');
+    const list = document.getElementById('savedViewsList');
+    
+    if (!section || !list) return;
+
+    if (this.views.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = 'flex';
+    
+    list.innerHTML = this.views.map(view => {
+      const isActive = this.activeViewId === view.id;
+      const isGlobal = view.is_global;
+      const isOwn = view.is_own;
+      
+      return `
+        <button class="saved-view-btn ${isActive ? 'active' : ''} ${isGlobal ? 'global' : ''}" 
+                onclick="HubSavedViews.apply(${view.id})"
+                title="${isGlobal ? 'Shared view (visible to all)' : 'Personal view'}">
+          <span>${this.escapeHtml(view.name)}</span>
+          ${isOwn || HubAuth.isAdmin() ? `
+            <svg class="view-delete" fill="none" stroke="currentColor" viewBox="0 0 24 24" 
+                 onclick="event.stopPropagation(); HubSavedViews.delete(${view.id})">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          ` : ''}
+        </button>
+      `;
+    }).join('');
+  },
+
+  async apply(viewId) {
+    const view = this.views.find(v => v.id === viewId);
+    if (!view) return;
+
+    // Set active view
+    this.activeViewId = viewId;
+    
+    // Apply filters
+    HubFilters.setFilters(view.filters);
+    
+    // Navigate to case type if specified
+    if (view.filters.type && view.filters.type !== 'all') {
+      HubNavigation.goto('cases', view.filters.type);
+    } else {
+      HubFilters.applyFilters();
+    }
+
+    // Track usage
+    try {
+      await HubAPI.post(`/hub/api/saved-views/${viewId}/use`);
+    } catch (e) { /* ignore */ }
+
+    // Re-render to show active state
+    this.render();
+  },
+
+  clearActive() {
+    this.activeViewId = null;
+    this.render();
+  },
+
+  showSaveModal() {
+    const filters = HubFilters.getCurrentFilters();
+    const isAdmin = HubAuth.isAdmin();
+
+    // Build filter preview
+    const filterTags = [];
+    if (filters.status) filterTags.push(`<span class="filter-tag"><span class="filter-tag-label">Status:</span> ${filters.status}</span>`);
+    if (filters.assignee) filterTags.push(`<span class="filter-tag"><span class="filter-tag-label">Assignee:</span> ${filters.assignee}</span>`);
+    if (filters.dateRange) {
+      let dateLabel = filters.dateRange;
+      if (filters.dateRange === 'custom' && filters.dateFrom && filters.dateTo) {
+        dateLabel = `${filters.dateFrom} to ${filters.dateTo}`;
+      }
+      filterTags.push(`<span class="filter-tag"><span class="filter-tag-label">Date:</span> ${dateLabel}</span>`);
+    }
+    if (filters.sortBy) filterTags.push(`<span class="filter-tag"><span class="filter-tag-label">Sort:</span> ${filters.sortBy.replace('_', ' ')}</span>`);
+    if (filters.type && filters.type !== 'all') filterTags.push(`<span class="filter-tag"><span class="filter-tag-label">Type:</span> ${filters.type}</span>`);
+
+    const html = `
+      <div class="modal-overlay active" id="saveViewModal">
+        <div class="modal save-view-modal">
+          <div class="modal-header">
+            <div class="modal-title">Save Current Filters as View</div>
+            <button class="modal-close" onclick="document.getElementById('saveViewModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="save-view-form">
+              <input type="text" id="viewNameInput" class="save-view-input" placeholder="Enter view name (e.g., Urgent Refunds, My Pending Cases)" autofocus>
+              
+              <div class="save-view-preview">
+                <div class="save-view-preview-title">Filters to Save</div>
+                <div class="save-view-preview-filters">
+                  ${filterTags.length > 0 ? filterTags.join('') : '<span class="filter-tag">No filters applied</span>'}
+                </div>
+              </div>
+              
+              ${isAdmin ? `
+                <div class="save-view-global">
+                  <input type="checkbox" id="viewGlobalCheck">
+                  <div class="save-view-global-text">
+                    <div class="save-view-global-title">Share with all users</div>
+                    <div class="save-view-global-desc">Make this view available to everyone on the team</div>
+                  </div>
+                </div>
+              ` : ''}
+              
+              <div class="save-view-actions">
+                <button class="btn btn-secondary" onclick="document.getElementById('saveViewModal').remove()">Cancel</button>
+                <button class="btn btn-primary" onclick="HubSavedViews.save()">Save View</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', html);
+    document.getElementById('viewNameInput').focus();
+  },
+
+  async save() {
+    const nameInput = document.getElementById('viewNameInput');
+    const name = nameInput?.value.trim();
+    
+    if (!name) {
+      HubUI.showToast('Please enter a view name', 'error');
+      return;
+    }
+
+    const filters = HubFilters.getCurrentFilters();
+    const isGlobal = document.getElementById('viewGlobalCheck')?.checked || false;
+
+    try {
+      const result = await HubAPI.post('/hub/api/saved-views', {
+        name,
+        filters,
+        is_global: isGlobal
+      });
+
+      if (result.success) {
+        HubUI.showToast(`View "${name}" saved successfully`, 'success');
+        document.getElementById('saveViewModal')?.remove();
+        
+        // Reload views
+        await this.load();
+        this.activeViewId = result.view?.id;
+        this.render();
+      } else {
+        HubUI.showToast(result.error || 'Failed to save view', 'error');
+      }
+    } catch (e) {
+      console.error('Failed to save view:', e);
+      HubUI.showToast('Failed to save view', 'error');
+    }
+  },
+
+  async delete(viewId) {
+    if (!confirm('Are you sure you want to delete this saved view?')) return;
+
+    try {
+      const result = await HubAPI.delete(`/hub/api/saved-views/${viewId}`);
+      
+      if (result.success) {
+        HubUI.showToast('View deleted', 'success');
+        this.views = this.views.filter(v => v.id !== viewId);
+        if (this.activeViewId === viewId) this.activeViewId = null;
+        this.render();
+      } else {
+        HubUI.showToast(result.error || 'Failed to delete view', 'error');
+      }
+    } catch (e) {
+      console.error('Failed to delete view:', e);
+      HubUI.showToast('Failed to delete view', 'error');
+    }
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 };
 
@@ -7348,6 +7657,8 @@ window.HubEvents = HubEvents;
 window.HubIssues = HubIssues;
 window.HubDuplicates = HubDuplicates;
 window.HubAnalytics = HubAnalytics;
+window.HubFilters = HubFilters;
+window.HubSavedViews = HubSavedViews;
 // Phase 2 exports
 window.HubSOPLinks = HubSOPLinks;
 window.HubEnhancedAuditLog = HubEnhancedAuditLog;
