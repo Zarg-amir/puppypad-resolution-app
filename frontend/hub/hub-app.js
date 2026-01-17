@@ -5490,7 +5490,7 @@ const HubCaseDetail = {
   },
 
   renderActivitiesRedesigned() {
-    // Combine activities and comments, sorted by date
+    // Combine activities and comments, sorted by date (newest first)
     const allActivities = [
       ...this.activities.map(a => ({ ...a, _type: 'activity' })),
       ...this.comments.map(c => ({ ...c, _type: 'comment', created_at: c.created_at }))
@@ -5508,12 +5508,31 @@ const HubCaseDetail = {
       `;
     }
 
-    return allActivities.slice(0, 20).map(item => {
+    // Group consecutive activities together, keep comments separate
+    let result = '';
+    let activityBuffer = [];
+    
+    const flushActivityBuffer = () => {
+      if (activityBuffer.length === 0) return '';
+      const grouped = activityBuffer.map(item => `
+        <div class="activity-log-item">
+          <span class="activity-log-dot ${this.getActivityIconClass(item.activity_type)}"></span>
+          <span class="activity-log-text">${this.formatActivityTextCompact(item)}</span>
+          <span class="activity-log-time">${this.timeAgo(item.created_at)}</span>
+        </div>
+      `).join('');
+      activityBuffer = [];
+      return `<div class="activity-log-group">${grouped}</div>`;
+    };
+
+    allActivities.slice(0, 20).forEach(item => {
       if (item._type === 'comment') {
-        // Comments have a distinct card-like appearance
+        // Flush any buffered activities first
+        result += flushActivityBuffer();
+        // Render comment prominently
         const initials = (item.author_name || 'TM').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
-        return `
-          <div class="activity-item comment-item">
+        result += `
+          <div class="comment-item">
             <div class="comment-avatar">
               <span>${initials}</span>
             </div>
@@ -5527,20 +5546,41 @@ const HubCaseDetail = {
           </div>
         `;
       } else {
-        // Activities are subtle, inline items
-        return `
-          <div class="activity-item system-activity">
-            <div class="activity-icon-small ${this.getActivityIconClass(item.activity_type)}">
-              ${this.getActivityIcon(item.activity_type)}
-            </div>
-            <div class="activity-text-inline">
-              ${this.formatActivityText(item)}
-              <span class="activity-time-inline">· ${this.timeAgo(item.created_at)}</span>
-            </div>
-          </div>
-        `;
+        // Buffer activities to group them
+        activityBuffer.push(item);
       }
-    }).join('');
+    });
+    
+    // Flush any remaining activities
+    result += flushActivityBuffer();
+    
+    return result;
+  },
+
+  formatActivityTextCompact(item) {
+    const authorName = item.author_name || 'System';
+    const firstName = authorName.split(' ')[0];
+    const details = item.details ? JSON.parse(item.details) : {};
+    
+    switch (item.activity_type) {
+      case 'status_changed':
+        const newStatus = details.new_status || details.status || 'updated';
+        return `<strong>${firstName}</strong> → ${newStatus.replace('_', ' ')}`;
+      case 'assigned':
+        return `<strong>${firstName}</strong> assigned case`;
+      case 'viewed_shopify_order':
+        return `<strong>${firstName}</strong> viewed order`;
+      case 'viewed_session_recording':
+        return `<strong>${firstName}</strong> viewed recording`;
+      case 'clicked_sop':
+        return `<strong>${firstName}</strong> viewed SOP`;
+      case 'copied_email_template':
+        return `<strong>${firstName}</strong> copied template`;
+      case 'comment_added':
+        return `<strong>${firstName}</strong> commented`;
+      default:
+        return `<strong>${firstName}</strong>: ${item.activity_type?.replace(/_/g, ' ') || 'action'}`;
+    }
   },
 
   getActivityIconClass(type) {
