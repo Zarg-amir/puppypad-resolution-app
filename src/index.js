@@ -11394,25 +11394,45 @@ function getResolutionHubHTML() {
       margin-bottom: 8px;
     }
 
-    /* Loading */
+    /* Modern Loading Spinner */
     .loading-spinner {
       display: flex;
-      justify-content: center;
       align-items: center;
-      padding: 40px;
+      justify-content: center;
+      padding: 48px;
     }
 
     .spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid var(--gray-200);
-      border-top-color: var(--brand-navy);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      position: relative;
+      width: 40px;
+      height: 40px;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    .spinner::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      border-top-color: var(--brand-navy);
+      border-right-color: rgba(26, 54, 93, 0.25);
+      animation: spinner-rotate 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .spinner::after {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: #a8d8ea;
+      border-left-color: rgba(168, 216, 234, 0.35);
+      animation: spinner-rotate 0.65s cubic-bezier(0.4, 0, 0.2, 1) infinite reverse;
+    }
+
+    @keyframes spinner-rotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     /* Responsive */
@@ -13833,19 +13853,122 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
 }
 
+/* Modern Loading Spinner */
 .loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--gray-200);
-  border-top-color: var(--primary-500);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
 }
 
-@keyframes spin {
-  to {
+.spinner {
+  position: relative;
+  width: 44px;
+  height: 44px;
+}
+
+.spinner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--brand-navy);
+  border-right-color: rgba(26, 54, 93, 0.3);
+  animation: spinner-rotate 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spinner::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--sora);
+  border-left-color: rgba(168, 216, 234, 0.4);
+  animation: spinner-rotate 0.6s cubic-bezier(0.4, 0, 0.2, 1) infinite reverse;
+}
+
+@keyframes spinner-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
     transform: rotate(360deg);
   }
+}
+
+/* Alternative dot spinner for inline use */
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.loading-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand-navy);
+  animation: dot-pulse 1.4s ease-in-out infinite;
+}
+
+.loading-dots span:nth-child(1) { animation-delay: 0s; }
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dot-pulse {
+  0%, 80%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Full page loading overlay */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.loading-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.loading-overlay .spinner {
+  width: 56px;
+  height: 56px;
+}
+
+.loading-overlay .spinner::before {
+  border-width: 4px;
+}
+
+.loading-overlay .spinner::after {
+  inset: 8px;
+  border-width: 3px;
+}
+
+.loading-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-600);
+  letter-spacing: 0.02em;
 }
 
 /* ============================================
