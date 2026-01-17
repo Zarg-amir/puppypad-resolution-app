@@ -5845,10 +5845,16 @@ const HubDashboard = {
 
     container.innerHTML = cases.map(c => {
       const statusClass = c.status ? c.status.replace('_', '-') : 'pending';
-      const dueDate = c.due_date ? new Date(c.due_date) : null;
-      const isOverdue = c.is_overdue;
-      const hoursLeft = dueDate ? Math.max(0, Math.round((dueDate - new Date()) / (1000 * 60 * 60))) : null;
-      const dueClass = isOverdue ? 'overdue' : hoursLeft !== null && hoursLeft < 8 ? 'warning' : '';
+      
+      // Match the All Cases due date calculation
+      const now = new Date();
+      const dueDate = c.due_date ? new Date(c.due_date) : new Date(now.getTime() + 24 * 60 * 60 * 1000); // Default to 24h if no due date
+      const isOverdue = now > dueDate && c.status !== 'completed';
+      const hoursLeft = Math.max(0, Math.round((dueDate - now) / (1000 * 60 * 60)));
+      const dueClass = isOverdue ? 'overdue' : hoursLeft < 8 ? 'warning' : 'ok';
+      
+      // Format resolution to match All Cases
+      const resolutionText = HubCases.formatResolution ? HubCases.formatResolution(c.resolution) : (c.resolution || 'Pending Review');
       
       return `
         <tr onclick="HubCases.openCase('${c.case_id}')" style="cursor: pointer;">
@@ -5863,8 +5869,8 @@ const HubDashboard = {
           </td>
           <td><span class="type-badge ${c.case_type || ''}">${this.escapeHtml(c.case_type || '-')}</span></td>
           <td><span class="status-badge ${statusClass}">${this.formatStatus(c.status || 'pending')}</span></td>
-          <td class="td-due ${dueClass}">${isOverdue ? 'Overdue' : hoursLeft !== null ? hoursLeft + 'h left' : '-'}</td>
-          <td class="td-resolution">${this.escapeHtml(c.resolution || '-')}</td>
+          <td class="td-due ${dueClass}">${isOverdue ? 'Overdue' : hoursLeft + 'h left'}</td>
+          <td class="td-resolution">${this.escapeHtml(resolutionText)}</td>
           <td class="td-assignee ${c.assigned_to ? '' : 'td-assignee-unassigned'}" onclick="event.stopPropagation(); HubUsers.showAssignModal(['${c.case_id}'])" style="cursor: pointer;" title="Click to assign">
             <span class="assignee-clickable">${c.assigned_to || 'Unassigned'}</span>
           </td>
