@@ -167,12 +167,18 @@
       transition: all 0.2s;
     }
 
-    .login-btn:hover {
+    .login-btn:hover:not(:disabled) {
       background: var(--brand-navy-light);
     }
 
-    .login-btn:active {
+    .login-btn:active:not(:disabled) {
       transform: scale(0.98);
+    }
+
+    .login-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: var(--brand-navy);
     }
 
     /* Layout */

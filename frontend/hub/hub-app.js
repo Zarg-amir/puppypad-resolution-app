@@ -175,11 +175,27 @@ const HubAuth = {
 
   async login(username, password) {
     try {
+      if (!username || !password) {
+        return { success: false, error: 'Please enter both email and password' };
+      }
+
       const response = await fetch(`${HubConfig.API_BASE}/admin/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
+
+      // Check if response is OK before parsing JSON
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: `Server error: ${response.status}` };
+        }
+        return { success: false, error: errorData.error || 'Login failed' };
+      }
 
       const data = await response.json();
 
@@ -198,7 +214,8 @@ const HubAuth = {
 
       return { success: false, error: data.error || 'Login failed' };
     } catch (e) {
-      return { success: false, error: 'Network error' };
+      console.error('Login error:', e);
+      return { success: false, error: e.message || 'Network error. Please check your connection.' };
     }
   },
 
@@ -7723,21 +7740,59 @@ window.deselectAllCases = () => HubBulkActions.deselectAll();
 window.bulkUpdateStatus = (status) => HubBulkActions.updateStatus(status);
 
 // Auth
-window.handleLogin = (event) => {
+window.handleLogin = async (event) => {
   event.preventDefault();
-  const username = document.getElementById('loginUsername')?.value;
+  const errorEl = document.getElementById('loginError');
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  const username = document.getElementById('loginUsername')?.value?.trim();
   const password = document.getElementById('loginPassword')?.value;
-  HubAuth.login(username, password).then(result => {
+
+  // Clear previous errors
+  if (errorEl) {
+    errorEl.style.display = 'none';
+    errorEl.textContent = '';
+  }
+
+  // Disable button during login
+  const originalBtnText = submitBtn?.textContent;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing in...';
+  }
+
+  try {
+    const result = await HubAuth.login(username, password);
+    
     if (result.success) {
+      // Hide error on success
+      if (errorEl) {
+        errorEl.style.display = 'none';
+      }
       HubApp.init();
     } else {
-      const errorEl = document.getElementById('loginError');
+      // Show error
       if (errorEl) {
-        errorEl.textContent = result.error || 'Login failed';
+        errorEl.textContent = result.error || 'Login failed. Please check your credentials.';
         errorEl.style.display = 'block';
       }
+      // Re-enable button
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+      }
     }
-  });
+  } catch (error) {
+    console.error('Login error:', error);
+    if (errorEl) {
+      errorEl.textContent = 'An unexpected error occurred. Please try again.';
+      errorEl.style.display = 'block';
+    }
+    // Re-enable button
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalBtnText;
+    }
+  }
 };
 window.logout = () => HubAuth.logout();
 
