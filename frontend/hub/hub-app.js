@@ -3101,6 +3101,17 @@ const HubSessions = {
       const flowType = s.flow_type || 'N/A';
       const completed = s.ended_at ? true : false;
       const recordingUrl = s.session_replay_url || null;
+      
+      // Recording button with play icon
+      const recordingBtn = recordingUrl 
+        ? `<a href="${recordingUrl}" target="_blank" class="btn-recording">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Watch
+           </a>`
+        : `<span class="btn-recording-disabled">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            No Recording
+           </span>`;
 
       return `
         <tr>
@@ -3114,7 +3125,7 @@ const HubSessions = {
           <td>${this.escapeHtml(orderNumber)}</td>
           <td><span class="type-badge">${this.escapeHtml(flowType)}</span></td>
           <td><span class="status-badge ${completed ? 'completed' : 'in-progress'}">${completed ? 'Completed' : 'In Progress'}</span></td>
-          <td>${recordingUrl ? `<a href="${recordingUrl}" target="_blank" class="btn-icon" style="color: var(--primary-600);">Watch</a>` : 'N/A'}</td>
+          <td>${recordingBtn}</td>
         </tr>
       `;
     }).join('');
@@ -3303,16 +3314,27 @@ const HubIssues = {
 
     container.innerHTML = issues.map(issue => {
       const statusClass = issue.status === 'resolved' ? 'completed' : issue.status === 'in_progress' ? 'in-progress' : 'pending';
+      const recordingUrl = issue.session_replay_url || null;
+      
+      // Recording button with play icon
+      const recordingBtn = recordingUrl 
+        ? `<a href="${recordingUrl}" target="_blank" class="btn-recording" onclick="event.stopPropagation();">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Watch
+           </a>`
+        : `<span class="btn-recording-disabled">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            No Recording
+           </span>`;
+      
       return `
-        <tr onclick="HubIssues.openIssue('${issue.report_id}')">
-          <td class="case-id">${this.escapeHtml(issue.report_id || '-')}</td>
+        <tr onclick="HubIssues.openIssue('${issue.report_id}')" style="cursor: pointer;">
+          <td>${this.escapeHtml(issue.report_id || '-')}</td>
           <td>${this.escapeHtml(issue.customer_email || '-')}</td>
           <td>${this.escapeHtml(issue.issue_type || '-')}</td>
           <td><span class="status-badge ${statusClass}">${this.formatStatus(issue.status || 'pending')}</span></td>
-          <td class="time-ago">${this.timeAgo(issue.created_at)}</td>
-          <td>
-            <button class="btn-icon" onclick="event.stopPropagation(); HubIssues.openIssue('${issue.report_id}')" title="View Details">View</button>
-          </td>
+          <td>${this.timeAgo(issue.created_at)}</td>
+          <td>${recordingBtn}</td>
         </tr>
       `;
     }).join('');

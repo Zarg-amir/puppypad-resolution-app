@@ -813,6 +813,79 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
+   Recording Button - Beautiful Watch/Play Style
+   ============================================ */
+.btn-recording {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, var(--primary-50) 0%, var(--sora-soft) 100%);
+  border: 1px solid var(--primary-200);
+  border-radius: 20px;
+  color: var(--primary-700);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn-recording:hover {
+  background: linear-gradient(135deg, var(--primary-100) 0%, var(--sakura-soft) 100%);
+  border-color: var(--primary-400);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(99, 102, 241, 0.2);
+}
+
+.btn-recording svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.btn-recording-disabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: 20px;
+  color: var(--gray-400);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: not-allowed;
+  white-space: nowrap;
+}
+
+.btn-recording-disabled svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  opacity: 0.5;
+}
+
+/* Table specific adjustments */
+.issues-table td,
+.sessions-table td,
+.events-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+}
+
+.issues-table td:first-child,
+.sessions-table td:first-child,
+.events-table td:first-child {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 12px;
+  color: var(--gray-600);
+}
+
+/* ============================================
    Assignment Queue Table
    ============================================ */
 .queue-table {
