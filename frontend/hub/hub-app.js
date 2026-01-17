@@ -1566,9 +1566,10 @@ const HubUsers = {
   },
 
   pendingAssignCaseIds: null,
+  activeDropdown: null,
 
   showAssignModal(caseIds) {
-    // Store caseIds for later use
+    // For bulk actions, still use modal since there's no click position
     this.pendingAssignCaseIds = caseIds;
     
     this.load().then(() => {
@@ -1603,6 +1604,87 @@ const HubUsers = {
     });
   },
 
+  showAssignDropdown(event, caseIds, currentAssignee) {
+    event.stopPropagation();
+    
+    // Close any existing dropdown
+    this.closeDropdown();
+    
+    // Store caseIds for later use
+    this.pendingAssignCaseIds = caseIds;
+    
+    // Get click position
+    const rect = event.currentTarget.getBoundingClientRect();
+    
+    this.load().then(() => {
+      const getInitials = (name) => {
+        if (!name) return '?';
+        return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+      };
+
+      const html = `
+        <div class="assignee-dropdown" id="assigneeDropdown" style="top: ${rect.bottom + 4}px; left: ${Math.min(rect.left, window.innerWidth - 280)}px;">
+          <div class="assignee-dropdown-header">Assign to</div>
+          <div class="assignee-dropdown-list">
+            <div class="assignee-dropdown-item assignee-dropdown-unassign ${!currentAssignee ? 'selected' : ''}" onclick="HubUsers.selectAssignee(null)">
+              <div class="assignee-avatar unassigned">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+              </div>
+              <div class="assignee-dropdown-item-info">
+                <div class="assignee-dropdown-item-name">Unassigned</div>
+                <div class="assignee-dropdown-item-role">Remove assignment</div>
+              </div>
+              <svg class="assignee-dropdown-item-check" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="assignee-dropdown-divider"></div>
+            ${this.users.filter(u => u.is_active).map(u => `
+              <div class="assignee-dropdown-item ${currentAssignee === u.name ? 'selected' : ''}" onclick="HubUsers.selectAssignee(${u.id}, '${this.escapeHtml(u.name)}')">
+                <div class="assignee-avatar">${getInitials(u.name)}</div>
+                <div class="assignee-dropdown-item-info">
+                  <div class="assignee-dropdown-item-name">${this.escapeHtml(u.name)}</div>
+                  <div class="assignee-dropdown-item-role">${this.escapeHtml(u.role || 'Team Member')}</div>
+                </div>
+                <svg class="assignee-dropdown-item-check" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', html);
+      this.activeDropdown = document.getElementById('assigneeDropdown');
+      
+      // Close dropdown when clicking outside
+      setTimeout(() => {
+        document.addEventListener('click', this.handleOutsideClick);
+      }, 10);
+    });
+  },
+
+  handleOutsideClick(e) {
+    const dropdown = document.getElementById('assigneeDropdown');
+    if (dropdown && !dropdown.contains(e.target)) {
+      HubUsers.closeDropdown();
+    }
+  },
+
+  closeDropdown() {
+    const dropdown = document.getElementById('assigneeDropdown');
+    if (dropdown) {
+      dropdown.remove();
+    }
+    this.activeDropdown = null;
+    document.removeEventListener('click', this.handleOutsideClick);
+  },
+
+  async selectAssignee(userId, userName) {
+    this.closeDropdown();
+    const caseIds = this.pendingAssignCaseIds || Array.from(HubState.selectedCaseIds);
+    this.pendingAssignCaseIds = null;
+    
+    await HubBulkActions.assignWithIds(userId, caseIds);
+  },
+
   async confirmAssign() {
     const userId = document.getElementById('assignToUser').value;
     const caseIds = this.pendingAssignCaseIds || Array.from(HubState.selectedCaseIds);
@@ -1610,6 +1692,26 @@ const HubUsers = {
     
     document.getElementById('assignModal').remove();
     await HubBulkActions.assignWithIds(userId ? parseInt(userId) : null, caseIds);
+  },
+
+  // Helper to render the assignee cell with the new design
+  renderAssigneeCell(caseId, assignedTo) {
+    const getInitials = (name) => {
+      if (!name) return '?';
+      return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    };
+    
+    const isUnassigned = !assignedTo;
+    const displayName = assignedTo || 'Unassigned';
+    const initials = isUnassigned ? '?' : getInitials(assignedTo);
+    
+    return `
+      <div class="assignee-cell" onclick="event.stopPropagation(); HubUsers.showAssignDropdown(event, ['${caseId}'], ${assignedTo ? "'" + this.escapeHtml(assignedTo) + "'" : 'null'})">
+        <div class="assignee-avatar ${isUnassigned ? 'unassigned' : ''}">${isUnassigned ? '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>' : initials}</div>
+        <span class="assignee-name ${isUnassigned ? 'unassigned' : ''}">${this.escapeHtml(displayName)}</span>
+        <svg class="assignee-edit-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </div>
+    `;
   },
 
   escapeHtml(text) {
@@ -2390,9 +2492,7 @@ const HubCases = {
           ${isOverdue ? 'Overdue' : hoursLeft + 'h left'}
         </td>
         <td class="td-resolution">${this.escapeHtml(resolutionText)}</td>
-        <td class="td-assignee ${c.assigned_to ? '' : 'td-assignee-unassigned'}" onclick="event.stopPropagation(); HubUsers.showAssignModal(['${c.case_id}'])" style="cursor: pointer;" title="Click to assign">
-          <span class="assignee-clickable">${c.assigned_to || 'Unassigned'}</span>
-        </td>
+        <td class="td-assignee">${HubUsers.renderAssigneeCell(c.case_id, c.assigned_to)}</td>
         <td class="td-created">${this.timeAgo(c.created_at)}</td>
       </tr>
     `;
@@ -5067,7 +5167,7 @@ const HubCaseDetail = {
               </div>
               <div class="case-info-row">
                 <div class="case-info-label">Assigned To</div>
-                <div class="case-info-value assignee-clickable" onclick="HubUsers.showAssignModal(['${c.case_id}'])" style="cursor: pointer; color: var(--brand-navy);" title="Click to assign">${this.escapeHtml(c.assigned_to || 'Unassigned')}</div>
+                <div class="case-info-value">${HubUsers.renderAssigneeCell(c.case_id, c.assigned_to)}</div>
               </div>
               ${c.clickup_task_url ? `
               <div class="case-info-row">
@@ -5873,9 +5973,7 @@ const HubDashboard = {
           <td><span class="status-badge ${statusClass}">${this.formatStatus(c.status || 'pending')}</span></td>
           <td class="td-due ${dueClass}">${isOverdue ? 'Overdue' : hoursLeft + 'h left'}</td>
           <td class="td-resolution">${this.escapeHtml(resolutionText)}</td>
-          <td class="td-assignee ${c.assigned_to ? '' : 'td-assignee-unassigned'}" onclick="event.stopPropagation(); HubUsers.showAssignModal(['${c.case_id}'])" style="cursor: pointer;" title="Click to assign">
-            <span class="assignee-clickable">${c.assigned_to || 'Unassigned'}</span>
-          </td>
+          <td class="td-assignee">${HubUsers.renderAssigneeCell(c.case_id, c.assigned_to)}</td>
           <td class="td-created">${this.timeAgo(c.created_at)}</td>
         </tr>
       `;
