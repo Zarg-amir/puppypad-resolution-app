@@ -346,11 +346,11 @@ const HubBulkActions = {
     bar.innerHTML = `
       <div class="bulk-action-count">${count} case${count > 1 ? 's' : ''} selected</div>
       <div class="bulk-action-buttons">
-        <button onclick="HubBulkActions.showAssignModal()" class="bulk-btn">
+        <button onclick="HubBulkActions.showInlineAssignDropdown(event)" class="bulk-btn" id="bulkAssignBtn">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
           Assign
         </button>
-        <button onclick="HubBulkActions.showStatusModal()" class="bulk-btn">
+        <button onclick="HubBulkActions.showInlineStatusDropdown(event)" class="bulk-btn" id="bulkStatusBtn">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           Change Status
         </button>
@@ -358,13 +358,196 @@ const HubBulkActions = {
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           Export
         </button>
-        <button onclick="HubBulkActions.deselectAll()" class="bulk-btn bulk-btn-cancel">Cancel</button>
+        <button onclick="HubBulkActions.deselectAll()" class="bulk-btn-cancel">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          Cancel
+        </button>
       </div>
     `;
   },
 
   // Stores caseIds passed to modal for later use
   pendingBulkCaseIds: null,
+  activeInlineDropdown: null,
+
+  closeInlineDropdown() {
+    const dropdown = document.getElementById('bulkInlineDropdown');
+    if (dropdown) dropdown.remove();
+    this.activeInlineDropdown = null;
+    document.removeEventListener('click', this.handleInlineDropdownOutsideClick);
+  },
+
+  handleInlineDropdownOutsideClick(e) {
+    const dropdown = document.getElementById('bulkInlineDropdown');
+    if (dropdown && !dropdown.contains(e.target) && !e.target.closest('.bulk-btn')) {
+      HubBulkActions.closeInlineDropdown();
+    }
+  },
+
+  showInlineAssignDropdown(event, source = 'cases') {
+    event.stopPropagation();
+    this.closeInlineDropdown();
+    
+    const caseIds = source === 'dashboard' 
+      ? Array.from(HubDashboard.selectedDashboardCases) 
+      : Array.from(HubState.selectedCaseIds);
+    
+    if (caseIds.length === 0) return;
+    this.pendingBulkCaseIds = caseIds;
+    this.pendingBulkSource = source;
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    
+    HubUsers.load().then(() => {
+      const getInitials = (name) => {
+        if (!name) return '?';
+        return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+      };
+
+      const html = `
+        <div class="bulk-inline-dropdown" id="bulkInlineDropdown" style="bottom: ${window.innerHeight - rect.top + 8}px; left: ${rect.left}px;">
+          <div class="bulk-inline-dropdown-header">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" placeholder="Search team..." oninput="HubBulkActions.filterInlineAssignees(this.value)" onclick="event.stopPropagation()">
+          </div>
+          <div class="bulk-inline-dropdown-list" id="bulkAssigneeList">
+            <div class="bulk-inline-dropdown-item" onclick="HubBulkActions.applyBulkAssign(null)">
+              <div class="bulk-assignee-avatar unassigned">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+              </div>
+              <span>Unassigned</span>
+            </div>
+            ${HubUsers.users.filter(u => u.is_active).map(u => `
+              <div class="bulk-inline-dropdown-item" data-name="${HubUsers.escapeHtml(u.name.toLowerCase())}" onclick="HubBulkActions.applyBulkAssign(${u.id}, '${HubUsers.escapeHtml(u.name)}')">
+                <div class="bulk-assignee-avatar">${getInitials(u.name)}</div>
+                <span>${HubUsers.escapeHtml(u.name)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', html);
+      this.activeInlineDropdown = document.getElementById('bulkInlineDropdown');
+      
+      setTimeout(() => {
+        document.addEventListener('click', this.handleInlineDropdownOutsideClick);
+      }, 10);
+    });
+  },
+
+  filterInlineAssignees(query) {
+    const items = document.querySelectorAll('#bulkAssigneeList .bulk-inline-dropdown-item[data-name]');
+    const lowerQuery = query.toLowerCase().trim();
+    
+    items.forEach(item => {
+      const name = item.dataset.name || '';
+      item.style.display = name.includes(lowerQuery) ? 'flex' : 'none';
+    });
+  },
+
+  async applyBulkAssign(userId, userName = null) {
+    this.closeInlineDropdown();
+    const caseIds = this.pendingBulkCaseIds;
+    const source = this.pendingBulkSource || 'cases';
+    this.pendingBulkCaseIds = null;
+    
+    if (!caseIds || caseIds.length === 0) return;
+    
+    HubUI.showLoading();
+    try {
+      const result = await HubAPI.post('/hub/api/cases/bulk-assign', { caseIds, userId });
+      if (result.success) {
+        HubUI.showToast(`Assigned ${caseIds.length} case${caseIds.length > 1 ? 's' : ''} to ${userName || 'Unassigned'}`, 'success');
+        this.deselectAll();
+        if (source === 'dashboard') {
+          HubDashboard.clearSelection();
+          HubDashboard.load();
+        } else {
+          HubCases.loadCases(HubState.casesPage);
+        }
+      } else {
+        HubUI.showToast(result.error || 'Assign failed', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to assign cases', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
+  },
+
+  showInlineStatusDropdown(event, source = 'cases') {
+    event.stopPropagation();
+    this.closeInlineDropdown();
+    
+    const caseIds = source === 'dashboard' 
+      ? Array.from(HubDashboard.selectedDashboardCases) 
+      : Array.from(HubState.selectedCaseIds);
+    
+    if (caseIds.length === 0) return;
+    this.pendingBulkCaseIds = caseIds;
+    this.pendingBulkSource = source;
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    
+    const html = `
+      <div class="bulk-inline-dropdown" id="bulkInlineDropdown" style="bottom: ${window.innerHeight - rect.top + 8}px; left: ${rect.left}px;">
+        <div class="bulk-inline-dropdown-list" style="padding-top: 8px;">
+          <div class="bulk-inline-dropdown-item bulk-status-item" onclick="HubBulkActions.applyInlineStatus('pending')">
+            <span class="status-dot pending"></span>
+            <span>Pending</span>
+          </div>
+          <div class="bulk-inline-dropdown-item bulk-status-item" onclick="HubBulkActions.applyInlineStatus('in_progress')">
+            <span class="status-dot in-progress"></span>
+            <span>In Progress</span>
+          </div>
+          <div class="bulk-inline-dropdown-item bulk-status-item" onclick="HubBulkActions.applyInlineStatus('completed')">
+            <span class="status-dot completed"></span>
+            <span>Completed</span>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', html);
+    this.activeInlineDropdown = document.getElementById('bulkInlineDropdown');
+    
+    setTimeout(() => {
+      document.addEventListener('click', this.handleInlineDropdownOutsideClick);
+    }, 10);
+  },
+
+  async applyInlineStatus(status) {
+    this.closeInlineDropdown();
+    const caseIds = this.pendingBulkCaseIds;
+    const source = this.pendingBulkSource || 'cases';
+    this.pendingBulkCaseIds = null;
+    
+    if (!caseIds || caseIds.length === 0) return;
+    
+    HubUI.showLoading();
+    try {
+      const result = await HubAPI.post('/hub/api/cases/bulk-status', { caseIds, status });
+      if (result.success) {
+        const statusLabel = status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+        HubUI.showToast(`Updated ${caseIds.length} case${caseIds.length > 1 ? 's' : ''} to ${statusLabel}`, 'success');
+        this.deselectAll();
+        if (source === 'dashboard') {
+          HubDashboard.clearSelection();
+          HubDashboard.load();
+        } else {
+          HubCases.loadCases(HubState.casesPage);
+        }
+        HubDashboard.loadStats();
+      } else {
+        HubUI.showToast(result.error || 'Update failed', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to update status', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
+  },
 
   showStatusModal(caseIds = null) {
     // Use passed caseIds or fall back to HubState.selectedCaseIds
@@ -5932,11 +6115,11 @@ const HubDashboard = {
     bar.innerHTML = `
       <div class="bulk-action-count">${count} case${count > 1 ? 's' : ''} selected</div>
       <div class="bulk-action-buttons">
-        <button onclick="HubDashboard.bulkAssign()" class="bulk-btn">
+        <button onclick="HubBulkActions.showInlineAssignDropdown(event, 'dashboard')" class="bulk-btn" id="dashboardBulkAssignBtn">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
           Assign
         </button>
-        <button onclick="HubDashboard.bulkStatus()" class="bulk-btn">
+        <button onclick="HubBulkActions.showInlineStatusDropdown(event, 'dashboard')" class="bulk-btn" id="dashboardBulkStatusBtn">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           Change Status
         </button>
@@ -5944,7 +6127,10 @@ const HubDashboard = {
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           Export
         </button>
-        <button onclick="HubDashboard.clearSelection()" class="bulk-btn bulk-btn-cancel">Cancel</button>
+        <button onclick="HubDashboard.clearSelection()" class="bulk-btn-cancel">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          Cancel
+        </button>
       </div>
     `;
   },
