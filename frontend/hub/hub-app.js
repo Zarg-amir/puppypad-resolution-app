@@ -123,7 +123,7 @@ const HubAPI = {
       const isNonCritical = nonCriticalEndpoints.some(ep => endpoint.startsWith(ep));
       
       if (!isNonCritical) {
-        HubAuth.logout();
+      HubAuth.logout();
       }
       throw new Error('Session expired');
     }
