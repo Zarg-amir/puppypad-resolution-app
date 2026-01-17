@@ -5097,32 +5097,30 @@ button.template-tab:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
   background: white;
-  border: 2px solid var(--gray-400);
-  border-radius: 10px;
-  color: var(--gray-800);
-  font-size: 15px;
-  font-weight: 700;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  color: var(--gray-700);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.15s ease;
 }
 
 .pagination-btn svg {
-  width: 18px;
-  height: 18px;
-  stroke-width: 2.5;
-  color: var(--gray-700);
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+  color: var(--gray-600);
 }
 
 .pagination-btn:hover:not(:disabled) {
-  background: var(--gray-100);
-  border-color: var(--brand-navy);
+  background: var(--gray-50);
+  border-color: var(--gray-400);
   color: var(--brand-navy);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(26, 26, 64, 0.15);
 }
 
 .pagination-btn:hover:not(:disabled) svg {
@@ -5130,27 +5128,25 @@ button.template-tab:focus {
 }
 
 .pagination-btn:disabled {
-  background: var(--gray-100);
-  border-color: var(--gray-300);
-  color: var(--gray-400);
+  background: var(--gray-50);
+  border-color: var(--gray-200);
+  color: var(--gray-300);
   cursor: not-allowed;
-  box-shadow: none;
 }
 
 .pagination-btn:disabled svg {
-  color: var(--gray-400);
+  color: var(--gray-300);
 }
 
 .pagination-btn.active {
   background: var(--brand-navy);
   border-color: var(--brand-navy);
   color: white;
-  box-shadow: 0 4px 12px rgba(26, 26, 64, 0.35);
+  font-weight: 600;
 }
 
 .pagination-btn.active:hover {
-  background: #15153d;
-  transform: translateY(-2px);
+  background: #252560;
 }
 
 .pagination-info {
