@@ -16213,7 +16213,7 @@ button.template-tab:focus {
 }
 
 .btn-danger {
-  background: linear-gradient(135deg, var(--color-momo) 0%, #e8586d 100%);
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
   color: white;
   border: none;
   display: inline-flex;
@@ -16226,13 +16226,13 @@ button.template-tab:focus {
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(255, 107, 129, 0.25);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
 }
 
 .btn-danger:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 107, 129, 0.35);
-  background: linear-gradient(135deg, #e8586d 0%, var(--color-momo) 100%);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+  background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
 }
 
 .btn-danger:active {
