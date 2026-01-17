@@ -6581,9 +6581,18 @@ const HubDashboard = {
       // Update sidebar progress bar
       this.updateSidebarProgress(result);
 
-      // Update sidebar counts
-      ['all', 'shipping', 'refund', 'subscription', 'manual'].forEach(type => {
-        const el = document.getElementById((type === 'all' ? 'allCases' : type) + 'Count');
+      // Update sidebar counts - use correct element IDs
+      const typeToElementId = {
+        'all': 'allCasesCount',
+        'shipping': 'shippingCount',
+        'refund': 'refundCount',
+        'return': 'returnCount',
+        'subscription': 'subscriptionsCount', // Note: plural in HTML
+        'manual': 'manualCount'
+      };
+      
+      Object.entries(typeToElementId).forEach(([type, elementId]) => {
+        const el = document.getElementById(elementId);
         if (el) el.textContent = result[type] || 0;
       });
 
@@ -6636,15 +6645,52 @@ const HubDashboard = {
       const result = await HubAPI.get('/hub/api/stats');
       this.updateSidebarProgress(result);
       
-      // Update sidebar counts
-      ['all', 'shipping', 'refund', 'subscription', 'manual'].forEach(type => {
-        const el = document.getElementById((type === 'all' ? 'allCases' : type) + 'Count');
+      // Update sidebar counts - include 'return' type
+      // Note: Element IDs use different naming convention for some types
+      const typeToElementId = {
+        'all': 'allCasesCount',
+        'shipping': 'shippingCount',
+        'refund': 'refundCount',
+        'return': 'returnCount',
+        'subscription': 'subscriptionsCount', // Note: plural in HTML
+        'manual': 'manualCount'
+      };
+      
+      Object.entries(typeToElementId).forEach(([type, elementId]) => {
+        const el = document.getElementById(elementId);
         if (el) el.textContent = result[type] || 0;
       });
+      
+      // Also load issue reports count for the badge
+      this.loadIssuesCount();
+      
+      // Load duplicates count
+      this.loadDuplicatesCount();
       
       return result;
     } catch (e) {
       console.error('Failed to load stats:', e);
+    }
+  },
+  
+  async loadDuplicatesCount() {
+    try {
+      const response = await fetch('/hub/api/duplicates', {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${HubState.token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const badge = document.getElementById('duplicatesCount');
+        if (badge) {
+          const count = data.summary?.total_duplicate_groups || 0;
+          badge.textContent = count;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load duplicates count:', e);
     }
   },
 
@@ -7012,10 +7058,49 @@ const HubApp = {
       HubSearch.init();
       HubFilters.init();
 
+      // IMPORTANT: Load stats immediately to populate sidebar counts
+      // This ensures case type counts (Refunds, Subscriptions, etc.) appear right after login
+      await HubDashboard.loadStats();
+
+      // Navigate based on current URL or default to dashboard
+      this.initFromURL();
+
       // Check URL for case deep link
       this.handleDeepLink();
     } else {
       HubUI.showLoginScreen();
+    }
+  },
+
+  // Parse URL and navigate to appropriate page
+  initFromURL() {
+    const path = window.location.pathname;
+    
+    if (path.startsWith('/hub/cases/')) {
+      const filter = path.split('/hub/cases/')[1].split('/')[0];
+      HubNavigation.goto('cases', filter);
+    } else if (path === '/hub/cases' || path === '/hub/cases/') {
+      HubNavigation.goto('cases', 'all');
+    } else if (path === '/hub/sessions' || path === '/hub/sessions/') {
+      HubNavigation.goto('sessions');
+    } else if (path === '/hub/events' || path === '/hub/events/') {
+      HubNavigation.goto('events');
+    } else if (path === '/hub/issues' || path === '/hub/issues/') {
+      HubNavigation.goto('issues');
+    } else if (path === '/hub/duplicates' || path === '/hub/duplicates/') {
+      HubNavigation.goto('duplicates');
+    } else if (path === '/hub/analytics' || path === '/hub/analytics/') {
+      HubNavigation.goto('analytics');
+    } else if (path === '/hub/sop' || path === '/hub/sop/') {
+      HubNavigation.goto('sop');
+    } else if (path === '/hub/email-templates' || path === '/hub/email-templates/') {
+      HubNavigation.goto('email-templates');
+    } else if (path.startsWith('/hub/case/')) {
+      const caseId = path.split('/hub/case/')[1].split('/')[0];
+      HubNavigation.goto('case-detail', caseId);
+    } else {
+      // Default to dashboard
+      HubNavigation.goto('dashboard');
     }
   },
 
