@@ -1624,9 +1624,12 @@ const HubUsers = {
 
       const html = `
         <div class="assignee-dropdown" id="assigneeDropdown" style="top: ${rect.bottom + 4}px; left: ${Math.min(rect.left, window.innerWidth - 280)}px;">
-          <div class="assignee-dropdown-header">Assign to</div>
-          <div class="assignee-dropdown-list">
-            <div class="assignee-dropdown-item assignee-dropdown-unassign ${!currentAssignee ? 'selected' : ''}" onclick="HubUsers.selectAssignee(null)">
+          <div class="assignee-dropdown-search">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" id="assigneeSearchInput" placeholder="Search team members..." oninput="HubUsers.filterAssigneeDropdown(this.value)" onclick="event.stopPropagation()">
+          </div>
+          <div class="assignee-dropdown-list" id="assigneeDropdownList">
+            <div class="assignee-dropdown-item assignee-dropdown-unassign ${!currentAssignee ? 'selected' : ''}" data-name="unassigned" onclick="HubUsers.selectAssignee(null)">
               <div class="assignee-avatar unassigned">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
               </div>
@@ -1638,7 +1641,7 @@ const HubUsers = {
             </div>
             <div class="assignee-dropdown-divider"></div>
             ${this.users.filter(u => u.is_active).map(u => `
-              <div class="assignee-dropdown-item ${currentAssignee === u.name ? 'selected' : ''}" onclick="HubUsers.selectAssignee(${u.id}, '${this.escapeHtml(u.name)}')">
+              <div class="assignee-dropdown-item ${currentAssignee === u.name ? 'selected' : ''}" data-name="${this.escapeHtml(u.name.toLowerCase())}" onclick="HubUsers.selectAssignee(${u.id}, '${this.escapeHtml(u.name)}')">
                 <div class="assignee-avatar">${getInitials(u.name)}</div>
                 <div class="assignee-dropdown-item-info">
                   <div class="assignee-dropdown-item-name">${this.escapeHtml(u.name)}</div>
@@ -1654,11 +1657,45 @@ const HubUsers = {
       document.body.insertAdjacentHTML('beforeend', html);
       this.activeDropdown = document.getElementById('assigneeDropdown');
       
+      // Focus search input
+      setTimeout(() => {
+        const searchInput = document.getElementById('assigneeSearchInput');
+        if (searchInput) searchInput.focus();
+      }, 50);
+      
       // Close dropdown when clicking outside
       setTimeout(() => {
         document.addEventListener('click', this.handleOutsideClick);
       }, 10);
     });
+  },
+
+  filterAssigneeDropdown(query) {
+    const list = document.getElementById('assigneeDropdownList');
+    if (!list) return;
+    
+    const items = list.querySelectorAll('.assignee-dropdown-item');
+    const divider = list.querySelector('.assignee-dropdown-divider');
+    const lowerQuery = query.toLowerCase().trim();
+    
+    let visibleUserCount = 0;
+    
+    items.forEach(item => {
+      const name = item.dataset.name || '';
+      if (name === 'unassigned') {
+        // Always show unassigned option when query is empty
+        item.style.display = lowerQuery === '' ? 'flex' : 'none';
+      } else {
+        const matches = name.includes(lowerQuery);
+        item.style.display = matches ? 'flex' : 'none';
+        if (matches) visibleUserCount++;
+      }
+    });
+    
+    // Hide divider if searching
+    if (divider) {
+      divider.style.display = lowerQuery === '' ? 'block' : 'none';
+    }
   },
 
   handleOutsideClick(e) {
@@ -2755,6 +2792,8 @@ const HubNavigation = {
     if (page === 'cases') {
       HubState.currentFilter = filter || 'all';
       HubCases.loadCases();
+      // Also load stats to update sidebar progress
+      HubDashboard.loadStats();
     } else if (page === 'dashboard') {
       HubDashboard.load();
     } else if (page === 'sessions') {
@@ -5771,6 +5810,24 @@ const HubDashboard = {
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
     if (progressBarFill) {
       progressBarFill.style.width = `${percentage}%`;
+    }
+  },
+
+  // Separate function to load stats and update sidebar progress
+  async loadStats() {
+    try {
+      const result = await HubAPI.get('/hub/api/stats');
+      this.updateSidebarProgress(result);
+      
+      // Update sidebar counts
+      ['all', 'shipping', 'refund', 'subscription', 'manual'].forEach(type => {
+        const el = document.getElementById((type === 'all' ? 'allCases' : type) + 'Count');
+        if (el) el.textContent = result[type] || 0;
+      });
+      
+      return result;
+    } catch (e) {
+      console.error('Failed to load stats:', e);
     }
   },
 

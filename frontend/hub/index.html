@@ -221,6 +221,33 @@
       flex: 1;
       padding: 16px 0;
       overflow-y: auto;
+      /* Modern styled scrollbar */
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    }
+
+    /* Webkit scrollbar styling for sidebar */
+    .sidebar-nav::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar-nav::-webkit-scrollbar-track {
+      background: transparent;
+      margin: 8px 0;
+    }
+
+    .sidebar-nav::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .sidebar-nav::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.15) 100%);
+    }
+
+    .sidebar-nav::-webkit-scrollbar-corner {
+      background: transparent;
     }
 
     .nav-section {
