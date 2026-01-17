@@ -2513,7 +2513,7 @@ const HubCases = {
       const statusClass = c.status ? c.status.replace('_', '-') : 'pending';
       
       return `
-      <tr onclick="HubCases.openCase('${c.case_id}')" class="${idx === 0 ? 'keyboard-selected' : ''}" data-case-id="${c.case_id}">
+      <tr onclick="HubCases.openCase('${c.case_id}')" data-case-id="${c.case_id}">
         <td>
           <input type="checkbox" class="case-checkbox" data-case-id="${c.case_id}"
                  onclick="event.stopPropagation(); HubBulkActions.toggleSelect('${c.case_id}')"
