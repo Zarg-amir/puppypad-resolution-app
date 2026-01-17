@@ -117,7 +117,14 @@ const HubAPI = {
     });
 
     if (response.status === 401) {
-      HubAuth.logout();
+      // Don't auto-logout for non-critical endpoints (views, saved-views)
+      // These can fail silently without disrupting the user session
+      const nonCriticalEndpoints = ['/hub/api/views', '/hub/api/saved-views'];
+      const isNonCritical = nonCriticalEndpoints.some(ep => endpoint.startsWith(ep));
+      
+      if (!isNonCritical) {
+        HubAuth.logout();
+      }
       throw new Error('Session expired');
     }
 
@@ -972,14 +979,21 @@ const HubBulkActions = {
 // ============================================
 const HubViews = {
   async load() {
+    // Only load views if user is authenticated
+    if (!HubState.token) {
+      console.log('Skipping views load - not authenticated');
+      return;
+    }
     try {
       const result = await HubAPI.get('/hub/api/views');
       if (result.success) {
-        HubState.savedViews = result.views;
+        HubState.savedViews = result.views || [];
         this.renderSidebar();
       }
     } catch (e) {
-      console.error('Failed to load views:', e);
+      // Silently fail for views - not critical
+      console.warn('Failed to load views:', e.message);
+      HubState.savedViews = [];
     }
   },
 
@@ -2703,12 +2717,19 @@ const HubSavedViews = {
   activeViewId: null,
 
   async load() {
+    // Only load saved views if user is authenticated
+    if (!HubState.token) {
+      console.log('Skipping saved views load - not authenticated');
+      return;
+    }
     try {
       const result = await HubAPI.get('/hub/api/saved-views');
       this.views = result.views || [];
       this.render();
     } catch (e) {
-      console.error('Failed to load saved views:', e);
+      // Silently fail for saved views - not critical for app functionality
+      console.warn('Failed to load saved views:', e.message);
+      this.views = [];
     }
   },
 
@@ -7754,7 +7775,7 @@ window.handleLogin = async (event) => {
   }
 
   // Disable button during login
-  const originalBtnText = submitBtn?.textContent;
+  const originalBtnText = submitBtn?.textContent || 'Sign In';
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Signing in...';
@@ -7768,7 +7789,13 @@ window.handleLogin = async (event) => {
       if (errorEl) {
         errorEl.style.display = 'none';
       }
-      HubApp.init();
+      // Reset button before init (in case init takes time)
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+      }
+      // Initialize app after successful login
+      await HubApp.init();
     } else {
       // Show error
       if (errorEl) {
