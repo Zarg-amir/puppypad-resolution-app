@@ -11354,40 +11354,7 @@ function getResolutionHubHTML() {
       color: var(--gray-500);
     }
 
-    /* Pagination */
-    .pagination {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-      padding: 20px;
-      border-top: 1px solid var(--gray-100);
-    }
-
-    .pagination button {
-      padding: 8px 14px;
-      border: 1px solid var(--gray-200);
-      background: white;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .pagination button:hover:not(:disabled) {
-      background: var(--gray-50);
-    }
-
-    .pagination button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .pagination button.active {
-      background: var(--brand-navy);
-      color: white;
-      border-color: var(--brand-navy);
-    }
+    /* Pagination - Styles now in hub-styles.css for consistency */
 
     /* Empty State */
     .empty-state {
@@ -13811,35 +13778,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
-   Pagination
+   Pagination (Legacy - now uses .pagination-btn)
    ============================================ */
-#casesPagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 16px;
-  border-top: 1px solid var(--gray-200);
-}
-
-#casesPagination button {
-  padding: 8px 16px;
-  font-size: 14px;
-  background: var(--gray-100);
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-#casesPagination button:hover {
-  background: var(--gray-200);
-}
-
-#casesPagination span {
-  font-size: 14px;
-  color: var(--gray-600);
-}
+/* Styles moved to unified .pagination section below */
 
 /* ============================================
    Admin-only Elements
@@ -17891,19 +17832,21 @@ button.template-tab:focus {
 }
 
 /* ============================================
-   PAGINATION
+   PAGINATION - Unified styles for all pagination
    ============================================ */
 
 .pagination {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   padding: 20px;
-  border-top: 1px solid var(--gray-100);
+  border-top: 1px solid var(--gray-200);
 }
 
-.pagination-btn {
+/* Base pagination button styles */
+.pagination-btn,
+.pagination button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -17911,61 +17854,83 @@ button.template-tab:focus {
   height: 40px;
   padding: 0 14px;
   background: white;
-  border: 2px solid var(--gray-300);
-  border-radius: 8px;
-  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+  border-radius: 10px;
+  color: var(--gray-800);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.pagination-btn svg {
+.pagination-btn svg,
+.pagination button svg {
   width: 18px;
   height: 18px;
   stroke-width: 2.5;
   color: var(--gray-600);
 }
 
-.pagination-btn:hover:not(:disabled) {
-  background: var(--gray-100);
+/* Hover state */
+.pagination-btn:hover:not(:disabled):not(.active),
+.pagination button:hover:not(:disabled):not(.active) {
+  background: var(--gray-50);
   border-color: var(--brand-navy);
   color: var(--brand-navy);
 }
 
-.pagination-btn:hover:not(:disabled) svg {
+.pagination-btn:hover:not(:disabled):not(.active) svg,
+.pagination button:hover:not(:disabled):not(.active) svg {
   color: var(--brand-navy);
 }
 
-.pagination-btn:disabled {
+/* Disabled state */
+.pagination-btn:disabled,
+.pagination button:disabled {
   background: var(--gray-100);
   border-color: var(--gray-200);
   color: var(--gray-400);
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
-.pagination-btn:disabled svg {
+.pagination-btn:disabled svg,
+.pagination button:disabled svg {
   color: var(--gray-400);
 }
 
-.pagination-btn.active {
-  background: var(--brand-navy);
-  border-color: var(--brand-navy);
-  color: white;
+/* Active/Selected state - NO shadow, solid navy */
+.pagination-btn.active,
+.pagination button.active {
+  background: var(--brand-navy) !important;
+  border-color: var(--brand-navy) !important;
+  color: white !important;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(26, 54, 93, 0.3);
 }
 
-.pagination-btn.active:hover {
-  background: #1a365d;
-  box-shadow: 0 4px 12px rgba(26, 54, 93, 0.4);
+.pagination-btn.active:hover,
+.pagination button.active:hover {
+  background: var(--brand-navy-light) !important;
+  border-color: var(--brand-navy-light) !important;
 }
 
 .pagination-info {
   font-size: 13px;
-  color: var(--gray-500);
-  padding: 0 16px;
+  color: var(--gray-600);
+  padding: 0 8px;
+}
+
+/* Legacy ID-based pagination support */
+#casesPagination,
+#sessionsPagination,
+#eventsPagination,
+#issuesPagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  border-top: 1px solid var(--gray-200);
 }
 
 /* ============================================
