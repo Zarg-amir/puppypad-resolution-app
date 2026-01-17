@@ -8,10 +8,11 @@
    ============================================ */
 :root {
   /* ===== Japanese Soft Pastel Colors ===== */
-  --sakura: #FFB7C5;       /* Cherry blossom pink */
-  --sakura-soft: rgba(255, 183, 197, 0.15);
-  --sora: #A8D8EA;         /* Sky blue */
-  --sora-soft: rgba(168, 216, 234, 0.15);
+  /* Swapped: Sakura is now blue, Sora is now pink */
+  --sakura: #A8D8EA;       /* Sky blue (was cherry blossom pink) */
+  --sakura-soft: rgba(168, 216, 234, 0.15);
+  --sora: #FFB7C5;         /* Cherry blossom pink (was sky blue) */
+  --sora-soft: rgba(255, 183, 197, 0.15);
   --momo: #FFDAB9;         /* Peach */
   --momo-soft: rgba(255, 218, 185, 0.15);
   --matcha: #C8E6C9;       /* Green tea */

@@ -2794,7 +2794,7 @@ const HubCases = {
 
   async openCase(caseId) {
     // Navigate to full-page case detail view
-    HubState.currentCaseIndex = HubState.cases.findIndex(c => c.case_id === caseId);
+        HubState.currentCaseIndex = HubState.cases.findIndex(c => c.case_id === caseId);
     HubNavigation.goto('case-detail', caseId);
   },
 
@@ -5975,7 +5975,10 @@ const HubDashboard = {
     const pending = stats.pending || 0;
     const completed = stats.completedToday || 0;
     const inProgress = stats.inProgress || 0;
-    const total = pending + completed + inProgress;
+    
+    // Merge pending and inProgress together as "work to do"
+    const workToDo = pending + inProgress;
+    const total = workToDo + completed;
 
     // Update stats text
     const progressCompleted = document.getElementById('progressCompleted');
@@ -5986,7 +5989,7 @@ const HubDashboard = {
 
     if (progressCompleted) progressCompleted.textContent = completed;
     if (progressTotal) progressTotal.textContent = total;
-    if (progressPending) progressPending.textContent = pending;
+    if (progressPending) progressPending.textContent = workToDo; // Shows pending + inProgress combined
     if (progressCompletedLabel) progressCompletedLabel.textContent = completed;
 
     // Calculate and animate progress bar
