@@ -2437,8 +2437,6 @@ h1, h2, h3, h4, h5, h6 {
   .stat-value {
     font-size: 28px;
   }
-    padding: 2px 8px;
-  }
 
   .btn {
     padding: 8px 12px;
@@ -3527,9 +3525,12 @@ button.template-tab:focus {
 }
 
 /* Time ago styling */
-.td-created {
+.td-created,
+.th-created {
   color: var(--gray-500);
   font-size: 13px;
+  min-width: 90px;
+  width: 90px;
 }
 
 /* Responsive table */

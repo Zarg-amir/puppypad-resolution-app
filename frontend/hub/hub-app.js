@@ -2284,6 +2284,7 @@ const HubCases = {
       HubState.cases = result.cases || [];
       HubState.casesPage = page;
       HubState.totalPages = result.totalPages || 1;
+      HubState.totalCases = result.total || HubState.cases.length; // Store total for result count
 
       // Update navigation counts if provided
       if (result.counts) {
