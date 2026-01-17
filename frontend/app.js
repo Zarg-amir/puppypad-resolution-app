@@ -4835,18 +4835,30 @@ async function handleFailedAttemptAddressChange(tracking) {
   // Use last mile carrier info if available (e.g., USPS instead of YunExpress)
   const effectiveCarrier = getEffectiveCarrierAndTracking(tracking);
   const carrierInfo = getCarrierContactInfo(effectiveCarrier.carrier);
+  
+  // Prefer ParcelPanel's carrier contact, fall back to our hardcoded list
+  const phoneNumber = effectiveCarrier.carrierContact || carrierInfo.phone;
 
   await addBotMessage(`Since your package is already with ${carrierInfo.name}, you'll need to contact them directly to update the delivery address or arrange a pickup.`);
 
   let contactMessage = `<strong>${carrierInfo.name} Contact Information:</strong><br><br>`;
 
-  if (carrierInfo.phone) {
-    contactMessage += `📞 Phone: <strong>${carrierInfo.phone}</strong><br>`;
+  // Phone number (from ParcelPanel or fallback)
+  if (phoneNumber) {
+    contactMessage += `📞 Phone: <strong>${phoneNumber}</strong><br>`;
   }
-  if (carrierInfo.website) {
+  
+  // Tracking link - prefer ParcelPanel's direct tracking URL
+  if (effectiveCarrier.carrierUrl) {
+    contactMessage += `🔗 Track Package: <a href="${effectiveCarrier.carrierUrl}" target="_blank" style="color: var(--brand-navy); text-decoration: underline;"><strong>Click here to track on ${carrierInfo.name}</strong></a><br>`;
+  } else if (carrierInfo.website) {
     contactMessage += `🌐 Website: <strong>${carrierInfo.website}</strong><br>`;
   }
-  contactMessage += `📦 Tracking: <strong>${effectiveCarrier.trackingNumber || 'Check your email'}</strong>`;
+  
+  // Show tracking number
+  if (effectiveCarrier.trackingNumber) {
+    contactMessage += `📦 Tracking #: <strong>${effectiveCarrier.trackingNumber}</strong>`;
+  }
 
   await addBotMessage(contactMessage);
 
@@ -4866,6 +4878,9 @@ async function handleMultipleFailedAttempts(tracking) {
   // Use last mile carrier info if available (e.g., USPS instead of YunExpress)
   const effectiveCarrier = getEffectiveCarrierAndTracking(tracking);
   const carrierInfo = getCarrierContactInfo(effectiveCarrier.carrier);
+  
+  // Prefer ParcelPanel's carrier contact, fall back to our hardcoded list
+  const phoneNumber = effectiveCarrier.carrierContact || carrierInfo.phone;
 
   await addBotMessage(`I'm really sorry you're dealing with this — multiple failed attempts is frustrating. Let me help you figure out the best solution.`);
 
@@ -4876,12 +4891,18 @@ async function handleMultipleFailedAttempts(tracking) {
       await addBotMessage(`Got it. Since ${carrierInfo.name} has been unable to deliver, here are your options:`);
 
       let optionsMessage = `<strong>Option 1: Contact ${carrierInfo.name}</strong><br>`;
-      if (carrierInfo.phone) {
-        optionsMessage += `Call ${carrierInfo.phone} to schedule a specific delivery time or arrange pickup.<br><br>`;
+      if (phoneNumber) {
+        optionsMessage += `📞 Call <strong>${phoneNumber}</strong> to schedule a specific delivery time or arrange pickup.`;
       } else {
-        optionsMessage += `Contact them to schedule a specific delivery time or arrange pickup.<br><br>`;
+        optionsMessage += `Contact them to schedule a specific delivery time or arrange pickup.`;
       }
-      optionsMessage += `<strong>Option 2: We reship to a different address</strong><br>If you have an alternate address (work, neighbor, etc.) that might work better.`;
+      
+      // Add tracking link if available
+      if (effectiveCarrier.carrierUrl) {
+        optionsMessage += `<br>🔗 <a href="${effectiveCarrier.carrierUrl}" target="_blank" style="color: var(--brand-navy); text-decoration: underline;">Track your package on ${carrierInfo.name}</a>`;
+      }
+      
+      optionsMessage += `<br><br><strong>Option 2: We reship to a different address</strong><br>If you have an alternate address (work, neighbor, etc.) that might work better.`;
 
       await addBotMessage(optionsMessage);
 
@@ -5030,11 +5051,12 @@ function getPickupLocationFromTracking(tracking) {
 
 // Handle when customer says package wasn't at pickup location
 async function handlePickupNotThere(tracking) {
-  // Use parsed pickup data from the initial flow
+  // Use parsed pickup data from the initial flow, or get effective carrier
   const pickupData = state.pickupData || {};
+  const effectiveCarrier = getEffectiveCarrierAndTracking(tracking);
   const pickupLocationName = pickupData.pickupLocationName || getPickupLocationFromTracking(tracking);
-  const displayCarrier = pickupData.displayCarrier || tracking?.carrier || 'the carrier';
-  const displayTracking = pickupData.lastMileTrackingNumber || tracking?.trackingNumber;
+  const displayCarrier = pickupData.displayCarrier || effectiveCarrier.carrier || 'the carrier';
+  const displayTracking = pickupData.lastMileTrackingNumber || effectiveCarrier.trackingNumber || tracking?.trackingNumber;
   const carrierInfo = getCarrierContactInfo(displayCarrier);
 
   // First, validate they went to the right place
@@ -5815,11 +5837,15 @@ async function handleDeliveredNotReceived() {
 // Proceed with delivered not received investigation
 async function handleDeliveredInvestigation(tracking) {
   showProgress("Creating investigation case...");
+  
+  // Use effective carrier (last mile) for display
+  const effectiveCarrier = getEffectiveCarrierAndTracking(tracking);
+  const carrierInfo = getCarrierContactInfo(effectiveCarrier.carrier);
 
   const result = await submitCase('shipping', 'investigation_delivered_not_received', {
     issueType: 'delivered_not_received',
-    carrierName: tracking.carrier || 'Unknown',
-    trackingNumber: tracking.trackingNumber || '',
+    carrierName: effectiveCarrier.carrier || 'Unknown',
+    trackingNumber: effectiveCarrier.trackingNumber || tracking.trackingNumber || '',
     deliveryDate: tracking.deliveryDate || '',
     notes: 'Customer confirmed they checked all locations and package is not found.',
   });
@@ -5829,7 +5855,7 @@ async function handleDeliveredInvestigation(tracking) {
   if (result.success) {
     await showSuccess(
       "Investigation Started",
-      `We've opened a case and will investigate with ${tracking.carrier?.toUpperCase() || 'the carrier'}. We'll get back to you within 48 hours.<br><br>
+      `We've opened a case and will investigate with ${carrierInfo.name}. We'll get back to you within 48 hours.<br><br>
 If we can't locate your package, we'll either reship or refund your order — whichever you prefer.<br><br>
 <strong>Optional:</strong> If you'd like to file a police report, your local department can request CCTV footage from nearby cameras.<br><br>${getCaseIdHtml(result.caseId)}`
     );
