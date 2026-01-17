@@ -3856,6 +3856,90 @@ button.template-tab:focus {
   flex: 1;
 }
 
+/* Delete Confirmation Modal */
+.delete-confirm-modal {
+  max-width: 380px;
+  text-align: center;
+}
+
+.delete-modal-header {
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: none;
+}
+
+.delete-modal-icon {
+  margin-bottom: 4px;
+}
+
+.delete-modal-body {
+  padding: 12px 24px 20px;
+}
+
+.delete-modal-body p {
+  margin: 0 0 8px 0;
+  color: var(--gray-700);
+  font-size: 15px;
+}
+
+.delete-modal-body p:last-child {
+  margin-bottom: 0;
+}
+
+.delete-modal-body strong {
+  color: var(--gray-900);
+}
+
+.delete-modal-subtext {
+  font-size: 13px !important;
+  color: var(--gray-500) !important;
+}
+
+.delete-modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px 24px;
+  border-top: none;
+}
+
+.delete-modal-footer .btn {
+  flex: 1;
+  justify-content: center;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--color-momo) 0%, #e8586d 100%);
+  color: white;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(255, 107, 129, 0.25);
+}
+
+.btn-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 129, 0.35);
+  background: linear-gradient(135deg, #e8586d 0%, var(--color-momo) 100%);
+}
+
+.btn-danger:active {
+  transform: translateY(0);
+}
+
+.btn-danger svg {
+  stroke: white;
+}
+
 /* Clickable Assignee Column */
 .td-assignee {
   transition: all 0.2s ease;

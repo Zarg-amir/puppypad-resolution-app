@@ -2895,7 +2895,51 @@ const HubSavedViews = {
   },
 
   async delete(viewId) {
-    if (!confirm('Are you sure you want to delete this saved view?')) return;
+    // Find the view to show its name
+    const view = this.views.find(v => v.id === viewId);
+    const viewName = view ? view.name : 'this view';
+    
+    // Show custom confirmation modal
+    this.showDeleteConfirmation(viewId, viewName);
+  },
+
+  showDeleteConfirmation(viewId, viewName) {
+    const html = `
+      <div class="modal-overlay active" id="deleteViewModal">
+        <div class="modal delete-confirm-modal">
+          <div class="modal-header delete-modal-header">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" class="delete-modal-icon">
+              <circle cx="12" cy="12" r="10" stroke="var(--color-momo)" stroke-width="2" fill="var(--color-momo-light, rgba(255, 182, 193, 0.2))"/>
+              <path d="M12 8v4m0 4h.01" stroke="var(--color-momo)" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <div class="modal-title">Delete Saved View</div>
+          </div>
+          <div class="modal-body delete-modal-body">
+            <p>Are you sure you want to delete <strong>"${this.escapeHtml(viewName)}"</strong>?</p>
+            <p class="delete-modal-subtext">This action cannot be undone.</p>
+          </div>
+          <div class="modal-footer delete-modal-footer">
+            <button class="btn btn-secondary" onclick="document.getElementById('deleteViewModal').remove()">
+              Cancel
+            </button>
+            <button class="btn btn-danger" onclick="HubSavedViews.confirmDelete(${viewId})">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
+              </svg>
+              Delete View
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  async confirmDelete(viewId) {
+    // Remove the modal
+    const modal = document.getElementById('deleteViewModal');
+    if (modal) modal.remove();
 
     try {
       const result = await HubAPI.delete(`/hub/api/saved-views/${viewId}`);
