@@ -5846,9 +5846,10 @@ const HubDashboard = {
     container.innerHTML = cases.map(c => {
       const statusClass = c.status ? c.status.replace('_', '-') : 'pending';
       
-      // Match the All Cases due date calculation
+      // Calculate due date (24 hours from creation) - same as All Cases
+      const createdDate = new Date(c.created_at);
+      const dueDate = new Date(createdDate.getTime() + (24 * 60 * 60 * 1000));
       const now = new Date();
-      const dueDate = c.due_date ? new Date(c.due_date) : new Date(now.getTime() + 24 * 60 * 60 * 1000); // Default to 24h if no due date
       const isOverdue = now > dueDate && c.status !== 'completed';
       const hoursLeft = Math.max(0, Math.round((dueDate - now) / (1000 * 60 * 60)));
       const dueClass = isOverdue ? 'overdue' : hoursLeft < 8 ? 'warning' : 'ok';
