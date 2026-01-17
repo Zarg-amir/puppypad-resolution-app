@@ -131,8 +131,34 @@ function getCarrierContactInfo(carrier) {
     'UPS': { name: 'UPS', phone: '1-800-742-5877', website: 'ups.com' },
     'FEDEX': { name: 'FedEx', phone: '1-800-463-3339', website: 'fedex.com' },
     'DHL': { name: 'DHL', phone: '1-800-225-5345', website: 'dhl.com' },
+    'ONTRAC': { name: 'OnTrac', phone: '1-800-334-5000', website: 'ontrac.com' },
+    'LASERSHIP': { name: 'LaserShip', phone: '1-804-414-2590', website: 'lasership.com' },
   };
   return contacts[carrierUpper] || { name: carrier || 'the carrier', phone: null, website: null };
+}
+
+// Get effective carrier info - prioritize last mile carrier over international carriers
+// This ensures customers see USPS/UPS contact info instead of YunExpress
+function getEffectiveCarrierAndTracking(tracking) {
+  if (!tracking) return { carrier: 'the carrier', trackingNumber: null };
+  
+  // If we have last mile data, use it (this is the actual delivery carrier like USPS)
+  if (tracking.lastMile?.carrier_name) {
+    return {
+      carrier: tracking.lastMile.carrier_name,
+      trackingNumber: tracking.lastMile.tracking_number || tracking.trackingNumber,
+      carrierUrl: tracking.lastMile.carrier_url,
+      carrierContact: tracking.lastMile.carrier_contact
+    };
+  }
+  
+  // Check if main carrier is international (China-based) - don't show these to customers
+  if (isInternationalCarrier(tracking)) {
+    return { carrier: 'the delivery carrier', trackingNumber: tracking.trackingNumber };
+  }
+  
+  // Use main carrier
+  return { carrier: tracking.carrier || 'the carrier', trackingNumber: tracking.trackingNumber };
 }
 
 // ============================================
@@ -4806,7 +4832,9 @@ async function handleStatusFailedAttempt(tracking) {
 
 // Handle address change request for failed attempts
 async function handleFailedAttemptAddressChange(tracking) {
-  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+  // Use last mile carrier info if available (e.g., USPS instead of YunExpress)
+  const effectiveCarrier = getEffectiveCarrierAndTracking(tracking);
+  const carrierInfo = getCarrierContactInfo(effectiveCarrier.carrier);
 
   await addBotMessage(`Since your package is already with ${carrierInfo.name}, you'll need to contact them directly to update the delivery address or arrange a pickup.`);
 
@@ -4818,7 +4846,7 @@ async function handleFailedAttemptAddressChange(tracking) {
   if (carrierInfo.website) {
     contactMessage += `🌐 Website: <strong>${carrierInfo.website}</strong><br>`;
   }
-  contactMessage += `📦 Tracking: <strong>${tracking?.trackingNumber || 'Check your email'}</strong>`;
+  contactMessage += `📦 Tracking: <strong>${effectiveCarrier.trackingNumber || 'Check your email'}</strong>`;
 
   await addBotMessage(contactMessage);
 
@@ -4835,7 +4863,9 @@ async function handleFailedAttemptAddressChange(tracking) {
 
 // Handle multiple failed delivery attempts
 async function handleMultipleFailedAttempts(tracking) {
-  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+  // Use last mile carrier info if available (e.g., USPS instead of YunExpress)
+  const effectiveCarrier = getEffectiveCarrierAndTracking(tracking);
+  const carrierInfo = getCarrierContactInfo(effectiveCarrier.carrier);
 
   await addBotMessage(`I'm really sorry you're dealing with this — multiple failed attempts is frustrating. Let me help you figure out the best solution.`);
 
@@ -5032,7 +5062,9 @@ async function handlePickupNotThere(tracking) {
 
 // Customer confirmed they went to the right place but package wasn't there
 async function handleConfirmedWrongLocation(tracking) {
-  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+  // Use last mile carrier info if available
+  const effectiveCarrier = getEffectiveCarrierAndTracking(tracking);
+  const carrierInfo = getCarrierContactInfo(effectiveCarrier.carrier);
 
   // Collect details about their pickup attempt
   await addBotMessage("I'm sorry to hear that. Could you share a few details about your pickup attempt? This will help us investigate.");
@@ -5749,7 +5781,9 @@ async function declineShippingOffer() {
 
 async function handleDeliveredNotReceived() {
   const tracking = state.tracking || state.trackingInfo || {};
-  const carrierInfo = getCarrierContactInfo(tracking?.carrier);
+  // Use last mile carrier info if available (e.g., USPS instead of YunExpress)
+  const effectiveCarrier = getEffectiveCarrierAndTracking(tracking);
+  const carrierInfo = getCarrierContactInfo(effectiveCarrier.carrier);
   const shippingAddress = state.selectedOrder?.shippingAddress;
   const deliveryLocation = shippingAddress
     ? `${shippingAddress.city || ''}${shippingAddress.province ? ', ' + shippingAddress.province : ''}`.trim() || 'your address'
