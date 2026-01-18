@@ -19382,7 +19382,7 @@ button.template-tab:focus {
    ============================================ */
 .flow-simulator {
   display: grid;
-  grid-template-columns: 260px 1fr 320px;
+  grid-template-columns: 320px 1fr 320px;
   gap: 24px;
   height: calc(100vh - 200px);
   min-height: 600px;
