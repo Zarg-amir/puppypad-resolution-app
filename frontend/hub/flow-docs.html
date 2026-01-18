@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow Documentation | PuppyPad</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- React 18 -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  
+  <!-- React Flow v11 -->
+  <script src="https://unpkg.com/reactflow@11.10.4/dist/umd/index.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/reactflow@11.10.4/dist/style.css">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #fef7f0 0%, #fdf2f8 25%, #f5f3ff 50%, #eff6ff 75%, #f0fdf4 100%);
+      min-height: 100vh;
+    }
+    
+    h1, h2, h3, h4 {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    
+    #root {
+      height: 100vh;
+    }
+    
+    /* React Flow customizations to match resolution-center */
+    .react-flow__node {
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .react-flow__handle {
+      width: 12px !important;
+      height: 12px !important;
+      border-radius: 50% !important;
+      border: 2px solid white !important;
+    }
+    
+    .react-flow__edge-path {
+      stroke-width: 2;
+    }
+    
+    .react-flow__edge.animated path {
+      stroke-dasharray: 5;
+      animation: dashdraw 0.5s linear infinite;
+    }
+    
+    @keyframes dashdraw {
+      from { stroke-dashoffset: 10; }
+      to { stroke-dashoffset: 0; }
+    }
+    
+    .react-flow__background {
+      background-color: transparent !important;
+    }
+    
+    .react-flow__minimap {
+      background: rgba(255,255,255,0.9) !important;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .react-flow__controls {
+      background: rgba(255,255,255,0.95);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border: 1px solid #e5e7eb;
+    }
+    
+    .react-flow__controls-button {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .react-flow__controls-button:hover {
+      background: #f9fafb;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script>
+    // Wait for React and ReactFlow to load
+    (function() {
+      const { useState, useCallback, useEffect, useMemo } = React;
+      const { 
+        ReactFlow: ReactFlowComponent, 
+        Controls, 
+        Background, 
+        MiniMap,
+        useNodesState, 
+        useEdgesState,
+        Handle,
+        Position,
+        MarkerType
+      } = window.ReactFlow;
+
+      // ============================================
+      // FLOW DATA - All flows and their nodes
+      // ============================================
+      const FLOW_DATA = {
+        parentFlows: [
+          { 
+            id: 'help_with_order', 
+            name: 'Help With My Order', 
+            icon: '❓',
+            color: '#8b5cf6', 
+            description: 'Customer needs assistance with an existing order',
+            subflows: ['changed_mind', 'dog_not_using', 'quality_issue', 'other_reason'] 
+          },
+          { 
+            id: 'track_order', 
+            name: 'Track My Order', 
+            icon: '📦',
+            color: '#3b82f6', 
+            description: 'Customer wants to check order status or tracking',
+            subflows: ['tracking_status'] 
+          },
+          { 
+            id: 'manage_subscription', 
+            name: 'Manage My Subscription', 
+            icon: '🔄',
+            color: '#10b981', 
+            description: 'Customer wants to modify or cancel subscription',
+            subflows: ['pause_subscription', 'cancel_subscription', 'change_frequency'] 
+          }
+        ],
+        subflows: {
+          changed_mind: {
+            id: 'changed_mind',
+            parentId: 'help_with_order',
+            name: 'Changed My Mind',
+            description: 'Customer wants a refund because they changed their mind',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: "I understand, and I appreciate you being upfront about it. Let me see what options we have for you!" } },
+              { id: 'api1', type: 'api', position: { x: 250, y: 220 }, data: { service: 'shopify', endpoint: 'checkGuarantee' } },
+              { id: 'cond1', type: 'condition', position: { x: 250, y: 340 }, data: { variable: 'guaranteeStatus', operator: 'equals', value: 'active' } },
+              { id: 'offer1', type: 'offer', position: { x: 100, y: 480 }, data: { percent: 20, label: 'Keep product + 20% refund' } },
+              { id: 'offer2', type: 'offer', position: { x: 100, y: 600 }, data: { percent: 30, label: 'Keep product + 30% refund' } },
+              { id: 'offer3', type: 'offer', position: { x: 100, y: 720 }, data: { percent: 40, label: 'Keep product + 40% refund' } },
+              { id: 'case1', type: 'case', position: { x: 100, y: 840 }, data: { type: 'refund', priority: 'normal' } },
+              { id: 'msg2', type: 'message', position: { x: 400, y: 480 }, data: { persona: 'amy', content: "I'm sorry, but our 90-day guarantee has expired for this order. However, I can still help!" } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 960 }, data: { title: 'Thank You!', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'api1', animated: true },
+              { id: 'e3', source: 'api1', target: 'cond1', animated: true },
+              { id: 'e4', source: 'cond1', target: 'offer1', sourceHandle: 'yes', label: 'Within 90 days', animated: true },
+              { id: 'e5', source: 'cond1', target: 'msg2', sourceHandle: 'no', label: 'Expired', animated: true },
+              { id: 'e6', source: 'offer1', target: 'offer2', sourceHandle: 'decline', label: 'Decline', animated: true },
+              { id: 'e7', source: 'offer1', target: 'case1', sourceHandle: 'accept', label: 'Accept', animated: true },
+              { id: 'e8', source: 'offer2', target: 'offer3', sourceHandle: 'decline', label: 'Decline', animated: true },
+              { id: 'e9', source: 'offer2', target: 'case1', sourceHandle: 'accept', label: 'Accept', animated: true },
+              { id: 'e10', source: 'offer3', target: 'case1', sourceHandle: 'decline', label: 'Decline', animated: true },
+              { id: 'e11', source: 'offer3', target: 'case1', sourceHandle: 'accept', label: 'Accept', animated: true },
+              { id: 'e12', source: 'case1', target: 'end1', animated: true },
+              { id: 'e13', source: 'msg2', target: 'end1', animated: true }
+            ]
+          },
+          dog_not_using: {
+            id: 'dog_not_using',
+            parentId: 'help_with_order',
+            name: 'Dog Not Using Product',
+            description: 'Customer reports their dog is not using the PuppyPad',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: "I'm sorry to hear that! Our trainer Claudia has some tips that might help." } },
+              { id: 'ai1', type: 'ai', position: { x: 250, y: 220 }, data: { persona: 'claudia', prompt: 'Generate training tips', model: 'gpt-4o-mini' } },
+              { id: 'opts1', type: 'options', position: { x: 250, y: 360 }, data: { prompt: 'Did the tips help?', options: [{ label: 'Yes, thanks!' }, { label: 'Still having issues' }] } },
+              { id: 'end1', type: 'end', position: { x: 100, y: 500 }, data: { title: 'Great!', showSurvey: true } },
+              { id: 'offer1', type: 'offer', position: { x: 400, y: 500 }, data: { percent: 30, label: 'Keep product + 30% refund' } },
+              { id: 'case1', type: 'case', position: { x: 400, y: 640 }, data: { type: 'refund' } },
+              { id: 'end2', type: 'end', position: { x: 400, y: 760 }, data: { title: 'Case Created', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'ai1', animated: true },
+              { id: 'e3', source: 'ai1', target: 'opts1', animated: true },
+              { id: 'e4', source: 'opts1', target: 'end1', sourceHandle: 'opt-0', animated: true },
+              { id: 'e5', source: 'opts1', target: 'offer1', sourceHandle: 'opt-1', animated: true },
+              { id: 'e6', source: 'offer1', target: 'case1', animated: true },
+              { id: 'e7', source: 'case1', target: 'end2', animated: true }
+            ]
+          },
+          quality_issue: {
+            id: 'quality_issue',
+            parentId: 'help_with_order',
+            name: 'Quality / Material Issue',
+            description: 'Customer notices quality or material differences',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: "I'm so sorry about that! Can you upload some photos so we can take a look?" } },
+              { id: 'upload1', type: 'form', position: { x: 250, y: 220 }, data: { formType: 'upload', label: 'Upload Photos' } },
+              { id: 'case1', type: 'case', position: { x: 250, y: 340 }, data: { type: 'quality', priority: 'high' } },
+              { id: 'msg2', type: 'message', position: { x: 250, y: 460 }, data: { persona: 'amy', content: "Thanks for those photos. I've created a priority case for our quality team to review." } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 580 }, data: { title: 'Case Submitted', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'upload1', animated: true },
+              { id: 'e3', source: 'upload1', target: 'case1', animated: true },
+              { id: 'e4', source: 'case1', target: 'msg2', animated: true },
+              { id: 'e5', source: 'msg2', target: 'end1', animated: true }
+            ]
+          },
+          other_reason: {
+            id: 'other_reason',
+            parentId: 'help_with_order',
+            name: 'Other Reason',
+            description: 'Customer has a different issue not covered by other options',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: "I'd love to help! Can you tell me more about what's going on?" } },
+              { id: 'form1', type: 'form', position: { x: 250, y: 220 }, data: { formType: 'custom', label: 'Describe Issue' } },
+              { id: 'ai1', type: 'ai', position: { x: 250, y: 340 }, data: { persona: 'amy', prompt: 'Analyze issue and provide response', model: 'gpt-4o' } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 460 }, data: { title: 'Thanks!', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'form1', animated: true },
+              { id: 'e3', source: 'form1', target: 'ai1', animated: true },
+              { id: 'e4', source: 'ai1', target: 'end1', animated: true }
+            ]
+          },
+          tracking_status: {
+            id: 'tracking_status',
+            parentId: 'track_order',
+            name: 'Check Tracking Status',
+            description: 'Customer wants to see where their order is',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'form1', type: 'form', position: { x: 250, y: 100 }, data: { formType: 'identify', label: 'Find Your Order' } },
+              { id: 'api1', type: 'api', position: { x: 250, y: 220 }, data: { service: 'shopify', endpoint: 'lookupOrder' } },
+              { id: 'api2', type: 'api', position: { x: 250, y: 340 }, data: { service: 'parcelpanel', endpoint: 'getTracking' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 460 }, data: { persona: 'amy', content: "Here's your tracking info! Your package is {{trackingStatus}}." } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 580 }, data: { title: 'All done!', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'form1', animated: true },
+              { id: 'e2', source: 'form1', target: 'api1', animated: true },
+              { id: 'e3', source: 'api1', target: 'api2', animated: true },
+              { id: 'e4', source: 'api2', target: 'msg1', animated: true },
+              { id: 'e5', source: 'msg1', target: 'end1', animated: true }
+            ]
+          },
+          cancel_subscription: {
+            id: 'cancel_subscription',
+            parentId: 'manage_subscription',
+            name: 'Cancel Subscription',
+            description: 'Customer wants to cancel their subscription',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: "I'm sorry to see you go! Before we cancel, may I ask why?" } },
+              { id: 'opts1', type: 'options', position: { x: 250, y: 220 }, data: { prompt: 'Reason for canceling?', options: [{ label: 'Too expensive' }, { label: 'Dog passed away' }, { label: 'Moving' }, { label: 'Other' }] } },
+              { id: 'offer1', type: 'offer', position: { x: 50, y: 380 }, data: { percent: 20, label: '20% off next 3 months' } },
+              { id: 'case1', type: 'case', position: { x: 200, y: 380 }, data: { type: 'subscription', priority: 'high', note: 'Pet loss' } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 380 }, data: { persona: 'amy', content: "No problem! I'll process your cancellation." } },
+              { id: 'api1', type: 'api', position: { x: 500, y: 380 }, data: { service: 'shopify', endpoint: 'cancelSubscription' } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 520 }, data: { title: 'Subscription Updated', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'opts1', animated: true },
+              { id: 'e3', source: 'opts1', target: 'offer1', sourceHandle: 'opt-0', label: 'Too expensive', animated: true },
+              { id: 'e4', source: 'opts1', target: 'case1', sourceHandle: 'opt-1', label: 'Pet loss', animated: true },
+              { id: 'e5', source: 'opts1', target: 'msg2', sourceHandle: 'opt-2', label: 'Moving', animated: true },
+              { id: 'e6', source: 'opts1', target: 'api1', sourceHandle: 'opt-3', label: 'Other', animated: true },
+              { id: 'e7', source: 'offer1', target: 'end1', animated: true },
+              { id: 'e8', source: 'case1', target: 'end1', animated: true },
+              { id: 'e9', source: 'msg2', target: 'end1', animated: true },
+              { id: 'e10', source: 'api1', target: 'end1', animated: true }
+            ]
+          },
+          pause_subscription: {
+            id: 'pause_subscription',
+            parentId: 'manage_subscription',
+            name: 'Pause Subscription',
+            description: 'Customer wants to temporarily pause deliveries',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: "No problem! How long would you like to pause?" } },
+              { id: 'opts1', type: 'options', position: { x: 250, y: 220 }, data: { prompt: 'Pause duration', options: [{ label: '1 month' }, { label: '2 months' }, { label: '3 months' }] } },
+              { id: 'api1', type: 'api', position: { x: 250, y: 360 }, data: { service: 'shopify', endpoint: 'pauseSubscription' } },
+              { id: 'msg2', type: 'message', position: { x: 250, y: 480 }, data: { persona: 'amy', content: "Done! Your subscription is paused. We'll resume on {{resumeDate}}." } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 600 }, data: { title: 'Paused!', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'opts1', animated: true },
+              { id: 'e3', source: 'opts1', target: 'api1', animated: true },
+              { id: 'e4', source: 'api1', target: 'msg2', animated: true },
+              { id: 'e5', source: 'msg2', target: 'end1', animated: true }
+            ]
+          },
+          change_frequency: {
+            id: 'change_frequency',
+            parentId: 'manage_subscription',
+            name: 'Change Delivery Frequency',
+            description: 'Customer wants to adjust how often they receive deliveries',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'api1', type: 'api', position: { x: 250, y: 100 }, data: { service: 'shopify', endpoint: 'getSubscription' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 220 }, data: { persona: 'amy', content: "Your current frequency is {{currentFrequency}}. What would you like to change it to?" } },
+              { id: 'opts1', type: 'options', position: { x: 250, y: 340 }, data: { prompt: 'New frequency', options: [{ label: 'Every 2 weeks' }, { label: 'Every month' }, { label: 'Every 6 weeks' }, { label: 'Every 2 months' }] } },
+              { id: 'api2', type: 'api', position: { x: 250, y: 480 }, data: { service: 'shopify', endpoint: 'updateFrequency' } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 600 }, data: { title: 'Updated!', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'api1', animated: true },
+              { id: 'e2', source: 'api1', target: 'msg1', animated: true },
+              { id: 'e3', source: 'msg1', target: 'opts1', animated: true },
+              { id: 'e4', source: 'opts1', target: 'api2', animated: true },
+              { id: 'e5', source: 'api2', target: 'end1', animated: true }
+            ]
+          }
+        }
+      };
+
+      // ============================================
+      // CUSTOM NODE COMPONENTS (matching resolution-center)
+      // ============================================
+
+      // Start Node - Green pill
+      const StartNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          className: 'start-node',
+          style: {
+            padding: '12px 24px',
+            borderRadius: '12px',
+            background: '#22c55e',
+            color: 'white',
+            fontWeight: 600,
+            fontSize: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: selected ? '0 0 0 2px #22c55e40, 0 4px 12px rgba(0,0,0,0.15)' : '0 4px 12px rgba(0,0,0,0.1)',
+            minWidth: '120px'
+          }
+        },
+          React.createElement('span', { style: { fontSize: '16px' } }, '▶'),
+          React.createElement('span', null, 'Start'),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#16a34a', width: '12px', height: '12px' } })
+        );
+      };
+
+      // Message Node - White card with blue accent
+      const MessageNode = ({ data, selected }) => {
+        const personas = { amy: 'Amy', claudia: 'Claudia', sarah: 'Sarah' };
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #3b82f6' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #3b82f640, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '180px',
+            maxWidth: '250px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#3b82f6', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#dbeafe', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '💬'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 500, color: '#6b7280' } }, personas[data.persona] || 'Amy')
+          ),
+          React.createElement('p', { 
+            style: { 
+              fontSize: '13px', 
+              color: '#374151', 
+              lineHeight: '1.4',
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical'
+            } 
+          }, data.content || 'Message...'),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#3b82f6', width: '12px', height: '12px' } })
+        );
+      };
+
+      // Options Node - Purple accent
+      const OptionsNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #8b5cf6' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #8b5cf640, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '180px',
+            maxWidth: '250px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#8b5cf6', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#ede9fe', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '☰'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#8b5cf6' } }, 'Options')
+          ),
+          React.createElement('p', { style: { fontSize: '13px', color: '#374151', marginBottom: '8px' } }, data.prompt || 'Choose an option'),
+          (data.options || []).slice(0, 3).map((opt, i) => 
+            React.createElement('div', { 
+              key: i,
+              style: { 
+                fontSize: '11px', 
+                color: '#6b7280', 
+                padding: '4px 8px', 
+                background: '#f9fafb', 
+                borderRadius: '4px',
+                marginBottom: '4px'
+              } 
+            }, opt.label)
+          ),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#8b5cf6', width: '12px', height: '12px' } })
+        );
+      };
+
+      // Condition Node - Yellow/amber accent
+      const ConditionNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #f59e0b' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #f59e0b40, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '160px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#f59e0b', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#fef3c7', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '⑂'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#f59e0b' } }, 'Condition')
+          ),
+          React.createElement('p', { style: { fontSize: '11px', color: '#6b7280', fontFamily: 'monospace' } }, 
+            data.variable || '{{variable}}'
+          ),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'yes', style: { background: '#22c55e', width: '12px', height: '12px', left: '30%' } }),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'no', style: { background: '#ef4444', width: '12px', height: '12px', left: '70%' } })
+        );
+      };
+
+      // API Node - Pink accent
+      const ApiNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #ec4899' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #ec489940, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '160px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#ec4899', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#fce7f3', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '⚡'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#ec4899' } }, 'API Call')
+          ),
+          React.createElement('p', { style: { fontSize: '11px', color: '#6b7280' } }, 
+            `${data.service || 'shopify'}.${data.endpoint || 'lookup'}`
+          ),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#ec4899', width: '12px', height: '12px' } })
+        );
+      };
+
+      // AI Node - Indigo accent
+      const AiNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #6366f1' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #6366f140, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '180px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#6366f1', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#e0e7ff', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '🤖'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#6366f1' } }, 'AI Response')
+          ),
+          React.createElement('p', { style: { fontSize: '11px', color: '#6b7280' } }, data.model || 'gpt-4o-mini'),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#6366f1', width: '12px', height: '12px' } })
+        );
+      };
+
+      // Offer Node - Teal accent
+      const OfferNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #14b8a6' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #14b8a640, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '180px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#14b8a6', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#ccfbf1', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '💰'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#14b8a6' } }, 'Offer Card')
+          ),
+          React.createElement('p', { style: { fontSize: '14px', fontWeight: 700, color: '#0d9488' } }, `${data.percent || 20}% Refund`),
+          React.createElement('p', { style: { fontSize: '11px', color: '#6b7280' } }, data.label || 'Keep product'),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'accept', style: { background: '#22c55e', width: '12px', height: '12px', left: '30%' } }),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'decline', style: { background: '#ef4444', width: '12px', height: '12px', left: '70%' } })
+        );
+      };
+
+      // Case Node - Orange accent
+      const CaseNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #f97316' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #f9731640, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '160px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#f97316', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#ffedd5', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '📁'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#f97316' } }, 'Create Case')
+          ),
+          React.createElement('p', { style: { fontSize: '11px', color: '#6b7280' } }, `Type: ${data.type || 'refund'}`),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#f97316', width: '12px', height: '12px' } })
+        );
+      };
+
+      // Form Node - Green accent
+      const FormNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #10b981' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #10b98140, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '160px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#10b981', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#d1fae5', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '📝'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#10b981' } }, 'Form')
+          ),
+          React.createElement('p', { style: { fontSize: '11px', color: '#6b7280' } }, data.label || data.formType || 'Collect data'),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#10b981', width: '12px', height: '12px' } })
+        );
+      };
+
+      // End Node - Red accent
+      const EndNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #ef4444' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #ef444440, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '140px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#ef4444', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#fee2e2', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '🏁'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#ef4444' } }, data.title || 'End')
+          )
+        );
+      };
+
+      // Node types registry
+      const nodeTypes = {
+        start: StartNode,
+        message: MessageNode,
+        options: OptionsNode,
+        condition: ConditionNode,
+        api: ApiNode,
+        ai: AiNode,
+        offer: OfferNode,
+        case: CaseNode,
+        form: FormNode,
+        end: EndNode
+      };
+
+      // ============================================
+      // FLOW CANVAS COMPONENT
+      // ============================================
+      const FlowCanvas = ({ subflow, onBack, parentFlow }) => {
+        const [nodes, setNodes, onNodesChange] = useNodesState(subflow.nodes || []);
+        const [edges, setEdges, onEdgesChange] = useEdgesState(subflow.edges || []);
+        const [selectedNode, setSelectedNode] = useState(null);
+
+        const onNodeClick = useCallback((event, node) => {
+          setSelectedNode(node);
+        }, []);
+
+        const defaultEdgeOptions = {
+          type: 'smoothstep',
+          animated: true,
+          style: { strokeWidth: 2, stroke: '#94a3b8' },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#94a3b8' }
+        };
+
+        return React.createElement('div', { style: { height: '100vh', display: 'flex', flexDirection: 'column' } },
+          // Header
+          React.createElement('div', { 
+            style: { 
+              padding: '16px 24px', 
+              background: 'white', 
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px'
+            } 
+          },
+            React.createElement('button', {
+              onClick: onBack,
+              style: {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                background: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500
+              }
+            }, '← Back'),
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: '12px', color: '#9ca3af' } }, parentFlow?.name || ''),
+              React.createElement('div', { style: { fontSize: '18px', fontWeight: 600 } }, subflow.name)
+            )
+          ),
+          // Canvas
+          React.createElement('div', { style: { flex: 1, display: 'flex' } },
+            React.createElement('div', { style: { flex: 1 } },
+              React.createElement(ReactFlowComponent, {
+                nodes: nodes,
+                edges: edges,
+                onNodesChange: onNodesChange,
+                onEdgesChange: onEdgesChange,
+                onNodeClick: onNodeClick,
+                nodeTypes: nodeTypes,
+                defaultEdgeOptions: defaultEdgeOptions,
+                fitView: true,
+                fitViewOptions: { padding: 0.2 }
+              },
+                React.createElement(Background, { variant: 'dots', gap: 20, size: 1, color: '#e2e8f0' }),
+                React.createElement(Controls, null),
+                React.createElement(MiniMap, { 
+                  nodeColor: (n) => {
+                    const colors = { start: '#22c55e', message: '#3b82f6', options: '#8b5cf6', condition: '#f59e0b', api: '#ec4899', ai: '#6366f1', offer: '#14b8a6', case: '#f97316', form: '#10b981', end: '#ef4444' };
+                    return colors[n.type] || '#94a3b8';
+                  },
+                  maskColor: 'rgba(255,255,255,0.8)'
+                })
+              )
+            ),
+            // Properties panel
+            React.createElement('div', { 
+              style: { 
+                width: '320px', 
+                background: 'white', 
+                borderLeft: '1px solid #e5e7eb',
+                padding: '20px',
+                overflowY: 'auto'
+              } 
+            },
+              React.createElement('h3', { style: { fontSize: '14px', fontWeight: 600, marginBottom: '16px' } }, 'Node Properties'),
+              selectedNode ? 
+                React.createElement('div', null,
+                  React.createElement('div', { 
+                    style: { 
+                      padding: '12px', 
+                      background: '#f9fafb', 
+                      borderRadius: '8px',
+                      marginBottom: '12px'
+                    } 
+                  },
+                    React.createElement('div', { style: { fontSize: '12px', color: '#6b7280', marginBottom: '4px' } }, 'Type'),
+                    React.createElement('div', { style: { fontSize: '14px', fontWeight: 600, textTransform: 'capitalize' } }, selectedNode.type)
+                  ),
+                  React.createElement('div', { 
+                    style: { 
+                      padding: '12px', 
+                      background: '#f9fafb', 
+                      borderRadius: '8px',
+                      marginBottom: '12px'
+                    } 
+                  },
+                    React.createElement('div', { style: { fontSize: '12px', color: '#6b7280', marginBottom: '4px' } }, 'Node ID'),
+                    React.createElement('div', { style: { fontSize: '14px', fontFamily: 'monospace' } }, selectedNode.id)
+                  ),
+                  selectedNode.data?.content && React.createElement('div', { 
+                    style: { 
+                      padding: '12px', 
+                      background: '#f9fafb', 
+                      borderRadius: '8px',
+                      marginBottom: '12px'
+                    } 
+                  },
+                    React.createElement('div', { style: { fontSize: '12px', color: '#6b7280', marginBottom: '4px' } }, 'Content'),
+                    React.createElement('div', { style: { fontSize: '13px', lineHeight: '1.5' } }, selectedNode.data.content)
+                  ),
+                  selectedNode.data?.persona && React.createElement('div', { 
+                    style: { 
+                      padding: '12px', 
+                      background: '#f9fafb', 
+                      borderRadius: '8px'
+                    } 
+                  },
+                    React.createElement('div', { style: { fontSize: '12px', color: '#6b7280', marginBottom: '4px' } }, 'Persona'),
+                    React.createElement('div', { style: { fontSize: '14px', textTransform: 'capitalize' } }, selectedNode.data.persona)
+                  )
+                )
+              : React.createElement('div', { style: { textAlign: 'center', color: '#9ca3af', padding: '40px 0' } },
+                  React.createElement('div', { style: { fontSize: '32px', marginBottom: '12px' } }, '👆'),
+                  React.createElement('p', null, 'Click a node to view properties')
+                )
+            )
+          )
+        );
+      };
+
+      // ============================================
+      // PARENT FLOW DETAIL COMPONENT
+      // ============================================
+      const ParentFlowDetail = ({ parentFlow, onBack, onSelectSubflow }) => {
+        const subflowIds = parentFlow.subflows || [];
+        const subflows = subflowIds.map(id => FLOW_DATA.subflows[id]).filter(Boolean);
+
+        return React.createElement('div', { style: { padding: '32px', maxWidth: '1200px', margin: '0 auto' } },
+          // Back button and header
+          React.createElement('div', { style: { marginBottom: '32px' } },
+            React.createElement('button', {
+              onClick: onBack,
+              style: {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                background: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                marginBottom: '16px',
+                fontSize: '14px'
+              }
+            }, '← Back to Flows'),
+            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '16px' } },
+              React.createElement('div', { 
+                style: { 
+                  width: '56px', 
+                  height: '56px', 
+                  borderRadius: '12px', 
+                  background: parentFlow.color + '20',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '28px'
+                } 
+              }, parentFlow.icon),
+              React.createElement('div', null,
+                React.createElement('h1', { style: { fontSize: '24px', fontWeight: 700, marginBottom: '4px' } }, parentFlow.name),
+                React.createElement('p', { style: { color: '#6b7280' } }, parentFlow.description)
+              )
+            )
+          ),
+          // Subflows grid
+          React.createElement('h2', { style: { fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: '#374151' } }, 
+            `Sub-Flows (${subflows.length})`
+          ),
+          React.createElement('div', { 
+            style: { 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+              gap: '16px' 
+            } 
+          },
+            subflows.map(subflow => 
+              React.createElement('div', {
+                key: subflow.id,
+                onClick: () => onSelectSubflow(subflow),
+                style: {
+                  padding: '20px',
+                  background: 'white',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                },
+                onMouseOver: (e) => {
+                  e.currentTarget.style.borderColor = parentFlow.color;
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                },
+                onMouseOut: (e) => {
+                  e.currentTarget.style.borderColor = '#e5e7eb';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                }
+              },
+                React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' } },
+                  React.createElement('div', null,
+                    React.createElement('h3', { style: { fontSize: '16px', fontWeight: 600, marginBottom: '4px' } }, subflow.name),
+                    React.createElement('p', { style: { fontSize: '13px', color: '#6b7280', lineHeight: '1.4' } }, subflow.description)
+                  ),
+                  React.createElement('span', { style: { color: '#9ca3af', fontSize: '20px' } }, '→')
+                ),
+                React.createElement('div', { style: { marginTop: '12px', display: 'flex', gap: '12px', fontSize: '12px', color: '#9ca3af' } },
+                  React.createElement('span', null, `${subflow.nodes?.length || 0} nodes`),
+                  React.createElement('span', null, `${subflow.edges?.length || 0} connections`)
+                )
+              )
+            )
+          )
+        );
+      };
+
+      // ============================================
+      // FLOW SETTINGS (MAIN PAGE)
+      // ============================================
+      const FlowSettings = ({ onSelectParent }) => {
+        return React.createElement('div', { style: { padding: '32px', maxWidth: '1200px', margin: '0 auto' } },
+          React.createElement('div', { style: { marginBottom: '32px' } },
+            React.createElement('h1', { style: { fontSize: '28px', fontWeight: 700, marginBottom: '8px' } }, 'Flow Documentation'),
+            React.createElement('p', { style: { color: '#6b7280', fontSize: '16px' } }, 'Explore the customer resolution flows and their logic')
+          ),
+          React.createElement('div', { 
+            style: { 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', 
+              gap: '20px' 
+            } 
+          },
+            FLOW_DATA.parentFlows.map(flow => 
+              React.createElement('div', {
+                key: flow.id,
+                onClick: () => onSelectParent(flow),
+                style: {
+                  padding: '24px',
+                  background: `linear-gradient(135deg, ${flow.color}10 0%, ${flow.color}05 100%)`,
+                  borderRadius: '16px',
+                  border: '1px solid #e5e7eb',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                },
+                onMouseOver: (e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)';
+                },
+                onMouseOut: (e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }
+              },
+                React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', gap: '16px' } },
+                  React.createElement('div', { 
+                    style: { 
+                      width: '48px', 
+                      height: '48px', 
+                      borderRadius: '12px', 
+                      background: flow.color + '20',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px'
+                    } 
+                  }, flow.icon),
+                  React.createElement('div', { style: { flex: 1 } },
+                    React.createElement('h3', { style: { fontSize: '18px', fontWeight: 600, marginBottom: '4px' } }, flow.name),
+                    React.createElement('p', { style: { fontSize: '14px', color: '#6b7280' } }, flow.description)
+                  )
+                ),
+                React.createElement('div', { 
+                  style: { 
+                    marginTop: '16px', 
+                    paddingTop: '16px', 
+                    borderTop: '1px solid #e5e7eb',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  } 
+                },
+                  React.createElement('span', { style: { fontSize: '13px', color: '#9ca3af' } }, 
+                    `${flow.subflows.length} sub-flow${flow.subflows.length !== 1 ? 's' : ''}`
+                  ),
+                  React.createElement('span', { style: { color: flow.color, fontSize: '20px' } }, '→')
+                )
+              )
+            )
+          )
+        );
+      };
+
+      // ============================================
+      // MAIN APP
+      // ============================================
+      const App = () => {
+        const [view, setView] = useState('settings'); // 'settings', 'parent', 'canvas'
+        const [selectedParent, setSelectedParent] = useState(null);
+        const [selectedSubflow, setSelectedSubflow] = useState(null);
+
+        if (view === 'canvas' && selectedSubflow) {
+          return React.createElement(FlowCanvas, {
+            subflow: selectedSubflow,
+            parentFlow: selectedParent,
+            onBack: () => setView('parent')
+          });
+        }
+
+        if (view === 'parent' && selectedParent) {
+          return React.createElement(ParentFlowDetail, {
+            parentFlow: selectedParent,
+            onBack: () => setView('settings'),
+            onSelectSubflow: (subflow) => {
+              setSelectedSubflow(subflow);
+              setView('canvas');
+            }
+          });
+        }
+
+        return React.createElement(FlowSettings, {
+          onSelectParent: (parent) => {
+            setSelectedParent(parent);
+            setView('parent');
+          }
+        });
+      };
+
+      // Render the app
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(App));
+    })();
+  </script>
+</body>
+</html>

@@ -1141,6 +1141,11 @@ export default {
         return await serveHubAsset('flow-docs-react', corsHeaders);
       }
 
+      // Serve Flow Docs standalone page (React Flow)
+      if (pathname === '/hub/flow-docs' || pathname === '/hub/flow-docs/') {
+        return await serveFlowDocsPage(corsHeaders);
+      }
+
       // Serve Hub CSS (must come before /hub/* catch-all)
       if (pathname === '/hub/hub-styles.css') {
         return await serveHubAsset('css', corsHeaders);
@@ -6706,6 +6711,27 @@ async function serveHubAsset(type, corsHeaders) {
   });
 }
 
+async function serveFlowDocsPage(corsHeaders) {
+  // Check if getFlowDocsHTML exists, otherwise return a fallback
+  if (typeof getFlowDocsHTML === 'function') {
+    const html = getFlowDocsHTML();
+    return new Response(html, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+  } else {
+    return new Response('Flow Docs page not yet built. Run node build-hub.js', {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+    });
+  }
+}
+
 function getDashboardHTML() {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -9829,9 +9855,12 @@ function getResolutionHubHTML() {
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Mermaid.js for flow diagrams -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-  <!-- React 18 for Flow Docs (using custom SVG-based flow visualization) -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- React 18 + React Flow for Flow Docs -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- React Flow v11 (has proper UMD bundle) -->
+  <script src="https://unpkg.com/reactflow@11.10.4/dist/umd/index.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/reactflow@11.10.4/dist/style.css">
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       mermaid.initialize({
@@ -21283,5 +21312,1071 @@ function getHubAppJS() {
 
 function getFlowDocsReactJS() {
   return "/**\n * Flow Documentation - React Components\n * Replicates resolution-center flow editor design for read-only documentation\n * Uses React 18 + React Flow via CDN\n */\n\n// Wait for React to be available (no React Flow dependency - using custom SVG)\n(function initFlowDocs() {\n  if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {\n    setTimeout(initFlowDocs, 100);\n    return;\n  }\n\n  const { useState, useCallback, useEffect, useMemo, useRef } = React;\n\n  // ============================================\n  // FLOW DATA - All flows with nodes and edges\n  // ============================================\n  const FLOW_DATA = {\n    // Parent flow definitions\n    parentFlows: [\n      {\n        id: 'help_with_order',\n        name: 'Help With My Order',\n        description: 'Customer needs assistance with an existing order',\n        icon: 'help-circle',\n        color: '#8b5cf6',\n        subflows: ['changed_mind', 'dog_not_using', 'quality_issue', 'other_reason']\n      },\n      {\n        id: 'track_order',\n        name: 'Track My Order',\n        description: 'Customer wants to check order status or tracking',\n        icon: 'truck',\n        color: '#3b82f6',\n        subflows: ['tracking_status']\n      },\n      {\n        id: 'manage_subscription',\n        name: 'Manage My Subscription',\n        description: 'Customer wants to modify or cancel subscription',\n        icon: 'refresh-cw',\n        color: '#10b981',\n        subflows: ['pause_subscription', 'cancel_subscription', 'change_frequency']\n      }\n    ],\n\n    // Subflow definitions with nodes and edges\n    subflows: {\n      // ============================================\n      // TRACK MY ORDER SUBFLOWS\n      // ============================================\n      tracking_status: {\n        id: 'tracking_status',\n        parentId: 'track_order',\n        name: 'Check Tracking Status',\n        description: 'Customer wants to know where their order is',\n        nodes: [\n          { id: 'n1', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start', triggers: ['track_order'] } },\n          { id: 'n2', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: \"Hi! I'm Amy, your PuppyPad support assistant. 🐕 Let me help you track your order!\" } },\n          { id: 'n3', type: 'form', position: { x: 250, y: 220 }, data: { formType: 'identify', title: 'Find Your Order', fields: ['email', 'order_number'] } },\n          { id: 'n4', type: 'api', position: { x: 250, y: 340 }, data: { service: 'Shopify', endpoint: 'lookupOrder', description: 'Fetch order details from Shopify API' } },\n          { id: 'n5', type: 'api', position: { x: 250, y: 460 }, data: { service: 'ParcelPanel', endpoint: 'getTracking', description: 'Get real-time tracking from ParcelPanel' } },\n          { id: 'n6', type: 'message', position: { x: 250, y: 580 }, data: { persona: 'amy', content: \"Great news! I found your order. Here's the latest tracking info:\" } },\n          { id: 'n7', type: 'end', position: { x: 250, y: 700 }, data: { title: 'Tracking Displayed', showSurvey: true } }\n        ],\n        edges: [\n          { id: 'e1-2', source: 'n1', target: 'n2', type: 'smoothstep' },\n          { id: 'e2-3', source: 'n2', target: 'n3', type: 'smoothstep' },\n          { id: 'e3-4', source: 'n3', target: 'n4', type: 'smoothstep' },\n          { id: 'e4-5', source: 'n4', target: 'n5', type: 'smoothstep' },\n          { id: 'e5-6', source: 'n5', target: 'n6', type: 'smoothstep' },\n          { id: 'e6-7', source: 'n6', target: 'n7', type: 'smoothstep' }\n        ]\n      },\n\n      // ============================================\n      // HELP WITH ORDER SUBFLOWS\n      // ============================================\n      changed_mind: {\n        id: 'changed_mind',\n        parentId: 'help_with_order',\n        name: 'Changed My Mind',\n        description: 'Customer wants a refund because they changed their mind',\n        nodes: [\n          { id: 'n1', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Changed Mind Flow', triggers: ['refund', 'changed_mind'] } },\n          { id: 'n2', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: \"I understand, and I appreciate you being upfront about it. Let me see what options we have for you!\" } },\n          { id: 'n3', type: 'api', position: { x: 250, y: 220 }, data: { service: 'Shopify', endpoint: 'lookupOrder', description: 'Verify order and delivery date' } },\n          { id: 'n4', type: 'condition', position: { x: 250, y: 340 }, data: { variable: 'order.daysSinceDelivery', operator: '<', value: 90, description: 'Check 90-day guarantee eligibility' } },\n          { id: 'n5', type: 'offer', position: { x: 100, y: 470 }, data: { percent: 20, label: 'Keep product + 20% refund', description: 'First discount offer' } },\n          { id: 'n6', type: 'offer', position: { x: 100, y: 600 }, data: { percent: 30, label: 'Keep product + 30% refund', description: 'Second discount offer' } },\n          { id: 'n7', type: 'offer', position: { x: 100, y: 730 }, data: { percent: 40, label: 'Keep product + 40% refund', description: 'Final discount offer' } },\n          { id: 'n8', type: 'case', position: { x: 100, y: 860 }, data: { type: 'refund', priority: 'normal', description: 'Create refund case for team review' } },\n          { id: 'n9', type: 'message', position: { x: 400, y: 470 }, data: { persona: 'amy', content: \"I'm sorry, but our 90-day guarantee has expired for this order. However, I can still help you.\" } },\n          { id: 'n10', type: 'end', position: { x: 250, y: 990 }, data: { title: 'Case Submitted', showSurvey: true } }\n        ],\n        edges: [\n          { id: 'e1-2', source: 'n1', target: 'n2', type: 'smoothstep' },\n          { id: 'e2-3', source: 'n2', target: 'n3', type: 'smoothstep' },\n          { id: 'e3-4', source: 'n3', target: 'n4', type: 'smoothstep' },\n          { id: 'e4-5', source: 'n4', target: 'n5', type: 'smoothstep', label: 'Within 90 days', sourceHandle: 'yes' },\n          { id: 'e4-9', source: 'n4', target: 'n9', type: 'smoothstep', label: 'Expired', sourceHandle: 'no' },\n          { id: 'e5-6', source: 'n5', target: 'n6', type: 'smoothstep', label: 'Decline' },\n          { id: 'e6-7', source: 'n6', target: 'n7', type: 'smoothstep', label: 'Decline' },\n          { id: 'e7-8', source: 'n7', target: 'n8', type: 'smoothstep', label: 'Decline' },\n          { id: 'e5-8a', source: 'n5', target: 'n8', type: 'smoothstep', label: 'Accept', style: { stroke: '#22c55e' } },\n          { id: 'e6-8a', source: 'n6', target: 'n8', type: 'smoothstep', label: 'Accept', style: { stroke: '#22c55e' } },\n          { id: 'e7-8a', source: 'n7', target: 'n8', type: 'smoothstep', label: 'Accept', style: { stroke: '#22c55e' } },\n          { id: 'e8-10', source: 'n8', target: 'n10', type: 'smoothstep' },\n          { id: 'e9-10', source: 'n9', target: 'n10', type: 'smoothstep' }\n        ]\n      },\n\n      dog_not_using: {\n        id: 'dog_not_using',\n        parentId: 'help_with_order',\n        name: 'Dog Not Using Product',\n        description: 'Customer reports their dog is not using the PuppyPad',\n        nodes: [\n          { id: 'n1', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Dog Not Using Flow', triggers: ['product_issue'] } },\n          { id: 'n2', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: \"I understand — the main reason you purchased this was to solve your problem, and we want to make sure it works for you! 🐕\\n\\nLet me get some details about your pup so we can help.\" } },\n          { id: 'n3', type: 'form', position: { x: 250, y: 240 }, data: { formType: 'dog_info', title: 'Tell Us About Your Dog', fields: ['dog_name', 'breed', 'age', 'specific_issue'] } },\n          { id: 'n4', type: 'message', position: { x: 250, y: 380 }, data: { persona: 'amy', content: \"Thanks for sharing! Let me connect you with our dog trainer, Claudia, who specializes in this...\" } },\n          { id: 'n5', type: 'ai', position: { x: 250, y: 500 }, data: { \n            persona: 'claudia', \n            model: 'gpt-4o', \n            maxTokens: 500,\n            prompt: 'Generate personalized training tips for {{dog_name}} ({{breed}}, {{age}}) who is having issues with: {{specific_issue}}. Include 3-5 specific actionable tips.',\n            description: 'AI generates personalized training advice based on dog info'\n          }},\n          { id: 'n6', type: 'options', position: { x: 250, y: 640 }, data: { prompt: \"Did Claudia's tips help?\", options: ['Yes, thanks!', 'No, I want a refund'] } },\n          { id: 'n7', type: 'end', position: { x: 100, y: 780 }, data: { title: 'Resolved with Tips!', showSurvey: true } },\n          { id: 'n8', type: 'ladder', position: { x: 400, y: 780 }, data: { steps: [20, 30, 40, 50], description: 'Discount ladder for refund requests' } },\n          { id: 'n9', type: 'case', position: { x: 400, y: 920 }, data: { type: 'refund', priority: 'normal', description: 'Create case if all offers declined' } },\n          { id: 'n10', type: 'end', position: { x: 400, y: 1040 }, data: { title: 'Case Submitted', showSurvey: true } }\n        ],\n        edges: [\n          { id: 'e1-2', source: 'n1', target: 'n2', type: 'smoothstep' },\n          { id: 'e2-3', source: 'n2', target: 'n3', type: 'smoothstep' },\n          { id: 'e3-4', source: 'n3', target: 'n4', type: 'smoothstep' },\n          { id: 'e4-5', source: 'n4', target: 'n5', type: 'smoothstep' },\n          { id: 'e5-6', source: 'n5', target: 'n6', type: 'smoothstep' },\n          { id: 'e6-7', source: 'n6', target: 'n7', type: 'smoothstep', label: 'Satisfied' },\n          { id: 'e6-8', source: 'n6', target: 'n8', type: 'smoothstep', label: 'Want Refund' },\n          { id: 'e8-9', source: 'n8', target: 'n9', type: 'smoothstep' },\n          { id: 'e9-10', source: 'n9', target: 'n10', type: 'smoothstep' }\n        ]\n      },\n\n      quality_issue: {\n        id: 'quality_issue',\n        parentId: 'help_with_order',\n        name: 'Quality / Material Issue',\n        description: 'Customer notices quality or material differences',\n        nodes: [\n          { id: 'n1', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Quality Issue Flow' } },\n          { id: 'n2', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: \"I'm sorry to hear that! We take quality seriously. Let me help you with this.\" } },\n          { id: 'n3', type: 'form', position: { x: 250, y: 220 }, data: { formType: 'photo_upload', title: 'Upload Photos', fields: ['photos'], description: 'Request photos of the quality issue' } },\n          { id: 'n4', type: 'api', position: { x: 250, y: 340 }, data: { service: 'Cloudflare R2', endpoint: 'uploadPhotos', description: 'Store evidence photos securely' } },\n          { id: 'n5', type: 'case', position: { x: 250, y: 460 }, data: { type: 'quality', priority: 'high', description: 'Create high-priority quality case' } },\n          { id: 'n6', type: 'end', position: { x: 250, y: 580 }, data: { title: 'Quality Case Created', showSurvey: true } }\n        ],\n        edges: [\n          { id: 'e1-2', source: 'n1', target: 'n2', type: 'smoothstep' },\n          { id: 'e2-3', source: 'n2', target: 'n3', type: 'smoothstep' },\n          { id: 'e3-4', source: 'n3', target: 'n4', type: 'smoothstep' },\n          { id: 'e4-5', source: 'n4', target: 'n5', type: 'smoothstep' },\n          { id: 'e5-6', source: 'n5', target: 'n6', type: 'smoothstep' }\n        ]\n      },\n\n      other_reason: {\n        id: 'other_reason',\n        parentId: 'help_with_order',\n        name: 'Other Reason',\n        description: 'Customer has a different issue not covered by other options',\n        nodes: [\n          { id: 'n1', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Other Reason Flow' } },\n          { id: 'n2', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: \"I'd love to help! Please tell me more about your situation.\" } },\n          { id: 'n3', type: 'form', position: { x: 250, y: 220 }, data: { formType: 'text', title: 'Describe Your Issue', fields: ['description'] } },\n          { id: 'n4', type: 'case', position: { x: 250, y: 340 }, data: { type: 'manual', priority: 'normal', description: 'Create manual review case' } },\n          { id: 'n5', type: 'end', position: { x: 250, y: 460 }, data: { title: 'Case Created', showSurvey: true } }\n        ],\n        edges: [\n          { id: 'e1-2', source: 'n1', target: 'n2', type: 'smoothstep' },\n          { id: 'e2-3', source: 'n2', target: 'n3', type: 'smoothstep' },\n          { id: 'e3-4', source: 'n3', target: 'n4', type: 'smoothstep' },\n          { id: 'e4-5', source: 'n4', target: 'n5', type: 'smoothstep' }\n        ]\n      },\n\n      // ============================================\n      // SUBSCRIPTION SUBFLOWS\n      // ============================================\n      pause_subscription: {\n        id: 'pause_subscription',\n        parentId: 'manage_subscription',\n        name: 'Pause Subscription',\n        description: 'Customer wants to temporarily pause their subscription',\n        nodes: [\n          { id: 'n1', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Pause Subscription Flow' } },\n          { id: 'n2', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: \"I can help you pause your subscription. How long would you like to pause for?\" } },\n          { id: 'n3', type: 'options', position: { x: 250, y: 220 }, data: { prompt: 'Select pause duration:', options: ['1 month', '2 months', '3 months'] } },\n          { id: 'n4', type: 'api', position: { x: 250, y: 340 }, data: { service: 'Checkout Champ', endpoint: 'pauseSubscription', description: 'Pause subscription in billing system' } },\n          { id: 'n5', type: 'message', position: { x: 250, y: 460 }, data: { persona: 'amy', content: \"Done! Your subscription has been paused. You'll receive a reminder email before it resumes.\" } },\n          { id: 'n6', type: 'end', position: { x: 250, y: 580 }, data: { title: 'Subscription Paused', showSurvey: true } }\n        ],\n        edges: [\n          { id: 'e1-2', source: 'n1', target: 'n2', type: 'smoothstep' },\n          { id: 'e2-3', source: 'n2', target: 'n3', type: 'smoothstep' },\n          { id: 'e3-4', source: 'n3', target: 'n4', type: 'smoothstep' },\n          { id: 'e4-5', source: 'n4', target: 'n5', type: 'smoothstep' },\n          { id: 'e5-6', source: 'n5', target: 'n6', type: 'smoothstep' }\n        ]\n      },\n\n      cancel_subscription: {\n        id: 'cancel_subscription',\n        parentId: 'manage_subscription',\n        name: 'Cancel Subscription',\n        description: 'Customer wants to cancel their subscription',\n        nodes: [\n          { id: 'n1', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Cancel Subscription Flow' } },\n          { id: 'n2', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: \"I'm sorry to hear you want to cancel. May I ask why you're looking to cancel?\" } },\n          { id: 'n3', type: 'options', position: { x: 250, y: 220 }, data: { \n            prompt: 'Select your reason:', \n            options: ['Too expensive', 'Too much product', 'Moving', \"They didn't work\", 'Other'] \n          }},\n          { id: 'n4', type: 'condition', position: { x: 250, y: 360 }, data: { variable: 'cancel_reason', description: 'Route based on cancellation reason' } },\n          { id: 'n5', type: 'offer', position: { x: 100, y: 500 }, data: { percent: 20, label: '20% off next 3 months', description: 'Price-sensitive retention offer' } },\n          { id: 'n6', type: 'message', position: { x: 400, y: 500 }, data: { persona: 'amy', content: \"I understand! Would you like to skip a few shipments instead of cancelling completely?\" } },\n          { id: 'n7', type: 'api', position: { x: 250, y: 640 }, data: { service: 'Checkout Champ', endpoint: 'cancelSubscription', description: 'Process subscription cancellation' } },\n          { id: 'n8', type: 'end', position: { x: 250, y: 760 }, data: { title: 'Subscription Cancelled', showSurvey: true } }\n        ],\n        edges: [\n          { id: 'e1-2', source: 'n1', target: 'n2', type: 'smoothstep' },\n          { id: 'e2-3', source: 'n2', target: 'n3', type: 'smoothstep' },\n          { id: 'e3-4', source: 'n3', target: 'n4', type: 'smoothstep' },\n          { id: 'e4-5', source: 'n4', target: 'n5', type: 'smoothstep', label: 'Too expensive' },\n          { id: 'e4-6', source: 'n4', target: 'n6', type: 'smoothstep', label: 'Too much product' },\n          { id: 'e5-7', source: 'n5', target: 'n7', type: 'smoothstep', label: 'Decline' },\n          { id: 'e6-7', source: 'n6', target: 'n7', type: 'smoothstep' },\n          { id: 'e7-8', source: 'n7', target: 'n8', type: 'smoothstep' }\n        ]\n      },\n\n      change_frequency: {\n        id: 'change_frequency',\n        parentId: 'manage_subscription',\n        name: 'Change Frequency',\n        description: 'Customer wants to change delivery frequency',\n        nodes: [\n          { id: 'n1', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Change Frequency Flow' } },\n          { id: 'n2', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: \"I can help you change your delivery frequency. What works best for you?\" } },\n          { id: 'n3', type: 'options', position: { x: 250, y: 220 }, data: { prompt: 'Select new frequency:', options: ['Every 2 weeks', 'Every month', 'Every 6 weeks', 'Every 2 months'] } },\n          { id: 'n4', type: 'api', position: { x: 250, y: 340 }, data: { service: 'Checkout Champ', endpoint: 'updateFrequency', description: 'Update subscription frequency' } },\n          { id: 'n5', type: 'message', position: { x: 250, y: 460 }, data: { persona: 'amy', content: \"Perfect! Your delivery frequency has been updated. Your next shipment will follow the new schedule.\" } },\n          { id: 'n6', type: 'end', position: { x: 250, y: 580 }, data: { title: 'Frequency Updated', showSurvey: true } }\n        ],\n        edges: [\n          { id: 'e1-2', source: 'n1', target: 'n2', type: 'smoothstep' },\n          { id: 'e2-3', source: 'n2', target: 'n3', type: 'smoothstep' },\n          { id: 'e3-4', source: 'n3', target: 'n4', type: 'smoothstep' },\n          { id: 'e4-5', source: 'n4', target: 'n5', type: 'smoothstep' },\n          { id: 'e5-6', source: 'n5', target: 'n6', type: 'smoothstep' }\n        ]\n      }\n    }\n  };\n\n  // ============================================\n  // ICONS - SVG icon components\n  // ============================================\n  const Icons = {\n    play: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('circle', { cx: 12, cy: 12, r: 10 }),\n      React.createElement('polygon', { points: '10,8 16,12 10,16', fill: 'currentColor' })\n    ),\n    message: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('path', { d: 'M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z' })\n    ),\n    list: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('line', { x1: 8, y1: 6, x2: 21, y2: 6 }),\n      React.createElement('line', { x1: 8, y1: 12, x2: 21, y2: 12 }),\n      React.createElement('line', { x1: 8, y1: 18, x2: 21, y2: 18 }),\n      React.createElement('line', { x1: 3, y1: 6, x2: 3.01, y2: 6 }),\n      React.createElement('line', { x1: 3, y1: 12, x2: 3.01, y2: 12 }),\n      React.createElement('line', { x1: 3, y1: 18, x2: 3.01, y2: 18 })\n    ),\n    gitBranch: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('line', { x1: 6, y1: 3, x2: 6, y2: 15 }),\n      React.createElement('circle', { cx: 18, cy: 6, r: 3 }),\n      React.createElement('circle', { cx: 6, cy: 18, r: 3 }),\n      React.createElement('path', { d: 'M18 9a9 9 0 01-9 9' })\n    ),\n    form: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('rect', { x: 3, y: 3, width: 18, height: 18, rx: 2 }),\n      React.createElement('path', { d: 'M9 9h6' }),\n      React.createElement('path', { d: 'M9 13h6' }),\n      React.createElement('path', { d: 'M9 17h4' })\n    ),\n    zap: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('polygon', { points: '13,2 3,14 12,14 11,22 21,10 12,10' })\n    ),\n    bot: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('rect', { x: 3, y: 11, width: 18, height: 10, rx: 2 }),\n      React.createElement('circle', { cx: 12, cy: 5, r: 4 })\n    ),\n    trendingUp: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('polyline', { points: '23,6 13.5,15.5 8.5,10.5 1,18' }),\n      React.createElement('polyline', { points: '17,6 23,6 23,12' })\n    ),\n    tag: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('path', { d: 'M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z' }),\n      React.createElement('line', { x1: 7, y1: 7, x2: 7.01, y2: 7 })\n    ),\n    folder: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('path', { d: 'M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z' })\n    ),\n    flag: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('path', { d: 'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z' }),\n      React.createElement('line', { x1: 4, y1: 22, x2: 4, y2: 15 })\n    ),\n    helpCircle: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('circle', { cx: 12, cy: 12, r: 10 }),\n      React.createElement('path', { d: 'M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3' }),\n      React.createElement('line', { x1: 12, y1: 17, x2: 12.01, y2: 17 })\n    ),\n    truck: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('rect', { x: 1, y: 3, width: 15, height: 13 }),\n      React.createElement('polygon', { points: '16,8 20,8 23,11 23,16 16,16' }),\n      React.createElement('circle', { cx: 5.5, cy: 18.5, r: 2.5 }),\n      React.createElement('circle', { cx: 18.5, cy: 18.5, r: 2.5 })\n    ),\n    refreshCw: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('polyline', { points: '23,4 23,10 17,10' }),\n      React.createElement('polyline', { points: '1,20 1,14 7,14' }),\n      React.createElement('path', { d: 'M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15' })\n    ),\n    arrowLeft: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('line', { x1: 19, y1: 12, x2: 5, y2: 12 }),\n      React.createElement('polyline', { points: '12,19 5,12 12,5' })\n    ),\n    x: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('line', { x1: 18, y1: 6, x2: 6, y2: 18 }),\n      React.createElement('line', { x1: 6, y1: 6, x2: 18, y2: 18 })\n    ),\n    chevronRight: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('polyline', { points: '9,18 15,12 9,6' })\n    ),\n    star: () => React.createElement('svg', { viewBox: '0 0 24 24', fill: 'currentColor', stroke: 'currentColor', strokeWidth: 2 },\n      React.createElement('polygon', { points: '12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26' })\n    )\n  };\n\n  // ============================================\n  // CUSTOM NODE COMPONENTS\n  // ============================================\n  const nodeColors = {\n    start: { bg: '#dcfce7', border: '#22c55e', text: '#15803d', icon: '#22c55e' },\n    message: { bg: '#dbeafe', border: '#3b82f6', text: '#1d4ed8', icon: '#3b82f6' },\n    options: { bg: '#f3e8ff', border: '#a855f7', text: '#7c3aed', icon: '#a855f7' },\n    condition: { bg: '#fef3c7', border: '#f59e0b', text: '#b45309', icon: '#f59e0b' },\n    form: { bg: '#d1fae5', border: '#10b981', text: '#047857', icon: '#10b981' },\n    api: { bg: '#fce7f3', border: '#ec4899', text: '#be185d', icon: '#ec4899' },\n    ai: { bg: '#e0e7ff', border: '#6366f1', text: '#4338ca', icon: '#6366f1' },\n    ladder: { bg: '#ccfbf1', border: '#14b8a6', text: '#0f766e', icon: '#14b8a6' },\n    offer: { bg: '#ccfbf1', border: '#14b8a6', text: '#0f766e', icon: '#14b8a6' },\n    case: { bg: '#ffedd5', border: '#f97316', text: '#c2410c', icon: '#f97316' },\n    end: { bg: '#fee2e2', border: '#ef4444', text: '#dc2626', icon: '#ef4444' }\n  };\n\n  const getNodeIcon = (type) => {\n    const iconMap = {\n      start: Icons.play,\n      message: Icons.message,\n      options: Icons.list,\n      condition: Icons.gitBranch,\n      form: Icons.form,\n      api: Icons.zap,\n      ai: Icons.bot,\n      ladder: Icons.trendingUp,\n      offer: Icons.tag,\n      case: Icons.folder,\n      end: Icons.flag\n    };\n    return iconMap[type] || Icons.helpCircle;\n  };\n\n  // Note: Using custom SVG-based flow visualization instead of React Flow\n\n  // ============================================\n  // SIMULATOR POPUP COMPONENT\n  // ============================================\n  const SimulatorPopup = ({ node, onClose }) => {\n    if (!node) return null;\n\n    const overlayStyle = {\n      position: 'fixed',\n      inset: 0,\n      background: 'rgba(0,0,0,0.6)',\n      backdropFilter: 'blur(4px)',\n      display: 'flex',\n      alignItems: 'center',\n      justifyContent: 'center',\n      zIndex: 1000,\n      padding: '20px'\n    };\n\n    const phoneStyle = {\n      width: '375px',\n      height: '700px',\n      background: 'linear-gradient(135deg, #FFF8E7 0%, #FFF5F5 50%, #F0F7FF 100%)',\n      borderRadius: '40px',\n      boxShadow: '0 25px 80px rgba(0,0,0,0.3), inset 0 0 0 8px #1a1a1a',\n      overflow: 'hidden',\n      display: 'flex',\n      flexDirection: 'column',\n      position: 'relative'\n    };\n\n    const headerStyle = {\n      background: '#1a365d',\n      color: 'white',\n      padding: '48px 20px 16px',\n      display: 'flex',\n      alignItems: 'center',\n      gap: '12px'\n    };\n\n    const avatarStyle = {\n      width: '48px',\n      height: '48px',\n      borderRadius: '50%',\n      background: '#FF6B6B',\n      display: 'flex',\n      alignItems: 'center',\n      justifyContent: 'center',\n      fontWeight: 700,\n      fontSize: '18px'\n    };\n\n    const chatAreaStyle = {\n      flex: 1,\n      padding: '20px',\n      overflowY: 'auto',\n      display: 'flex',\n      flexDirection: 'column',\n      gap: '12px'\n    };\n\n    const closeButtonStyle = {\n      position: 'absolute',\n      top: '12px',\n      right: '12px',\n      background: 'rgba(255,255,255,0.9)',\n      border: 'none',\n      borderRadius: '50%',\n      width: '36px',\n      height: '36px',\n      display: 'flex',\n      alignItems: 'center',\n      justifyContent: 'center',\n      cursor: 'pointer',\n      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',\n      zIndex: 10\n    };\n\n    // Render different content based on node type\n    const renderSimulatorContent = () => {\n      const { type, data } = node;\n      \n      switch (type) {\n        case 'message':\n          return React.createElement('div', { style: { display: 'flex', gap: '8px', alignItems: 'flex-start' } },\n            React.createElement('div', { style: { ...avatarStyle, width: '36px', height: '36px', fontSize: '14px', flexShrink: 0 } },\n              (data.persona || 'A')[0].toUpperCase()\n            ),\n            React.createElement('div', { style: { \n              background: 'white', \n              padding: '12px 16px', \n              borderRadius: '18px 18px 18px 4px',\n              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',\n              maxWidth: '80%',\n              fontSize: '14px',\n              lineHeight: '1.5'\n            } }, data.content || 'Message content')\n          );\n\n        case 'options':\n          return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },\n            React.createElement('div', { style: { fontSize: '14px', color: '#6b7280', marginBottom: '4px' } }, \n              data.prompt || 'Select an option:'\n            ),\n            ...(data.options || ['Option 1', 'Option 2']).map((opt, i) => \n              React.createElement('button', { \n                key: i,\n                style: {\n                  background: 'white',\n                  border: '2px solid #e5e7eb',\n                  borderRadius: '12px',\n                  padding: '12px 16px',\n                  textAlign: 'left',\n                  fontSize: '14px',\n                  fontWeight: 500,\n                  cursor: 'pointer',\n                  transition: 'all 0.2s'\n                }\n              }, opt)\n            )\n          );\n\n        case 'form':\n          return React.createElement('div', { style: { \n            background: 'white', \n            borderRadius: '16px', \n            padding: '20px',\n            boxShadow: '0 4px 16px rgba(0,0,0,0.08)'\n          } },\n            React.createElement('h4', { style: { margin: '0 0 16px', fontSize: '16px', fontWeight: 600 } }, \n              data.title || 'Form'\n            ),\n            ...(data.fields || ['field']).map((field, i) => \n              React.createElement('div', { key: i, style: { marginBottom: '12px' } },\n                React.createElement('label', { style: { display: 'block', fontSize: '12px', fontWeight: 500, color: '#6b7280', marginBottom: '4px', textTransform: 'capitalize' } }, \n                  field.replace('_', ' ')\n                ),\n                React.createElement('input', { \n                  type: 'text',\n                  placeholder: `Enter ${field}`,\n                  style: {\n                    width: '100%',\n                    padding: '10px 12px',\n                    border: '1px solid #e5e7eb',\n                    borderRadius: '8px',\n                    fontSize: '14px',\n                    boxSizing: 'border-box'\n                  }\n                })\n              )\n            ),\n            React.createElement('button', { style: {\n              width: '100%',\n              padding: '12px',\n              background: '#1a365d',\n              color: 'white',\n              border: 'none',\n              borderRadius: '10px',\n              fontSize: '14px',\n              fontWeight: 600,\n              cursor: 'pointer',\n              marginTop: '8px'\n            } }, 'Continue')\n          );\n\n        case 'offer':\n          return React.createElement('div', { style: { \n            background: 'linear-gradient(135deg, #dcfce7 0%, #d1fae5 100%)',\n            borderRadius: '16px',\n            padding: '20px',\n            border: '2px solid #22c55e'\n          } },\n            React.createElement('div', { style: { fontSize: '14px', color: '#047857', marginBottom: '8px' } }, \n              '🎉 Special Offer'\n            ),\n            React.createElement('div', { style: { fontSize: '24px', fontWeight: 700, color: '#15803d', marginBottom: '8px' } }, \n              `${data.percent || 20}% Refund`\n            ),\n            React.createElement('div', { style: { fontSize: '13px', color: '#047857', marginBottom: '16px' } }, \n              data.label || 'Keep product + partial refund'\n            ),\n            React.createElement('div', { style: { display: 'flex', gap: '8px' } },\n              React.createElement('button', { style: {\n                flex: 1,\n                padding: '10px',\n                background: 'white',\n                border: '2px solid #d1d5db',\n                borderRadius: '8px',\n                fontSize: '13px',\n                fontWeight: 600,\n                cursor: 'pointer'\n              } }, 'Decline'),\n              React.createElement('button', { style: {\n                flex: 1,\n                padding: '10px',\n                background: '#22c55e',\n                color: 'white',\n                border: 'none',\n                borderRadius: '8px',\n                fontSize: '13px',\n                fontWeight: 600,\n                cursor: 'pointer'\n              } }, 'Accept')\n            )\n          );\n\n        case 'end':\n          return React.createElement('div', { style: { textAlign: 'center', padding: '20px' } },\n            React.createElement('div', { style: {\n              width: '64px',\n              height: '64px',\n              background: '#dcfce7',\n              borderRadius: '50%',\n              display: 'flex',\n              alignItems: 'center',\n              justifyContent: 'center',\n              margin: '0 auto 16px',\n              fontSize: '32px'\n            } }, '✓'),\n            React.createElement('h3', { style: { margin: '0 0 8px', fontSize: '20px', fontWeight: 600 } }, \n              data.title || 'Thank You!'\n            ),\n            data.showSurvey && React.createElement('div', { style: { marginTop: '16px' } },\n              React.createElement('p', { style: { fontSize: '14px', color: '#6b7280', marginBottom: '12px' } }, \n                'How was your experience?'\n              ),\n              React.createElement('div', { style: { display: 'flex', justifyContent: 'center', gap: '8px' } },\n                [1,2,3,4,5].map(n => React.createElement('span', { \n                  key: n, \n                  style: { fontSize: '24px', cursor: 'pointer', filter: 'grayscale(0.5)' }\n                }, '⭐'))\n              )\n            )\n          );\n\n        case 'ai':\n          return React.createElement('div', null,\n            React.createElement('div', { style: { display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '16px' } },\n              React.createElement('div', { style: { \n                width: '36px', \n                height: '36px', \n                borderRadius: '50%',\n                background: '#A78BFA',\n                display: 'flex',\n                alignItems: 'center',\n                justifyContent: 'center',\n                fontWeight: 700,\n                fontSize: '14px',\n                color: 'white',\n                flexShrink: 0\n              } }, 'C'),\n              React.createElement('div', { style: { \n                background: 'white', \n                padding: '12px 16px', \n                borderRadius: '18px 18px 18px 4px',\n                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',\n                maxWidth: '80%'\n              } },\n                React.createElement('div', { style: { fontSize: '12px', color: '#A78BFA', fontWeight: 600, marginBottom: '4px' } }, \n                  'Claudia - Dog Trainer'\n                ),\n                React.createElement('div', { style: { fontSize: '14px', lineHeight: '1.5' } }, \n                  'Based on your dog\\'s information, here are my personalized training tips...'\n                )\n              )\n            ),\n            React.createElement('div', { style: { \n              background: '#f3f4f6', \n              borderRadius: '12px', \n              padding: '12px',\n              fontSize: '11px',\n              color: '#6b7280'\n            } },\n              React.createElement('div', { style: { fontWeight: 600, marginBottom: '4px' } }, '🤖 AI Integration'),\n              React.createElement('div', null, `Model: ${data.model || 'gpt-4o'}`),\n              React.createElement('div', null, `Max Tokens: ${data.maxTokens || 500}`)\n            )\n          );\n\n        default:\n          return React.createElement('div', { style: { \n            background: 'white', \n            borderRadius: '12px', \n            padding: '16px',\n            fontSize: '14px'\n          } },\n            React.createElement('strong', null, type.toUpperCase()),\n            React.createElement('pre', { style: { \n              marginTop: '8px', \n              fontSize: '11px', \n              background: '#f3f4f6', \n              padding: '8px', \n              borderRadius: '6px',\n              overflow: 'auto'\n            } }, JSON.stringify(data, null, 2))\n          );\n      }\n    };\n\n    return React.createElement('div', { style: overlayStyle, onClick: onClose },\n      React.createElement('div', { style: phoneStyle, onClick: e => e.stopPropagation() },\n        React.createElement('button', { style: closeButtonStyle, onClick: onClose },\n          React.createElement('div', { style: { width: '20px', height: '20px' } }, React.createElement(Icons.x))\n        ),\n        React.createElement('div', { style: headerStyle },\n          React.createElement('div', { style: avatarStyle }, 'A'),\n          React.createElement('div', null,\n            React.createElement('div', { style: { fontWeight: 600, fontSize: '16px' } }, 'Amy'),\n            React.createElement('div', { style: { fontSize: '12px', opacity: 0.8 } }, 'Customer Support')\n          )\n        ),\n        React.createElement('div', { style: chatAreaStyle },\n          renderSimulatorContent()\n        )\n      )\n    );\n  };\n\n  // ============================================\n  // NODE PROPERTIES PANEL\n  // ============================================\n  const NodeProperties = ({ node, onSimulate }) => {\n    if (!node) {\n      return React.createElement('div', { style: { \n        padding: '40px 24px', \n        textAlign: 'center',\n        color: '#9ca3af'\n      } },\n        React.createElement('div', { style: { \n          width: '64px', \n          height: '64px', \n          background: '#f3f4f6', \n          borderRadius: '50%',\n          display: 'flex',\n          alignItems: 'center',\n          justifyContent: 'center',\n          margin: '0 auto 16px',\n          color: '#9ca3af'\n        } },\n          React.createElement('div', { style: { width: '32px', height: '32px' } }, React.createElement(Icons.helpCircle))\n        ),\n        React.createElement('p', { style: { fontSize: '14px' } }, 'Click a node to view its properties')\n      );\n    }\n\n    const { type, data } = node;\n    const colors = nodeColors[type] || nodeColors.message;\n    const IconComponent = getNodeIcon(type);\n\n    const panelStyle = {\n      padding: '24px',\n      height: '100%',\n      overflowY: 'auto'\n    };\n\n    const headerStyle = {\n      display: 'flex',\n      alignItems: 'center',\n      gap: '12px',\n      marginBottom: '24px',\n      paddingBottom: '16px',\n      borderBottom: '1px solid #e5e7eb'\n    };\n\n    const iconContainerStyle = {\n      width: '48px',\n      height: '48px',\n      background: colors.bg,\n      borderRadius: '12px',\n      display: 'flex',\n      alignItems: 'center',\n      justifyContent: 'center',\n      color: colors.icon\n    };\n\n    const sectionStyle = {\n      marginBottom: '20px'\n    };\n\n    const labelStyle = {\n      fontSize: '11px',\n      fontWeight: 600,\n      color: '#9ca3af',\n      textTransform: 'uppercase',\n      letterSpacing: '0.05em',\n      marginBottom: '6px'\n    };\n\n    const valueStyle = {\n      fontSize: '14px',\n      color: '#374151',\n      lineHeight: '1.5'\n    };\n\n    const codeStyle = {\n      background: '#f3f4f6',\n      padding: '12px',\n      borderRadius: '8px',\n      fontSize: '12px',\n      fontFamily: 'monospace',\n      overflow: 'auto'\n    };\n\n    return React.createElement('div', { style: panelStyle },\n      React.createElement('div', { style: headerStyle },\n        React.createElement('div', { style: iconContainerStyle },\n          React.createElement('div', { style: { width: '24px', height: '24px' } }, React.createElement(IconComponent))\n        ),\n        React.createElement('div', null,\n          React.createElement('div', { style: { fontWeight: 600, fontSize: '16px', color: colors.text, textTransform: 'capitalize' } }, \n            type.replace('_', ' ')\n          ),\n          React.createElement('div', { style: { fontSize: '12px', color: '#9ca3af' } }, \n            `Node ID: ${node.id}`\n          )\n        )\n      ),\n\n      // Content/Description\n      (data.content || data.description) && React.createElement('div', { style: sectionStyle },\n        React.createElement('div', { style: labelStyle }, data.content ? 'Message Content' : 'Description'),\n        React.createElement('div', { style: valueStyle }, data.content || data.description)\n      ),\n\n      // Persona (for message/ai nodes)\n      data.persona && React.createElement('div', { style: sectionStyle },\n        React.createElement('div', { style: labelStyle }, 'Persona'),\n        React.createElement('div', { style: { \n          display: 'flex', \n          alignItems: 'center', \n          gap: '8px',\n          padding: '8px 12px',\n          background: '#f9fafb',\n          borderRadius: '8px'\n        } },\n          React.createElement('div', { style: {\n            width: '32px',\n            height: '32px',\n            borderRadius: '50%',\n            background: data.persona === 'claudia' ? '#A78BFA' : '#FF6B6B',\n            display: 'flex',\n            alignItems: 'center',\n            justifyContent: 'center',\n            color: 'white',\n            fontWeight: 600,\n            fontSize: '14px'\n          } }, data.persona[0].toUpperCase()),\n          React.createElement('span', { style: { textTransform: 'capitalize' } }, data.persona)\n        )\n      ),\n\n      // Form fields\n      data.fields && React.createElement('div', { style: sectionStyle },\n        React.createElement('div', { style: labelStyle }, 'Form Fields'),\n        React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } },\n          data.fields.map((field, i) => React.createElement('span', { \n            key: i,\n            style: {\n              background: '#e5e7eb',\n              padding: '4px 10px',\n              borderRadius: '6px',\n              fontSize: '12px',\n              fontWeight: 500\n            }\n          }, field))\n        )\n      ),\n\n      // Options\n      data.options && React.createElement('div', { style: sectionStyle },\n        React.createElement('div', { style: labelStyle }, 'Options'),\n        data.options.map((opt, i) => React.createElement('div', { \n          key: i,\n          style: {\n            padding: '8px 12px',\n            background: '#f9fafb',\n            borderRadius: '6px',\n            marginBottom: '6px',\n            fontSize: '13px'\n          }\n        }, opt))\n      ),\n\n      // API info\n      data.service && React.createElement('div', { style: sectionStyle },\n        React.createElement('div', { style: labelStyle }, 'API Integration'),\n        React.createElement('div', { style: codeStyle },\n          React.createElement('div', null, `Service: ${data.service}`),\n          data.endpoint && React.createElement('div', null, `Endpoint: ${data.endpoint}`),\n          data.storeAs && React.createElement('div', null, `Store As: ${data.storeAs}`)\n        )\n      ),\n\n      // AI info\n      data.model && React.createElement('div', { style: sectionStyle },\n        React.createElement('div', { style: labelStyle }, 'AI Configuration'),\n        React.createElement('div', { style: codeStyle },\n          React.createElement('div', null, `Model: ${data.model}`),\n          data.maxTokens && React.createElement('div', null, `Max Tokens: ${data.maxTokens}`),\n          data.prompt && React.createElement('div', { style: { marginTop: '8px', whiteSpace: 'pre-wrap' } }, `Prompt: ${data.prompt}`)\n        )\n      ),\n\n      // Condition\n      data.variable && React.createElement('div', { style: sectionStyle },\n        React.createElement('div', { style: labelStyle }, 'Condition'),\n        React.createElement('div', { style: codeStyle },\n          `${data.variable} ${data.operator || '='} ${data.value}`\n        )\n      ),\n\n      // Offer\n      data.percent && React.createElement('div', { style: sectionStyle },\n        React.createElement('div', { style: labelStyle }, 'Offer Details'),\n        React.createElement('div', { style: { \n          padding: '12px', \n          background: '#dcfce7', \n          borderRadius: '8px',\n          border: '1px solid #22c55e'\n        } },\n          React.createElement('div', { style: { fontSize: '20px', fontWeight: 700, color: '#15803d' } }, \n            `${data.percent}% Refund`\n          ),\n          data.label && React.createElement('div', { style: { fontSize: '13px', color: '#047857', marginTop: '4px' } }, \n            data.label\n          )\n        )\n      ),\n\n      // Case\n      data.type && type === 'case' && React.createElement('div', { style: sectionStyle },\n        React.createElement('div', { style: labelStyle }, 'Case Configuration'),\n        React.createElement('div', { style: codeStyle },\n          React.createElement('div', null, `Type: ${data.type}`),\n          React.createElement('div', null, `Priority: ${data.priority || 'normal'}`)\n        )\n      ),\n\n      // Simulate button\n      React.createElement('button', {\n        onClick: () => onSimulate(node),\n        style: {\n          width: '100%',\n          padding: '14px',\n          background: '#1a365d',\n          color: 'white',\n          border: 'none',\n          borderRadius: '12px',\n          fontSize: '14px',\n          fontWeight: 600,\n          cursor: 'pointer',\n          display: 'flex',\n          alignItems: 'center',\n          justifyContent: 'center',\n          gap: '8px',\n          marginTop: '24px',\n          transition: 'all 0.2s'\n        }\n      },\n        React.createElement('div', { style: { width: '18px', height: '18px' } }, React.createElement(Icons.play)),\n        'Simulate This Step'\n      )\n    );\n  };\n\n  // ============================================\n  // FLOW CANVAS VIEW (Custom SVG-based)\n  // ============================================\n  const FlowCanvas = ({ subflow, onBack, parentFlow }) => {\n    const [selectedNode, setSelectedNode] = useState(null);\n    const [simulatorNode, setSimulatorNode] = useState(null);\n    const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 800, height: 800 });\n    const [zoom, setZoom] = useState(1);\n    const svgRef = useRef(null);\n\n    const nodes = subflow.nodes || [];\n    const edges = subflow.edges || [];\n\n    // Calculate viewBox based on nodes\n    useEffect(() => {\n      if (nodes.length > 0) {\n        const minX = Math.min(...nodes.map(n => n.position.x)) - 50;\n        const maxX = Math.max(...nodes.map(n => n.position.x)) + 300;\n        const minY = Math.min(...nodes.map(n => n.position.y)) - 50;\n        const maxY = Math.max(...nodes.map(n => n.position.y)) + 150;\n        setViewBox({ x: minX, y: minY, width: maxX - minX, height: maxY - minY });\n      }\n    }, [nodes]);\n\n    const handleNodeClick = (node) => {\n      setSelectedNode(node);\n    };\n\n    const handleZoomIn = () => setZoom(z => Math.min(z * 1.2, 3));\n    const handleZoomOut = () => setZoom(z => Math.max(z / 1.2, 0.3));\n    const handleZoomReset = () => setZoom(1);\n\n    // Render edge path\n    const renderEdge = (edge) => {\n      const sourceNode = nodes.find(n => n.id === edge.source);\n      const targetNode = nodes.find(n => n.id === edge.target);\n      if (!sourceNode || !targetNode) return null;\n\n      const sx = sourceNode.position.x + 100; // Center of node\n      const sy = sourceNode.position.y + 60;  // Bottom of node\n      const tx = targetNode.position.x + 100; // Center of node\n      const ty = targetNode.position.y;       // Top of node\n\n      // Smooth step path\n      const midY = (sy + ty) / 2;\n      const path = `M ${sx} ${sy} C ${sx} ${midY}, ${tx} ${midY}, ${tx} ${ty}`;\n\n      return React.createElement('g', { key: edge.id },\n        React.createElement('path', {\n          d: path,\n          fill: 'none',\n          stroke: edge.style?.stroke || '#94a3b8',\n          strokeWidth: 2,\n          markerEnd: 'url(#arrowhead)'\n        }),\n        edge.label && React.createElement('text', {\n          x: (sx + tx) / 2,\n          y: midY - 8,\n          textAnchor: 'middle',\n          fill: '#6b7280',\n          fontSize: 11,\n          fontWeight: 500\n        }, edge.label)\n      );\n    };\n\n    // Render node\n    const renderNode = (node) => {\n      const colors = nodeColors[node.type] || nodeColors.message;\n      const IconComponent = getNodeIcon(node.type);\n      const isSelected = selectedNode?.id === node.id;\n\n      return React.createElement('g', { \n        key: node.id,\n        transform: `translate(${node.position.x}, ${node.position.y})`,\n        onClick: () => handleNodeClick(node),\n        style: { cursor: 'pointer' }\n      },\n        // Node background\n        React.createElement('rect', {\n          width: 200,\n          height: 60,\n          rx: 12,\n          fill: colors.bg,\n          stroke: isSelected ? colors.icon : colors.border,\n          strokeWidth: isSelected ? 3 : 2,\n          filter: isSelected ? 'url(#selectedShadow)' : 'url(#nodeShadow)'\n        }),\n        // Icon container\n        React.createElement('rect', {\n          x: 12,\n          y: 12,\n          width: 36,\n          height: 36,\n          rx: 8,\n          fill: 'white',\n          fillOpacity: 0.8\n        }),\n        // Icon (simplified - just show type letter)\n        React.createElement('text', {\n          x: 30,\n          y: 36,\n          textAnchor: 'middle',\n          fill: colors.icon,\n          fontSize: 14,\n          fontWeight: 700\n        }, node.type[0].toUpperCase()),\n        // Type label\n        React.createElement('text', {\n          x: 60,\n          y: 26,\n          fill: colors.text,\n          fontSize: 12,\n          fontWeight: 600,\n          textTransform: 'capitalize'\n        }, node.type.replace('_', ' ')),\n        // Content preview\n        React.createElement('text', {\n          x: 60,\n          y: 44,\n          fill: '#6b7280',\n          fontSize: 10\n        }, (node.data?.content || node.data?.label || '').slice(0, 25) + ((node.data?.content || '').length > 25 ? '...' : ''))\n      );\n    };\n\n    const containerStyle = {\n      display: 'flex',\n      height: 'calc(100vh - 180px)',\n      background: 'linear-gradient(135deg, #faf5ff 0%, #fdf2f8 50%, #eff6ff 100%)',\n      borderRadius: '16px',\n      overflow: 'hidden',\n      border: '1px solid #e5e7eb'\n    };\n\n    const canvasStyle = {\n      flex: 1,\n      height: '100%',\n      position: 'relative',\n      overflow: 'hidden'\n    };\n\n    const propertiesPanelStyle = {\n      width: '340px',\n      background: 'white',\n      borderLeft: '1px solid #e5e7eb',\n      overflow: 'hidden'\n    };\n\n    const headerStyle = {\n      padding: '16px 20px',\n      borderBottom: '1px solid #e5e7eb',\n      background: 'white'\n    };\n\n    const controlsStyle = {\n      position: 'absolute',\n      bottom: '16px',\n      left: '16px',\n      display: 'flex',\n      flexDirection: 'column',\n      gap: '4px',\n      background: 'white',\n      borderRadius: '8px',\n      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',\n      overflow: 'hidden'\n    };\n\n    const controlBtnStyle = {\n      width: '36px',\n      height: '36px',\n      display: 'flex',\n      alignItems: 'center',\n      justifyContent: 'center',\n      border: 'none',\n      background: 'white',\n      cursor: 'pointer',\n      fontSize: '18px',\n      color: '#374151'\n    };\n\n    return React.createElement('div', null,\n      // Header with back button\n      React.createElement('div', { style: { marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '16px' } },\n        React.createElement('button', {\n          onClick: onBack,\n          style: {\n            display: 'flex',\n            alignItems: 'center',\n            gap: '8px',\n            padding: '8px 16px',\n            background: 'white',\n            border: '1px solid #e5e7eb',\n            borderRadius: '8px',\n            fontSize: '14px',\n            fontWeight: 500,\n            cursor: 'pointer'\n          }\n        },\n          React.createElement('div', { style: { width: '16px', height: '16px' } }, React.createElement(Icons.arrowLeft)),\n          'Back'\n        ),\n        React.createElement('div', null,\n          React.createElement('div', { style: { fontSize: '12px', color: '#9ca3af' } }, parentFlow?.name || 'Parent Flow'),\n          React.createElement('div', { style: { fontSize: '18px', fontWeight: 600 } }, subflow.name)\n        )\n      ),\n      \n      // Canvas and properties panel\n      React.createElement('div', { style: containerStyle },\n        React.createElement('div', { style: canvasStyle },\n          // SVG Canvas\n          React.createElement('svg', {\n            ref: svgRef,\n            width: '100%',\n            height: '100%',\n            viewBox: `${viewBox.x} ${viewBox.y} ${viewBox.width / zoom} ${viewBox.height / zoom}`,\n            style: { background: 'transparent' }\n          },\n            // Defs for filters and markers\n            React.createElement('defs', null,\n              React.createElement('marker', {\n                id: 'arrowhead',\n                markerWidth: 10,\n                markerHeight: 7,\n                refX: 10,\n                refY: 3.5,\n                orient: 'auto'\n              },\n                React.createElement('polygon', {\n                  points: '0 0, 10 3.5, 0 7',\n                  fill: '#94a3b8'\n                })\n              ),\n              React.createElement('filter', { id: 'nodeShadow', x: '-20%', y: '-20%', width: '140%', height: '140%' },\n                React.createElement('feDropShadow', { dx: 0, dy: 2, stdDeviation: 3, floodOpacity: 0.1 })\n              ),\n              React.createElement('filter', { id: 'selectedShadow', x: '-20%', y: '-20%', width: '140%', height: '140%' },\n                React.createElement('feDropShadow', { dx: 0, dy: 4, stdDeviation: 6, floodOpacity: 0.2 })\n              )\n            ),\n            // Grid pattern\n            React.createElement('defs', null,\n              React.createElement('pattern', { id: 'grid', width: 20, height: 20, patternUnits: 'userSpaceOnUse' },\n                React.createElement('circle', { cx: 1, cy: 1, r: 1, fill: '#e5e7eb' })\n              )\n            ),\n            React.createElement('rect', { width: '100%', height: '100%', fill: 'url(#grid)' }),\n            // Edges\n            edges.map(renderEdge),\n            // Nodes\n            nodes.map(renderNode)\n          ),\n          // Zoom controls\n          React.createElement('div', { style: controlsStyle },\n            React.createElement('button', { style: controlBtnStyle, onClick: handleZoomIn }, '+'),\n            React.createElement('button', { style: controlBtnStyle, onClick: handleZoomReset }, '⌂'),\n            React.createElement('button', { style: controlBtnStyle, onClick: handleZoomOut }, '−')\n          )\n        ),\n        React.createElement('div', { style: propertiesPanelStyle },\n          React.createElement('div', { style: headerStyle },\n            React.createElement('div', { style: { fontWeight: 600, fontSize: '14px' } }, 'Node Properties')\n          ),\n          React.createElement(NodeProperties, { \n            node: selectedNode, \n            onSimulate: (node) => setSimulatorNode(node) \n          })\n        )\n      ),\n\n      // Simulator popup\n      simulatorNode && React.createElement(SimulatorPopup, {\n        node: simulatorNode,\n        onClose: () => setSimulatorNode(null)\n      })\n    );\n  };\n\n  // ============================================\n  // PARENT FLOW DETAIL VIEW\n  // ============================================\n  const ParentFlowDetail = ({ parentFlow, onBack, onSelectSubflow }) => {\n    const subflows = parentFlow.subflows.map(id => FLOW_DATA.subflows[id]).filter(Boolean);\n    const IconComponent = parentFlow.icon === 'help-circle' ? Icons.helpCircle : \n                          parentFlow.icon === 'truck' ? Icons.truck : Icons.refreshCw;\n\n    const cardStyle = {\n      background: 'white',\n      borderRadius: '16px',\n      border: '1px solid #e5e7eb',\n      padding: '20px',\n      cursor: 'pointer',\n      transition: 'all 0.2s',\n      boxShadow: '0 2px 8px rgba(0,0,0,0.04)'\n    };\n\n    return React.createElement('div', null,\n      // Header with back\n      React.createElement('div', { style: { marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '16px' } },\n        React.createElement('button', {\n          onClick: onBack,\n          style: {\n            display: 'flex',\n            alignItems: 'center',\n            gap: '8px',\n            padding: '8px 16px',\n            background: 'white',\n            border: '1px solid #e5e7eb',\n            borderRadius: '8px',\n            fontSize: '14px',\n            fontWeight: 500,\n            cursor: 'pointer'\n          }\n        },\n          React.createElement('div', { style: { width: '16px', height: '16px' } }, React.createElement(Icons.arrowLeft)),\n          'Back to Flows'\n        ),\n        React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },\n          React.createElement('div', { style: {\n            width: '48px',\n            height: '48px',\n            background: `${parentFlow.color}20`,\n            borderRadius: '12px',\n            display: 'flex',\n            alignItems: 'center',\n            justifyContent: 'center',\n            color: parentFlow.color\n          } },\n            React.createElement('div', { style: { width: '24px', height: '24px' } }, React.createElement(IconComponent))\n          ),\n          React.createElement('div', null,\n            React.createElement('div', { style: { fontSize: '20px', fontWeight: 600 } }, parentFlow.name),\n            React.createElement('div', { style: { fontSize: '14px', color: '#6b7280' } }, parentFlow.description)\n          )\n        )\n      ),\n\n      // Entry Flow Section\n      React.createElement('div', { style: { marginBottom: '32px' } },\n        React.createElement('h3', { style: { \n          fontSize: '14px', \n          fontWeight: 600, \n          color: '#6b7280', \n          textTransform: 'uppercase', \n          letterSpacing: '0.05em',\n          marginBottom: '12px'\n        } }, 'Entry Flow'),\n        React.createElement('div', { \n          style: { \n            ...cardStyle, \n            background: `linear-gradient(135deg, ${parentFlow.color}10 0%, ${parentFlow.color}05 100%)`,\n            borderColor: `${parentFlow.color}40`\n          }\n        },\n          React.createElement('div', { style: { fontWeight: 600, marginBottom: '4px' } }, 'Main Entry Point'),\n          React.createElement('div', { style: { fontSize: '14px', color: '#6b7280' } }, \n            'Customer selects this flow from the main menu'\n          )\n        )\n      ),\n\n      // Subflows Section\n      React.createElement('div', null,\n        React.createElement('h3', { style: { \n          fontSize: '14px', \n          fontWeight: 600, \n          color: '#6b7280', \n          textTransform: 'uppercase', \n          letterSpacing: '0.05em',\n          marginBottom: '12px'\n        } }, `Sub-Flows (${subflows.length})`),\n        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' } },\n          subflows.map(subflow => \n            React.createElement('div', { \n              key: subflow.id,\n              style: cardStyle,\n              onClick: () => onSelectSubflow(subflow),\n              onMouseEnter: e => {\n                e.currentTarget.style.borderColor = parentFlow.color;\n                e.currentTarget.style.boxShadow = `0 4px 16px ${parentFlow.color}20`;\n              },\n              onMouseLeave: e => {\n                e.currentTarget.style.borderColor = '#e5e7eb';\n                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';\n              }\n            },\n              React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' } },\n                React.createElement('div', null,\n                  React.createElement('div', { style: { fontWeight: 600, marginBottom: '4px' } }, subflow.name),\n                  React.createElement('div', { style: { fontSize: '13px', color: '#6b7280' } }, subflow.description)\n                ),\n                React.createElement('div', { style: { width: '20px', height: '20px', color: '#9ca3af' } },\n                  React.createElement(Icons.chevronRight)\n                )\n              ),\n              React.createElement('div', { style: { \n                marginTop: '12px', \n                paddingTop: '12px', \n                borderTop: '1px solid #f3f4f6',\n                display: 'flex',\n                gap: '16px',\n                fontSize: '12px',\n                color: '#9ca3af'\n              } },\n                React.createElement('span', null, `${subflow.nodes?.length || 0} nodes`),\n                React.createElement('span', null, `${subflow.edges?.length || 0} connections`)\n              )\n            )\n          )\n        )\n      )\n    );\n  };\n\n  // ============================================\n  // FLOW SETTINGS (Main View)\n  // ============================================\n  const FlowSettings = ({ onSelectParent }) => {\n    const cardStyle = {\n      background: 'white',\n      borderRadius: '16px',\n      border: '1px solid #e5e7eb',\n      padding: '24px',\n      cursor: 'pointer',\n      transition: 'all 0.2s',\n      boxShadow: '0 2px 8px rgba(0,0,0,0.04)'\n    };\n\n    return React.createElement('div', null,\n      React.createElement('div', { style: { marginBottom: '24px' } },\n        React.createElement('h2', { style: { fontSize: '24px', fontWeight: 600, marginBottom: '8px' } }, \n          'Flow Documentation'\n        ),\n        React.createElement('p', { style: { color: '#6b7280' } }, \n          'Explore the customer resolution flows and their logic'\n        )\n      ),\n      React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' } },\n        FLOW_DATA.parentFlows.map(flow => {\n          const IconComponent = flow.icon === 'help-circle' ? Icons.helpCircle : \n                                flow.icon === 'truck' ? Icons.truck : Icons.refreshCw;\n          const subflowCount = flow.subflows.length;\n\n          return React.createElement('div', { \n            key: flow.id,\n            style: cardStyle,\n            onClick: () => onSelectParent(flow),\n            onMouseEnter: e => {\n              e.currentTarget.style.borderColor = flow.color;\n              e.currentTarget.style.boxShadow = `0 8px 24px ${flow.color}20`;\n              e.currentTarget.style.transform = 'translateY(-2px)';\n            },\n            onMouseLeave: e => {\n              e.currentTarget.style.borderColor = '#e5e7eb';\n              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';\n              e.currentTarget.style.transform = 'translateY(0)';\n            }\n          },\n            React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', gap: '16px' } },\n              React.createElement('div', { style: {\n                width: '56px',\n                height: '56px',\n                background: `${flow.color}15`,\n                borderRadius: '14px',\n                display: 'flex',\n                alignItems: 'center',\n                justifyContent: 'center',\n                color: flow.color,\n                flexShrink: 0\n              } },\n                React.createElement('div', { style: { width: '28px', height: '28px' } }, React.createElement(IconComponent))\n              ),\n              React.createElement('div', { style: { flex: 1 } },\n                React.createElement('div', { style: { fontWeight: 600, fontSize: '16px', marginBottom: '4px' } }, flow.name),\n                React.createElement('div', { style: { fontSize: '14px', color: '#6b7280', marginBottom: '12px' } }, flow.description)\n              )\n            ),\n            React.createElement('div', { style: { \n              marginTop: '16px', \n              paddingTop: '16px', \n              borderTop: '1px solid #f3f4f6',\n              display: 'flex',\n              justifyContent: 'space-between',\n              alignItems: 'center'\n            } },\n              React.createElement('span', { style: { fontSize: '13px', color: '#9ca3af' } }, \n                `${subflowCount} sub-flow${subflowCount !== 1 ? 's' : ''}`\n              ),\n              React.createElement('div', { style: { \n                width: '32px', \n                height: '32px', \n                background: '#f3f4f6',\n                borderRadius: '8px',\n                display: 'flex',\n                alignItems: 'center',\n                justifyContent: 'center',\n                color: '#6b7280'\n              } },\n                React.createElement('div', { style: { width: '16px', height: '16px' } }, React.createElement(Icons.chevronRight))\n              )\n            )\n          );\n        })\n      )\n    );\n  };\n\n  // ============================================\n  // MAIN APP COMPONENT\n  // ============================================\n  const FlowDocsApp = () => {\n    const [view, setView] = useState('settings'); // settings, parent, canvas\n    const [selectedParent, setSelectedParent] = useState(null);\n    const [selectedSubflow, setSelectedSubflow] = useState(null);\n\n    const handleSelectParent = (parent) => {\n      setSelectedParent(parent);\n      setView('parent');\n    };\n\n    const handleSelectSubflow = (subflow) => {\n      setSelectedSubflow(subflow);\n      setView('canvas');\n    };\n\n    const handleBackToSettings = () => {\n      setSelectedParent(null);\n      setSelectedSubflow(null);\n      setView('settings');\n    };\n\n    const handleBackToParent = () => {\n      setSelectedSubflow(null);\n      setView('parent');\n    };\n\n    if (view === 'canvas' && selectedSubflow) {\n      return React.createElement(FlowCanvas, {\n        subflow: selectedSubflow,\n        parentFlow: selectedParent,\n        onBack: handleBackToParent\n      });\n    }\n\n    if (view === 'parent' && selectedParent) {\n      return React.createElement(ParentFlowDetail, {\n        parentFlow: selectedParent,\n        onBack: handleBackToSettings,\n        onSelectSubflow: handleSelectSubflow\n      });\n    }\n\n    return React.createElement(FlowSettings, {\n      onSelectParent: handleSelectParent\n    });\n  };\n\n  // ============================================\n  // MOUNT THE APP\n  // ============================================\n  window.FlowDocsReact = {\n    mount: function(container) {\n      if (!container) {\n        console.error('FlowDocsReact: No container provided');\n        return;\n      }\n      const root = ReactDOM.createRoot(container);\n      root.render(React.createElement(FlowDocsApp));\n      return root;\n    },\n    unmount: function(root) {\n      if (root) {\n        root.unmount();\n      }\n    }\n  };\n\n  console.log('FlowDocsReact loaded and ready');\n})();\n";
+}
+
+// Flow Docs HTML Asset
+
+function getFlowDocsHTML() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow Documentation | PuppyPad</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- React 18 -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  
+  <!-- React Flow v11 -->
+  <script src="https://unpkg.com/reactflow@11.10.4/dist/umd/index.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/reactflow@11.10.4/dist/style.css">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #fef7f0 0%, #fdf2f8 25%, #f5f3ff 50%, #eff6ff 75%, #f0fdf4 100%);
+      min-height: 100vh;
+    }
+    
+    h1, h2, h3, h4 {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    
+    #root {
+      height: 100vh;
+    }
+    
+    /* React Flow customizations to match resolution-center */
+    .react-flow__node {
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .react-flow__handle {
+      width: 12px !important;
+      height: 12px !important;
+      border-radius: 50% !important;
+      border: 2px solid white !important;
+    }
+    
+    .react-flow__edge-path {
+      stroke-width: 2;
+    }
+    
+    .react-flow__edge.animated path {
+      stroke-dasharray: 5;
+      animation: dashdraw 0.5s linear infinite;
+    }
+    
+    @keyframes dashdraw {
+      from { stroke-dashoffset: 10; }
+      to { stroke-dashoffset: 0; }
+    }
+    
+    .react-flow__background {
+      background-color: transparent !important;
+    }
+    
+    .react-flow__minimap {
+      background: rgba(255,255,255,0.9) !important;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .react-flow__controls {
+      background: rgba(255,255,255,0.95);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border: 1px solid #e5e7eb;
+    }
+    
+    .react-flow__controls-button {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .react-flow__controls-button:hover {
+      background: #f9fafb;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script>
+    // Wait for React and ReactFlow to load
+    (function() {
+      const { useState, useCallback, useEffect, useMemo } = React;
+      const { 
+        ReactFlow: ReactFlowComponent, 
+        Controls, 
+        Background, 
+        MiniMap,
+        useNodesState, 
+        useEdgesState,
+        Handle,
+        Position,
+        MarkerType
+      } = window.ReactFlow;
+
+      // ============================================
+      // FLOW DATA - All flows and their nodes
+      // ============================================
+      const FLOW_DATA = {
+        parentFlows: [
+          { 
+            id: 'help_with_order', 
+            name: 'Help With My Order', 
+            icon: '❓',
+            color: '#8b5cf6', 
+            description: 'Customer needs assistance with an existing order',
+            subflows: ['changed_mind', 'dog_not_using', 'quality_issue', 'other_reason'] 
+          },
+          { 
+            id: 'track_order', 
+            name: 'Track My Order', 
+            icon: '📦',
+            color: '#3b82f6', 
+            description: 'Customer wants to check order status or tracking',
+            subflows: ['tracking_status'] 
+          },
+          { 
+            id: 'manage_subscription', 
+            name: 'Manage My Subscription', 
+            icon: '🔄',
+            color: '#10b981', 
+            description: 'Customer wants to modify or cancel subscription',
+            subflows: ['pause_subscription', 'cancel_subscription', 'change_frequency'] 
+          }
+        ],
+        subflows: {
+          changed_mind: {
+            id: 'changed_mind',
+            parentId: 'help_with_order',
+            name: 'Changed My Mind',
+            description: 'Customer wants a refund because they changed their mind',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: "I understand, and I appreciate you being upfront about it. Let me see what options we have for you!" } },
+              { id: 'api1', type: 'api', position: { x: 250, y: 220 }, data: { service: 'shopify', endpoint: 'checkGuarantee' } },
+              { id: 'cond1', type: 'condition', position: { x: 250, y: 340 }, data: { variable: 'guaranteeStatus', operator: 'equals', value: 'active' } },
+              { id: 'offer1', type: 'offer', position: { x: 100, y: 480 }, data: { percent: 20, label: 'Keep product + 20% refund' } },
+              { id: 'offer2', type: 'offer', position: { x: 100, y: 600 }, data: { percent: 30, label: 'Keep product + 30% refund' } },
+              { id: 'offer3', type: 'offer', position: { x: 100, y: 720 }, data: { percent: 40, label: 'Keep product + 40% refund' } },
+              { id: 'case1', type: 'case', position: { x: 100, y: 840 }, data: { type: 'refund', priority: 'normal' } },
+              { id: 'msg2', type: 'message', position: { x: 400, y: 480 }, data: { persona: 'amy', content: "I'm sorry, but our 90-day guarantee has expired for this order. However, I can still help!" } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 960 }, data: { title: 'Thank You!', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'api1', animated: true },
+              { id: 'e3', source: 'api1', target: 'cond1', animated: true },
+              { id: 'e4', source: 'cond1', target: 'offer1', sourceHandle: 'yes', label: 'Within 90 days', animated: true },
+              { id: 'e5', source: 'cond1', target: 'msg2', sourceHandle: 'no', label: 'Expired', animated: true },
+              { id: 'e6', source: 'offer1', target: 'offer2', sourceHandle: 'decline', label: 'Decline', animated: true },
+              { id: 'e7', source: 'offer1', target: 'case1', sourceHandle: 'accept', label: 'Accept', animated: true },
+              { id: 'e8', source: 'offer2', target: 'offer3', sourceHandle: 'decline', label: 'Decline', animated: true },
+              { id: 'e9', source: 'offer2', target: 'case1', sourceHandle: 'accept', label: 'Accept', animated: true },
+              { id: 'e10', source: 'offer3', target: 'case1', sourceHandle: 'decline', label: 'Decline', animated: true },
+              { id: 'e11', source: 'offer3', target: 'case1', sourceHandle: 'accept', label: 'Accept', animated: true },
+              { id: 'e12', source: 'case1', target: 'end1', animated: true },
+              { id: 'e13', source: 'msg2', target: 'end1', animated: true }
+            ]
+          },
+          dog_not_using: {
+            id: 'dog_not_using',
+            parentId: 'help_with_order',
+            name: 'Dog Not Using Product',
+            description: 'Customer reports their dog is not using the PuppyPad',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: "I'm sorry to hear that! Our trainer Claudia has some tips that might help." } },
+              { id: 'ai1', type: 'ai', position: { x: 250, y: 220 }, data: { persona: 'claudia', prompt: 'Generate training tips', model: 'gpt-4o-mini' } },
+              { id: 'opts1', type: 'options', position: { x: 250, y: 360 }, data: { prompt: 'Did the tips help?', options: [{ label: 'Yes, thanks!' }, { label: 'Still having issues' }] } },
+              { id: 'end1', type: 'end', position: { x: 100, y: 500 }, data: { title: 'Great!', showSurvey: true } },
+              { id: 'offer1', type: 'offer', position: { x: 400, y: 500 }, data: { percent: 30, label: 'Keep product + 30% refund' } },
+              { id: 'case1', type: 'case', position: { x: 400, y: 640 }, data: { type: 'refund' } },
+              { id: 'end2', type: 'end', position: { x: 400, y: 760 }, data: { title: 'Case Created', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'ai1', animated: true },
+              { id: 'e3', source: 'ai1', target: 'opts1', animated: true },
+              { id: 'e4', source: 'opts1', target: 'end1', sourceHandle: 'opt-0', animated: true },
+              { id: 'e5', source: 'opts1', target: 'offer1', sourceHandle: 'opt-1', animated: true },
+              { id: 'e6', source: 'offer1', target: 'case1', animated: true },
+              { id: 'e7', source: 'case1', target: 'end2', animated: true }
+            ]
+          },
+          quality_issue: {
+            id: 'quality_issue',
+            parentId: 'help_with_order',
+            name: 'Quality / Material Issue',
+            description: 'Customer notices quality or material differences',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: "I'm so sorry about that! Can you upload some photos so we can take a look?" } },
+              { id: 'upload1', type: 'form', position: { x: 250, y: 220 }, data: { formType: 'upload', label: 'Upload Photos' } },
+              { id: 'case1', type: 'case', position: { x: 250, y: 340 }, data: { type: 'quality', priority: 'high' } },
+              { id: 'msg2', type: 'message', position: { x: 250, y: 460 }, data: { persona: 'amy', content: "Thanks for those photos. I've created a priority case for our quality team to review." } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 580 }, data: { title: 'Case Submitted', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'upload1', animated: true },
+              { id: 'e3', source: 'upload1', target: 'case1', animated: true },
+              { id: 'e4', source: 'case1', target: 'msg2', animated: true },
+              { id: 'e5', source: 'msg2', target: 'end1', animated: true }
+            ]
+          },
+          other_reason: {
+            id: 'other_reason',
+            parentId: 'help_with_order',
+            name: 'Other Reason',
+            description: 'Customer has a different issue not covered by other options',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: "I'd love to help! Can you tell me more about what's going on?" } },
+              { id: 'form1', type: 'form', position: { x: 250, y: 220 }, data: { formType: 'custom', label: 'Describe Issue' } },
+              { id: 'ai1', type: 'ai', position: { x: 250, y: 340 }, data: { persona: 'amy', prompt: 'Analyze issue and provide response', model: 'gpt-4o' } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 460 }, data: { title: 'Thanks!', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'form1', animated: true },
+              { id: 'e3', source: 'form1', target: 'ai1', animated: true },
+              { id: 'e4', source: 'ai1', target: 'end1', animated: true }
+            ]
+          },
+          tracking_status: {
+            id: 'tracking_status',
+            parentId: 'track_order',
+            name: 'Check Tracking Status',
+            description: 'Customer wants to see where their order is',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'form1', type: 'form', position: { x: 250, y: 100 }, data: { formType: 'identify', label: 'Find Your Order' } },
+              { id: 'api1', type: 'api', position: { x: 250, y: 220 }, data: { service: 'shopify', endpoint: 'lookupOrder' } },
+              { id: 'api2', type: 'api', position: { x: 250, y: 340 }, data: { service: 'parcelpanel', endpoint: 'getTracking' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 460 }, data: { persona: 'amy', content: "Here's your tracking info! Your package is {{trackingStatus}}." } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 580 }, data: { title: 'All done!', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'form1', animated: true },
+              { id: 'e2', source: 'form1', target: 'api1', animated: true },
+              { id: 'e3', source: 'api1', target: 'api2', animated: true },
+              { id: 'e4', source: 'api2', target: 'msg1', animated: true },
+              { id: 'e5', source: 'msg1', target: 'end1', animated: true }
+            ]
+          },
+          cancel_subscription: {
+            id: 'cancel_subscription',
+            parentId: 'manage_subscription',
+            name: 'Cancel Subscription',
+            description: 'Customer wants to cancel their subscription',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: "I'm sorry to see you go! Before we cancel, may I ask why?" } },
+              { id: 'opts1', type: 'options', position: { x: 250, y: 220 }, data: { prompt: 'Reason for canceling?', options: [{ label: 'Too expensive' }, { label: 'Dog passed away' }, { label: 'Moving' }, { label: 'Other' }] } },
+              { id: 'offer1', type: 'offer', position: { x: 50, y: 380 }, data: { percent: 20, label: '20% off next 3 months' } },
+              { id: 'case1', type: 'case', position: { x: 200, y: 380 }, data: { type: 'subscription', priority: 'high', note: 'Pet loss' } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 380 }, data: { persona: 'amy', content: "No problem! I'll process your cancellation." } },
+              { id: 'api1', type: 'api', position: { x: 500, y: 380 }, data: { service: 'shopify', endpoint: 'cancelSubscription' } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 520 }, data: { title: 'Subscription Updated', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'opts1', animated: true },
+              { id: 'e3', source: 'opts1', target: 'offer1', sourceHandle: 'opt-0', label: 'Too expensive', animated: true },
+              { id: 'e4', source: 'opts1', target: 'case1', sourceHandle: 'opt-1', label: 'Pet loss', animated: true },
+              { id: 'e5', source: 'opts1', target: 'msg2', sourceHandle: 'opt-2', label: 'Moving', animated: true },
+              { id: 'e6', source: 'opts1', target: 'api1', sourceHandle: 'opt-3', label: 'Other', animated: true },
+              { id: 'e7', source: 'offer1', target: 'end1', animated: true },
+              { id: 'e8', source: 'case1', target: 'end1', animated: true },
+              { id: 'e9', source: 'msg2', target: 'end1', animated: true },
+              { id: 'e10', source: 'api1', target: 'end1', animated: true }
+            ]
+          },
+          pause_subscription: {
+            id: 'pause_subscription',
+            parentId: 'manage_subscription',
+            name: 'Pause Subscription',
+            description: 'Customer wants to temporarily pause deliveries',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 100 }, data: { persona: 'amy', content: "No problem! How long would you like to pause?" } },
+              { id: 'opts1', type: 'options', position: { x: 250, y: 220 }, data: { prompt: 'Pause duration', options: [{ label: '1 month' }, { label: '2 months' }, { label: '3 months' }] } },
+              { id: 'api1', type: 'api', position: { x: 250, y: 360 }, data: { service: 'shopify', endpoint: 'pauseSubscription' } },
+              { id: 'msg2', type: 'message', position: { x: 250, y: 480 }, data: { persona: 'amy', content: "Done! Your subscription is paused. We'll resume on {{resumeDate}}." } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 600 }, data: { title: 'Paused!', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'opts1', animated: true },
+              { id: 'e3', source: 'opts1', target: 'api1', animated: true },
+              { id: 'e4', source: 'api1', target: 'msg2', animated: true },
+              { id: 'e5', source: 'msg2', target: 'end1', animated: true }
+            ]
+          },
+          change_frequency: {
+            id: 'change_frequency',
+            parentId: 'manage_subscription',
+            name: 'Change Delivery Frequency',
+            description: 'Customer wants to adjust how often they receive deliveries',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
+              { id: 'api1', type: 'api', position: { x: 250, y: 100 }, data: { service: 'shopify', endpoint: 'getSubscription' } },
+              { id: 'msg1', type: 'message', position: { x: 250, y: 220 }, data: { persona: 'amy', content: "Your current frequency is {{currentFrequency}}. What would you like to change it to?" } },
+              { id: 'opts1', type: 'options', position: { x: 250, y: 340 }, data: { prompt: 'New frequency', options: [{ label: 'Every 2 weeks' }, { label: 'Every month' }, { label: 'Every 6 weeks' }, { label: 'Every 2 months' }] } },
+              { id: 'api2', type: 'api', position: { x: 250, y: 480 }, data: { service: 'shopify', endpoint: 'updateFrequency' } },
+              { id: 'end1', type: 'end', position: { x: 250, y: 600 }, data: { title: 'Updated!', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'api1', animated: true },
+              { id: 'e2', source: 'api1', target: 'msg1', animated: true },
+              { id: 'e3', source: 'msg1', target: 'opts1', animated: true },
+              { id: 'e4', source: 'opts1', target: 'api2', animated: true },
+              { id: 'e5', source: 'api2', target: 'end1', animated: true }
+            ]
+          }
+        }
+      };
+
+      // ============================================
+      // CUSTOM NODE COMPONENTS (matching resolution-center)
+      // ============================================
+
+      // Start Node - Green pill
+      const StartNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          className: 'start-node',
+          style: {
+            padding: '12px 24px',
+            borderRadius: '12px',
+            background: '#22c55e',
+            color: 'white',
+            fontWeight: 600,
+            fontSize: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: selected ? '0 0 0 2px #22c55e40, 0 4px 12px rgba(0,0,0,0.15)' : '0 4px 12px rgba(0,0,0,0.1)',
+            minWidth: '120px'
+          }
+        },
+          React.createElement('span', { style: { fontSize: '16px' } }, '▶'),
+          React.createElement('span', null, 'Start'),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#16a34a', width: '12px', height: '12px' } })
+        );
+      };
+
+      // Message Node - White card with blue accent
+      const MessageNode = ({ data, selected }) => {
+        const personas = { amy: 'Amy', claudia: 'Claudia', sarah: 'Sarah' };
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #3b82f6' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #3b82f640, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '180px',
+            maxWidth: '250px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#3b82f6', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#dbeafe', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '💬'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 500, color: '#6b7280' } }, personas[data.persona] || 'Amy')
+          ),
+          React.createElement('p', { 
+            style: { 
+              fontSize: '13px', 
+              color: '#374151', 
+              lineHeight: '1.4',
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical'
+            } 
+          }, data.content || 'Message...'),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#3b82f6', width: '12px', height: '12px' } })
+        );
+      };
+
+      // Options Node - Purple accent
+      const OptionsNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #8b5cf6' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #8b5cf640, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '180px',
+            maxWidth: '250px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#8b5cf6', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#ede9fe', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '☰'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#8b5cf6' } }, 'Options')
+          ),
+          React.createElement('p', { style: { fontSize: '13px', color: '#374151', marginBottom: '8px' } }, data.prompt || 'Choose an option'),
+          (data.options || []).slice(0, 3).map((opt, i) => 
+            React.createElement('div', { 
+              key: i,
+              style: { 
+                fontSize: '11px', 
+                color: '#6b7280', 
+                padding: '4px 8px', 
+                background: '#f9fafb', 
+                borderRadius: '4px',
+                marginBottom: '4px'
+              } 
+            }, opt.label)
+          ),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#8b5cf6', width: '12px', height: '12px' } })
+        );
+      };
+
+      // Condition Node - Yellow/amber accent
+      const ConditionNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #f59e0b' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #f59e0b40, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '160px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#f59e0b', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#fef3c7', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '⑂'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#f59e0b' } }, 'Condition')
+          ),
+          React.createElement('p', { style: { fontSize: '11px', color: '#6b7280', fontFamily: 'monospace' } }, 
+            data.variable || '{{variable}}'
+          ),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'yes', style: { background: '#22c55e', width: '12px', height: '12px', left: '30%' } }),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'no', style: { background: '#ef4444', width: '12px', height: '12px', left: '70%' } })
+        );
+      };
+
+      // API Node - Pink accent
+      const ApiNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #ec4899' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #ec489940, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '160px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#ec4899', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#fce7f3', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '⚡'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#ec4899' } }, 'API Call')
+          ),
+          React.createElement('p', { style: { fontSize: '11px', color: '#6b7280' } }, 
+            \`\${data.service || 'shopify'}.\${data.endpoint || 'lookup'}\`
+          ),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#ec4899', width: '12px', height: '12px' } })
+        );
+      };
+
+      // AI Node - Indigo accent
+      const AiNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #6366f1' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #6366f140, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '180px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#6366f1', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#e0e7ff', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '🤖'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#6366f1' } }, 'AI Response')
+          ),
+          React.createElement('p', { style: { fontSize: '11px', color: '#6b7280' } }, data.model || 'gpt-4o-mini'),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#6366f1', width: '12px', height: '12px' } })
+        );
+      };
+
+      // Offer Node - Teal accent
+      const OfferNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #14b8a6' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #14b8a640, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '180px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#14b8a6', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#ccfbf1', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '💰'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#14b8a6' } }, 'Offer Card')
+          ),
+          React.createElement('p', { style: { fontSize: '14px', fontWeight: 700, color: '#0d9488' } }, \`\${data.percent || 20}% Refund\`),
+          React.createElement('p', { style: { fontSize: '11px', color: '#6b7280' } }, data.label || 'Keep product'),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'accept', style: { background: '#22c55e', width: '12px', height: '12px', left: '30%' } }),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'decline', style: { background: '#ef4444', width: '12px', height: '12px', left: '70%' } })
+        );
+      };
+
+      // Case Node - Orange accent
+      const CaseNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #f97316' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #f9731640, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '160px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#f97316', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#ffedd5', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '📁'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#f97316' } }, 'Create Case')
+          ),
+          React.createElement('p', { style: { fontSize: '11px', color: '#6b7280' } }, \`Type: \${data.type || 'refund'}\`),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#f97316', width: '12px', height: '12px' } })
+        );
+      };
+
+      // Form Node - Green accent
+      const FormNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #10b981' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #10b98140, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '160px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#10b981', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#d1fae5', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '📝'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#10b981' } }, 'Form')
+          ),
+          React.createElement('p', { style: { fontSize: '11px', color: '#6b7280' } }, data.label || data.formType || 'Collect data'),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#10b981', width: '12px', height: '12px' } })
+        );
+      };
+
+      // End Node - Red accent
+      const EndNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px solid #ef4444' : '2px solid #e5e7eb',
+            boxShadow: selected ? '0 0 0 2px #ef444440, 0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.08)',
+            minWidth: '140px'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#ef4444', width: '12px', height: '12px' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+            React.createElement('div', { 
+              style: { 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                background: '#fee2e2', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px'
+              } 
+            }, '🏁'),
+            React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#ef4444' } }, data.title || 'End')
+          )
+        );
+      };
+
+      // Node types registry
+      const nodeTypes = {
+        start: StartNode,
+        message: MessageNode,
+        options: OptionsNode,
+        condition: ConditionNode,
+        api: ApiNode,
+        ai: AiNode,
+        offer: OfferNode,
+        case: CaseNode,
+        form: FormNode,
+        end: EndNode
+      };
+
+      // ============================================
+      // FLOW CANVAS COMPONENT
+      // ============================================
+      const FlowCanvas = ({ subflow, onBack, parentFlow }) => {
+        const [nodes, setNodes, onNodesChange] = useNodesState(subflow.nodes || []);
+        const [edges, setEdges, onEdgesChange] = useEdgesState(subflow.edges || []);
+        const [selectedNode, setSelectedNode] = useState(null);
+
+        const onNodeClick = useCallback((event, node) => {
+          setSelectedNode(node);
+        }, []);
+
+        const defaultEdgeOptions = {
+          type: 'smoothstep',
+          animated: true,
+          style: { strokeWidth: 2, stroke: '#94a3b8' },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#94a3b8' }
+        };
+
+        return React.createElement('div', { style: { height: '100vh', display: 'flex', flexDirection: 'column' } },
+          // Header
+          React.createElement('div', { 
+            style: { 
+              padding: '16px 24px', 
+              background: 'white', 
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px'
+            } 
+          },
+            React.createElement('button', {
+              onClick: onBack,
+              style: {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                background: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500
+              }
+            }, '← Back'),
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: '12px', color: '#9ca3af' } }, parentFlow?.name || ''),
+              React.createElement('div', { style: { fontSize: '18px', fontWeight: 600 } }, subflow.name)
+            )
+          ),
+          // Canvas
+          React.createElement('div', { style: { flex: 1, display: 'flex' } },
+            React.createElement('div', { style: { flex: 1 } },
+              React.createElement(ReactFlowComponent, {
+                nodes: nodes,
+                edges: edges,
+                onNodesChange: onNodesChange,
+                onEdgesChange: onEdgesChange,
+                onNodeClick: onNodeClick,
+                nodeTypes: nodeTypes,
+                defaultEdgeOptions: defaultEdgeOptions,
+                fitView: true,
+                fitViewOptions: { padding: 0.2 }
+              },
+                React.createElement(Background, { variant: 'dots', gap: 20, size: 1, color: '#e2e8f0' }),
+                React.createElement(Controls, null),
+                React.createElement(MiniMap, { 
+                  nodeColor: (n) => {
+                    const colors = { start: '#22c55e', message: '#3b82f6', options: '#8b5cf6', condition: '#f59e0b', api: '#ec4899', ai: '#6366f1', offer: '#14b8a6', case: '#f97316', form: '#10b981', end: '#ef4444' };
+                    return colors[n.type] || '#94a3b8';
+                  },
+                  maskColor: 'rgba(255,255,255,0.8)'
+                })
+              )
+            ),
+            // Properties panel
+            React.createElement('div', { 
+              style: { 
+                width: '320px', 
+                background: 'white', 
+                borderLeft: '1px solid #e5e7eb',
+                padding: '20px',
+                overflowY: 'auto'
+              } 
+            },
+              React.createElement('h3', { style: { fontSize: '14px', fontWeight: 600, marginBottom: '16px' } }, 'Node Properties'),
+              selectedNode ? 
+                React.createElement('div', null,
+                  React.createElement('div', { 
+                    style: { 
+                      padding: '12px', 
+                      background: '#f9fafb', 
+                      borderRadius: '8px',
+                      marginBottom: '12px'
+                    } 
+                  },
+                    React.createElement('div', { style: { fontSize: '12px', color: '#6b7280', marginBottom: '4px' } }, 'Type'),
+                    React.createElement('div', { style: { fontSize: '14px', fontWeight: 600, textTransform: 'capitalize' } }, selectedNode.type)
+                  ),
+                  React.createElement('div', { 
+                    style: { 
+                      padding: '12px', 
+                      background: '#f9fafb', 
+                      borderRadius: '8px',
+                      marginBottom: '12px'
+                    } 
+                  },
+                    React.createElement('div', { style: { fontSize: '12px', color: '#6b7280', marginBottom: '4px' } }, 'Node ID'),
+                    React.createElement('div', { style: { fontSize: '14px', fontFamily: 'monospace' } }, selectedNode.id)
+                  ),
+                  selectedNode.data?.content && React.createElement('div', { 
+                    style: { 
+                      padding: '12px', 
+                      background: '#f9fafb', 
+                      borderRadius: '8px',
+                      marginBottom: '12px'
+                    } 
+                  },
+                    React.createElement('div', { style: { fontSize: '12px', color: '#6b7280', marginBottom: '4px' } }, 'Content'),
+                    React.createElement('div', { style: { fontSize: '13px', lineHeight: '1.5' } }, selectedNode.data.content)
+                  ),
+                  selectedNode.data?.persona && React.createElement('div', { 
+                    style: { 
+                      padding: '12px', 
+                      background: '#f9fafb', 
+                      borderRadius: '8px'
+                    } 
+                  },
+                    React.createElement('div', { style: { fontSize: '12px', color: '#6b7280', marginBottom: '4px' } }, 'Persona'),
+                    React.createElement('div', { style: { fontSize: '14px', textTransform: 'capitalize' } }, selectedNode.data.persona)
+                  )
+                )
+              : React.createElement('div', { style: { textAlign: 'center', color: '#9ca3af', padding: '40px 0' } },
+                  React.createElement('div', { style: { fontSize: '32px', marginBottom: '12px' } }, '👆'),
+                  React.createElement('p', null, 'Click a node to view properties')
+                )
+            )
+          )
+        );
+      };
+
+      // ============================================
+      // PARENT FLOW DETAIL COMPONENT
+      // ============================================
+      const ParentFlowDetail = ({ parentFlow, onBack, onSelectSubflow }) => {
+        const subflowIds = parentFlow.subflows || [];
+        const subflows = subflowIds.map(id => FLOW_DATA.subflows[id]).filter(Boolean);
+
+        return React.createElement('div', { style: { padding: '32px', maxWidth: '1200px', margin: '0 auto' } },
+          // Back button and header
+          React.createElement('div', { style: { marginBottom: '32px' } },
+            React.createElement('button', {
+              onClick: onBack,
+              style: {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                background: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                marginBottom: '16px',
+                fontSize: '14px'
+              }
+            }, '← Back to Flows'),
+            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '16px' } },
+              React.createElement('div', { 
+                style: { 
+                  width: '56px', 
+                  height: '56px', 
+                  borderRadius: '12px', 
+                  background: parentFlow.color + '20',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '28px'
+                } 
+              }, parentFlow.icon),
+              React.createElement('div', null,
+                React.createElement('h1', { style: { fontSize: '24px', fontWeight: 700, marginBottom: '4px' } }, parentFlow.name),
+                React.createElement('p', { style: { color: '#6b7280' } }, parentFlow.description)
+              )
+            )
+          ),
+          // Subflows grid
+          React.createElement('h2', { style: { fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: '#374151' } }, 
+            \`Sub-Flows (\${subflows.length})\`
+          ),
+          React.createElement('div', { 
+            style: { 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+              gap: '16px' 
+            } 
+          },
+            subflows.map(subflow => 
+              React.createElement('div', {
+                key: subflow.id,
+                onClick: () => onSelectSubflow(subflow),
+                style: {
+                  padding: '20px',
+                  background: 'white',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                },
+                onMouseOver: (e) => {
+                  e.currentTarget.style.borderColor = parentFlow.color;
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                },
+                onMouseOut: (e) => {
+                  e.currentTarget.style.borderColor = '#e5e7eb';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                }
+              },
+                React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' } },
+                  React.createElement('div', null,
+                    React.createElement('h3', { style: { fontSize: '16px', fontWeight: 600, marginBottom: '4px' } }, subflow.name),
+                    React.createElement('p', { style: { fontSize: '13px', color: '#6b7280', lineHeight: '1.4' } }, subflow.description)
+                  ),
+                  React.createElement('span', { style: { color: '#9ca3af', fontSize: '20px' } }, '→')
+                ),
+                React.createElement('div', { style: { marginTop: '12px', display: 'flex', gap: '12px', fontSize: '12px', color: '#9ca3af' } },
+                  React.createElement('span', null, \`\${subflow.nodes?.length || 0} nodes\`),
+                  React.createElement('span', null, \`\${subflow.edges?.length || 0} connections\`)
+                )
+              )
+            )
+          )
+        );
+      };
+
+      // ============================================
+      // FLOW SETTINGS (MAIN PAGE)
+      // ============================================
+      const FlowSettings = ({ onSelectParent }) => {
+        return React.createElement('div', { style: { padding: '32px', maxWidth: '1200px', margin: '0 auto' } },
+          React.createElement('div', { style: { marginBottom: '32px' } },
+            React.createElement('h1', { style: { fontSize: '28px', fontWeight: 700, marginBottom: '8px' } }, 'Flow Documentation'),
+            React.createElement('p', { style: { color: '#6b7280', fontSize: '16px' } }, 'Explore the customer resolution flows and their logic')
+          ),
+          React.createElement('div', { 
+            style: { 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', 
+              gap: '20px' 
+            } 
+          },
+            FLOW_DATA.parentFlows.map(flow => 
+              React.createElement('div', {
+                key: flow.id,
+                onClick: () => onSelectParent(flow),
+                style: {
+                  padding: '24px',
+                  background: \`linear-gradient(135deg, \${flow.color}10 0%, \${flow.color}05 100%)\`,
+                  borderRadius: '16px',
+                  border: '1px solid #e5e7eb',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                },
+                onMouseOver: (e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)';
+                },
+                onMouseOut: (e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }
+              },
+                React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', gap: '16px' } },
+                  React.createElement('div', { 
+                    style: { 
+                      width: '48px', 
+                      height: '48px', 
+                      borderRadius: '12px', 
+                      background: flow.color + '20',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px'
+                    } 
+                  }, flow.icon),
+                  React.createElement('div', { style: { flex: 1 } },
+                    React.createElement('h3', { style: { fontSize: '18px', fontWeight: 600, marginBottom: '4px' } }, flow.name),
+                    React.createElement('p', { style: { fontSize: '14px', color: '#6b7280' } }, flow.description)
+                  )
+                ),
+                React.createElement('div', { 
+                  style: { 
+                    marginTop: '16px', 
+                    paddingTop: '16px', 
+                    borderTop: '1px solid #e5e7eb',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  } 
+                },
+                  React.createElement('span', { style: { fontSize: '13px', color: '#9ca3af' } }, 
+                    \`\${flow.subflows.length} sub-flow\${flow.subflows.length !== 1 ? 's' : ''}\`
+                  ),
+                  React.createElement('span', { style: { color: flow.color, fontSize: '20px' } }, '→')
+                )
+              )
+            )
+          )
+        );
+      };
+
+      // ============================================
+      // MAIN APP
+      // ============================================
+      const App = () => {
+        const [view, setView] = useState('settings'); // 'settings', 'parent', 'canvas'
+        const [selectedParent, setSelectedParent] = useState(null);
+        const [selectedSubflow, setSelectedSubflow] = useState(null);
+
+        if (view === 'canvas' && selectedSubflow) {
+          return React.createElement(FlowCanvas, {
+            subflow: selectedSubflow,
+            parentFlow: selectedParent,
+            onBack: () => setView('parent')
+          });
+        }
+
+        if (view === 'parent' && selectedParent) {
+          return React.createElement(ParentFlowDetail, {
+            parentFlow: selectedParent,
+            onBack: () => setView('settings'),
+            onSelectSubflow: (subflow) => {
+              setSelectedSubflow(subflow);
+              setView('canvas');
+            }
+          });
+        }
+
+        return React.createElement(FlowSettings, {
+          onSelectParent: (parent) => {
+            setSelectedParent(parent);
+            setView('parent');
+          }
+        });
+      };
+
+      // Render the app
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(App));
+    })();
+  </script>
+</body>
+</html>
+`;
 }
 

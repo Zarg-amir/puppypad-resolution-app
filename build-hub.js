@@ -24,6 +24,7 @@ const HUB_HTML_PATH = path.join(__dirname, 'frontend/hub/index.html');
 const HUB_APP_PATH = path.join(__dirname, 'frontend/hub/hub-app.js');
 const HUB_CSS_PATH = path.join(__dirname, 'frontend/hub/hub-styles.css');
 const FLOW_DOCS_REACT_PATH = path.join(__dirname, 'frontend/hub/flow-docs-react.js');
+const FLOW_DOCS_HTML_PATH = path.join(__dirname, 'frontend/hub/flow-docs.html');
 const INDEX_PATH = path.join(__dirname, 'src/index.js');
 
 console.log('🔨 Building hub files into Worker...\n');
@@ -62,6 +63,16 @@ try {
   // This file is optional - only exists for React Flow docs
   console.log(`⚠ ${FLOW_DOCS_REACT_PATH} not found (optional)`);
   flowDocsReactJS = null;
+}
+
+let flowDocsHTML;
+try {
+  flowDocsHTML = fs.readFileSync(FLOW_DOCS_HTML_PATH, 'utf8');
+  console.log(`✓ Read ${FLOW_DOCS_HTML_PATH} (${flowDocsHTML.length} bytes)`);
+} catch (e) {
+  // This file is optional
+  console.log(`⚠ ${FLOW_DOCS_HTML_PATH} not found (optional)`);
+  flowDocsHTML = null;
 }
 
 // Read index.js
@@ -171,6 +182,27 @@ if (flowDocsReactJS) {
     const flowDocsReplacement = `function getFlowDocsReactJS() {\n  return ${JSON.stringify(flowDocsReactJS)};\n}`;
     lines.splice(flowDocsLine, flowDocsEndLine - flowDocsLine + 1, ...flowDocsReplacement.split('\n'));
     console.log(`✓ Updated getFlowDocsReactJS() (was lines ${flowDocsLine + 1} to ${flowDocsEndLine + 1})`);
+  }
+}
+
+// Handle getFlowDocsHTML (if file exists)
+if (flowDocsHTML) {
+  let flowDocsHTMLLine = findFunctionLine(lines, 'getFlowDocsHTML');
+  
+  if (flowDocsHTMLLine === -1) {
+    // Function doesn't exist, add it after getHubAppJS (or after getFlowDocsReactJS if it exists)
+    const afterLine = findFunctionLine(lines, 'getFlowDocsReactJS') !== -1 
+      ? findJsonFunctionEndLine(lines, findFunctionLine(lines, 'getFlowDocsReactJS'))
+      : findJsonFunctionEndLine(lines, findFunctionLine(lines, 'getHubAppJS'));
+    const flowDocsHTMLReplacement = `\n// Flow Docs HTML Asset\n\nfunction getFlowDocsHTML() {\n  return \`${escapeForTemplate(flowDocsHTML)}\`;\n}`;
+    lines.splice(afterLine + 1, 0, ...flowDocsHTMLReplacement.split('\n'));
+    console.log(`✓ Added getFlowDocsHTML()`);
+  } else {
+    // Function exists, update it
+    let flowDocsHTMLEndLine = findTemplateFunctionEndLine(lines, flowDocsHTMLLine);
+    const flowDocsHTMLReplacement = `function getFlowDocsHTML() {\n  return \`${escapeForTemplate(flowDocsHTML)}\`;\n}`;
+    lines.splice(flowDocsHTMLLine, flowDocsHTMLEndLine - flowDocsHTMLLine + 1, ...flowDocsHTMLReplacement.split('\n'));
+    console.log(`✓ Updated getFlowDocsHTML() (was lines ${flowDocsHTMLLine + 1} to ${flowDocsHTMLEndLine + 1})`);
   }
 }
 
