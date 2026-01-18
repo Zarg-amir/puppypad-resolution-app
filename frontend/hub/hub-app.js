@@ -3387,7 +3387,7 @@ const HubNavigation = {
     } else if (page === 'users') {
       HubUsers.show();
     } else if (page === 'flows') {
-      HubFlows.load();
+      HubFlows.show();
     } else if (page === 'sop') {
       HubSOP.load();
     } else if (page === 'email-templates') {
