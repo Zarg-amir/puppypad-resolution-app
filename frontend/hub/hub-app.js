@@ -5142,10 +5142,10 @@ End with an encouraging message about consistency and patience.`,
       <div class="flow-diagram-container">
         <div class="flow-diagram-card">
           <div class="flow-diagram-header">
-            <h3>Quick Flow Overview</h3>
-            <p>See the entire customer journey at a glance</p>
+            <h3>Flow Overview Diagram</h3>
+            <p>Visual map of the complete customer journey</p>
           </div>
-          <div class="flow-diagram-content compact">
+          <div class="flow-diagram-content">
             <div class="mermaid-diagram">
               ${this.currentSubflow.diagram}
             </div>
@@ -5299,7 +5299,21 @@ End with an encouraging message about consistency and patience.`,
   // Store message data for edit modal
   messageData: {},
 
-  renderMessages(messages, stepId) {
+  // Persona avatars for chat preview
+  avatars: {
+    amy: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face',
+    sarah: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
+    claudia: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face',
+  },
+
+  getPersonaFromLabel(label) {
+    const lower = label.toLowerCase();
+    if (lower.includes('claudia')) return 'claudia';
+    if (lower.includes('sarah')) return 'sarah';
+    return 'amy';
+  },
+
+  renderMessages(messages, stepId, persona = 'amy') {
     // Store messages for later retrieval
     messages.forEach(msg => {
       this.messageData[msg.id] = { stepId, ...msg };
@@ -5307,6 +5321,31 @@ End with an encouraging message about consistency and patience.`,
     
     return `
       <div class="flow-messages">
+        <!-- Chat Preview -->
+        <div class="chat-preview">
+          <div class="chat-preview-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+            <span class="chat-preview-label">How it looks in the chat app</span>
+          </div>
+          <div class="chat-preview-phone">
+            <div class="chat-preview-messages">
+              ${messages.map(msg => {
+                const msgPersona = this.getPersonaFromLabel(msg.label);
+                return `
+                  <div class="chat-msg bot">
+                    <img src="${this.avatars[msgPersona]}" alt="${msgPersona}" class="chat-msg-avatar">
+                    <div class="chat-msg-content">
+                      <span class="chat-msg-sender ${msgPersona}">${msgPersona.charAt(0).toUpperCase() + msgPersona.slice(1)}</span>
+                      <div class="chat-msg-bubble">${msg.content.replace(/\n/g, '<br>')}</div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+        
+        <!-- Editable Text Reference -->
         ${messages.map(msg => `
           <div class="flow-message">
             <div class="flow-message-header">
@@ -5326,6 +5365,30 @@ End with an encouraging message about consistency and patience.`,
   renderFields(fields) {
     return `
       <div class="flow-fields">
+        <!-- Chat Preview of Form -->
+        <div class="chat-preview">
+          <div class="chat-preview-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+            <span class="chat-preview-label">How the form looks in the chat app</span>
+          </div>
+          <div class="chat-preview-phone">
+            <div class="chat-preview-messages">
+              <div class="chat-form-preview">
+                ${fields.map(field => `
+                  <div class="chat-form-group">
+                    <label class="chat-form-label">${field.label}${field.required ? ' *' : ''}</label>
+                    ${field.type === 'textarea' 
+                      ? `<div class="chat-form-input textarea">${field.placeholder || ''}</div>`
+                      : `<div class="chat-form-input">${field.placeholder || ''}</div>`
+                    }
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Field Details Table -->
         <h4 class="flow-section-title">Form Fields</h4>
         <div class="flow-fields-table">
           <div class="flow-fields-row flow-fields-header">
@@ -5350,6 +5413,24 @@ End with an encouraging message about consistency and patience.`,
   renderButtons(buttons) {
     return `
       <div class="flow-buttons">
+        <!-- Chat Preview of Buttons -->
+        <div class="chat-preview">
+          <div class="chat-preview-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+            <span class="chat-preview-label">How buttons look in the chat app</span>
+          </div>
+          <div class="chat-preview-phone">
+            <div class="chat-preview-messages">
+              <div class="chat-buttons-preview">
+                ${buttons.map(btn => `
+                  <div class="chat-btn-preview ${btn.style || 'primary'}">${btn.text}</div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Button Details -->
         <h4 class="flow-section-title">User Actions</h4>
         <div class="flow-buttons-list">
           ${buttons.map(btn => `
