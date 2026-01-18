@@ -23,6 +23,7 @@ const path = require('path');
 const HUB_HTML_PATH = path.join(__dirname, 'frontend/hub/index.html');
 const HUB_APP_PATH = path.join(__dirname, 'frontend/hub/hub-app.js');
 const HUB_CSS_PATH = path.join(__dirname, 'frontend/hub/hub-styles.css');
+const FLOW_DOCS_REACT_PATH = path.join(__dirname, 'frontend/hub/flow-docs-react.js');
 const INDEX_PATH = path.join(__dirname, 'src/index.js');
 
 console.log('🔨 Building hub files into Worker...\n');
@@ -51,6 +52,16 @@ try {
 } catch (e) {
   console.error(`✗ Failed to read ${HUB_CSS_PATH}:`, e.message);
   process.exit(1);
+}
+
+let flowDocsReactJS;
+try {
+  flowDocsReactJS = fs.readFileSync(FLOW_DOCS_REACT_PATH, 'utf8');
+  console.log(`✓ Read ${FLOW_DOCS_REACT_PATH} (${flowDocsReactJS.length} bytes)`);
+} catch (e) {
+  // This file is optional - only exists for React Flow docs
+  console.log(`⚠ ${FLOW_DOCS_REACT_PATH} not found (optional)`);
+  flowDocsReactJS = null;
 }
 
 // Read index.js
@@ -142,6 +153,26 @@ if (hubAppJSEndLine === -1) {
 const hubAppJSReplacement = `function getHubAppJS() {\n  return ${JSON.stringify(hubAppJS)};\n}`;
 lines.splice(hubAppJSLine, hubAppJSEndLine - hubAppJSLine + 1, ...hubAppJSReplacement.split('\n'));
 console.log(`✓ Updated getHubAppJS() (was lines ${hubAppJSLine + 1} to ${hubAppJSEndLine + 1})`);
+
+// Handle getFlowDocsReactJS (if file exists)
+if (flowDocsReactJS) {
+  let flowDocsLine = findFunctionLine(lines, 'getFlowDocsReactJS');
+  
+  if (flowDocsLine === -1) {
+    // Function doesn't exist, add it after getHubAppJS
+    const newHubAppJSLine = findFunctionLine(lines, 'getHubAppJS');
+    const newHubAppJSEndLine = findJsonFunctionEndLine(lines, newHubAppJSLine);
+    const flowDocsReplacement = `\n// Flow Docs React JS Asset\n\nfunction getFlowDocsReactJS() {\n  return ${JSON.stringify(flowDocsReactJS)};\n}`;
+    lines.splice(newHubAppJSEndLine + 1, 0, ...flowDocsReplacement.split('\n'));
+    console.log(`✓ Added getFlowDocsReactJS() after getHubAppJS()`);
+  } else {
+    // Function exists, update it
+    let flowDocsEndLine = findJsonFunctionEndLine(lines, flowDocsLine);
+    const flowDocsReplacement = `function getFlowDocsReactJS() {\n  return ${JSON.stringify(flowDocsReactJS)};\n}`;
+    lines.splice(flowDocsLine, flowDocsEndLine - flowDocsLine + 1, ...flowDocsReplacement.split('\n'));
+    console.log(`✓ Updated getFlowDocsReactJS() (was lines ${flowDocsLine + 1} to ${flowDocsEndLine + 1})`);
+  }
+}
 
 // Re-find CSS function (line numbers may have shifted)
 const hubCSSLine = findFunctionLine(lines, 'getHubStylesCSS');
