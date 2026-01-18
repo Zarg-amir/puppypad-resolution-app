@@ -7029,20 +7029,46 @@ button.template-tab:focus {
 }
 
 .flow-diagram-content {
-  padding: 32px;
-  background: white;
+  padding: 24px;
+  background: linear-gradient(135deg, #fafbfc 0%, #fff 100%);
   overflow-x: auto;
+}
+
+.flow-diagram-content.compact {
+  padding: 16px;
 }
 
 .mermaid-diagram {
   display: flex;
   justify-content: center;
-  min-height: 400px;
+  min-height: 280px;
+}
+
+.flow-diagram-content.compact .mermaid-diagram {
+  min-height: 200px;
+  transform: scale(0.85);
+  transform-origin: top center;
 }
 
 .mermaid-diagram svg {
   max-width: 100%;
   height: auto;
+}
+
+/* Make mermaid nodes more compact */
+.mermaid-diagram .node rect,
+.mermaid-diagram .node polygon {
+  rx: 8;
+  ry: 8;
+}
+
+.mermaid-diagram .edgeLabel {
+  font-size: 11px !important;
+}
+
+.mermaid-diagram .nodeLabel {
+  font-size: 12px !important;
+  font-weight: 500;
 }
 
 .flow-diagram-legend {

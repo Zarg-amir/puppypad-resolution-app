@@ -4658,68 +4658,53 @@ const HubFlows = {
           id: 'dog_not_using',
           name: 'Dog Not Using Product',
           description: 'When customer reports their dog is not using the PuppyPad',
-          // Mermaid diagram definition
+          // Mermaid diagram definition - compact and clear
           diagram: `flowchart TD
-    START([🐕 Dog Not Using Flow])
-    STEP1[Step 1: Amy's Introduction]
-    STEP2[Step 2: Dog Info Form]
-    STEP3[Step 3: Transition to Dr. Claudia]
-    STEP4[Step 4: AI-Generated Tips]
-    STEP5{Step 5: Satisfaction Check}
-    STEP6A[Step 6A: Happy Ending<br/>✅ Customer Satisfied]
-    STEP6B[Step 6B: Refund Ladder]
-    GUARANTEE{90-Day Guarantee?}
-    EXPIRED([❌ Guarantee Expired<br/>Flow Ends])
-    OFFER20[20% Refund Offer]
-    OFFER30[30% Refund Offer]
-    OFFER40[40% Refund Offer]
-    OFFER50[50% Refund Offer]
-    FULL_REFUND[Full Refund]
-    LOCATION{Customer Location?}
-    CASE_20([📋 Case: partial_20])
-    CASE_30([📋 Case: partial_30])
-    CASE_40([📋 Case: partial_40])
-    CASE_50([📋 Case: partial_50])
-    CASE_RETURN([📋 Case: full + return])
-    CASE_KEEP([📋 Case: full + keep])
-    SUCCESS([✅ Flow Complete<br/>No Case Created])
+    START([🐕 Start])
+    S1[Amy Intro]
+    S2[Dog Form]
+    S3[Dr. Claudia]
+    S4[AI Tips]
+    S5{Happy?}
+    HAPPY([✅ Done])
+    REFUND[Refund Options]
+    G{Within 90 days?}
+    NO([❌ Expired])
+    R20[Offer 20%]
+    R30[Offer 30%]
+    R40[Offer 40%]
+    R50[Offer 50%]
+    FULL[Full Refund]
+    LOC{Location?}
+    C20([20% Refund Created])
+    C30([30% Refund Created])
+    C40([40% Refund Created])
+    C50([50% Refund Created])
+    CRET([Full Refund + Return])
+    CKEEP([Full Refund + Keep])
 
-    START --> STEP1
-    STEP1 --> STEP2
-    STEP2 --> STEP3
-    STEP3 --> STEP4
-    STEP4 --> STEP5
-    STEP5 -->|"Yes, I'll try these!"| STEP6A
-    STEP5 -->|"No, need more help"| STEP6B
-    STEP6A --> SUCCESS
-    STEP6B --> GUARANTEE
-    GUARANTEE -->|Expired| EXPIRED
-    GUARANTEE -->|Valid| OFFER20
-    OFFER20 -->|Accept| CASE_20
-    OFFER20 -->|Decline| OFFER30
-    OFFER30 -->|Accept| CASE_30
-    OFFER30 -->|Decline| OFFER40
-    OFFER40 -->|Accept| CASE_40
-    OFFER40 -->|Decline| OFFER50
-    OFFER50 -->|Accept| CASE_50
-    OFFER50 -->|Decline| FULL_REFUND
-    FULL_REFUND --> LOCATION
-    LOCATION -->|US/Domestic| CASE_RETURN
-    LOCATION -->|International| CASE_KEEP
+    START --> S1 --> S2 --> S3 --> S4 --> S5
+    S5 -->|Yes| HAPPY
+    S5 -->|No| REFUND --> G
+    G -->|No| NO
+    G -->|Yes| R20
+    R20 -->|Accept| C20
+    R20 -->|More| R30
+    R30 -->|Accept| C30
+    R30 -->|More| R40
+    R40 -->|Accept| C40
+    R40 -->|More| R50
+    R50 -->|Accept| C50
+    R50 -->|Full| FULL --> LOC
+    LOC -->|US| CRET
+    LOC -->|Intl| CKEEP
 
     style START fill:#A8D8EA,stroke:#1a365d
-    style SUCCESS fill:#C8E6C9,stroke:#2d5a2e
-    style STEP6A fill:#C8E6C9,stroke:#2d5a2e
-    style EXPIRED fill:#FFCDD2,stroke:#c62828
-    style STEP5 fill:#E8D5E8,stroke:#6a4c93
-    style GUARANTEE fill:#E8D5E8,stroke:#6a4c93
-    style LOCATION fill:#E8D5E8,stroke:#6a4c93
-    style CASE_20 fill:#A8D8EA,stroke:#1a365d
-    style CASE_30 fill:#A8D8EA,stroke:#1a365d
-    style CASE_40 fill:#A8D8EA,stroke:#1a365d
-    style CASE_50 fill:#A8D8EA,stroke:#1a365d
-    style CASE_RETURN fill:#A8D8EA,stroke:#1a365d
-    style CASE_KEEP fill:#A8D8EA,stroke:#1a365d`,
+    style HAPPY fill:#C8E6C9,stroke:#2d5a2e
+    style NO fill:#FFCDD2,stroke:#c62828
+    style S5 fill:#E8D5E8,stroke:#6a4c93
+    style G fill:#E8D5E8,stroke:#6a4c93
+    style LOC fill:#E8D5E8,stroke:#6a4c93`,
           steps: [
             {
               id: 'DOG_STEP_1',
@@ -5157,22 +5142,22 @@ End with an encouraging message about consistency and patience.`,
       <div class="flow-diagram-container">
         <div class="flow-diagram-card">
           <div class="flow-diagram-header">
-            <h3>Flow Overview Diagram</h3>
-            <p>Visual representation of the complete flow with all branches and outcomes</p>
+            <h3>Quick Flow Overview</h3>
+            <p>See the entire customer journey at a glance</p>
           </div>
-          <div class="flow-diagram-content">
+          <div class="flow-diagram-content compact">
             <div class="mermaid-diagram">
               ${this.currentSubflow.diagram}
             </div>
           </div>
           <div class="flow-diagram-legend">
-            <h4>Legend</h4>
+            <h4>What the colors mean</h4>
             <div class="legend-items">
-              <div class="legend-item"><span class="legend-color" style="background: #A8D8EA"></span> Start / Case Created</div>
-              <div class="legend-item"><span class="legend-color" style="background: #C8E6C9"></span> Success / Happy Path</div>
-              <div class="legend-item"><span class="legend-color" style="background: #FFCDD2"></span> Flow Ends (No Resolution)</div>
-              <div class="legend-item"><span class="legend-color" style="background: #E8D5E8"></span> Decision Point</div>
-              <div class="legend-item"><span class="legend-color" style="background: #fff; border: 1px solid #ccc"></span> Process Step</div>
+              <div class="legend-item"><span class="legend-color" style="background: #A8D8EA"></span> Start or Case Created</div>
+              <div class="legend-item"><span class="legend-color" style="background: #C8E6C9"></span> Happy Ending</div>
+              <div class="legend-item"><span class="legend-color" style="background: #FFCDD2"></span> Cannot Proceed</div>
+              <div class="legend-item"><span class="legend-color" style="background: #E8D5E8; border-radius: 50%"></span> Customer Choice</div>
+              <div class="legend-item"><span class="legend-color" style="background: #fff; border: 1px solid #1a365d"></span> Step</div>
             </div>
           </div>
         </div>
@@ -5311,14 +5296,22 @@ End with an encouraging message about consistency and patience.`,
     `;
   },
 
+  // Store message data for edit modal
+  messageData: {},
+
   renderMessages(messages, stepId) {
+    // Store messages for later retrieval
+    messages.forEach(msg => {
+      this.messageData[msg.id] = { stepId, ...msg };
+    });
+    
     return `
       <div class="flow-messages">
         ${messages.map(msg => `
           <div class="flow-message">
             <div class="flow-message-header">
               <span class="flow-message-label">${msg.label}</span>
-              <button class="flow-suggest-btn" onclick="HubFlows.openEditModal('${stepId}', '${msg.id}', '${msg.label}', \`${msg.content.replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`)">
+              <button class="flow-suggest-btn" onclick="HubFlows.openEditModalById('${msg.id}')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Edit
               </button>
@@ -5504,6 +5497,15 @@ End with an encouraging message about consistency and patience.`,
   goToFlow() {
     this.currentSubflow = null;
     this.render();
+  },
+
+  openEditModalById(messageId) {
+    const data = this.messageData[messageId];
+    if (!data) {
+      console.error('Message data not found for:', messageId);
+      return;
+    }
+    this.openEditModal(data.stepId, data.id, data.label, data.content);
   },
 
   openEditModal(stepId, elementId, label, content) {
