@@ -9,6 +9,31 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
   <!-- Satoshi and Space Grotesk fonts for brand aesthetics -->
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Mermaid.js for flow diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#A8D8EA',
+          primaryTextColor: '#1a365d',
+          primaryBorderColor: '#1a365d',
+          lineColor: '#6b7280',
+          secondaryColor: '#FFB7C5',
+          tertiaryColor: '#E8D5E8',
+          fontFamily: 'Inter, sans-serif'
+        },
+        flowchart: {
+          curve: 'basis',
+          padding: 20,
+          nodeSpacing: 50,
+          rankSpacing: 50
+        }
+      });
+    });
+  </script>
   <!-- Hub Styles -->
   <link href="/hub/hub-styles.css" rel="stylesheet">
   <style>

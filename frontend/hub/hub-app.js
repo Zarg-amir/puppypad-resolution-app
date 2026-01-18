@@ -4643,6 +4643,7 @@ const HubFlows = {
   currentFlow: null,
   currentSubflow: null,
   editContext: null,
+  showDiagram: false,
 
   // Flow data structure
   flows: {
@@ -4657,9 +4658,72 @@ const HubFlows = {
           id: 'dog_not_using',
           name: 'Dog Not Using Product',
           description: 'When customer reports their dog is not using the PuppyPad',
+          // Mermaid diagram definition
+          diagram: `flowchart TD
+    START([🐕 Dog Not Using Flow])
+    STEP1[Step 1: Amy's Introduction]
+    STEP2[Step 2: Dog Info Form]
+    STEP3[Step 3: Transition to Dr. Claudia]
+    STEP4[Step 4: AI-Generated Tips]
+    STEP5{Step 5: Satisfaction Check}
+    STEP6A[Step 6A: Happy Ending<br/>✅ Customer Satisfied]
+    STEP6B[Step 6B: Refund Ladder]
+    GUARANTEE{90-Day Guarantee?}
+    EXPIRED([❌ Guarantee Expired<br/>Flow Ends])
+    OFFER20[20% Refund Offer]
+    OFFER30[30% Refund Offer]
+    OFFER40[40% Refund Offer]
+    OFFER50[50% Refund Offer]
+    FULL_REFUND[Full Refund]
+    LOCATION{Customer Location?}
+    CASE_20([📋 Case: partial_20])
+    CASE_30([📋 Case: partial_30])
+    CASE_40([📋 Case: partial_40])
+    CASE_50([📋 Case: partial_50])
+    CASE_RETURN([📋 Case: full + return])
+    CASE_KEEP([📋 Case: full + keep])
+    SUCCESS([✅ Flow Complete<br/>No Case Created])
+
+    START --> STEP1
+    STEP1 --> STEP2
+    STEP2 --> STEP3
+    STEP3 --> STEP4
+    STEP4 --> STEP5
+    STEP5 -->|"Yes, I'll try these!"| STEP6A
+    STEP5 -->|"No, need more help"| STEP6B
+    STEP6A --> SUCCESS
+    STEP6B --> GUARANTEE
+    GUARANTEE -->|Expired| EXPIRED
+    GUARANTEE -->|Valid| OFFER20
+    OFFER20 -->|Accept| CASE_20
+    OFFER20 -->|Decline| OFFER30
+    OFFER30 -->|Accept| CASE_30
+    OFFER30 -->|Decline| OFFER40
+    OFFER40 -->|Accept| CASE_40
+    OFFER40 -->|Decline| OFFER50
+    OFFER50 -->|Accept| CASE_50
+    OFFER50 -->|Decline| FULL_REFUND
+    FULL_REFUND --> LOCATION
+    LOCATION -->|US/Domestic| CASE_RETURN
+    LOCATION -->|International| CASE_KEEP
+
+    style START fill:#A8D8EA,stroke:#1a365d
+    style SUCCESS fill:#C8E6C9,stroke:#2d5a2e
+    style STEP6A fill:#C8E6C9,stroke:#2d5a2e
+    style EXPIRED fill:#FFCDD2,stroke:#c62828
+    style STEP5 fill:#E8D5E8,stroke:#6a4c93
+    style GUARANTEE fill:#E8D5E8,stroke:#6a4c93
+    style LOCATION fill:#E8D5E8,stroke:#6a4c93
+    style CASE_20 fill:#A8D8EA,stroke:#1a365d
+    style CASE_30 fill:#A8D8EA,stroke:#1a365d
+    style CASE_40 fill:#A8D8EA,stroke:#1a365d
+    style CASE_50 fill:#A8D8EA,stroke:#1a365d
+    style CASE_RETURN fill:#A8D8EA,stroke:#1a365d
+    style CASE_KEEP fill:#A8D8EA,stroke:#1a365d`,
           steps: [
             {
               id: 'DOG_STEP_1',
+              stepNumber: '1',
               name: "Amy's Introduction",
               persona: 'Amy',
               function: 'handleDogNotUsing()',
@@ -4675,6 +4739,7 @@ const HubFlows = {
             },
             {
               id: 'DOG_STEP_2',
+              stepNumber: '2',
               name: 'Dog Info Form',
               persona: 'Amy',
               function: 'renderDogInfoForm()',
@@ -4686,13 +4751,14 @@ const HubFlows = {
                 { id: 'DOG_FORM_METHODS', label: 'What have you tried so far?', type: 'textarea', required: false, placeholder: "Tell us what methods you've already attempted..." }
               ],
               buttons: [
-                { id: 'DOG_FORM_ADD_BTN', text: '+ Add Another Dog', style: 'secondary', action: 'Adds another dog entry' },
-                { id: 'DOG_FORM_SUBMIT_BTN', text: 'Get Personalized Tips', style: 'primary', action: 'Validates form, submits dog info' }
+                { id: 'DOG_FORM_ADD_BTN', text: '+ Add Another Dog', style: 'secondary', action: 'Adds another dog entry (Dog 2, Dog 3, etc.)' },
+                { id: 'DOG_FORM_SUBMIT_BTN', text: 'Get Personalized Tips', style: 'primary', action: 'Validates all required fields are filled, then submits to Step 3' }
               ],
-              dataStored: ['state.dogs (array of dog objects)', 'state.methodsTried']
+              dataStored: ['state.dogs (array of dog objects with name, breed, age)', 'state.methodsTried (string of training methods customer has tried)']
             },
             {
               id: 'DOG_STEP_3',
+              stepNumber: '3',
               name: 'Transition to Dr. Claudia',
               persona: 'Amy → Claudia',
               function: 'submitDogInfo()',
@@ -4710,16 +4776,46 @@ const HubFlows = {
                 }
               ],
               api: {
+                service: 'OpenAI GPT-4o',
                 endpoint: '/api/ai-response',
                 method: 'POST',
-                model: 'gpt-4o',
-                scenario: 'dog_tips',
-                systemPrompt: 'You are Dr. Claudia, a friendly veterinarian...',
-                dataUsed: ['Dog names', 'Breeds', 'Ages', 'Methods tried']
+                explanation: 'This step calls the OpenAI API to generate personalized dog training tips. The system sends all the collected dog information to GPT-4o, which acts as "Dr. Claudia" - a friendly veterinarian persona. The AI analyzes the dog\'s breed, age, and what the customer has already tried, then generates customized recommendations.',
+                requestBody: {
+                  scenario: 'dog_tips',
+                  model: 'gpt-4o',
+                  data: {
+                    dogs: '[Array of dog objects from form]',
+                    methodsTried: '[String from form]',
+                    customerName: '[From order lookup]'
+                  }
+                },
+                systemPrompt: `You are Dr. Claudia, PuppyPad's friendly in-house veterinarian and potty training expert. You've helped thousands of pet parents successfully train their dogs to use PuppyPad.
+
+Your personality:
+- Warm, encouraging, and supportive
+- Use emojis occasionally (🐕 🐾 💙)
+- Speak directly to the pet parent
+- Always be positive about the dog's ability to learn
+
+Your task:
+Based on the dog information provided, give 3-5 specific, actionable tips for getting the dog to use the PuppyPad. Consider:
+1. The dog's breed characteristics (some breeds are easier/harder to train)
+2. The dog's age (puppies vs adult dogs have different needs)
+3. What training methods have already been tried (don't repeat failed approaches)
+
+Format your response as numbered tips. Keep each tip concise but specific.
+End with an encouraging message about consistency and patience.`,
+                dataUsed: [
+                  'Dog name(s) - to personalize the response',
+                  'Breed(s) - different breeds have different training needs',
+                  'Age(s) - puppies vs adults require different approaches',
+                  'Methods tried - to avoid suggesting what already failed'
+                ]
               }
             },
             {
               id: 'DOG_STEP_4',
+              stepNumber: '4',
               name: 'AI-Generated Tips',
               persona: 'Claudia',
               function: 'displayDogTips()',
@@ -4727,8 +4823,8 @@ const HubFlows = {
               messages: [
                 {
                   id: 'DOG_STEP_4_TIPS',
-                  label: 'AI Tips',
-                  content: '[Dynamic AI-generated tips based on dog info]\n\nExample output:\n• Tip 1: For [breed], try placing the pad near...\n• Tip 2: At [age], dogs respond well to...\n• Tip 3: Since you mentioned [method], consider...'
+                  label: 'AI Tips (Dynamic)',
+                  content: "[This content is dynamically generated by OpenAI based on dog info]\n\nExample output:\n1. For Golden Retrievers like Max, the key is positive reinforcement. Try placing high-value treats on the pad and praising enthusiastically when he sniffs or steps on it! 🐕\n\n2. At 2 years old, Max is past the puppy stage but still very trainable. Consistency is your friend - take him to the pad every 2-3 hours.\n\n3. Since you mentioned treats haven't worked, let's try a different approach: use the pad right after meals when his need is strongest.\n\n4. Golden Retrievers are people-pleasers! Make it a celebration every time he uses the pad correctly. 🎉"
                 },
                 {
                   id: 'DOG_STEP_4_CLOSING',
@@ -4740,10 +4836,12 @@ const HubFlows = {
             },
             {
               id: 'DOG_STEP_5',
+              stepNumber: '5',
               name: 'Satisfaction Check',
               persona: 'Amy',
               function: 'showSatisfactionCheck()',
               line: 2320,
+              isBranchPoint: true,
               messages: [
                 {
                   id: 'DOG_STEP_5_MESSAGE',
@@ -4752,16 +4850,20 @@ const HubFlows = {
                 }
               ],
               buttons: [
-                { id: 'DOG_STEP_5_YES', text: "😊 Yes, I'll try these!", style: 'success', action: 'Goes to Happy Ending (Step 6A)' },
-                { id: 'DOG_STEP_5_NO', text: "😔 No, I need more help", style: 'warning', action: 'Goes to Refund Ladder (Step 6B)' }
-              ]
+                { id: 'DOG_STEP_5_YES', text: "😊 Yes, I'll try these!", style: 'success', action: '→ Goes to Step 6A (Happy Ending)' },
+                { id: 'DOG_STEP_5_NO', text: "😔 No, I need more help", style: 'warning', action: '→ Goes to Step 6B (Refund Ladder)' }
+              ],
+              branchNote: 'This is a decision point. The flow splits into two branches based on customer response.'
             },
             {
               id: 'DOG_STEP_6A',
-              name: 'Satisfied - Flow Complete',
+              stepNumber: '6A',
+              name: 'Happy Ending (Customer Satisfied)',
               persona: 'Amy',
               function: 'handleSatisfied()',
               line: 2350,
+              isBranch: true,
+              branchType: 'success',
               messages: [
                 {
                   id: 'DOG_STEP_6A_MESSAGE',
@@ -4769,63 +4871,67 @@ const HubFlows = {
                   content: "That's wonderful! 🎉 Remember, consistency is key. If you have any questions while trying these tips, just come back and chat with us.\n\nWishing you and your pup the best! 🐾💙"
                 }
               ],
-              outcome: 'No case created - customer satisfied',
+              outcome: 'Flow ends successfully. No case is created in the Resolution Hub. Customer will try the tips.',
               caseCreated: false
             },
             {
               id: 'DOG_STEP_6B',
-              name: 'Refund Ladder',
+              stepNumber: '6B',
+              name: 'Refund Ladder (Customer Not Satisfied)',
               persona: 'Amy',
               function: 'startRefundLadder()',
               line: 2380,
-              description: 'Customer not satisfied with tips, enters refund ladder',
+              isBranch: true,
+              branchType: 'refund',
+              description: 'Customer was not satisfied with Dr. Claudia\'s tips. Amy now enters the refund ladder to offer escalating partial refunds before a full refund.',
               substeps: [
                 {
                   id: 'DOG_LADDER_GUARANTEE',
                   name: '90-Day Guarantee Check',
-                  logic: 'Checks if order is within 90 days of delivery',
+                  logic: 'System automatically checks if the order delivery date is within the last 90 days. This uses the Shopify order data already retrieved when the customer entered their order number.',
+                  apiNote: 'Uses stored order.delivered_at date compared to current date',
                   outcomes: {
                     expired: {
                       message: "I understand you're not satisfied, but unfortunately your 90-day guarantee period has expired. We can't process a refund at this time.\n\nWould you like me to help you with anything else?",
                       caseCreated: false
                     },
-                    valid: 'Proceeds to Ladder Step 1'
+                    valid: 'Customer is within guarantee period → Proceeds to Ladder Step 1 (20% Offer)'
                   }
                 },
                 {
                   id: 'DOG_LADDER_20',
-                  name: 'Ladder Step 1: 20% Offer',
+                  name: 'Ladder Step 1: 20% Partial Refund Offer',
                   message: "I completely understand. Since the product isn't working for your pup, I'd like to offer you a 20% partial refund as a gesture of goodwill.\n\nThis way you can keep trying the tips while getting some money back. Would that work for you?",
                   buttons: [
-                    { text: '✓ Accept 20% Refund', action: 'Creates case: partial_20' },
-                    { text: '✗ I need more help', action: 'Goes to 30% offer' }
+                    { text: '✓ Accept 20% Refund', action: 'Creates case with resolution "partial_20" → Flow ends' },
+                    { text: '✗ I need more help', action: 'Proceeds to 30% offer' }
                   ]
                 },
                 {
                   id: 'DOG_LADDER_30',
-                  name: 'Ladder Step 2: 30% Offer',
+                  name: 'Ladder Step 2: 30% Partial Refund Offer',
                   message: "I hear you. Let me increase that offer to 30% partial refund. This gives you a significant refund while still having the product to work with.\n\nWould 30% back work for you?",
                   buttons: [
-                    { text: '✓ Accept 30% Refund', action: 'Creates case: partial_30' },
-                    { text: '✗ I need more help', action: 'Goes to 40% offer' }
+                    { text: '✓ Accept 30% Refund', action: 'Creates case with resolution "partial_30" → Flow ends' },
+                    { text: '✗ I need more help', action: 'Proceeds to 40% offer' }
                   ]
                 },
                 {
                   id: 'DOG_LADDER_40',
-                  name: 'Ladder Step 3: 40% Offer',
+                  name: 'Ladder Step 3: 40% Partial Refund Offer',
                   message: "I really want to make this right. How about 40% partial refund? That's almost half your money back.\n\nDoes that sound fair?",
                   buttons: [
-                    { text: '✓ Accept 40% Refund', action: 'Creates case: partial_40' },
-                    { text: '✗ I need more help', action: 'Goes to 50% offer' }
+                    { text: '✓ Accept 40% Refund', action: 'Creates case with resolution "partial_40" → Flow ends' },
+                    { text: '✗ I need more help', action: 'Proceeds to 50% offer' }
                   ]
                 },
                 {
                   id: 'DOG_LADDER_50',
-                  name: 'Ladder Step 4: 50% Offer',
+                  name: 'Ladder Step 4: 50% Partial Refund Offer',
                   message: "Okay, let's do 50% back - that's half of what you paid. This is a generous offer that lets you keep trying while getting substantial money back.\n\nWhat do you say?",
                   buttons: [
-                    { text: '✓ Accept 50% Refund', action: 'Creates case: partial_50' },
-                    { text: '✗ I want a full refund', action: 'Goes to full refund' }
+                    { text: '✓ Accept 50% Refund', action: 'Creates case with resolution "partial_50" → Flow ends' },
+                    { text: '✗ I want a full refund', action: 'Proceeds to full refund' }
                   ]
                 },
                 {
@@ -4833,13 +4939,16 @@ const HubFlows = {
                   name: 'Ladder Step 5: Full Refund',
                   message: "I understand completely. We stand behind our 90-day satisfaction guarantee, and I'll process a full refund for you.",
                   locationCheck: {
+                    explanation: 'System checks the customer\'s shipping country from the Shopify order. US customers must return the product to receive a refund. International customers keep the product (due to shipping costs).',
                     domestic: {
                       message: "Since you're in the US, we'll need you to return the product. I'll send you a prepaid return label.\n\nOnce we receive the return, your full refund will be processed within 3-5 business days.",
-                      caseType: 'full + return'
+                      caseType: 'full + return',
+                      caseNote: 'Case is created with resolution "Process full refund" and return instructions are sent'
                     },
                     international: {
                       message: "Since you're outside the US, please keep the product - no need to return it! Your full refund will be processed within 3-5 business days.",
-                      caseType: 'full + keep'
+                      caseType: 'full + keep',
+                      caseNote: 'Case is created with resolution "Process full refund" - no return required'
                     }
                   }
                 }
@@ -5026,12 +5135,56 @@ const HubFlows = {
   selectSubflow(subflowId) {
     if (!this.currentFlow) return;
     this.currentSubflow = this.currentFlow.subflows[subflowId];
+    this.showDiagram = false; // Reset to step view when selecting a new subflow
     this.render();
+  },
+
+  setView(view) {
+    this.showDiagram = (view === 'diagram');
+    this.render();
+    // Initialize Mermaid if showing diagram
+    if (this.showDiagram && typeof mermaid !== 'undefined') {
+      setTimeout(() => {
+        mermaid.init(undefined, '.mermaid-diagram');
+      }, 100);
+    }
+  },
+
+  renderDiagram() {
+    if (!this.currentSubflow || !this.currentSubflow.diagram) return '';
+    
+    return `
+      <div class="flow-diagram-container">
+        <div class="flow-diagram-card">
+          <div class="flow-diagram-header">
+            <h3>Flow Overview Diagram</h3>
+            <p>Visual representation of the complete flow with all branches and outcomes</p>
+          </div>
+          <div class="flow-diagram-content">
+            <div class="mermaid-diagram">
+              ${this.currentSubflow.diagram}
+            </div>
+          </div>
+          <div class="flow-diagram-legend">
+            <h4>Legend</h4>
+            <div class="legend-items">
+              <div class="legend-item"><span class="legend-color" style="background: #A8D8EA"></span> Start / Case Created</div>
+              <div class="legend-item"><span class="legend-color" style="background: #C8E6C9"></span> Success / Happy Path</div>
+              <div class="legend-item"><span class="legend-color" style="background: #FFCDD2"></span> Flow Ends (No Resolution)</div>
+              <div class="legend-item"><span class="legend-color" style="background: #E8D5E8"></span> Decision Point</div>
+              <div class="legend-item"><span class="legend-color" style="background: #fff; border: 1px solid #ccc"></span> Process Step</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   },
 
   renderSubflowDetail() {
     const container = document.getElementById('flowsContent');
     if (!container || !this.currentFlow || !this.currentSubflow) return;
+
+    const hasDiagram = this.currentSubflow.diagram;
 
     container.innerHTML = `
       <div class="flows-page">
@@ -5047,11 +5200,25 @@ const HubFlows = {
             <h1 class="subflow-detail-title">${this.currentSubflow.name}</h1>
             <p class="subflow-detail-description">${this.currentSubflow.description}</p>
           </div>
+          ${hasDiagram ? `
+            <div class="subflow-view-toggle">
+              <button class="view-toggle-btn ${!this.showDiagram ? 'active' : ''}" onclick="HubFlows.setView('steps')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                Step-by-Step
+              </button>
+              <button class="view-toggle-btn ${this.showDiagram ? 'active' : ''}" onclick="HubFlows.setView('diagram')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/><path d="M7 10v4M17 10v4M10 7h4M10 17h4"/></svg>
+                Flow Diagram
+              </button>
+            </div>
+          ` : ''}
         </div>
         
-        <div class="flow-steps-container">
-          ${this.currentSubflow.steps.map((step, index) => this.renderStep(step, index)).join('')}
-        </div>
+        ${this.showDiagram && hasDiagram ? this.renderDiagram() : `
+          <div class="flow-steps-container">
+            ${this.currentSubflow.steps.map((step, index) => this.renderStep(step, index)).join('')}
+          </div>
+        `}
       </div>
       
       <!-- Suggest Edit Modal -->
@@ -5094,10 +5261,22 @@ const HubFlows = {
     };
     const personaColor = personaColors[step.persona] || '#FFDAB9';
     
+    // Use custom stepNumber if provided, otherwise fall back to index
+    const stepNumber = step.stepNumber || (index + 1);
+    const isBranch = step.isBranch;
+    const isBranchPoint = step.isBranchPoint;
+    
+    // Determine step styling based on type
+    let stepClass = 'flow-step';
+    if (isBranch) stepClass += ' flow-step-branch';
+    if (step.branchType === 'success') stepClass += ' flow-step-success';
+    if (step.branchType === 'refund') stepClass += ' flow-step-refund';
+    if (isBranchPoint) stepClass += ' flow-step-decision';
+    
     return `
-      <div class="flow-step" style="--step-color: ${personaColor}">
+      <div class="${stepClass}" style="--step-color: ${personaColor}">
         <div class="flow-step-connector">
-          <div class="flow-step-number">${index + 1}</div>
+          <div class="flow-step-number ${isBranch ? 'flow-step-number-branch' : ''}">${stepNumber}</div>
           ${index < this.currentSubflow.steps.length - 1 ? '<div class="flow-step-line"></div>' : ''}
         </div>
         
@@ -5113,7 +5292,11 @@ const HubFlows = {
             <span class="flow-step-id">${step.id}</span>
           </div>
           
+          ${isBranchPoint ? `<div class="flow-branch-point-indicator">⚡ Decision Point - Flow branches here</div>` : ''}
+          ${isBranch ? `<div class="flow-branch-indicator ${step.branchType}">${step.branchType === 'success' ? '✅ Success Branch' : '🔄 Refund Branch'}</div>` : ''}
+          
           ${step.description ? `<p class="flow-step-description">${step.description}</p>` : ''}
+          ${step.branchNote ? `<p class="flow-branch-note">${step.branchNote}</p>` : ''}
           
           ${step.messages ? this.renderMessages(step.messages, step.id) : ''}
           ${step.fields ? this.renderFields(step.fields) : ''}
@@ -5190,7 +5373,15 @@ const HubFlows = {
   renderAPI(api) {
     return `
       <div class="flow-api">
-        <h4 class="flow-section-title">API Integration</h4>
+        <h4 class="flow-section-title">🔌 API Integration: ${api.service || 'External Service'}</h4>
+        
+        ${api.explanation ? `
+          <div class="flow-api-explanation">
+            <strong>What happens here:</strong>
+            <p>${api.explanation}</p>
+          </div>
+        ` : ''}
+        
         <div class="flow-api-details">
           <div class="flow-api-row">
             <span class="flow-api-label">Endpoint</span>
@@ -5200,17 +5391,52 @@ const HubFlows = {
             <span class="flow-api-label">Method</span>
             <code class="flow-api-value">${api.method}</code>
           </div>
-          <div class="flow-api-row">
-            <span class="flow-api-label">Model</span>
-            <code class="flow-api-value">${api.model}</code>
-          </div>
-          <div class="flow-api-row">
-            <span class="flow-api-label">Data Used</span>
-            <span class="flow-api-value">${api.dataUsed.join(', ')}</span>
-          </div>
+          ${api.requestBody ? `
+            <div class="flow-api-row">
+              <span class="flow-api-label">Scenario</span>
+              <code class="flow-api-value">${api.requestBody.scenario}</code>
+            </div>
+            <div class="flow-api-row">
+              <span class="flow-api-label">Model</span>
+              <code class="flow-api-value">${api.requestBody.model}</code>
+            </div>
+          ` : ''}
         </div>
+        
+        ${api.dataUsed ? `
+          <div class="flow-api-data-used">
+            <strong>Data sent to API:</strong>
+            <ul>
+              ${api.dataUsed.map(d => `<li>${d}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+        
+        ${api.systemPrompt ? `
+          <div class="flow-api-prompt">
+            <div class="flow-api-prompt-header">
+              <strong>📝 Full System Prompt (sent to OpenAI):</strong>
+              <button class="flow-api-copy-btn" onclick="HubFlows.copyPrompt(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </button>
+            </div>
+            <pre class="flow-api-prompt-content">${api.systemPrompt}</pre>
+          </div>
+        ` : ''}
       </div>
     `;
+  },
+
+  copyPrompt(btn) {
+    const pre = btn.closest('.flow-api-prompt').querySelector('pre');
+    if (pre) {
+      navigator.clipboard.writeText(pre.textContent).then(() => {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 6L9 17l-5-5"/></svg> Copied!';
+        setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+      });
+    }
   },
 
   renderDataStored(dataStored) {
