@@ -6041,59 +6041,152 @@ End with an encouraging message about consistency and patience.`,
                 { text: "I'm moving", style: 'primary' },
                 { text: "Other reason", style: 'secondary' }
               ],
-              next: 'Routes based on reason'
+              next: 'Routes based on reason → Discount Ladder'
             },
             {
-              id: 'CANCEL_STEP_LADDER',
+              id: 'CANCEL_LADDER_10',
               stepNumber: '2',
-              name: "Discount Ladder",
+              name: "Offer 1: 10% Off Future Shipments",
               persona: 'Amy',
               function: 'startSubscriptionLadder()',
               line: 6359,
-              isBranchPoint: true,
+              isBranch: true,
+              branchType: 'refund',
               messages: [
                 {
-                  id: 'CANCEL_LADDER_10',
-                  label: "10% Offer",
+                  id: 'CANCEL_LADDER_10_MSG',
+                  label: "Amy's 10% Offer",
                   content: "How about 10% off all future shipments? That's ongoing savings on every delivery!"
-                },
-                {
-                  id: 'CANCEL_LADDER_15',
-                  label: "15% Offer",
-                  content: "Let me do better — 15% off all future shipments. That really adds up over time!"
-                },
-                {
-                  id: 'CANCEL_LADDER_20',
-                  label: "20% Offer (Final)",
-                  content: "My best offer: 20% off all future shipments. That's significant savings!"
                 }
               ],
-              next: 'Accept → Discount Applied | Decline All → Full Cancel'
+              buttons: [
+                { text: '✓ Keep Subscription', style: 'success', action: '→ Discount applied, subscription kept' },
+                { text: '✗ Still cancel', style: 'secondary', action: '→ Proceeds to 15% offer' }
+              ],
+              onAccept: {
+                resolution: 'discount_applied',
+                message: 'Customer retained with 10% discount'
+              },
+              next: 'Accept → Thank You | Decline → 15% Offer'
             },
             {
-              id: 'CANCEL_STEP_ACCEPT',
-              stepNumber: '3A',
-              name: "Discount Accepted",
+              id: 'CANCEL_LADDER_10_ACCEPT',
+              stepNumber: '2a',
+              name: "10% Accepted",
               persona: 'Amy',
-              function: 'acceptSubscriptionOffer()',
-              line: 6395,
               isThankYou: true,
-              branchType: 'success',
+              isBranch: true,
+              branchType: 'refund',
               messages: [
                 {
-                  id: 'CANCEL_ACCEPT_MSG',
+                  id: 'CANCEL_10_ACCEPT_MSG',
                   label: "Success Message",
-                  content: "Great choice! Your [X]% discount will apply to all future shipments automatically."
+                  content: "Great choice! Your 10% discount will apply to all future shipments automatically."
                 }
               ],
               caseDetails: {
                 type: 'subscription',
-                resolution: 'discount_applied'
+                resolution: 'discount_applied',
+                discountPercent: 10
+              }
+            },
+            {
+              id: 'CANCEL_LADDER_15',
+              stepNumber: '3',
+              name: "Offer 2: 15% Off Future Shipments",
+              persona: 'Amy',
+              function: 'startSubscriptionLadder()',
+              line: 6362,
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'CANCEL_LADDER_15_MSG',
+                  label: "Amy's 15% Offer",
+                  content: "Let me do better — 15% off all future shipments. That really adds up over time!"
+                }
+              ],
+              buttons: [
+                { text: '✓ Keep Subscription', style: 'success', action: '→ Discount applied, subscription kept' },
+                { text: '✗ Still cancel', style: 'secondary', action: '→ Proceeds to 20% offer' }
+              ],
+              onAccept: {
+                resolution: 'discount_applied',
+                message: 'Customer retained with 15% discount'
+              },
+              next: 'Accept → Thank You | Decline → 20% Offer'
+            },
+            {
+              id: 'CANCEL_LADDER_15_ACCEPT',
+              stepNumber: '3a',
+              name: "15% Accepted",
+              persona: 'Amy',
+              isThankYou: true,
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'CANCEL_15_ACCEPT_MSG',
+                  label: "Success Message",
+                  content: "Great choice! Your 15% discount will apply to all future shipments automatically."
+                }
+              ],
+              caseDetails: {
+                type: 'subscription',
+                resolution: 'discount_applied',
+                discountPercent: 15
+              }
+            },
+            {
+              id: 'CANCEL_LADDER_20',
+              stepNumber: '4',
+              name: "Offer 3: 20% Off (Final Offer)",
+              persona: 'Amy',
+              function: 'startSubscriptionLadder()',
+              line: 6363,
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'CANCEL_LADDER_20_MSG',
+                  label: "Amy's 20% Offer (Final)",
+                  content: "My best offer: 20% off all future shipments. That's significant savings!"
+                }
+              ],
+              buttons: [
+                { text: '✓ Keep Subscription', style: 'success', action: '→ Discount applied, subscription kept' },
+                { text: '✗ Cancel anyway', style: 'secondary', action: '→ Proceeds to full cancellation' }
+              ],
+              onAccept: {
+                resolution: 'discount_applied',
+                message: 'Customer retained with 20% discount'
+              },
+              next: 'Accept → Thank You | Decline → Full Cancellation'
+            },
+            {
+              id: 'CANCEL_LADDER_20_ACCEPT',
+              stepNumber: '4a',
+              name: "20% Accepted",
+              persona: 'Amy',
+              isThankYou: true,
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'CANCEL_20_ACCEPT_MSG',
+                  label: "Success Message",
+                  content: "Great choice! Your 20% discount will apply to all future shipments automatically."
+                }
+              ],
+              caseDetails: {
+                type: 'subscription',
+                resolution: 'discount_applied',
+                discountPercent: 20
               }
             },
             {
               id: 'CANCEL_STEP_FULL',
-              stepNumber: '3B',
+              stepNumber: '5',
               name: "Full Cancellation",
               persona: 'Amy',
               function: 'handleFullSubscriptionCancel()',
@@ -6727,7 +6820,12 @@ End with an encouraging message about consistency and patience.`,
           html += `<div class="sim-nav-section-title">📋 Main Flow</div>`;
         } else if (newSection === 'success' && currentSection !== 'success') {
           html += `<div class="sim-nav-section-title">✅ Happy Path</div>`;
-        } else if ((newSection === 'refund' || newSection === 'ladder') && currentSection !== 'refund' && currentSection !== 'ladder') {
+        } else if (newSection === 'ladder' && currentSection !== 'ladder') {
+          // Check if this is a subscription discount ladder or refund ladder
+          const isSubscriptionLadder = step.id.includes('CANCEL_LADDER');
+          html += `<div class="sim-nav-section-title">${isSubscriptionLadder ? '🎁 Discount Offers' : '🔄 Refund Ladder'}</div>`;
+          inRefundLadder = true;
+        } else if (newSection === 'refund' && currentSection !== 'refund' && currentSection !== 'ladder') {
           html += `<div class="sim-nav-section-title">🔄 Refund Path</div>`;
           inRefundLadder = true;
         } else if (newSection === 'fullrefund' && currentSection !== 'fullrefund') {
@@ -6748,7 +6846,7 @@ End with an encouraging message about consistency and patience.`,
         badge = '<span class="sim-nav-badge success">✓ Done</span>';
       } else if (step.branchType === 'success') {
         badge = '<span class="sim-nav-badge success">Success</span>';
-      } else if (step.id.includes('LADDER_20') || step.id.includes('LADDER_30') || step.id.includes('LADDER_40') || step.id.includes('LADDER_50')) {
+      } else if (step.id.includes('LADDER_10') || step.id.includes('LADDER_15') || step.id.includes('LADDER_20') || step.id.includes('LADDER_30') || step.id.includes('LADDER_40') || step.id.includes('LADDER_50')) {
         badge = '<span class="sim-nav-badge refund">Offer</span>';
       }
 
@@ -6793,8 +6891,11 @@ End with an encouraging message about consistency and patience.`,
     const persona = this.getPersonaFromStep(step);
 
     // Check if this is an offer step (refund ladder)
-    const isOfferStep = step.id.includes('LADDER_20') || step.id.includes('LADDER_30') || 
-                        step.id.includes('LADDER_40') || step.id.includes('LADDER_50');
+    // Check for offer steps - both refund ladder (20/30/40/50) and subscription ladder (10/15/20)
+    const isOfferStep = (step.id.includes('LADDER_20') || step.id.includes('LADDER_30') || 
+                        step.id.includes('LADDER_40') || step.id.includes('LADDER_50') ||
+                        step.id.includes('LADDER_10') || step.id.includes('LADDER_15')) &&
+                        !step.id.includes('_ACCEPT');
     
     // Check if this is a thank you/success step
     const isThankYouStep = step.isThankYou;
@@ -6817,8 +6918,18 @@ End with an encouraging message about consistency and patience.`,
 
     // OFFER CARD - For refund ladder steps
     if (isOfferStep) {
-      const percent = step.id.includes('20') ? '20' : step.id.includes('30') ? '30' : step.id.includes('40') ? '40' : '50';
-      const amountText = `$XX.XX back to you`;
+      // Extract percent from step ID - handles both refund (20/30/40/50) and subscription (10/15/20) ladders
+      let percent = '20';
+      if (step.id.includes('_10') || step.id.includes('LADDER_10')) percent = '10';
+      else if (step.id.includes('_15') || step.id.includes('LADDER_15')) percent = '15';
+      else if (step.id.includes('_20') || step.id.includes('LADDER_20')) percent = '20';
+      else if (step.id.includes('_30') || step.id.includes('LADDER_30')) percent = '30';
+      else if (step.id.includes('_40') || step.id.includes('LADDER_40')) percent = '40';
+      else if (step.id.includes('_50') || step.id.includes('LADDER_50')) percent = '50';
+      
+      // Check if this is a subscription discount (10/15/20 OFF) vs refund (20/30/40/50 BACK)
+      const isSubscriptionOffer = step.id.includes('CANCEL_LADDER');
+      const amountText = isSubscriptionOffer ? `New price: $XX.XX/shipment` : `$XX.XX back to you`;
       
       // First show Amy's message
       if (step.messages && step.messages[0]) {
@@ -6836,28 +6947,39 @@ End with an encouraging message about consistency and patience.`,
       // Then show the offer card
       html += `
         <div class="sim-offer-card">
-          <div class="sim-offer-icon">💰</div>
-          <div class="sim-offer-amount">${percent}%</div>
+          <div class="sim-offer-icon">${isSubscriptionOffer ? '🎁' : '💰'}</div>
+          <div class="sim-offer-amount">${percent}%${isSubscriptionOffer ? ' OFF' : ''}</div>
           <div class="sim-offer-value">${amountText}</div>
-          <div class="sim-offer-label">Partial refund — keep your products</div>
+          <div class="sim-offer-label">${isSubscriptionOffer ? 'Applied to all future deliveries' : 'Partial refund — keep your products'}</div>
           <div class="sim-offer-buttons">
-            <button class="sim-offer-btn accept">Accept Offer</button>
-            <button class="sim-offer-btn decline">No thanks</button>
+            <button class="sim-offer-btn accept">${isSubscriptionOffer ? 'Keep Subscription' : 'Accept Offer'}</button>
+            <button class="sim-offer-btn decline">${isSubscriptionOffer ? 'Still cancel' : 'No thanks'}</button>
           </div>
-          <div class="sim-offer-note">Reviewed within 1-2 days, then 3-5 days to your account</div>
+          <div class="sim-offer-note">${isSubscriptionOffer ? 'You save $XX.XX every shipment!' : 'Reviewed within 1-2 days, then 3-5 days to your account'}</div>
         </div>
       `;
     }
 
     // SUCCESS/THANK YOU CARD
     if (isThankYouStep) {
-      // Show user's acceptance response first
-      const percent = step.id.includes('20') ? '20' : step.id.includes('30') ? '30' : 
-                      step.id.includes('40') ? '40' : step.id.includes('50') ? '50' : 'full';
+      // Show user's acceptance response first - handle all ladder percentages
+      let percent = 'full';
+      if (step.id.includes('_10') || step.id.includes('LADDER_10')) percent = '10';
+      else if (step.id.includes('_15') || step.id.includes('LADDER_15')) percent = '15';
+      else if (step.id.includes('_20') || step.id.includes('LADDER_20')) percent = '20';
+      else if (step.id.includes('_30') || step.id.includes('LADDER_30')) percent = '30';
+      else if (step.id.includes('_40') || step.id.includes('LADDER_40')) percent = '40';
+      else if (step.id.includes('_50') || step.id.includes('LADDER_50')) percent = '50';
+      
+      const isSubscriptionOffer = step.id.includes('CANCEL_');
+      
+      const acceptText = isSubscriptionOffer 
+        ? `I'll keep my subscription with ${percent}% off`
+        : `I'll accept the ${percent === 'full' ? 'full' : percent + '%'} refund`;
       
       html += `
         <div class="sim-user-response">
-          <div class="sim-user-bubble">I'll accept the ${percent === 'full' ? 'full' : percent + '%'} refund</div>
+          <div class="sim-user-bubble">${acceptText}</div>
         </div>
       `;
 
