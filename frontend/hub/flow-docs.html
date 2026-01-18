@@ -760,14 +760,22 @@
 
       const EndNode = ({ data, selected }) => {
         return React.createElement('div', {
-          style: { padding: '16px', borderRadius: '12px', background: 'white', border: selected ? '2px solid #ef4444' : '2px solid #e5e7eb', boxShadow: selected ? '0 0 0 2px rgba(239, 68, 68, 0.2), 0 10px 15px -3px rgba(0,0,0,0.1)' : '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: '160px', cursor: 'pointer' }
+          style: { 
+            padding: '16px 20px', 
+            borderRadius: '12px', 
+            background: '#ef4444', 
+            border: selected ? '2px solid #dc2626' : '2px solid #ef4444', 
+            boxShadow: selected ? '0 0 0 3px rgba(239, 68, 68, 0.3), 0 10px 15px -3px rgba(0,0,0,0.15)' : '0 10px 15px -3px rgba(0,0,0,0.1)', 
+            minWidth: '180px', 
+            cursor: 'pointer' 
+          }
         },
-          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#ef4444', width: '10px', height: '10px', border: '2px solid white' } }),
-          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
-            React.createElement('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' } }, React.createElement(Icons.Flag, null)),
-            React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#6b7280' } }, 'End Flow')
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#fca5a5', width: '10px', height: '10px', border: '2px solid white' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' } },
+            React.createElement('div', { style: { color: 'white' } }, React.createElement(Icons.Flag, null)),
+            React.createElement('span', { style: { fontSize: '14px', fontWeight: 600, color: 'white' } }, 'End')
           ),
-          React.createElement('p', { style: { fontSize: '14px', color: '#374151', marginTop: '8px', fontWeight: 500 } }, data.title || 'Complete + survey')
+          React.createElement('p', { style: { fontSize: '15px', color: 'rgba(255,255,255,0.9)', margin: 0, fontWeight: 500 } }, data.title || 'Thank You!')
         );
       };
 
