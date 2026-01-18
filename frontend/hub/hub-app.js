@@ -5120,7 +5120,8 @@ End with an encouraging message about consistency and patience.`,
   selectSubflow(subflowId) {
     if (!this.currentFlow) return;
     this.currentSubflow = this.currentFlow.subflows[subflowId];
-    this.showDiagram = false; // Reset to step view when selecting a new subflow
+    this.showDiagram = false;
+    this.currentStepIndex = 0; // Start at first step in simulator
     this.render();
   },
 
@@ -5133,6 +5134,33 @@ End with an encouraging message about consistency and patience.`,
         mermaid.init(undefined, '.mermaid-diagram');
       }, 100);
     }
+  },
+
+  // Simulator state
+  currentStepIndex: 0,
+
+  goToStep(index) {
+    this.currentStepIndex = index;
+    this.renderSimulator();
+  },
+
+  nextStep() {
+    if (this.currentStepIndex < this.currentSubflow.steps.length - 1) {
+      this.currentStepIndex++;
+      this.renderSimulator();
+    }
+  },
+
+  prevStep() {
+    if (this.currentStepIndex > 0) {
+      this.currentStepIndex--;
+      this.renderSimulator();
+    }
+  },
+
+  resetSimulator() {
+    this.currentStepIndex = 0;
+    this.renderSimulator();
   },
 
   renderDiagram() {
@@ -5188,8 +5216,8 @@ End with an encouraging message about consistency and patience.`,
           ${hasDiagram ? `
             <div class="subflow-view-toggle">
               <button class="view-toggle-btn ${!this.showDiagram ? 'active' : ''}" onclick="HubFlows.setView('steps')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-                Step-by-Step
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                Simulator
               </button>
               <button class="view-toggle-btn ${this.showDiagram ? 'active' : ''}" onclick="HubFlows.setView('diagram')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/><path d="M7 10v4M17 10v4M10 7h4M10 17h4"/></svg>
@@ -5200,9 +5228,7 @@ End with an encouraging message about consistency and patience.`,
         </div>
         
         ${this.showDiagram && hasDiagram ? this.renderDiagram() : `
-          <div class="flow-steps-container">
-            ${this.currentSubflow.steps.map((step, index) => this.renderStep(step, index)).join('')}
-          </div>
+          <div id="flowSimulator"></div>
         `}
       </div>
       
@@ -5236,6 +5262,308 @@ End with an encouraging message about consistency and patience.`,
         </div>
       </div>
     `;
+
+    // Render the simulator if not showing diagram
+    if (!this.showDiagram) {
+      this.renderSimulator();
+    }
+  },
+
+  renderSimulator() {
+    const container = document.getElementById('flowSimulator');
+    if (!container || !this.currentSubflow) return;
+
+    const steps = this.currentSubflow.steps;
+    const currentStep = steps[this.currentStepIndex];
+    const persona = this.getPersonaFromStep(currentStep);
+
+    container.innerHTML = `
+      <div class="flow-simulator">
+        <!-- Left: Step Navigation -->
+        <div class="sim-nav">
+          <div class="sim-nav-header">
+            <h3>Flow Steps</h3>
+            <p>Click to jump to any step</p>
+          </div>
+          <div class="sim-nav-list">
+            ${this.renderSimNavItems(steps)}
+          </div>
+        </div>
+
+        <!-- Center: Chat Simulation -->
+        <div class="sim-chat">
+          <div class="sim-chat-header">
+            <img src="${this.avatars[persona]}" alt="${persona}" class="sim-chat-avatar">
+            <div class="sim-chat-info">
+              <h4>${persona.charAt(0).toUpperCase() + persona.slice(1)}</h4>
+              <span>${this.getPersonaTitle(persona)}</span>
+            </div>
+            <span class="sim-chat-step-indicator">Step ${this.currentStepIndex + 1} of ${steps.length}</span>
+          </div>
+          
+          <div class="sim-chat-messages" id="simChatMessages">
+            ${this.renderSimChatContent(currentStep)}
+          </div>
+          
+          <div class="sim-chat-footer">
+            <button class="sim-reset-btn" onclick="HubFlows.resetSimulator()" title="Reset to start">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 01-9 9 9.75 9.75 0 01-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+            </button>
+            <button class="sim-continue-btn" onclick="HubFlows.nextStep()" ${this.currentStepIndex >= steps.length - 1 ? 'disabled' : ''}>
+              ${this.currentStepIndex >= steps.length - 1 ? 'End of Flow' : 'Continue'}
+              ${this.currentStepIndex < steps.length - 1 ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M5 12h14M12 5l7 7-7 7"/></svg>' : ''}
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Documentation Panel -->
+        <div class="sim-docs">
+          <div class="sim-docs-header">
+            <h3>Step Details</h3>
+            <div class="sim-docs-step-name">${currentStep.name}</div>
+          </div>
+          <div class="sim-docs-content">
+            ${this.renderSimDocs(currentStep)}
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderSimNavItems(steps) {
+    let html = '';
+    let currentSection = null;
+
+    steps.forEach((step, index) => {
+      // Check if we need a new section header
+      if (step.isBranch && step.branchType !== currentSection) {
+        currentSection = step.branchType;
+        const sectionTitle = step.branchType === 'success' ? '✅ Happy Path' : '🔄 Refund Path';
+        html += `<div class="sim-nav-section-title">${sectionTitle}</div>`;
+      } else if (!step.isBranch && currentSection !== 'main') {
+        currentSection = 'main';
+        if (index === 0) {
+          html += `<div class="sim-nav-section-title">Main Flow</div>`;
+        }
+      }
+
+      const isActive = index === this.currentStepIndex;
+      const isCompleted = index < this.currentStepIndex;
+      const stepNum = step.stepNumber || (index + 1);
+      
+      let badge = '';
+      if (step.isBranchPoint) badge = '<span class="sim-nav-badge decision">Decision</span>';
+      else if (step.branchType === 'success') badge = '<span class="sim-nav-badge success">Success</span>';
+      else if (step.branchType === 'refund') badge = '<span class="sim-nav-badge refund">Refund</span>';
+
+      html += `
+        <div class="sim-nav-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''} ${step.isBranch ? 'branch' : ''}" 
+             onclick="HubFlows.goToStep(${index})">
+          <span class="sim-nav-step-num">${stepNum}</span>
+          <span class="sim-nav-step-name">${step.name}</span>
+          ${badge}
+        </div>
+      `;
+    });
+
+    return html;
+  },
+
+  getPersonaFromStep(step) {
+    const persona = (step.persona || '').toLowerCase();
+    if (persona.includes('claudia')) return 'claudia';
+    if (persona.includes('sarah')) return 'sarah';
+    return 'amy';
+  },
+
+  getPersonaTitle(persona) {
+    const titles = {
+      amy: 'Customer Support',
+      claudia: 'Veterinarian',
+      sarah: 'CX Lead'
+    };
+    return titles[persona] || 'Support';
+  },
+
+  renderSimChatContent(step) {
+    let html = '';
+
+    // Render messages
+    if (step.messages) {
+      step.messages.forEach(msg => {
+        const persona = this.getPersonaFromLabel(msg.label);
+        html += `
+          <div class="sim-msg bot">
+            <img src="${this.avatars[persona]}" alt="${persona}" class="sim-msg-avatar">
+            <div class="sim-msg-content">
+              <span class="sim-msg-sender ${persona}">${persona.charAt(0).toUpperCase() + persona.slice(1)}</span>
+              <div class="sim-msg-bubble">${msg.content.replace(/\n/g, '<br>')}</div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // Render form if present
+    if (step.fields) {
+      html += `<div class="sim-form">`;
+      step.fields.forEach(field => {
+        html += `
+          <div class="sim-form-group">
+            <label class="sim-form-label">${field.label}${field.required ? ' *' : ''}</label>
+            ${field.type === 'textarea' 
+              ? `<textarea class="sim-form-input" placeholder="${field.placeholder || ''}" rows="3"></textarea>`
+              : `<input type="text" class="sim-form-input" placeholder="${field.placeholder || ''}">`
+            }
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+
+    // Render buttons if present
+    if (step.buttons) {
+      html += `<div class="sim-buttons">`;
+      step.buttons.forEach(btn => {
+        const btnClass = btn.style || 'primary';
+        html += `<button class="sim-btn ${btnClass}">${btn.text}</button>`;
+      });
+      html += `</div>`;
+    }
+
+    // If decision point, show the choices
+    if (step.isBranchPoint && step.buttons) {
+      // Already rendered above
+    }
+
+    return html;
+  },
+
+  renderSimDocs(step) {
+    let html = '';
+
+    // Step info
+    html += `
+      <div class="sim-docs-section">
+        <div class="sim-docs-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          Step Info
+        </div>
+        <div class="sim-docs-info">
+          <div class="sim-docs-info-row">
+            <span class="sim-docs-info-label">ID</span>
+            <span class="sim-docs-info-value"><code>${step.id}</code></span>
+          </div>
+          <div class="sim-docs-info-row">
+            <span class="sim-docs-info-label">Persona</span>
+            <span class="sim-docs-info-value">${step.persona}</span>
+          </div>
+          <div class="sim-docs-info-row">
+            <span class="sim-docs-info-label">Function</span>
+            <span class="sim-docs-info-value"><code>${step.function}</code></span>
+          </div>
+          <div class="sim-docs-info-row">
+            <span class="sim-docs-info-label">Line</span>
+            <span class="sim-docs-info-value">${step.line}</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Messages (editable)
+    if (step.messages && step.messages.length > 0) {
+      html += `
+        <div class="sim-docs-section">
+          <div class="sim-docs-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            Messages
+          </div>
+          ${step.messages.map(msg => `
+            <div class="sim-docs-message">
+              <button class="sim-docs-edit-btn" onclick="HubFlows.openEditModalById('${msg.id}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit
+              </button>
+              <div class="sim-docs-message-label">${msg.label}</div>
+              <div class="sim-docs-message-content">${msg.content.replace(/\n/g, '<br>')}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // Store message data for edit modal
+      step.messages.forEach(msg => {
+        this.messageData[msg.id] = { stepId: step.id, ...msg };
+      });
+    }
+
+    // Data stored
+    if (step.dataStored && step.dataStored.length > 0) {
+      html += `
+        <div class="sim-docs-section">
+          <div class="sim-docs-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+            Data Stored
+          </div>
+          <div class="sim-docs-data-list">
+            ${step.dataStored.map(d => `<span class="sim-docs-data-badge">${d}</span>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // API info
+    if (step.api) {
+      html += `
+        <div class="sim-docs-section">
+          <div class="sim-docs-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            API: ${step.api.service}
+          </div>
+          <div class="sim-docs-info">
+            <div class="sim-docs-info-row">
+              <span class="sim-docs-info-label">Endpoint</span>
+              <span class="sim-docs-info-value"><code>${step.api.endpoint}</code></span>
+            </div>
+            <div class="sim-docs-info-row">
+              <span class="sim-docs-info-label">Method</span>
+              <span class="sim-docs-info-value">${step.api.method}</span>
+            </div>
+          </div>
+          ${step.api.explanation ? `
+            <p style="font-size: 13px; color: var(--gray-600); margin-top: 12px; line-height: 1.5;">${step.api.explanation}</p>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // Next step info
+    if (step.next) {
+      html += `
+        <div class="sim-docs-section">
+          <div class="sim-docs-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            Next
+          </div>
+          <p style="font-size: 13px; color: var(--gray-600);">${step.next}</p>
+        </div>
+      `;
+    }
+
+    // Outcome
+    if (step.outcome) {
+      html += `
+        <div class="sim-docs-section">
+          <div class="sim-docs-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+            Outcome
+          </div>
+          <p style="font-size: 13px; color: var(--gray-600);">${step.outcome}</p>
+        </div>
+      `;
+    }
+
+    return html;
   },
 
   renderStep(step, index) {
