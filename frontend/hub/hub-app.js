@@ -4637,4556 +4637,1067 @@ const HubDuplicates = {
 };
 
 // ============================================
-// FLOW DOCUMENTATION PAGE
+// FLOW DOCUMENTATION PAGE - React Flow Style
 // ============================================
 const HubFlows = {
   currentFlow: null,
   currentSubflow: null,
-  editContext: null,
-  showDiagram: false,
+  selectedNode: null,
+  expandedFlows: {},
+  simulatorOpen: false,
 
-  // Flow data structure
+  // Node type icons (matching resolution-center)
+  nodeIcons: {
+    start: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10,8 16,12 10,16" fill="currentColor"/></svg>`,
+    message: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`,
+    options: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
+    condition: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 01-9 9"/></svg>`,
+    form: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>`,
+    api: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/></svg>`,
+    ai: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="4"/></svg>`,
+    ladder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/><polyline points="17,6 23,6 23,12"/></svg>`,
+    offer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`,
+    case: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>`,
+    end: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`
+  },
+
+  // Flow data structure - simplified for React Flow canvas
   flows: {
+    track_order: {
+      id: 'track_order',
+      name: 'Track My Order',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
+      color: '#3b82f6',
+      subflows: {
+        tracking_status: {
+          id: 'tracking_status',
+          name: 'Check Tracking Status',
+          description: 'Customer wants to know where their order is',
+          nodes: [
+            { id: 'n1', type: 'start', x: 200, y: 50, data: { label: 'Start', triggers: ['track_order'] } },
+            { id: 'n2', type: 'message', x: 200, y: 150, data: { persona: 'amy', content: "Hi! I'm Amy, your PuppyPad support assistant. 🐕 Let me help you track your order!" } },
+            { id: 'n3', type: 'form', x: 200, y: 260, data: { formType: 'identify', title: 'Find Your Order', fields: ['email', 'order_number'] } },
+            { id: 'n4', type: 'api', x: 200, y: 370, data: { service: 'shopify', endpoint: 'lookupOrder', storeAs: 'order' } },
+            { id: 'n5', type: 'api', x: 200, y: 480, data: { service: 'parcelpanel', endpoint: 'getTracking', storeAs: 'tracking' } },
+            { id: 'n6', type: 'message', x: 200, y: 590, data: { persona: 'amy', content: "Great news! I found your order. Here's the latest tracking info:" } },
+            { id: 'n7', type: 'end', x: 200, y: 700, data: { title: 'Tracking Displayed', showSurvey: true } }
+          ],
+          edges: [
+            { source: 'n1', target: 'n2' },
+            { source: 'n2', target: 'n3' },
+            { source: 'n3', target: 'n4' },
+            { source: 'n4', target: 'n5' },
+            { source: 'n5', target: 'n6' },
+            { source: 'n6', target: 'n7' }
+          ]
+        }
+      }
+    },
     help_with_order: {
       id: 'help_with_order',
       name: 'Help With Order',
-      description: 'Customer support flows for order-related issues',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
-      color: '#A8D8EA',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+      color: '#8b5cf6',
       subflows: {
+        changed_mind: {
+          id: 'changed_mind',
+          name: 'Changed My Mind',
+          description: 'Customer wants a refund because they changed their mind',
+          nodes: [
+            { id: 'n1', type: 'start', x: 200, y: 50, data: { label: 'Changed Mind', triggers: ['refund'] } },
+            { id: 'n2', type: 'message', x: 200, y: 150, data: { persona: 'amy', content: "I understand, and I appreciate you being upfront about it. Let me see what options we have for you!" } },
+            { id: 'n3', type: 'api', x: 200, y: 260, data: { service: 'shopify', endpoint: 'lookupOrder', storeAs: 'order' } },
+            { id: 'n4', type: 'condition', x: 200, y: 370, data: { variable: 'order.daysSinceDelivery', operator: 'lessThan', value: 90 } },
+            { id: 'n5', type: 'offer', x: 80, y: 480, data: { percent: 20, label: 'Keep product + 20% refund' } },
+            { id: 'n6', type: 'offer', x: 80, y: 590, data: { percent: 30, label: 'Keep product + 30% refund' } },
+            { id: 'n7', type: 'offer', x: 80, y: 700, data: { percent: 40, label: 'Keep product + 40% refund' } },
+            { id: 'n8', type: 'case', x: 80, y: 810, data: { type: 'refund', priority: 'normal' } },
+            { id: 'n9', type: 'message', x: 320, y: 480, data: { persona: 'amy', content: "I'm sorry, but our 90-day guarantee has expired for this order." } },
+            { id: 'n10', type: 'end', x: 200, y: 920, data: { title: 'Case Submitted', showSurvey: true } }
+          ],
+          edges: [
+            { source: 'n1', target: 'n2' },
+            { source: 'n2', target: 'n3' },
+            { source: 'n3', target: 'n4' },
+            { source: 'n4', target: 'n5', label: 'Yes' },
+            { source: 'n4', target: 'n9', label: 'No' },
+            { source: 'n5', target: 'n6', label: 'Decline' },
+            { source: 'n6', target: 'n7', label: 'Decline' },
+            { source: 'n7', target: 'n8', label: 'Decline' },
+            { source: 'n5', target: 'n8', label: 'Accept' },
+            { source: 'n6', target: 'n8', label: 'Accept' },
+            { source: 'n7', target: 'n8', label: 'Accept' },
+            { source: 'n8', target: 'n10' }
+          ]
+        },
         dog_not_using: {
           id: 'dog_not_using',
           name: 'Dog Not Using Product',
-          description: 'When customer reports their dog is not using the PuppyPad',
-          // Mermaid diagram definition - compact and clear
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([🐕 Dog Not Using])
-      S1[Amy Intro]
-      S2[Dog Info Form]
-      S3[Transition to Claudia]
-      S5{Happy with Tips?}
-      HAPPY([✅ Resolved - No Case])
-      REFUND[Wants Refund]
-      G{Within 90 days?}
-      NO([❌ Guarantee Expired])
-      R20[20% Offer]
-      R30[30% Offer]
-      R40[40% Offer]
-      R50[50% Offer]
-      FULL[Full Refund]
-      LOC{US or Intl?}
-    end
-
-    subgraph API["🔌 External APIs"]
-      OPENAI[(🤖 OpenAI<br/>gpt-4o)]
-      SHOPIFY[(🛒 Shopify<br/>Order Data)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_REFUND[📁 Hub: Refunds]
-      HUB_RETURN[📁 Hub: Returns]
-    end
-
-    START --> S1 --> S2 --> S3
-    S3 -.->|POST /api/ai-response| OPENAI
-    OPENAI -.->|AI Training Tips| S3
-    S3 --> S5
-    S5 -->|Yes| HAPPY
-    S5 -->|No| REFUND --> G
-    G -.->|Check delivered_at| SHOPIFY
-    G -->|Expired| NO
-    G -->|Valid| R20
-    R20 -->|Accept| D1
-    R20 -->|Decline| R30 -->|Decline| R40 -->|Decline| R50
-    R50 -->|Accept| D1
-    R50 -->|Full| FULL --> LOC
-    LOC -->|US| HUB_RETURN
-    LOC -->|Intl| HUB_REFUND
-    D1 --> HUB_REFUND
-
-    style START fill:#A8D8EA,stroke:#1a365d
-    style HAPPY fill:#C8E6C9,stroke:#2d5a2e
-    style NO fill:#FFCDD2,stroke:#c62828
-    style OPENAI fill:#10a37f,stroke:#0d8a6a,color:#fff
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff
-    style HUB_RETURN fill:#8b5cf6,stroke:#7c3aed,color:#fff`,
-          steps: [
-            {
-              id: 'DOG_STEP_1',
-              stepNumber: '1',
-              name: "Amy's Introduction",
-              persona: 'Amy',
-              function: 'handleDogNotUsing()',
-              line: 2128,
-              messages: [
-                {
-                  id: 'DOG_STEP_1_MESSAGE',
-                  label: "Amy's Message",
-                  content: "I understand — the main reason you purchased this was to solve your problem, and we want to make sure it works for you! 🐕\n\nLet me get some details about your pup so we can help."
-                }
-              ],
-              next: 'Renders dog info form'
-            },
-            {
-              id: 'DOG_STEP_2',
-              stepNumber: '2',
-              name: 'Dog Info Form',
-              persona: 'Amy',
-              function: 'renderDogInfoForm()',
-              line: 2136,
-              fields: [
-                { id: 'DOG_FORM_NAME', label: "Dog's Name", type: 'text', required: true, placeholder: 'e.g., Max' },
-                { id: 'DOG_FORM_BREED', label: 'Breed', type: 'text', required: true, placeholder: 'e.g., Golden Retriever' },
-                { id: 'DOG_FORM_AGE', label: 'Age', type: 'text', required: true, placeholder: 'e.g., 2 years' },
-                { id: 'DOG_FORM_METHODS', label: 'What have you tried so far?', type: 'textarea', required: false, placeholder: "Tell us what methods you've already attempted..." }
-              ],
-              buttons: [
-                { id: 'DOG_FORM_ADD_BTN', text: '+ Add Another Dog', style: 'secondary', action: 'Adds another dog entry (Dog 2, Dog 3, etc.)' },
-                { id: 'DOG_FORM_SUBMIT_BTN', text: 'Get Personalized Tips', style: 'primary', action: 'Validates all required fields are filled, then submits to Step 3' }
-              ],
-              dataStored: ['state.dogs (array of dog objects with name, breed, age)', 'state.methodsTried (string of training methods customer has tried)']
-            },
-            {
-              id: 'DOG_STEP_3',
-              stepNumber: '3',
-              name: 'Transition to Claudia',
-              persona: 'Amy → Claudia',
-              function: 'submitDogInfo()',
-              line: 2222,
-              messages: [
-                {
-                  id: 'DOG_STEP_3_AMY_MESSAGE',
-                  label: "Amy's Handoff",
-                  content: "Thanks for sharing! I'm connecting you with our dog trainer, Claudia. She's amazing at this! 🐾❤️"
-                },
-                {
-                  id: 'DOG_STEP_3_CLAUDIA_INTRO',
-                  label: "Claudia's Introduction",
-                  content: "Hi! I'm Claudia, PuppyPad's dog training expert. I've helped thousands of pet parents with potty training challenges.\n\nBased on what you've shared about [dog name(s)], here are my personalized recommendations:"
-                }
-              ],
-              api: {
-                service: 'OpenAI GPT-4o',
-                endpoint: '/api/ai-response',
-                method: 'POST',
-                explanation: 'This step calls the OpenAI API to generate personalized dog training tips. The system sends all the collected dog information to GPT-4o, which acts as "Claudia" - a friendly dog trainer persona. The AI analyzes the dog\'s breed, age, and what the customer has already tried, then generates customized recommendations.',
-                requestBody: {
-                  scenario: 'dog_tips',
-                  model: 'gpt-4o',
-                  data: {
-                    dogs: '[Array of dog objects from form]',
-                    methodsTried: '[String from form]',
-                    customerName: '[From order lookup]'
-                  }
-                },
-                systemPrompt: `You are Claudia, PuppyPad's friendly dog trainer and potty training expert. You've helped thousands of pet parents successfully train their dogs to use PuppyPad.
-
-Your personality:
-- Warm, encouraging, and supportive
-- Use emojis occasionally (🐕 🐾 💙)
-- Speak directly to the pet parent
-- Always be positive about the dog's ability to learn
-
-Your task:
-Based on the dog information provided, give 3-5 specific, actionable tips for getting the dog to use the PuppyPad. Consider:
-1. The dog's breed characteristics (some breeds are easier/harder to train)
-2. The dog's age (puppies vs adult dogs have different needs)
-3. What training methods have already been tried (don't repeat failed approaches)
-
-Format your response as numbered tips. Keep each tip concise but specific.
-End with an encouraging message about consistency and patience.`,
-                dataUsed: [
-                  'Dog name(s) - to personalize the response',
-                  'Breed(s) - different breeds have different training needs',
-                  'Age(s) - puppies vs adults require different approaches',
-                  'Methods tried - to avoid suggesting what already failed'
-                ]
-              }
-            },
-            {
-              id: 'DOG_STEP_4',
-              stepNumber: '4',
-              name: 'AI-Generated Tips',
-              persona: 'Claudia',
-              function: 'displayDogTips()',
-              line: 2280,
-              messages: [
-                {
-                  id: 'DOG_STEP_4_TIPS',
-                  label: 'AI Tips (Dynamic)',
-                  content: "[This content is dynamically generated by OpenAI based on dog info]\n\nExample output:\n1. For Golden Retrievers like Max, the key is positive reinforcement. Try placing high-value treats on the pad and praising enthusiastically when he sniffs or steps on it! 🐕\n\n2. At 2 years old, Max is past the puppy stage but still very trainable. Consistency is your friend - take him to the pad every 2-3 hours.\n\n3. Since you mentioned treats haven't worked, let's try a different approach: use the pad right after meals when his need is strongest.\n\n4. Golden Retrievers are people-pleasers! Make it a celebration every time he uses the pad correctly. 🎉"
-                },
-                {
-                  id: 'DOG_STEP_4_CLOSING',
-                  label: 'Closing Message',
-                  content: "Give these a try for 5-7 days and you should see improvement! 🌟"
-                }
-              ],
-              next: 'Shows satisfaction check'
-            },
-            {
-              id: 'DOG_STEP_5',
-              stepNumber: '5',
-              name: 'Satisfaction Check',
-              persona: 'Amy',
-              function: 'showSatisfactionCheck()',
-              line: 2320,
-              isBranchPoint: true,
-              messages: [
-                {
-                  id: 'DOG_STEP_5_MESSAGE',
-                  label: "Amy's Question",
-                  content: "Did Claudia's tips help? Are you feeling good about trying these suggestions?"
-                }
-              ],
-              buttons: [
-                { id: 'DOG_STEP_5_YES', text: "😊 Yes, I'll try these!", style: 'success', action: '→ Goes to Step 6A (Happy Ending)' },
-                { id: 'DOG_STEP_5_NO', text: "😔 No, I need more help", style: 'warning', action: '→ Goes to Step 6B (Refund Ladder)' }
-              ],
-              branchNote: 'This is a decision point. The flow splits into two branches based on customer response.'
-            },
-            {
-              id: 'DOG_STEP_6A',
-              stepNumber: '6A',
-              name: 'Happy Ending (Customer Satisfied)',
-              persona: 'Amy',
-              function: 'handleSatisfied()',
-              line: 2350,
-              isBranch: true,
-              branchType: 'success',
-              messages: [
-                {
-                  id: 'DOG_STEP_6A_MESSAGE',
-                  label: 'Success Message',
-                  content: "That's wonderful! 🎉 Remember, consistency is key. If you have any questions while trying these tips, just come back and chat with us.\n\nWishing you and your pup the best! 🐾💙"
-                }
-              ],
-              outcome: 'Flow ends successfully. No case is created in the Resolution Hub. Customer will try the tips.',
-              caseCreated: false
-            },
-            // REFUND PATH - Step 6B: 90-Day Guarantee Check
-            {
-              id: 'DOG_STEP_6B_GUARANTEE',
-              stepNumber: '6B',
-              name: '90-Day Guarantee Check',
-              persona: 'Amy',
-              function: 'checkGuaranteeEligibility()',
-              line: 2380,
-              isBranch: true,
-              branchType: 'refund',
-              description: 'Before offering refunds, the system checks if the order is within the 90-day satisfaction guarantee period.',
-              messages: [
-                {
-                  id: 'DOG_6B_GUARANTEE_MSG',
-                  label: 'System Check',
-                  content: '⏳ Checking order delivery date against 90-day guarantee window...'
-                }
-              ],
-              api: {
-                service: 'Shopify Order Data',
-                endpoint: 'Uses stored order.delivered_at',
-                method: 'Local check',
-                explanation: 'The system automatically checks if the order delivery date is within the last 90 days. This uses the Shopify order data already retrieved when the customer entered their order number. No additional API call needed.'
-              },
-              branches: [
-                { condition: 'Expired (>90 days)', action: 'Shows "guarantee expired" message, flow ends' },
-                { condition: 'Valid (≤90 days)', action: 'Proceeds to 20% offer' }
-              ],
-              expiredMessage: {
-                id: 'DOG_6B_EXPIRED_MSG',
-                label: 'Amy\'s Message (Guarantee Expired)',
-                content: "I understand you're not satisfied, but unfortunately your 90-day guarantee period has expired. We can't process a refund at this time.\n\nWould you like me to help you with anything else?"
-              },
-              next: 'If valid → 20% Offer'
-            },
-            // REFUND PATH - Step 7: 20% Offer
-            {
-              id: 'DOG_STEP_LADDER_20',
-              stepNumber: '7',
-              name: 'Offer 1: 20% Partial Refund',
-              persona: 'Amy',
-              function: 'showRefundOffer(20)',
-              line: 2420,
-              isBranch: true,
-              branchType: 'refund',
-              description: 'First offer in the refund ladder - 20% partial refund as a gesture of goodwill.',
-              messages: [
-                {
-                  id: 'DOG_LADDER_20_MSG',
-                  label: 'Amy\'s 20% Offer',
-                  content: "I completely understand. Since the product isn't working for your pup, I'd like to offer you a 20% partial refund as a gesture of goodwill.\n\nThis way you can keep trying the tips while getting some money back. Would that work for you?"
-                }
-              ],
-              buttons: [
-                { text: '✓ Accept 20% Refund', style: 'success', action: '→ Creates case, shows thank you' },
-                { text: '✗ I need more help', style: 'secondary', action: '→ Proceeds to 30% offer' }
-              ],
-              onAccept: {
-                thankYouMessage: "Thank you! I've submitted your 20% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.\n\nYou can keep using the product and trying Claudia's tips!",
-                caseCreated: {
-                  type: 'refund',
-                  resolution: 'partial_20',
-                  issueType: 'Dog not using product',
-                  hubNote: 'Customer accepted 20% partial refund after dog training tips didn\'t work'
-                },
-                customerEmail: 'Refund confirmation email with amount and timeline'
-              },
-              next: 'Accept → Thank You | Decline → 30% Offer'
-            },
-            // Thank You for 20%
-            {
-              id: 'DOG_STEP_THANKYOU_20',
-              stepNumber: '7a',
-              name: 'Thank You: 20% Accepted',
-              persona: 'Amy',
-              function: 'showRefundThankYou(20)',
-              line: 2445,
-              isBranch: true,
-              branchType: 'refund',
-              isThankYou: true,
-              description: 'Confirmation screen when customer accepts 20% refund.',
-              messages: [
-                {
-                  id: 'DOG_THANKYOU_20_MSG',
-                  label: 'Thank You Message',
-                  content: "Thank you! I've submitted your 20% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.\n\nYou can keep using the product and trying Claudia's tips!"
-                }
-              ],
-              caseDetails: {
-                type: 'refund',
-                resolution: 'partial_20',
-                refundAmount: '20% of order total',
-                issueText: 'Dog not using product - customer accepted 20% partial refund',
-                status: 'pending',
-                assignedTo: 'CX Team queue'
-              },
-              richpanelNote: 'Case synced to Richpanel with refund details and customer conversation summary',
-              customerEmailSent: true,
-              surveyTriggered: true,
-              outcome: 'Flow ends. Case created in Resolution Hub. Customer receives confirmation email.'
-            },
-            // REFUND PATH - Step 8: 30% Offer
-            {
-              id: 'DOG_STEP_LADDER_30',
-              stepNumber: '8',
-              name: 'Offer 2: 30% Partial Refund',
-              persona: 'Amy',
-              function: 'showRefundOffer(30)',
-              line: 2480,
-              isBranch: true,
-              branchType: 'refund',
-              description: 'Second offer - increased to 30% partial refund.',
-              messages: [
-                {
-                  id: 'DOG_LADDER_30_MSG',
-                  label: 'Amy\'s 30% Offer',
-                  content: "I hear you. Let me increase that offer to 30% partial refund. This gives you a significant refund while still having the product to work with.\n\nWould 30% back work for you?"
-                }
-              ],
-              buttons: [
-                { text: '✓ Accept 30% Refund', style: 'success', action: '→ Creates case, shows thank you' },
-                { text: '✗ I need more help', style: 'secondary', action: '→ Proceeds to 40% offer' }
-              ],
-              onAccept: {
-                thankYouMessage: "Thank you! I've submitted your 30% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.",
-                caseCreated: {
-                  type: 'refund',
-                  resolution: 'partial_30',
-                  issueType: 'Dog not using product',
-                  hubNote: 'Customer accepted 30% partial refund after declining 20%'
-                }
-              },
-              next: 'Accept → Thank You | Decline → 40% Offer'
-            },
-            // Thank You for 30%
-            {
-              id: 'DOG_STEP_THANKYOU_30',
-              stepNumber: '8a',
-              name: 'Thank You: 30% Accepted',
-              persona: 'Amy',
-              function: 'showRefundThankYou(30)',
-              line: 2505,
-              isBranch: true,
-              branchType: 'refund',
-              isThankYou: true,
-              description: 'Confirmation screen when customer accepts 30% refund.',
-              messages: [
-                {
-                  id: 'DOG_THANKYOU_30_MSG',
-                  label: 'Thank You Message',
-                  content: "Thank you! I've submitted your 30% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank."
-                }
-              ],
-              caseDetails: {
-                type: 'refund',
-                resolution: 'partial_30',
-                refundAmount: '30% of order total',
-                issueText: 'Dog not using product - customer accepted 30% partial refund',
-                status: 'pending'
-              },
-              outcome: 'Flow ends. Case created. Customer receives confirmation email.'
-            },
-            // REFUND PATH - Step 9: 40% Offer
-            {
-              id: 'DOG_STEP_LADDER_40',
-              stepNumber: '9',
-              name: 'Offer 3: 40% Partial Refund',
-              persona: 'Amy',
-              function: 'showRefundOffer(40)',
-              line: 2540,
-              isBranch: true,
-              branchType: 'refund',
-              description: 'Third offer - 40% partial refund, almost half the money back.',
-              messages: [
-                {
-                  id: 'DOG_LADDER_40_MSG',
-                  label: 'Amy\'s 40% Offer',
-                  content: "I really want to make this right. How about 40% partial refund? That's almost half your money back.\n\nDoes that sound fair?"
-                }
-              ],
-              buttons: [
-                { text: '✓ Accept 40% Refund', style: 'success', action: '→ Creates case, shows thank you' },
-                { text: '✗ I need more help', style: 'secondary', action: '→ Proceeds to 50% offer' }
-              ],
-              onAccept: {
-                thankYouMessage: "Thank you! I've submitted your 40% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.",
-                caseCreated: {
-                  type: 'refund',
-                  resolution: 'partial_40',
-                  issueType: 'Dog not using product',
-                  hubNote: 'Customer accepted 40% partial refund after declining 20% and 30%'
-                }
-              },
-              next: 'Accept → Thank You | Decline → 50% Offer'
-            },
-            // Thank You for 40%
-            {
-              id: 'DOG_STEP_THANKYOU_40',
-              stepNumber: '9a',
-              name: 'Thank You: 40% Accepted',
-              persona: 'Amy',
-              function: 'showRefundThankYou(40)',
-              line: 2565,
-              isBranch: true,
-              branchType: 'refund',
-              isThankYou: true,
-              description: 'Confirmation screen when customer accepts 40% refund.',
-              messages: [
-                {
-                  id: 'DOG_THANKYOU_40_MSG',
-                  label: 'Thank You Message',
-                  content: "Thank you! I've submitted your 40% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank."
-                }
-              ],
-              caseDetails: {
-                type: 'refund',
-                resolution: 'partial_40',
-                refundAmount: '40% of order total',
-                issueText: 'Dog not using product - customer accepted 40% partial refund',
-                status: 'pending'
-              },
-              outcome: 'Flow ends. Case created. Customer receives confirmation email.'
-            },
-            // REFUND PATH - Step 10: 50% Offer
-            {
-              id: 'DOG_STEP_LADDER_50',
-              stepNumber: '10',
-              name: 'Offer 4: 50% Partial Refund',
-              persona: 'Amy',
-              function: 'showRefundOffer(50)',
-              line: 2600,
-              isBranch: true,
-              branchType: 'refund',
-              description: 'Fourth offer - 50% partial refund, half the money back.',
-              messages: [
-                {
-                  id: 'DOG_LADDER_50_MSG',
-                  label: 'Amy\'s 50% Offer',
-                  content: "Okay, let's do 50% back - that's half of what you paid. This is a generous offer that lets you keep trying while getting substantial money back.\n\nWhat do you say?"
-                }
-              ],
-              buttons: [
-                { text: '✓ Accept 50% Refund', style: 'success', action: '→ Creates case, shows thank you' },
-                { text: '✗ I want a full refund', style: 'danger', action: '→ Proceeds to full refund' }
-              ],
-              onAccept: {
-                thankYouMessage: "Thank you! I've submitted your 50% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.",
-                caseCreated: {
-                  type: 'refund',
-                  resolution: 'partial_50',
-                  issueType: 'Dog not using product',
-                  hubNote: 'Customer accepted 50% partial refund after declining all lower offers'
-                }
-              },
-              next: 'Accept → Thank You | Decline → Full Refund'
-            },
-            // Thank You for 50%
-            {
-              id: 'DOG_STEP_THANKYOU_50',
-              stepNumber: '10a',
-              name: 'Thank You: 50% Accepted',
-              persona: 'Amy',
-              function: 'showRefundThankYou(50)',
-              line: 2625,
-              isBranch: true,
-              branchType: 'refund',
-              isThankYou: true,
-              description: 'Confirmation screen when customer accepts 50% refund.',
-              messages: [
-                {
-                  id: 'DOG_THANKYOU_50_MSG',
-                  label: 'Thank You Message',
-                  content: "Thank you! I've submitted your 50% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank."
-                }
-              ],
-              caseDetails: {
-                type: 'refund',
-                resolution: 'partial_50',
-                refundAmount: '50% of order total',
-                issueText: 'Dog not using product - customer accepted 50% partial refund',
-                status: 'pending'
-              },
-              outcome: 'Flow ends. Case created. Customer receives confirmation email.'
-            },
-            // REFUND PATH - Step 11: Full Refund
-            {
-              id: 'DOG_STEP_FULL_REFUND',
-              stepNumber: '11',
-              name: 'Full Refund Request',
-              persona: 'Amy',
-              function: 'processFullRefund()',
-              line: 2660,
-              isBranch: true,
-              branchType: 'refund',
-              description: 'Customer declined all partial offers. Full refund is processed based on location.',
-              messages: [
-                {
-                  id: 'DOG_FULL_REFUND_MSG',
-                  label: 'Amy\'s Full Refund Message',
-                  content: "I understand completely. We stand behind our 90-day satisfaction guarantee, and I'll process a full refund for you."
-                }
-              ],
-              api: {
-                service: 'Shopify Order Data',
-                endpoint: 'order.shipping_address.country',
-                method: 'Local check',
-                explanation: 'System checks the customer\'s shipping country from the Shopify order. US customers must return the product to receive a refund. International customers keep the product (shipping costs make returns impractical).'
-              },
-              branches: [
-                { condition: 'US Customer', action: 'Shows return instructions' },
-                { condition: 'International', action: 'Customer keeps product, refund processed' }
-              ],
-              next: 'Location check determines return requirement'
-            },
-            // Full Refund - US (with return)
-            {
-              id: 'DOG_STEP_FULL_US',
-              stepNumber: '11a',
-              name: 'Full Refund: US Customer (Return Required)',
-              persona: 'Amy',
-              function: 'showFullRefundUS()',
-              line: 2690,
-              isBranch: true,
-              branchType: 'refund',
-              isThankYou: true,
-              description: 'US customers must return the product to receive full refund.',
-              messages: [
-                {
-                  id: 'DOG_FULL_US_MSG',
-                  label: 'Amy\'s Return Instructions',
-                  content: "Since you're in the US, we'll need you to return the product. I'll send you a prepaid return label via email.\n\nOnce we receive the return, your full refund will be processed within 3-5 business days."
-                },
-                {
-                  id: 'DOG_FULL_US_CONFIRM',
-                  label: 'Confirmation Message',
-                  content: "I've submitted your full refund request and return label request. 📦\n\nYou'll receive an email shortly with:\n• Prepaid return shipping label\n• Return instructions\n• Refund confirmation\n\nThank you for giving PuppyPad a try!"
-                }
-              ],
-              caseDetails: {
-                type: 'return',
-                resolution: 'full_refund_return',
-                refundAmount: '100% of order total',
-                issueText: 'Dog not using product - full refund with return (US customer)',
-                status: 'pending',
-                returnLabel: 'Auto-generated via EasyPost'
-              },
-              richpanelNote: 'Return case created. Label generation triggered.',
-              customerEmailSent: true,
-              emailContents: ['Prepaid return label (PDF)', 'Return instructions', 'Refund confirmation with timeline'],
-              outcome: 'Case created. Return label sent. Refund processed upon receipt.'
-            },
-            // Full Refund - International (keep product)
-            {
-              id: 'DOG_STEP_FULL_INTL',
-              stepNumber: '11b',
-              name: 'Full Refund: International (Keep Product)',
-              persona: 'Amy',
-              function: 'showFullRefundIntl()',
-              line: 2720,
-              isBranch: true,
-              branchType: 'refund',
-              isThankYou: true,
-              description: 'International customers keep the product - shipping makes returns impractical.',
-              messages: [
-                {
-                  id: 'DOG_FULL_INTL_MSG',
-                  label: 'Amy\'s Message',
-                  content: "Since you're outside the US, please keep the product - no need to return it! Your full refund will be processed within 3-5 business days."
-                },
-                {
-                  id: 'DOG_FULL_INTL_CONFIRM',
-                  label: 'Confirmation Message',
-                  content: "I've submitted your full refund request. 🎉\n\nYou'll receive an email confirmation shortly. The refund will appear in your account within 3-5 business days depending on your bank.\n\nThank you for giving PuppyPad a try - you're welcome to keep the product!"
-                }
-              ],
-              caseDetails: {
-                type: 'refund',
-                resolution: 'full_refund_keep',
-                refundAmount: '100% of order total',
-                issueText: 'Dog not using product - full refund, no return (international)',
-                status: 'pending',
-                returnRequired: false
-              },
-              richpanelNote: 'Refund case created. No return required (international).',
-              customerEmailSent: true,
-              outcome: 'Case created. Refund processed. Customer keeps product.'
-            }
-          ]
-        },
-        missing_item: {
-          id: 'missing_item',
-          name: 'Missing Item',
-          description: 'Items missing from the order',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([📦 Missing Item])
-      LIST[Show Expected Items]
-      PHOTO[Upload Photos]
-      DESC[Describe Missing]
-      OFFER{Resolution Choice}
-      RESHIP[Reship + 10% Bonus]
-      REFUND[Partial Refund]
-    end
-
-    subgraph API["🔌 External APIs"]
-      SHOPIFY[(🛒 Shopify<br/>Order Items)]
-      STORAGE[(☁️ R2 Storage<br/>Photo Upload)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_SHIP[📁 Hub: Shipping]
-      HUB_REFUND[📁 Hub: Refunds]
-    end
-
-    START -.->|GET line_items| SHOPIFY
-    SHOPIFY -.->|Item list| LIST
-    LIST --> PHOTO
-    PHOTO -.->|Upload images| STORAGE
-    PHOTO --> DESC --> OFFER
-    OFFER -->|Reship| RESHIP --> D1 --> HUB_SHIP
-    OFFER -->|Refund| REFUND --> D1 --> HUB_REFUND
-
-    style START fill:#A8D8EA,stroke:#1a365d
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style STORAGE fill:#f97316,stroke:#ea580c,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_SHIP fill:#06b6d4,stroke:#0891b2,color:#fff
-    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff`,
-          steps: [
-            {
-              id: 'MISSING_STEP_1',
-              stepNumber: '1',
-              name: "Upload Evidence",
-              persona: 'Amy',
-              function: 'handleMissingItem()',
-              line: 3240,
-              messages: [
-                {
-                  id: 'MISSING_STEP_1_MSG',
-                  label: "Amy's Message",
-                  content: "I'm sorry to hear something was missing from your order. Here's what you should have received:\n\n[List of items]\n\nTo help us investigate, please upload photos of what you did receive (including the packaging):"
-                }
-              ],
-              next: 'Shows upload area for photos'
-            },
-            {
-              id: 'MISSING_STEP_2',
-              stepNumber: '2',
-              name: "Describe Missing Items",
-              persona: 'Amy',
-              function: 'handleMissingItemEvidence()',
-              line: 3270,
-              messages: [
-                {
-                  id: 'MISSING_STEP_2_MSG',
-                  label: "Amy's Message",
-                  content: "Thanks for those photos!\n\nNow, please describe exactly what was missing from your order. Include as much detail as possible..."
-                }
-              ],
-              next: 'User describes missing items'
-            },
-            {
-              id: 'MISSING_STEP_3',
-              stepNumber: '3',
-              name: "Resolution Options",
-              persona: 'Amy',
-              function: 'handleMissingItemEvidence()',
-              line: 3277,
-              messages: [
-                {
-                  id: 'MISSING_STEP_3_MSG',
-                  label: "Amy's Offer",
-                  content: "Thank you for letting us know. I've noted everything down and our team will look into this.\n\nTo make things right, we'd love to reship the missing items to you... and as an apology for the trouble, we'll include an extra item on us!"
-                }
-              ],
-              buttons: [
-                { text: 'Yes, send my missing items', style: 'primary' },
-                { text: "No, I'd like a different solution", style: 'secondary' }
-              ],
-              next: 'Reship or show refund option'
-            },
-            {
-              id: 'MISSING_STEP_RESHIP',
-              stepNumber: '4A',
-              name: "Reship + Bonus",
-              persona: 'Amy',
-              function: 'handleMissingItemReship()',
-              line: 3287,
-              isThankYou: true,
-              branchType: 'success',
-              messages: [
-                {
-                  id: 'MISSING_RESHIP_MSG',
-                  label: "Success Message",
-                  content: "Our team will review your case within 1-2 days and ship your missing items plus a bonus item for the inconvenience.\n\nYou'll receive an email with tracking details once it ships!"
-                }
-              ],
-              caseDetails: {
-                type: 'shipping',
-                resolution: 'reship_missing_item_bonus'
-              }
-            },
-            {
-              id: 'MISSING_STEP_REFUND',
-              stepNumber: '4B',
-              name: "Refund Missing",
-              persona: 'Amy',
-              function: 'handleMissingItemRefund()',
-              line: 3318,
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'MISSING_REFUND_MSG',
-                  label: "Success Message",
-                  content: "Our team will calculate the refund amount based on what was missing and process it within 1-2 business days."
-                }
-              ],
-              caseDetails: {
-                type: 'refund',
-                resolution: 'refund_missing_item'
-              }
-            }
-          ]
-        },
-        damaged_product: {
-          id: 'damaged_product',
-          name: 'Damaged Product',
-          description: 'Product arrived damaged or defective',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([💔 Damaged Product])
-      PHOTO[Upload Damage Photos]
-      OFFER{Customer Preference}
-      REPLACE[Free Replacement]
-      REFUND[Full Refund]
-    end
-
-    subgraph API["🔌 External APIs"]
-      STORAGE[(☁️ R2 Storage<br/>Photo Evidence)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_SHIP[📁 Hub: Shipping<br/>type: reship]
-      HUB_REFUND[📁 Hub: Refunds<br/>type: damaged]
-    end
-
-    START --> PHOTO
-    PHOTO -.->|Upload images| STORAGE
-    PHOTO --> OFFER
-    OFFER -->|Replace| REPLACE --> D1 --> HUB_SHIP
-    OFFER -->|Refund| REFUND --> D1 --> HUB_REFUND
-
-    style START fill:#FFCDD2,stroke:#c62828
-    style STORAGE fill:#f97316,stroke:#ea580c,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_SHIP fill:#06b6d4,stroke:#0891b2,color:#fff
-    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff`,
-          steps: [
-            {
-              id: 'DAMAGED_STEP_1',
-              stepNumber: '1',
-              name: "Upload Photos",
-              persona: 'Amy',
-              function: 'handleDamaged()',
-              line: 3515,
-              messages: [
-                {
-                  id: 'DAMAGED_STEP_1_MSG',
-                  label: "Amy's Message",
-                  content: "I'm so sorry your order arrived damaged. To help process this quickly, please upload photos of the damage (including packaging if relevant):"
-                }
-              ],
-              next: 'Shows upload area'
-            },
-            {
-              id: 'DAMAGED_STEP_2',
-              stepNumber: '2',
-              name: "Choose Resolution",
-              persona: 'Amy',
-              function: 'handleDamagedEvidence()',
-              line: 3424,
-              messages: [
-                {
-                  id: 'DAMAGED_STEP_2_MSG',
-                  label: "Amy's Message",
-                  content: "Thank you for the photos. I can see the damage and I'm very sorry this happened.\n\nI'd like to make this right. Would you prefer a replacement or a refund?"
-                }
-              ],
-              buttons: [
-                { text: 'Send me a replacement', style: 'primary' },
-                { text: "I'd prefer a refund", style: 'secondary' }
-              ],
-              next: 'Creates case based on choice'
-            },
-            {
-              id: 'DAMAGED_STEP_REPLACE',
-              stepNumber: '3A',
-              name: "Replacement Sent",
-              persona: 'Amy',
-              isThankYou: true,
-              branchType: 'success',
-              messages: [
-                {
-                  id: 'DAMAGED_REPLACE_MSG',
-                  label: "Success Message",
-                  content: "Your replacement is being prepared! You'll receive tracking details via email within 1-2 business days.\n\nNo need to return the damaged item."
-                }
-              ],
-              caseDetails: {
-                type: 'shipping',
-                resolution: 'reship_damaged'
-              }
-            },
-            {
-              id: 'DAMAGED_STEP_REFUND',
-              stepNumber: '3B',
-              name: "Refund Processed",
-              persona: 'Amy',
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'DAMAGED_REFUND_MSG',
-                  label: "Success Message",
-                  content: "Your refund has been submitted. You can expect it within 3-5 business days.\n\nNo need to return the damaged item."
-                }
-              ],
-              caseDetails: {
-                type: 'refund',
-                resolution: 'refund_damaged'
-              }
-            }
-          ]
-        },
-        wrong_item: {
-          id: 'wrong_item',
-          name: 'Wrong Item Received',
-          description: 'Customer received incorrect item',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([🔀 Wrong Item Received])
-      PHOTO[Upload Photo of Wrong Item]
-      CONFIRM[Confirm & Ship Correct]
-    end
-
-    subgraph API["🔌 External APIs"]
-      STORAGE[(☁️ R2 Storage<br/>Photo Evidence)]
-      SHOPIFY[(🛒 Shopify<br/>Original Order)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_SHIP[📁 Hub: Shipping<br/>type: wrong_item]
-    end
-
-    START --> PHOTO
-    PHOTO -.->|Upload images| STORAGE
-    PHOTO -.->|Compare to| SHOPIFY
-    PHOTO --> CONFIRM
-    CONFIRM --> D1 --> HUB_SHIP
-
-    style START fill:#A8D8EA,stroke:#1a365d
-    style CONFIRM fill:#C8E6C9,stroke:#2d5a2e
-    style STORAGE fill:#f97316,stroke:#ea580c,color:#fff
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_SHIP fill:#06b6d4,stroke:#0891b2,color:#fff`,
-          steps: [
-            {
-              id: 'WRONG_STEP_1',
-              stepNumber: '1',
-              name: "Upload Photos",
-              persona: 'Amy',
-              function: 'handleWrongItem()',
-              line: 3520,
-              messages: [
-                {
-                  id: 'WRONG_STEP_1_MSG',
-                  label: "Amy's Message",
-                  content: "I'm sorry to hear you received the wrong item! To help us investigate, please upload photos of what you received:"
-                }
-              ],
-              next: 'Shows upload area'
-            },
-            {
-              id: 'WRONG_STEP_2',
-              stepNumber: '2',
-              name: "Correct Item Shipped",
-              persona: 'Amy',
-              function: 'handleWrongItemEvidence()',
-              line: 3465,
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'WRONG_STEP_2_MSG',
-                  label: "Amy's Message",
-                  content: "Thank you for the photos. I've confirmed you received the wrong item and I sincerely apologize for this error.\n\nI'll ship the correct item right away. You can keep or donate the wrong item - no need to return it."
-                }
-              ],
-              caseDetails: {
-                type: 'shipping',
-                resolution: 'reship_wrong_item'
-              }
-            }
-          ]
-        },
-        charged_unexpectedly: {
-          id: 'charged_unexpectedly',
-          name: 'Charged Unexpectedly',
-          description: 'Customer was charged when they did not expect it',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([💳 Unexpected Charge])
-      SHOW[Show Order Details]
-      RECOG{Recognize Order?}
-      YES_PATH[Recognizes - Offer 20%]
-      NO_PATH[Doesn't Recognize]
-      EXPLAIN[Explain Sources]
-      KEEP{Keep Products?}
-      LADDER[Refund Ladder]
-      DONE([✅ Resolved])
-    end
-
-    subgraph API["🔌 External APIs"]
-      OPENAI[(🤖 OpenAI<br/>gpt-4o-mini<br/>product_benefits)]
-      SHOPIFY[(🛒 Shopify<br/>Order Details)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_REFUND[📁 Hub: Refunds]
-    end
-
-    START -.->|GET order data| SHOPIFY
-    SHOPIFY -.->|Order info| SHOW
-    SHOW --> RECOG
-    RECOG -->|Yes| YES_PATH
-    RECOG -->|No| NO_PATH --> EXPLAIN
-    EXPLAIN -.->|POST /api/ai-response| OPENAI
-    OPENAI -.->|Product Pitch| EXPLAIN
-    EXPLAIN --> KEEP
-    KEEP -->|Keep| DONE
-    KEEP -->|Refund| LADDER
-    YES_PATH -->|Accept 20%| D1
-    YES_PATH -->|Decline| LADDER
-    LADDER --> D1
-    D1 --> HUB_REFUND
-
-    style START fill:#fef3c7,stroke:#92400e
-    style DONE fill:#C8E6C9,stroke:#2d5a2e
-    style OPENAI fill:#10a37f,stroke:#0d8a6a,color:#fff
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff`,
-          hasBranches: true,
-          branches: [
-            { id: 'recognized', name: 'Recognizes Order', icon: '✅' },
-            { id: 'not_recognized', name: "Doesn't Recognize", icon: '❓' }
+          description: 'Customer reports their dog is not using the PuppyPad',
+          nodes: [
+            { id: 'n1', type: 'start', x: 200, y: 50, data: { label: 'Dog Not Using', triggers: ['product_issue'] } },
+            { id: 'n2', type: 'message', x: 200, y: 150, data: { persona: 'amy', content: "I understand — the main reason you purchased this was to solve your problem, and we want to make sure it works for you! 🐕\n\nLet me get some details about your pup so we can help." } },
+            { id: 'n3', type: 'form', x: 200, y: 280, data: { formType: 'dog_info', title: 'Tell Us About Your Dog', fields: ['dog_name', 'breed', 'age', 'issue'] } },
+            { id: 'n4', type: 'message', x: 200, y: 410, data: { persona: 'amy', content: "Thanks for sharing! Let me connect you with our dog trainer, Claudia, who specializes in this..." } },
+            { id: 'n5', type: 'ai', x: 200, y: 540, data: { persona: 'claudia', model: 'gpt-4o', prompt: 'Generate training tips for {{dogInfo}}' } },
+            { id: 'n6', type: 'options', x: 200, y: 670, data: { prompt: "Did Claudia's tips help?", options: ['Yes, thanks!', 'No, I want a refund'] } },
+            { id: 'n7', type: 'end', x: 80, y: 800, data: { title: 'Resolved!', showSurvey: true } },
+            { id: 'n8', type: 'ladder', x: 320, y: 800, data: { steps: [20, 30, 40, 50] } },
+            { id: 'n9', type: 'case', x: 320, y: 930, data: { type: 'refund', priority: 'normal' } },
+            { id: 'n10', type: 'end', x: 320, y: 1040, data: { title: 'Case Submitted', showSurvey: true } }
           ],
-          currentBranch: 'recognized',
-          steps: [
-            {
-              id: 'CHARGED_SHOW_ORDER',
-              stepNumber: '1',
-              name: "Show Order Details",
-              persona: 'Amy',
-              function: 'handleChargedUnexpectedly()',
-              line: 3525,
-              isBranchPoint: true,
-              messages: [
-                {
-                  id: 'CHARGED_SHOW_MSG',
-                  label: "Amy's Message",
-                  content: "I'm sorry you were charged unexpectedly. Let me help figure this out.\n\nHere's what I see for your order:\n[Order Details: Items, Date, Amount]\n\nDo you recognize this order?"
-                }
-              ],
-              buttons: [
-                { icon: '✅', text: "Yes, this is it", style: 'primary', branch: 'recognized' },
-                { icon: '❓', text: "No, I don't recognize this", style: 'secondary', branch: 'not_recognized' }
-              ],
-              next: 'Routes based on recognition'
-            },
-            
-            // BRANCH: RECOGNIZED
-            {
-              id: 'CHARGED_CONFIRMED',
-              stepNumber: '2',
-              name: "Order Confirmed",
-              persona: 'Amy',
-              branch: 'recognized',
-              function: 'handleChargedUnexpectedlyConfirmed()',
-              line: 3554,
-              messages: [
-                {
-                  id: 'CHARGED_CONF_MSG',
-                  label: "Amy's Message",
-                  content: "Great! Now I see that this order was delivered on [Date].\n\nI understand the charge may have been unexpected. As a gesture of goodwill, I'd like to offer you a 20% refund while you keep everything you received."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 20% refund', style: 'success' },
-                { icon: '✗', text: "I'd like a full refund", style: 'secondary' }
-              ],
-              next: 'Accept 20% → Done | Decline → Refund Ladder'
-            },
-            {
-              id: 'CHARGED_20_ACCEPT',
-              stepNumber: '2a',
-              name: "20% Accepted",
-              persona: 'Amy',
-              branch: 'recognized',
-              isThankYou: true,
-              branchType: 'success',
-              messages: [
-                {
-                  id: 'CHARGED_20_MSG',
-                  label: "Success Message",
-                  content: "Your 20% refund has been submitted and will be processed within 1-2 business days."
-                }
-              ],
-              caseDetails: { type: 'refund', resolution: 'partial_refund_20' }
-            },
-            
-            // BRANCH: NOT RECOGNIZED
-            {
-              id: 'CHARGED_EXPLAIN',
-              stepNumber: '2',
-              name: "Explain Order Sources",
-              persona: 'Amy',
-              branch: 'not_recognized',
-              function: 'handleChargedUnexpectedlyNotRecognized()',
-              line: 3642,
-              messages: [
-                {
-                  id: 'CHARGED_EXPLAIN_MSG',
-                  label: "Amy's Message",
-                  content: "I understand — it can be confusing when you don't recognize a charge! 🤔\n\nHere's the thing: our system doesn't store payment details or allow manual charges, so this order was definitely placed through our website. It could be:\n\n• A family member or friend ordered for you as a surprise 🎁\n• You might have ordered a while back and forgot\n• Someone in your household made a purchase\n\nBut don't worry — I'm here to help either way! Let me tell you about what's actually in this order..."
-                }
-              ],
-              next: '→ Product Benefits Pitch'
-            },
-            {
-              id: 'CHARGED_PITCH',
-              stepNumber: '3',
-              name: "Product Benefits",
-              persona: 'Amy',
-              branch: 'not_recognized',
-              api: {
-                service: 'OpenAI',
-                endpoint: '/api/ai-response',
-                method: 'POST',
-                model: 'gpt-4o-mini',
-                temperature: 0.75,
-                maxTokens: 600,
-                explanation: 'Generates an exciting product pitch to convince the customer to keep items they didn\'t recognize ordering. Focuses on problem-solution messaging.',
-                requestBody: {
-                  scenarioType: 'product_benefits_pitch',
-                  scenarioData: {
-                    customerName: '[From order lookup]',
-                    products: '[Product names from order]',
-                    productSkus: '[SKUs from order]',
-                    orderTotal: '[Order total]'
-                  }
-                },
-                systemPrompt: `You are Amy, a warm and knowledgeable customer support specialist for PuppyPad.
-
-A customer doesn't recognize a charge on their account. You've already explained that it was likely ordered by someone in their household or as a gift. Now your job is to EXCITE them about the products they received!
-
-=== YOUR GOAL ===
-Make them WANT to keep the products by highlighting the genuine benefits. Focus on problem-solution messaging - what problems do these products solve for pet owners?
-
-=== APPROACH ===
-1. Mention the SPECIFIC products from their order by name
-2. For each product, explain ONE key benefit using problem-solution framing
-3. Share a quick "customers love this because..." moment
-4. Make it feel like a happy accident - they got something great!
-5. Keep it genuine - don't oversell or be pushy
-
-=== PROBLEM-SOLUTION EXAMPLES ===
-- PuppyPad: "Tired of buying disposables every week? This reusable pad lasts years and saves hundreds!"
-- BusyPet: "Does your pup get bored and destructive? This keeps them mentally stimulated for hours!"
-- CalmBuddy: "Anxious during storms or fireworks? The pheromone diffuser helps dogs relax naturally."
-- CozyBed: "Older dogs with joint pain? The orthopedic design supports their joints perfectly."
-
-=== TONE & STYLE ===
-- Warm, enthusiastic but genuine
-- SHORT paragraphs (2-3 sentences max)
-- Use ellipses (...) for pauses, NEVER em-dashes
-- This is a CHAT message, NOT an email
-- Make it feel like discovering something great, not a sales pitch
-- NEVER sign off with "Warm regards", "Best", etc.`
-              },
-              messages: [
-                {
-                  id: 'CHARGED_PITCH_MSG',
-                  label: "AI Product Pitch",
-                  content: "[Dynamic pitch about the specific products in their order - AI uses problem-solution messaging to highlight genuine benefits and make them want to keep the items]"
-                }
-              ],
-              buttons: [
-                { icon: '✅', text: "OK, I'll keep them!", style: 'success' },
-                { icon: '💰', text: "No, I'd still like a refund", style: 'secondary' }
-              ],
-              next: 'Keep → Done | Refund → Refund Ladder'
-            },
-            {
-              id: 'CHARGED_KEEP',
-              stepNumber: '3a',
-              name: "Customer Keeping Order",
-              persona: 'Amy',
-              branch: 'not_recognized',
-              isThankYou: true,
-              branchType: 'success',
-              messages: [
-                {
-                  id: 'CHARGED_KEEP_MSG',
-                  label: "Success Message",
-                  content: "That's wonderful! I think you're going to love them. If you have any questions about using the products, I'm always here to help! 😊"
-                }
-              ],
-              caseDetails: { type: 'resolution', resolution: 'customer_keeping' }
-            },
-            
-            // SHARED REFUND LADDER
-            {
-              id: 'CHARGED_LADDER_20',
-              stepNumber: '4',
-              name: "Offer: 20% Refund",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'CHARGED_L20_MSG',
-                  label: "Amy's 20% Offer",
-                  content: "I understand. Let me offer you a 20% partial refund while you keep the products."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 20%', style: 'success' },
-                { icon: '✗', text: 'Need more', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → 30%'
-            },
-            {
-              id: 'CHARGED_LADDER_30',
-              stepNumber: '5',
-              name: "Offer: 30% Refund",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'CHARGED_L30_MSG',
-                  label: "Amy's 30% Offer",
-                  content: "Let me offer you 30% back — that's a significant refund while you keep everything."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 30%', style: 'success' },
-                { icon: '✗', text: 'Need more', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → 40%'
-            },
-            {
-              id: 'CHARGED_LADDER_40',
-              stepNumber: '6',
-              name: "Offer: 40% Refund",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'CHARGED_L40_MSG',
-                  label: "Amy's 40% Offer",
-                  content: "My manager approved 40% back for you."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 40%', style: 'success' },
-                { icon: '✗', text: 'Need more', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → 50%'
-            },
-            {
-              id: 'CHARGED_LADDER_50',
-              stepNumber: '7',
-              name: "Offer: 50% Refund (Final)",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'CHARGED_L50_MSG',
-                  label: "Final Offer",
-                  content: "Our maximum: 50% refund. Half your money back, keep everything."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 50%', style: 'success' },
-                { icon: '✗', text: 'Full refund', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → Full Refund'
-            },
-            {
-              id: 'CHARGED_COMPLETE',
-              stepNumber: '8',
-              name: "Refund Submitted",
-              persona: 'Amy',
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'CHARGED_COMP_MSG',
-                  label: "Final Message",
-                  content: "Your refund has been submitted and will be processed within 1-2 business days."
-                }
-              ],
-              caseDetails: { type: 'refund', resolution: 'refund_processed' }
-            }
+          edges: [
+            { source: 'n1', target: 'n2' },
+            { source: 'n2', target: 'n3' },
+            { source: 'n3', target: 'n4' },
+            { source: 'n4', target: 'n5' },
+            { source: 'n5', target: 'n6' },
+            { source: 'n6', target: 'n7', label: 'Happy' },
+            { source: 'n6', target: 'n8', label: 'Refund' },
+            { source: 'n8', target: 'n9' },
+            { source: 'n9', target: 'n10' }
           ]
         },
-        not_received: {
-          id: 'not_received',
-          name: 'Order Not Received',
-          description: 'Customer has not received their order',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([🚚 Not Received])
-      TRACK[Check Tracking]
-      STATUS{Tracking Status?}
-      TRANSIT[In Transit - ETA shown]
-      DELIVERED[Shows Delivered]
-      NOTRACK[No Tracking Info]
-      STUCK[Stuck > 7 days]
-      WAIT[Ask to Wait]
-      VERIFY[Verify Address]
-    end
-
-    subgraph API["🔌 External APIs"]
-      PARCEL[(📦 ParcelPanel<br/>Tracking API v2)]
-      SHOPIFY[(🛒 Shopify<br/>Fulfillment)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_SHIP[📁 Hub: Shipping]
-    end
-
-    START -.->|GET tracking_number| SHOPIFY
-    SHOPIFY -.->|tracking_number| PARCEL
-    PARCEL -.->|Tracking events| TRACK
-    TRACK --> STATUS
-    STATUS -->|In Transit| TRANSIT --> WAIT
-    STATUS -->|Delivered| DELIVERED --> VERIFY
-    STATUS -->|No Info| NOTRACK --> D1
-    STATUS -->|Stuck| STUCK --> D1
-    VERIFY -->|Not at address| D1
-    D1 --> HUB_SHIP
-
-    style START fill:#A8D8EA,stroke:#1a365d
-    style WAIT fill:#fef3c7,stroke:#92400e
-    style PARCEL fill:#5046e5,stroke:#4338ca,color:#fff
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_SHIP fill:#06b6d4,stroke:#0891b2,color:#fff`,
-          steps: [
-            {
-              id: 'NOTRECV_STEP_1',
-              stepNumber: '1',
-              name: "Check Tracking",
-              persona: 'Amy',
-              function: 'handleNotReceived()',
-              line: 4603,
-              messages: [
-                {
-                  id: 'NOTRECV_STEP_1_MSG',
-                  label: "Amy's Message",
-                  content: "I'm sorry your order hasn't arrived yet. Let me check the tracking information for you..."
-                }
-              ],
-              next: 'Fetches tracking from ParcelPanel'
-            },
-            {
-              id: 'NOTRECV_STEP_TRANSIT',
-              stepNumber: '2A',
-              name: "In Transit",
-              persona: 'Amy',
-              messages: [
-                {
-                  id: 'NOTRECV_TRANSIT_MSG',
-                  label: "In Transit Message",
-                  content: "Good news! Your package is still in transit and on its way.\n\n[Tracking details shown]\n\nWould you like me to keep you updated on this?"
-                }
-              ],
-              next: 'Shows tracking card'
-            },
-            {
-              id: 'NOTRECV_STEP_DELIVERED',
-              stepNumber: '2B',
-              name: "Shows Delivered",
-              persona: 'Amy',
-              messages: [
-                {
-                  id: 'NOTRECV_DELIVERED_MSG',
-                  label: "Delivered Message",
-                  content: "Our tracking shows this was delivered on [date]. Let me help investigate this.\n\nCan you check with neighbors or your building management? Sometimes packages are left in safe spots."
-                }
-              ],
-              buttons: [
-                { text: "I'll check and come back", style: 'secondary' },
-                { text: "I already checked - it's missing", style: 'primary' }
-              ],
-              next: 'Create case if still missing'
-            },
-            {
-              id: 'NOTRECV_STEP_CASE',
-              stepNumber: '3',
-              name: "Create Investigation Case",
-              persona: 'Amy',
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'NOTRECV_CASE_MSG',
-                  label: "Case Created",
-                  content: "I've created a case for our team to investigate. They'll look into this and get back to you within 1-2 business days."
-                }
-              ],
-              caseDetails: {
-                type: 'shipping',
-                resolution: 'investigate_missing'
-              }
-            }
-          ]
-        },
-        changed_mind: {
-          id: 'changed_mind',
-          name: 'Changed Mind',
-          description: 'Customer changed their mind about the purchase',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([💭 Changed Mind])
-      ASK[Ask Reason - Text Input]
-      HAPPY{Satisfied?}
-      DONE([✅ Resolved - No Case])
-      L20[20% Offer]
-      L30[30% Offer]
-      L40[40% Offer]
-      L50[50% Offer]
-      FULL{US or Intl?}
-    end
-
-    subgraph API["🔌 External APIs"]
-      OPENAI[(🤖 OpenAI<br/>gpt-4o-mini<br/>temp: 0.7)]
-      SHOPIFY[(🛒 Shopify<br/>Order/Address)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_REFUND[📁 Hub: Refunds]
-      HUB_RETURN[📁 Hub: Returns]
-    end
-
-    START --> ASK
-    ASK -.->|POST /api/ai-response<br/>scenario: changed_mind| OPENAI
-    OPENAI -.->|Personalized Response| ASK
-    ASK --> HAPPY
-    HAPPY -->|Yes| DONE
-    HAPPY -->|No| L20
-    L20 -->|Accept| D1
-    L20 -->|Decline| L30 -->|Decline| L40 -->|Decline| L50
-    L50 -->|Accept| D1
-    L50 -->|Full| FULL
-    FULL -.->|Check country| SHOPIFY
-    FULL -->|US| HUB_RETURN
-    FULL -->|Intl| HUB_REFUND
-    D1 --> HUB_REFUND
-
-    style START fill:#E8D5E8,stroke:#6a4c93
-    style DONE fill:#C8E6C9,stroke:#2d5a2e
-    style OPENAI fill:#10a37f,stroke:#0d8a6a,color:#fff
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff
-    style HUB_RETURN fill:#8b5cf6,stroke:#7c3aed,color:#fff`,
-          steps: [
-            {
-              id: 'MIND_STEP_1',
-              stepNumber: '1',
-              name: "Ask Reason",
-              persona: 'Amy',
-              function: 'handleChangedMind()',
-              line: 3012,
-              messages: [
-                {
-                  id: 'MIND_STEP_1_MSG',
-                  label: "Amy's Message",
-                  content: "I understand! Can you share a bit more about what changed? I might be able to help or suggest something that would work better for you."
-                }
-              ],
-              fields: [
-                { label: 'What changed?', type: 'textarea', placeholder: 'Please share what made you change your mind...' }
-              ],
-              next: 'User types their reason'
-            },
-            {
-              id: 'MIND_STEP_2',
-              stepNumber: '2',
-              name: "AI Response",
-              persona: 'Amy',
-              api: {
-                service: 'OpenAI',
-                endpoint: '/api/ai-response',
-                method: 'POST',
-                model: 'gpt-4o-mini',
-                temperature: 0.7,
-                maxTokens: 800,
-                explanation: 'Generates a personalized response based on WHY the customer changed their mind. The AI identifies the reason category and responds appropriately.',
-                requestBody: {
-                  scenarioType: 'changed_mind',
-                  scenarioData: {
-                    customerName: '[From order lookup]',
-                    customerMessage: '[Customer\'s typed reason]',
-                    orderItems: '[Products from their order]'
-                  }
-                },
-                systemPrompt: `You are Amy, a warm customer support specialist for a PET PRODUCTS brand. A customer is reconsidering their purchase. Read their message carefully and identify WHY, then respond appropriately.
-
-=== IDENTIFY THE REASON & RESPOND ACCORDINGLY ===
-
-1. PET LOSS OR REHOMED (dog died, gave away pet, pet very sick)
-   → Express genuine sympathy
-   → Suggest: donate to shelter, gift to friend/neighbor, keep for future pet
-   → Make them feel good about helping other animals
-
-2. DOG NO LONGER NEEDS IT (trained, goes outside now, solved the problem)
-   → Congratulate them! But gently mention:
-   → Great for backup during bad weather, travel, or emergencies
-   → Useful as your dog ages (senior dogs have accidents)
-   → Good to have on hand "just in case"
-
-3. IMPULSE BUY ("bought too quickly", "didn't think it through")
-   → Reassure them it was actually a good decision
-   → Explain the real benefits and quality
-   → Help them see the value they're getting
-
-4. ORDERED TOO MANY ("only need one", "didn't realize it was a multipack")
-   → These are reusable and last a long time
-   → Having extras means less frequent washing
-   → Great for multiple rooms or rotation
-
-5. FOUND DIFFERENT SOLUTION ("went with another option", "bought something else")
-   → Explain what makes THIS product different/better
-   → Focus on quality, durability, features
-
-=== TONE & STYLE ===
-- Warm, caring, genuine - like talking to a helpful friend
-- SHORT paragraphs (2-3 sentences max)
-- Use ellipses (...) for pauses, NEVER em-dashes
-- This is a CHAT message, NOT an email
-- NEVER sign off with "Warm regards", "Best", etc.
-
-Respond appropriately based on their situation. Don't mention refunds or returns. End naturally - no sign-offs.`
-              },
-              messages: [
-                {
-                  id: 'MIND_STEP_2_MSG',
-                  label: "AI-Generated Response",
-                  content: "[Dynamic response based on customer's reason - Amy identifies the category (pet loss, dog trained, impulse buy, ordered too many, or found alternative) and responds with appropriate empathy and suggestions]"
-                }
-              ],
-              buttons: [
-                { icon: '✅', text: "Yes, I'll keep it!", style: 'success' },
-                { icon: '💰', text: 'No, I still want a refund', style: 'secondary' }
-              ],
-              next: 'Happy → Thank You | Refund → Refund Ladder'
-            },
-            {
-              id: 'MIND_HAPPY',
-              stepNumber: '3A',
-              name: "Customer Satisfied",
-              persona: 'Amy',
-              isThankYou: true,
-              branchType: 'success',
-              messages: [
-                {
-                  id: 'MIND_HAPPY_MSG',
-                  label: "Success Message",
-                  content: "That makes me so happy to hear! I really think you're going to love it. If you ever have any questions, I'm always here to help. 😊"
-                }
-              ],
-              caseDetails: { type: 'resolution', resolution: 'customer_satisfied' }
-            },
-            // Refund Ladder Steps
-            {
-              id: 'MIND_LADDER_20',
-              stepNumber: '3',
-              name: "Offer: 20% Refund",
-              persona: 'Amy',
-              function: 'startRefundLadder()',
-              line: 2570,
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'MIND_L20_MSG',
-                  label: "Amy's 20% Offer",
-                  content: "I understand. As a valued customer, I'd like to offer you a 20% partial refund while you keep the product and continue trying."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 20% Refund', style: 'success' },
-                { icon: '✗', text: 'I need more help', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → 30% Offer'
-            },
-            {
-              id: 'MIND_LADDER_30',
-              stepNumber: '4',
-              name: "Offer: 30% Refund",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'MIND_L30_MSG',
-                  label: "Amy's 30% Offer",
-                  content: "I really want to make this right. Let me offer you a 30% refund — that's a significant amount back while you keep everything."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 30% Refund', style: 'success' },
-                { icon: '✗', text: 'I need more help', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → 40% Offer'
-            },
-            {
-              id: 'MIND_LADDER_40',
-              stepNumber: '5',
-              name: "Offer: 40% Refund",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'MIND_L40_MSG',
-                  label: "Amy's 40% Offer (Manager Approved)",
-                  content: "Great news! My manager has approved a 40% refund for you. That's nearly half your money back and you still get to keep the products."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 40% Refund', style: 'success' },
-                { icon: '✗', text: 'I need more help', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → 50% Offer'
-            },
-            {
-              id: 'MIND_LADDER_50',
-              stepNumber: '6',
-              name: "Offer: 50% Refund (Final)",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'MIND_L50_MSG',
-                  label: "Amy's Final Offer",
-                  content: "Okay, I've just spoken with my manager again and they've approved our maximum offer: 50% refund. This is the very best we can do — half your money back, no return needed."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 50% Refund', style: 'success' },
-                { icon: '✗', text: 'I want a full refund', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → Full Refund Process'
-            },
-            {
-              id: 'MIND_FULL_REFUND',
-              stepNumber: '7',
-              name: "Full Refund Process",
-              persona: 'Amy',
-              function: 'handleFullRefund()',
-              line: 2730,
-              messages: [
-                {
-                  id: 'MIND_FULL_MSG',
-                  label: "Amy's Message",
-                  content: "I completely understand. Let's proceed with a full refund. First, I need to know — has the product been used?"
-                }
-              ],
-              buttons: [
-                { text: "Yes, it's been used", style: 'primary' },
-                { text: "No, it's unused", style: 'secondary' }
-              ],
-              next: 'Routes based on product condition'
-            },
-            {
-              id: 'MIND_COMPLETE',
-              stepNumber: '8',
-              name: "Refund Submitted",
-              persona: 'Amy',
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'MIND_COMPLETE_MSG',
-                  label: "Final Message",
-                  content: "Your refund request has been submitted. Our team will review and process within 1-2 business days."
-                }
-              ],
-              caseDetails: { type: 'refund', resolution: 'refund_processed' }
-            }
-          ]
-        },
-        not_met_expectations: {
-          id: 'not_met_expectations',
-          name: 'Not Met Expectations',
-          description: 'Product did not meet customer expectations',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([😕 Not As Expected])
-      ASK[Ask What Disappointed]
-      HAPPY{Satisfied with Tips?}
-      DONE([✅ Resolved - No Case])
-      L20[20% Offer]
-      L30[30% Offer]
-      L40[40% Offer]
-      L50[50% Offer]
-      FULL{US or Intl?}
-    end
-
-    subgraph API["🔌 External APIs"]
-      OPENAI[(🤖 OpenAI<br/>gpt-4o-mini<br/>Tips & Suggestions)]
-      SHOPIFY[(🛒 Shopify<br/>Address Check)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_REFUND[📁 Hub: Refunds]
-      HUB_RETURN[📁 Hub: Returns]
-    end
-
-    START --> ASK
-    ASK -.->|POST /api/ai-response| OPENAI
-    OPENAI -.->|Personalized tips| ASK
-    ASK --> HAPPY
-    HAPPY -->|Yes| DONE
-    HAPPY -->|No| L20
-    L20 -->|Accept| D1
-    L20 -->|Decline| L30 -->|Decline| L40 -->|Decline| L50
-    L50 -->|Accept| D1
-    L50 -->|Full| FULL
-    FULL -.->|Check country| SHOPIFY
-    FULL -->|US| HUB_RETURN
-    FULL -->|Intl| HUB_REFUND
-    D1 --> HUB_REFUND
-
-    style START fill:#E8D5E8,stroke:#6a4c93
-    style DONE fill:#C8E6C9,stroke:#2d5a2e
-    style OPENAI fill:#10a37f,stroke:#0d8a6a,color:#fff
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff
-    style HUB_RETURN fill:#8b5cf6,stroke:#7c3aed,color:#fff`,
-          steps: [
-            {
-              id: 'EXPECT_STEP_1',
-              stepNumber: '1',
-              name: "Ask Details",
-              persona: 'Amy',
-              function: 'handleNotMetExpectations()',
-              line: 3079,
-              messages: [
-                {
-                  id: 'EXPECT_STEP_1_MSG',
-                  label: "Amy's Message",
-                  content: "I'm really sorry to hear that 😔 We always want our products to exceed expectations. Could you share what specifically didn't meet your expectations?"
-                }
-              ],
-              fields: [
-                { label: 'What disappointed you?', type: 'textarea', placeholder: 'Please describe what you expected vs what you received...' }
-              ],
-              next: 'User describes the issue'
-            },
-            {
-              id: 'EXPECT_STEP_2',
-              stepNumber: '2',
-              name: "AI Response + Tips",
-              persona: 'Amy',
-              api: {
-                service: 'OpenAI',
-                endpoint: '/api/ai-response',
-                method: 'POST',
-                model: 'gpt-4o-mini',
-                temperature: 0.7,
-                maxTokens: 800,
-                explanation: 'Uses the same "changed_mind" scenario as customer disappointment. AI reads their specific concern and generates a personalized response with tips.',
-                requestBody: {
-                  scenarioType: 'changed_mind',
-                  scenarioData: {
-                    customerName: '[From order lookup]',
-                    customerMessage: '[Customer\'s typed disappointment]',
-                    orderItems: '[Products from their order]'
-                  }
-                },
-                systemPrompt: `You are Amy, a warm customer support specialist for a PET PRODUCTS brand. A customer says the product didn't meet their expectations.
-
-=== YOUR APPROACH ===
-1. Acknowledge their disappointment with genuine empathy
-2. Ask clarifying questions if needed to understand the specific issue
-3. Provide helpful tips based on what they shared
-4. Focus on how the product can still work for them
-
-=== COMMON ISSUES & RESPONSES ===
-- "Not absorbent enough" → Explain proper break-in period, washing instructions
-- "Doesn't smell proof" → Tips for proper cleaning routine
-- "Dog won't use it" → Offer to connect with Claudia for training tips
-- "Too small/big" → Explain sizing options
-- "Quality concerns" → Explain our materials and durability
-
-=== TONE & STYLE ===
-- Warm, caring, genuine - like talking to a helpful friend
-- SHORT paragraphs (2-3 sentences max)
-- Use ellipses (...) for pauses, NEVER em-dashes
-- This is a CHAT message, NOT an email
-- Be helpful and solution-focused
-- NEVER sign off with "Warm regards", "Best", etc.`
-              },
-              messages: [
-                {
-                  id: 'EXPECT_STEP_2_MSG',
-                  label: "AI-Generated Response",
-                  content: "[Dynamic response addressing the specific concern with helpful tips and suggestions - AI analyzes what disappointed them and provides targeted advice]"
-                }
-              ],
-              buttons: [
-                { icon: '✅', text: "Yes, I'll give it another try", style: 'success' },
-                { icon: '💰', text: "No, I'd like a refund", style: 'secondary' }
-              ],
-              next: 'Happy → Thank You | Refund → Refund Ladder'
-            },
-            {
-              id: 'EXPECT_HAPPY',
-              stepNumber: '3A',
-              name: "Customer Will Try Again",
-              persona: 'Amy',
-              isThankYou: true,
-              branchType: 'success',
-              messages: [
-                {
-                  id: 'EXPECT_HAPPY_MSG',
-                  label: "Success Message",
-                  content: "That makes me so happy to hear! Give those tips a try and I really think you'll see a difference. I'm always here if you need more help! 😊"
-                }
-              ],
-              caseDetails: { type: 'resolution', resolution: 'customer_satisfied' }
-            },
-            {
-              id: 'EXPECT_LADDER_20',
-              stepNumber: '3',
-              name: "Offer: 20% Refund",
-              persona: 'Amy',
-              function: 'startRefundLadder()',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'EXPECT_L20_MSG',
-                  label: "Amy's 20% Offer",
-                  content: "Thank you for that feedback — I've noted it down. Let me make this right with a 20% partial refund while you keep the product."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 20% Refund', style: 'success' },
-                { icon: '✗', text: 'I need more help', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → 30% Offer'
-            },
-            {
-              id: 'EXPECT_LADDER_30',
-              stepNumber: '4',
-              name: "Offer: 30% Refund",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'EXPECT_L30_MSG',
-                  label: "Amy's 30% Offer",
-                  content: "I really want to make this right. Let me offer you a 30% refund — that's a significant amount back while you keep everything."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 30% Refund', style: 'success' },
-                { icon: '✗', text: 'I need more help', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → 40% Offer'
-            },
-            {
-              id: 'EXPECT_LADDER_40',
-              stepNumber: '5',
-              name: "Offer: 40% Refund",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'EXPECT_L40_MSG',
-                  label: "Amy's 40% Offer",
-                  content: "Great news! My manager has approved a 40% refund for you."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 40% Refund', style: 'success' },
-                { icon: '✗', text: 'I need more help', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → 50% Offer'
-            },
-            {
-              id: 'EXPECT_LADDER_50',
-              stepNumber: '6',
-              name: "Offer: 50% Refund (Final)",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'EXPECT_L50_MSG',
-                  label: "Amy's Final Offer",
-                  content: "Our maximum offer: 50% refund. This is the very best we can do — half your money back, no return needed."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 50% Refund', style: 'success' },
-                { icon: '✗', text: 'I want a full refund', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → Full Refund'
-            },
-            {
-              id: 'EXPECT_FULL',
-              stepNumber: '7',
-              name: "Full Refund Process",
-              persona: 'Amy',
-              messages: [
-                {
-                  id: 'EXPECT_FULL_MSG',
-                  label: "Amy's Message",
-                  content: "I completely understand. Let's proceed with a full refund. First, has the product been used?"
-                }
-              ],
-              buttons: [
-                { text: "Yes, it's been used", style: 'primary' },
-                { text: "No, it's unused", style: 'secondary' }
-              ],
-              next: 'Process full refund based on usage'
-            },
-            {
-              id: 'EXPECT_COMPLETE',
-              stepNumber: '8',
-              name: "Refund Submitted",
-              persona: 'Amy',
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'EXPECT_COMPLETE_MSG',
-                  label: "Final Message",
-                  content: "Your refund request has been submitted. Our team will review and process within 1-2 business days."
-                }
-              ],
-              caseDetails: { type: 'refund', resolution: 'refund_processed' }
-            }
-          ]
-        },
-        ordered_mistake: {
-          id: 'ordered_mistake',
-          name: 'Ordered By Mistake',
-          description: 'Customer ordered by mistake or wants to change order',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([🔄 Ordered By Mistake])
-      CHECK{Order Shipped?}
-      NOTYET[Not Shipped - Can Change]
-      SHIPPED[Already Shipped]
-      CHANGE[Process Change]
-      LADDER[Refund Ladder 20-50%]
-      DONE([✅ Change Processed])
-    end
-
-    subgraph API["🔌 External APIs"]
-      SHOPIFY[(🛒 Shopify<br/>fulfillment_status)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_REFUND[📁 Hub: Refunds]
-    end
-
-    START -.->|Check fulfillment| SHOPIFY
-    SHOPIFY -.->|Status| CHECK
-    CHECK -->|unfulfilled| NOTYET --> CHANGE --> DONE
-    CHECK -->|fulfilled| SHIPPED --> LADDER
-    LADDER --> D1 --> HUB_REFUND
-
-    style START fill:#A8D8EA,stroke:#1a365d
-    style DONE fill:#C8E6C9,stroke:#2d5a2e
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff`,
-          steps: [
-            {
-              id: 'MISTAKE_STEP_1',
-              stepNumber: '1',
-              name: "Check Fulfillment",
-              persona: 'Amy',
-              function: 'handleOrderedMistake()',
-              line: 3181,
-              messages: [
-                {
-                  id: 'MISTAKE_STEP_1_MSG',
-                  label: "Amy's Message",
-                  content: "I understand! Let me check if your order has shipped yet..."
-                }
-              ],
-              next: 'Checks fulfillment status'
-            },
-            {
-              id: 'MISTAKE_STEP_CHANGE',
-              stepNumber: '2A',
-              name: "Change Order",
-              persona: 'Amy',
-              messages: [
-                {
-                  id: 'MISTAKE_CHANGE_MSG',
-                  label: "Not Yet Shipped",
-                  content: "Good news! Your order hasn't shipped yet, so I can help you make changes.\n\nWhat would you like to change?"
-                }
-              ],
-              buttons: [
-                { text: 'Change my order', style: 'primary' },
-                { text: 'I want a refund', style: 'secondary' }
-              ]
-            },
-            {
-              id: 'MISTAKE_STEP_SHIPPED',
-              stepNumber: '2B',
-              name: "Already Shipped",
-              persona: 'Amy',
-              messages: [
-                {
-                  id: 'MISTAKE_SHIPPED_MSG',
-                  label: "Already Shipped",
-                  content: "Your order has already shipped, so I can't make changes to it. But don't worry - let me see what I can do for you..."
-                }
-              ],
-              next: 'Goes to refund ladder'
-            }
-          ]
-        },
-        quality_difference: {
-          id: 'quality_difference',
+        quality_issue: {
+          id: 'quality_issue',
           name: 'Quality / Material Difference',
           description: 'Customer notices material differences between products',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([🔍 Quality/Material Question])
-      EXPLAIN[Explain Original vs 2.0]
-      COMPARE[Show Comparison Card]
-      CHOICE{Customer Decision}
-      KEEP[Keep As-Is]
-      UPGRADE[Pay Diff for Upgrade]
-      REFUND[Want Refund]
-      FREE[Free 2.0 Reship Offer]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_NONE([No Case - Satisfied])
-      HUB_SHIP[📁 Hub: Shipping<br/>type: upgrade/reship]
-      HUB_REFUND[📁 Hub: Refunds]
-    end
-
-    START --> EXPLAIN --> COMPARE --> CHOICE
-    CHOICE -->|Keep| KEEP --> HUB_NONE
-    CHOICE -->|Upgrade| UPGRADE --> D1 --> HUB_SHIP
-    CHOICE -->|Refund| REFUND --> FREE
-    FREE -->|Accept| D1 --> HUB_SHIP
-    FREE -->|Decline| D1 --> HUB_REFUND
-
-    style START fill:#E8D5E8,stroke:#6a4c93
-    style HUB_NONE fill:#C8E6C9,stroke:#2d5a2e
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_SHIP fill:#06b6d4,stroke:#0891b2,color:#fff
-    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff`,
-          steps: [
-            {
-              id: 'QUALITY_STEP_1',
-              stepNumber: '1',
-              name: "Explain Material Versions",
-              persona: 'Amy',
-              function: 'handleQualityDifference()',
-              line: 3743,
-              messages: [
-                {
-                  id: 'QUALITY_MSG_1',
-                  label: "Amy's Opening",
-                  content: "Hey! 👋 Thanks for reaching out... I can see you've received different materials in your order and you're wondering what's going on.\n\nTotally get it. Let me explain because honestly... this is actually good news for you."
-                },
-                {
-                  id: 'QUALITY_MSG_2',
-                  label: "Version Explanation",
-                  content: "So here's what's happening...\n\nWe've been quietly upgrading our PuppyPad materials over the past few months. Which means right now, there are two versions floating around:\n\n<strong>Original PuppyPad</strong> — our 5-layer design that earned us 37,000+ five-star reviews\n\n<strong>PuppyPad 2.0</strong> — our newer 6-layer design with upgraded materials\n\nDuring this transition period, some orders ship with Original, some with 2.0... it just depends on what's available in our warehouse when your order gets packed."
-                }
-              ],
-              buttons: [
-                { icon: '📖', text: "I understand, show me the differences", style: 'primary' }
-              ],
-              next: '→ Shows detailed comparison'
-            },
-            {
-              id: 'QUALITY_STEP_2',
-              stepNumber: '2',
-              name: "Show Comparison Details",
-              persona: 'Amy',
-              line: 3780,
-              messages: [
-                {
-                  id: 'QUALITY_COMPARE_MSG',
-                  label: "Detailed Comparison",
-                  content: "[Shows detailed comparison card with Original vs PuppyPad 2.0 features, layers, materials, and benefits]"
-                },
-                {
-                  id: 'QUALITY_CHOICE_MSG',
-                  label: "Ask Customer Choice",
-                  content: "So that's the full picture! 💙\n\nNow I want to make sure you're completely happy here... what would you like to do?"
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: "I'd like to keep my order as it is", style: 'success' },
-                { icon: '↑', text: "I don't mind paying more to get the newer material ones", style: 'primary' },
-                { icon: '←', text: "I'd prefer a refund for the older material ones", style: 'secondary' }
-              ],
-              next: 'Routes based on customer preference'
-            },
-            {
-              id: 'QUALITY_KEEP',
-              stepNumber: '3A',
-              name: "Keep Order As-Is",
-              persona: 'Amy',
-              function: 'handleQualityKeepOrder()',
-              line: 3864,
-              isThankYou: true,
-              branchType: 'success',
-              messages: [
-                {
-                  id: 'QUALITY_KEEP_MSG',
-                  label: "Thank You Message",
-                  content: "Amazing... thank you so much for understanding! 💙\n\nGive your PuppyPad a go... I think you're going to love it. And if anything doesn't feel right after a week or two, just message us. We've got you covered.\n\nYour pup's gonna do great with it 🐾"
-                }
-              ],
-              caseDetails: { type: 'resolution', resolution: 'customer_keeping' }
-            },
-            {
-              id: 'QUALITY_UPGRADE',
-              stepNumber: '3B',
-              name: "Pay for Upgrade",
-              persona: 'Amy',
-              function: 'handleQualityPayMore()',
-              line: 3873,
-              messages: [
-                {
-                  id: 'QUALITY_UPGRADE_MSG',
-                  label: "Upgrade Process",
-                  content: "That's really sweet of you to offer... we appreciate that so much 💙\n\nSo here's how we can make this work...\n\nWe can generate a custom checkout link for you to pay just the difference for PuppyPad 2.0 ($20 per pad).\n\nHave the Original material pads been used?"
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: "Yes, they've been used", style: 'primary' },
-                { icon: '✕', text: "No, they're unused / can be repackaged", style: 'secondary' }
-              ],
-              next: 'Routes based on usage → Creates upgrade case'
-            },
-            {
-              id: 'QUALITY_REFUND',
-              stepNumber: '3C',
-              name: "Want Refund → Free Reship Offer",
-              persona: 'Amy',
-              function: 'handleQualityRefund()',
-              line: 3959,
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'QUALITY_REFUND_MSG',
-                  label: "Manager Check",
-                  content: "Totally understand. Let me just check with my manager quickly to see if there's something else we can do for you here...\n\nOne moment 💙"
-                },
-                {
-                  id: 'QUALITY_OFFER_MSG',
-                  label: "Free Reship Offer",
-                  content: "Okay I'm back!\n\nSo I spoke with my manager and here's what we'd like to do...\n\nWe really value our customers and we want to make sure you're fully satisfied. So instead of a refund, what we can do is ship out our new PuppyPad 2.0 to you... <strong>completely free of charge</strong>.\n\nNo extra cost to you at all."
-                }
-              ],
-              buttons: [
-                { icon: '🎁', text: "Yes, that sounds great!", style: 'success' },
-                { icon: '💰', text: "I'd still prefer just a refund", style: 'secondary' }
-              ],
-              next: 'Accept free reship → Thank You | Decline → Refund process'
-            },
-            {
-              id: 'QUALITY_COMPLETE',
-              stepNumber: '4',
-              name: "Case Created",
-              persona: 'Amy',
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'QUALITY_COMPLETE_MSG',
-                  label: "Confirmation",
-                  content: "Your request has been submitted. Our team will process this within 24-48 hours and you'll receive confirmation via email."
-                }
-              ],
-              caseDetails: { type: 'quality', resolution: 'quality_resolution' }
-            }
+          nodes: [
+            { id: 'n1', type: 'start', x: 200, y: 50, data: { label: 'Quality Issue', triggers: ['quality'] } },
+            { id: 'n2', type: 'message', x: 200, y: 150, data: { persona: 'amy', content: "I'm sorry to hear that! We take quality seriously. Let me help you with this." } },
+            { id: 'n3', type: 'form', x: 200, y: 260, data: { formType: 'photo_upload', title: 'Upload Photos', fields: ['photos'] } },
+            { id: 'n4', type: 'api', x: 200, y: 370, data: { service: 'r2', endpoint: 'uploadPhotos', storeAs: 'evidence' } },
+            { id: 'n5', type: 'case', x: 200, y: 480, data: { type: 'quality', priority: 'high' } },
+            { id: 'n6', type: 'end', x: 200, y: 590, data: { title: 'Quality Case Created', showSurvey: true } }
+          ],
+          edges: [
+            { source: 'n1', target: 'n2' },
+            { source: 'n2', target: 'n3' },
+            { source: 'n3', target: 'n4' },
+            { source: 'n4', target: 'n5' },
+            { source: 'n5', target: 'n6' }
           ]
         },
         other_reason: {
           id: 'other_reason',
           name: 'Other Reason',
           description: 'Customer has a different issue not covered by other options',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([💬 Other Reason])
-      ASK[Free Text Input]
-      REVIEW[Amy Reviews Issue]
-      L20[20% Offer]
-      L30[30% Offer]
-      L40[40% Offer]
-      L50[50% Offer]
-      FULL{US or Intl?}
-    end
-
-    subgraph API["🔌 External APIs"]
-      SHOPIFY[(🛒 Shopify<br/>Address Check)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_REFUND[📁 Hub: Refunds]
-      HUB_RETURN[📁 Hub: Returns]
-    end
-
-    START --> ASK --> REVIEW --> L20
-    L20 -->|Accept| D1
-    L20 -->|Decline| L30 -->|Decline| L40 -->|Decline| L50
-    L50 -->|Accept| D1
-    L50 -->|Full| FULL
-    FULL -.->|Check country| SHOPIFY
-    FULL -->|US| HUB_RETURN
-    FULL -->|Intl| HUB_REFUND
-    D1 --> HUB_REFUND
-
-    style START fill:#CBD5E1,stroke:#475569
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff
-    style HUB_RETURN fill:#8b5cf6,stroke:#7c3aed,color:#fff`,
-          steps: [
-            {
-              id: 'OTHER_STEP_1',
-              stepNumber: '1',
-              name: "Ask for Details",
-              persona: 'Amy',
-              function: 'handleOtherReason()',
-              line: 4587,
-              messages: [
-                {
-                  id: 'OTHER_MSG_1',
-                  label: "Amy's Message",
-                  content: "No problem — tell me what's going on and I'll do my best to help:"
-                }
-              ],
-              fields: [
-                { label: 'Describe your issue', type: 'textarea', placeholder: 'Please tell us what happened...', required: true }
-              ],
-              next: 'Customer describes their issue'
-            },
-            {
-              id: 'OTHER_STEP_2',
-              stepNumber: '2',
-              name: "Acknowledge & Offer",
-              persona: 'Amy',
-              line: 4594,
-              messages: [
-                {
-                  id: 'OTHER_MSG_2',
-                  label: "Amy's Response",
-                  content: "Thank you for explaining. Let me see what options I have for you."
-                }
-              ],
-              next: '→ Starts Refund Ladder'
-            },
-            // Refund Ladder for Other Reason
-            {
-              id: 'OTHER_LADDER_20',
-              stepNumber: '3',
-              name: "Offer: 20% Refund",
-              persona: 'Amy',
-              function: 'startRefundLadder()',
-              line: 2570,
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'OTHER_L20_MSG',
-                  label: "Amy's 20% Offer",
-                  content: "I understand your situation. I'd like to offer you a 20% partial refund while you keep the product."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 20% Refund', style: 'success' },
-                { icon: '✗', text: 'I need more help', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → 30% Offer'
-            },
-            {
-              id: 'OTHER_LADDER_30',
-              stepNumber: '4',
-              name: "Offer: 30% Refund",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'OTHER_L30_MSG',
-                  label: "Amy's 30% Offer",
-                  content: "Let me offer you 30% back — that's a significant refund while you keep everything."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 30% Refund', style: 'success' },
-                { icon: '✗', text: 'I need more help', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → 40% Offer'
-            },
-            {
-              id: 'OTHER_LADDER_40',
-              stepNumber: '5',
-              name: "Offer: 40% Refund",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'OTHER_L40_MSG',
-                  label: "Amy's 40% Offer",
-                  content: "My manager approved 40% back for you."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 40% Refund', style: 'success' },
-                { icon: '✗', text: 'I need more help', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → 50% Offer'
-            },
-            {
-              id: 'OTHER_LADDER_50',
-              stepNumber: '6',
-              name: "Offer: 50% Refund (Final)",
-              persona: 'Amy',
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'OTHER_L50_MSG',
-                  label: "Final Offer",
-                  content: "Our maximum: 50% refund. Half your money back, keep everything."
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Accept 50% Refund', style: 'success' },
-                { icon: '✗', text: 'I want a full refund', style: 'secondary' }
-              ],
-              next: 'Accept → Done | Decline → Full Refund'
-            },
-            {
-              id: 'OTHER_COMPLETE',
-              stepNumber: '7',
-              name: "Case Created",
-              persona: 'Amy',
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'OTHER_COMPLETE_MSG',
-                  label: "Confirmation",
-                  content: "Your request has been submitted. Our team will review and process within 1-2 business days."
-                }
-              ],
-              caseDetails: { type: 'other', resolution: 'other_resolution' }
-            }
+          nodes: [
+            { id: 'n1', type: 'start', x: 200, y: 50, data: { label: 'Other Issue', triggers: ['other'] } },
+            { id: 'n2', type: 'message', x: 200, y: 150, data: { persona: 'amy', content: "I'd love to help! Please tell me more about your situation." } },
+            { id: 'n3', type: 'form', x: 200, y: 260, data: { formType: 'text', title: 'Describe Your Issue', fields: ['description'] } },
+            { id: 'n4', type: 'case', x: 200, y: 370, data: { type: 'manual', priority: 'normal' } },
+            { id: 'n5', type: 'end', x: 200, y: 480, data: { title: 'Case Created', showSurvey: true } }
+          ],
+          edges: [
+            { source: 'n1', target: 'n2' },
+            { source: 'n2', target: 'n3' },
+            { source: 'n3', target: 'n4' },
+            { source: 'n4', target: 'n5' }
           ]
         }
       }
     },
-    managing_my_subscription: {
-      id: 'managing_my_subscription',
-      name: 'Managing My Subscription',
-      description: 'Subscription management flows',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>`,
-      color: '#FFB7C5',
+    manage_subscription: {
+      id: 'manage_subscription',
+      name: 'Manage Subscription',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/></svg>`,
+      color: '#f59e0b',
       subflows: {
-        pause_subscription: {
-          id: 'pause_subscription',
-          name: 'Pause Subscription',
-          description: 'Temporarily pause subscription deliveries',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([⏸️ Pause Subscription])
-      S1[Select Subscription]
-      S2{Choose Duration}
-      D30[30 Days]
-      D60[60 Days]
-      D90[90 Days]
-      CUST[Custom Date Picker]
-    end
-
-    subgraph API["🔌 External APIs"]
-      SHOPIFY[(🛒 Shopify<br/>Subscriptions)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_SUB[📁 Hub: Subscriptions<br/>action: pause]
-    end
-
-    START -.->|GET subscriptions| SHOPIFY
-    SHOPIFY -.->|Subscription list| S1
-    S1 --> S2
-    S2 -->|30d| D30 --> D1
-    S2 -->|60d| D60 --> D1
-    S2 -->|90d| D90 --> D1
-    S2 -->|Custom| CUST --> D1
-    D1 --> HUB_SUB
-
-    style START fill:#FFB7C5,stroke:#1a365d
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_SUB fill:#ec4899,stroke:#db2777,color:#fff`,
-          steps: [
-            {
-              id: 'PAUSE_STEP_1',
-              stepNumber: '1',
-              name: "Select Subscription",
-              persona: 'Amy',
-              function: 'showSubscriptionCards()',
-              line: 6124,
-              messages: [
-                {
-                  id: 'PAUSE_STEP_1_MSG',
-                  label: "Amy's Message",
-                  content: "I found [X] subscription(s). Which one would you like to manage?"
-                }
-              ],
-              next: 'Shows subscription cards for selection'
-            },
-            {
-              id: 'PAUSE_STEP_2',
-              stepNumber: '2',
-              name: "Choose Action",
-              persona: 'Amy',
-              function: 'showSubscriptionActions()',
-              line: 6200,
-              messages: [
-                {
-                  id: 'PAUSE_STEP_2_MSG',
-                  label: "Amy's Message",
-                  content: "What would you like to do with this subscription?"
-                }
-              ],
-              buttons: [
-                { text: '⏸️ Pause Subscription', style: 'primary' },
-                { text: '❌ Cancel Subscription', style: 'secondary' },
-                { text: '📅 Change Delivery Schedule', style: 'secondary' },
-                { text: '📍 Change Shipping Address', style: 'secondary' }
-              ],
-              next: 'User selects Pause'
-            },
-            {
-              id: 'PAUSE_STEP_3',
-              stepNumber: '3',
-              name: "Select Duration",
-              persona: 'Amy',
-              function: 'handlePauseSubscription()',
-              line: 6211,
-              messages: [
-                {
-                  id: 'PAUSE_STEP_3_MSG',
-                  label: "Amy's Message",
-                  content: "How long would you like to pause your subscription?"
-                }
-              ],
-              buttons: [
-                { text: '30 days', style: 'primary' },
-                { text: '60 days', style: 'primary' },
-                { text: '90 days', style: 'primary' },
-                { text: 'Custom date', style: 'secondary' }
-              ],
-              next: 'Creates case with pause duration'
-            },
-            {
-              id: 'PAUSE_STEP_4',
-              stepNumber: '4',
-              name: "Pause Confirmed",
-              persona: 'Amy',
-              function: 'confirmPause()',
-              line: 6222,
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'PAUSE_STEP_4_MSG',
-                  label: "Success Message",
-                  content: "Your subscription will automatically resume on [Date]."
-                }
-              ],
-              caseDetails: {
-                type: 'subscription',
-                resolution: 'subscription_paused',
-                actionType: 'pause'
-              }
-            }
-          ]
-        },
         cancel_subscription: {
           id: 'cancel_subscription',
           name: 'Cancel Subscription',
-          description: 'Cancel subscription with retention offers',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([❌ Cancel Request])
-      WHY{Why Cancel?}
-      EXP[💰 Too Expensive]
-      MANY[📦 Have Too Many]
-      NOTW[🐕 Not Working]
-      MOVE[🏠 Moving]
-      OTHER[💬 Other Reason]
-      PAUSE[Offer Pause]
-      ADDR[Offer Address Change]
-      DETAILS[Ask for Details]
-      D10[10% Off Forever]
-      D15[15% Off Forever]
-      D20[20% Off Forever]
-      ACCEPT[Kept with Discount]
-      PAUSED[Subscription Paused]
-      UPDATED[Address Updated]
-      CANCEL[Cancelled]
-    end
-
-    subgraph API["🔌 External APIs"]
-      SHOPIFY[(🛒 Shopify<br/>Subscriptions)]
-      OPENAI[(🤖 OpenAI<br/>subscription_expensive)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_SUB[📁 Hub: Subscriptions]
-    end
-
-    START --> WHY
-    WHY -->|Expensive| EXP -.->|AI retention msg| OPENAI
-    EXP --> D10
-    WHY -->|Too Many| MANY --> PAUSE
-    WHY -->|Not Working| NOTW --> DETAILS --> D10
-    WHY -->|Moving| MOVE --> ADDR
-    WHY -->|Other| OTHER --> D10
-    
-    PAUSE -->|Accept| PAUSED --> D1
-    PAUSE -->|Decline| D10
-    ADDR -->|Accept| UPDATED --> D1
-    ADDR -->|Decline| D10
-    
-    D10 -->|Accept| ACCEPT --> D1
-    D10 -->|Decline| D15 -->|Decline| D20
-    D20 -->|Decline| CANCEL --> D1
-    D1 --> HUB_SUB
-
-    style START fill:#FFCDD2,stroke:#c62828
-    style ACCEPT fill:#C8E6C9,stroke:#2d5a2e
-    style CANCEL fill:#FFCDD2,stroke:#c62828
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style OPENAI fill:#10a37f,stroke:#0d8a6a,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_SUB fill:#ec4899,stroke:#db2777,color:#fff`,
-          // Flow has multiple branches based on cancel reason
-          hasBranches: true,
-          branches: [
-            { id: 'expensive', name: "It's too expensive", icon: '💰' },
-            { id: 'too_many', name: 'I have too many', icon: '📦' },
-            { id: 'not_working', name: "They don't work", icon: '❌' },
-            { id: 'moving', name: "I'm moving", icon: '🏠' },
-            { id: 'other', name: 'Other reason', icon: '💬' }
+          description: 'Customer wants to cancel their subscription',
+          nodes: [
+            { id: 'n1', type: 'start', x: 200, y: 50, data: { label: 'Cancel Request', triggers: ['subscription_cancel'] } },
+            { id: 'n2', type: 'message', x: 200, y: 150, data: { persona: 'amy', content: "I understand you're thinking about canceling. Before you go, can I ask why?" } },
+            { id: 'n3', type: 'options', x: 200, y: 280, data: { prompt: 'Why do you want to cancel?', options: ["It's too expensive", "I have too many", "They don't work", "I'm moving", "Other reason"] } },
+            { id: 'n4', type: 'ai', x: 80, y: 410, data: { persona: 'amy', model: 'gpt-4o', prompt: 'Generate retention message for expensive complaint' } },
+            { id: 'n5', type: 'offer', x: 80, y: 540, data: { percent: 10, label: '10% off forever' } },
+            { id: 'n6', type: 'offer', x: 80, y: 650, data: { percent: 15, label: '15% off forever' } },
+            { id: 'n7', type: 'offer', x: 80, y: 760, data: { percent: 20, label: '20% off forever' } },
+            { id: 'n8', type: 'message', x: 320, y: 410, data: { persona: 'amy', content: "Would you like to pause your subscription instead? You can resume anytime." } },
+            { id: 'n9', type: 'case', x: 200, y: 870, data: { type: 'subscription', priority: 'normal' } },
+            { id: 'n10', type: 'end', x: 200, y: 980, data: { title: 'Subscription Updated', showSurvey: true } }
           ],
-          currentBranch: 'expensive', // Default branch to show
-          steps: [
-            // STEP 1: Cancel Reason (shown for all branches)
-            {
-              id: 'CANCEL_REASON',
-              stepNumber: '1',
-              name: "Why Cancel?",
-              persona: 'Amy',
-              function: 'handleCancelSubscription()',
-              line: 6297,
-              isBranchPoint: true,
-              messages: [
-                {
-                  id: 'CANCEL_REASON_MSG',
-                  label: "Amy's Message",
-                  content: "I'm sorry to see you go 😔 Can you tell me why you'd like to cancel?"
-                }
-              ],
-              buttons: [
-                { icon: '💰', text: "It's too expensive", style: 'primary', branch: 'expensive' },
-                { icon: '📦', text: "I have too many", style: 'primary', branch: 'too_many' },
-                { icon: '❌', text: "They don't work as described", style: 'primary', branch: 'not_working' },
-                { icon: '🏠', text: "I'm moving", style: 'primary', branch: 'moving' },
-                { icon: '💬', text: "Other reason", style: 'secondary', branch: 'other' }
-              ],
-              next: 'Routes based on reason selected'
-            },
-            
-            // ========== BRANCH: TOO EXPENSIVE ==========
-            {
-              id: 'EXPENSIVE_INTRO',
-              stepNumber: '2',
-              name: "Acknowledge Budget",
-              persona: 'Amy',
-              branch: 'expensive',
-              function: 'handleCancelReason("expensive")',
-              line: 6312,
-              messages: [
-                {
-                  id: 'EXPENSIVE_INTRO_MSG',
-                  label: "Amy's Message",
-                  content: "I completely understand — budgets matter! Before you go, let me see if I can help make this more affordable..."
-                }
-              ],
-              next: '→ 10% Discount Offer'
-            },
-            
-            // ========== BRANCH: TOO MANY ==========
-            {
-              id: 'TOO_MANY_PAUSE_OFFER',
-              stepNumber: '2',
-              name: "Offer Pause Instead",
-              persona: 'Amy',
-              branch: 'too_many',
-              function: 'handleCancelReason("too_many")',
-              line: 6317,
-              messages: [
-                {
-                  id: 'TOO_MANY_MSG',
-                  label: "Amy's Message",
-                  content: "Got it! Instead of cancelling, would you like to pause your subscription and have it resume later? That way you're locked in at the same price — prices may increase in the future!"
-                }
-              ],
-              buttons: [
-                { icon: '⏸️', text: "Yes, pause instead", style: 'success', action: '→ Goes to Pause Flow' },
-                { icon: '❌', text: "No, I want to cancel", style: 'secondary', action: '→ Discount Ladder' }
-              ],
-              next: 'Accept → Pause | Decline → Discount Ladder'
-            },
-            {
-              id: 'TOO_MANY_PAUSE_ACCEPT',
-              stepNumber: '2a',
-              name: "Pause Accepted",
-              persona: 'Amy',
-              branch: 'too_many',
-              isThankYou: true,
-              isBranch: true,
-              branchType: 'success',
-              messages: [
-                {
-                  id: 'TOO_MANY_PAUSE_MSG',
-                  label: "Success Message",
-                  content: "Perfect! How long would you like to pause? (30, 60, 90 days, or custom date)"
-                }
-              ],
-              next: '→ Continues to Pause Duration Selection'
-            },
-            
-            // ========== BRANCH: NOT WORKING ==========
-            {
-              id: 'NOT_WORKING_ASK',
-              stepNumber: '2',
-              name: "Ask What's Not Working",
-              persona: 'Amy',
-              branch: 'not_working',
-              function: 'handleCancelReason("not_working")',
-              line: 6328,
-              messages: [
-                {
-                  id: 'NOT_WORKING_MSG',
-                  label: "Amy's Message",
-                  content: "I'm sorry to hear that! Could you tell me more about what's not working? I'd love to try to help."
-                }
-              ],
-              fields: [
-                { label: "What's not working?", type: 'textarea', placeholder: 'Please describe the issue...' }
-              ],
-              next: '→ Customer explains issue'
-            },
-            {
-              id: 'NOT_WORKING_RESPONSE',
-              stepNumber: '3',
-              name: "Acknowledge & Offer",
-              persona: 'Amy',
-              branch: 'not_working',
-              line: 6334,
-              messages: [
-                {
-                  id: 'NOT_WORKING_RESP_MSG',
-                  label: "Amy's Message",
-                  content: "Thank you for sharing that. Let me see what I can offer to make this right..."
-                }
-              ],
-              next: '→ 10% Discount Offer'
-            },
-            
-            // ========== BRANCH: MOVING ==========
-            {
-              id: 'MOVING_ADDRESS_OFFER',
-              stepNumber: '2',
-              name: "Offer Address Change",
-              persona: 'Amy',
-              branch: 'moving',
-              function: 'handleCancelReason("moving")',
-              line: 6340,
-              messages: [
-                {
-                  id: 'MOVING_MSG',
-                  label: "Amy's Message",
-                  content: "No problem! Would you like to update your shipping address instead of cancelling? We can ship to your new location!"
-                }
-              ],
-              buttons: [
-                { icon: '📍', text: "Yes, update my address", style: 'success', action: '→ Goes to Address Change Flow' },
-                { icon: '❌', text: "No, I still want to cancel", style: 'secondary', action: '→ Discount Ladder' }
-              ],
-              next: 'Accept → Address Form | Decline → Discount Ladder'
-            },
-            {
-              id: 'MOVING_ADDRESS_ACCEPT',
-              stepNumber: '2a',
-              name: "Address Update",
-              persona: 'Amy',
-              branch: 'moving',
-              isThankYou: true,
-              isBranch: true,
-              branchType: 'success',
-              messages: [
-                {
-                  id: 'MOVING_ADDRESS_MSG',
-                  label: "Success Message",
-                  content: "Great! Please enter your new shipping address and we'll update your subscription."
-                }
-              ],
-              next: '→ Continues to Address Form'
-            },
-            
-            // ========== BRANCH: OTHER ==========
-            {
-              id: 'OTHER_INTRO',
-              stepNumber: '2',
-              name: "Acknowledge & Offer",
-              persona: 'Amy',
-              branch: 'other',
-              function: 'handleCancelReason("other")',
-              line: 6352,
-              messages: [
-                {
-                  id: 'OTHER_MSG',
-                  label: "Amy's Message",
-                  content: "Thank you for letting me know. Before you go, let me see if there's anything I can offer..."
-                }
-              ],
-              next: '→ 10% Discount Offer'
-            },
-            
-            // ========== DISCOUNT LADDER (shared across branches) ==========
-            {
-              id: 'CANCEL_LADDER_10',
-              stepNumber: '3',
-              name: "Offer: 10% Off",
-              persona: 'Amy',
-              function: 'startSubscriptionLadder()',
-              line: 6359,
-              isBranch: true,
-              branchType: 'refund',
-              isLadderStep: true,
-              messages: [
-                {
-                  id: 'CANCEL_LADDER_10_MSG',
-                  label: "Amy's 10% Offer",
-                  content: "How about 10% off all future shipments? That's ongoing savings on every delivery!"
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Keep Subscription', style: 'success', action: '→ Discount applied' },
-                { icon: '✗', text: 'Still cancel', style: 'secondary', action: '→ 15% offer' }
-              ],
-              next: 'Accept → Done | Decline → 15% Offer'
-            },
-            {
-              id: 'CANCEL_LADDER_10_ACCEPT',
-              stepNumber: '3a',
-              name: "10% Accepted",
-              persona: 'Amy',
-              isThankYou: true,
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'CANCEL_10_ACCEPT_MSG',
-                  label: "Success Message",
-                  content: "Great choice! Your 10% discount will apply to all future shipments automatically."
-                }
-              ],
-              caseDetails: { type: 'subscription', resolution: 'discount_applied', discountPercent: 10 }
-            },
-            {
-              id: 'CANCEL_LADDER_15',
-              stepNumber: '4',
-              name: "Offer: 15% Off",
-              persona: 'Amy',
-              function: 'startSubscriptionLadder()',
-              line: 6362,
-              isBranch: true,
-              branchType: 'refund',
-              isLadderStep: true,
-              messages: [
-                {
-                  id: 'CANCEL_LADDER_15_MSG',
-                  label: "Amy's 15% Offer",
-                  content: "Let me do better — 15% off all future shipments. That really adds up over time!"
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Keep Subscription', style: 'success', action: '→ Discount applied' },
-                { icon: '✗', text: 'Still cancel', style: 'secondary', action: '→ 20% offer' }
-              ],
-              next: 'Accept → Done | Decline → 20% Offer'
-            },
-            {
-              id: 'CANCEL_LADDER_15_ACCEPT',
-              stepNumber: '4a',
-              name: "15% Accepted",
-              persona: 'Amy',
-              isThankYou: true,
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'CANCEL_15_ACCEPT_MSG',
-                  label: "Success Message",
-                  content: "Great choice! Your 15% discount will apply to all future shipments automatically."
-                }
-              ],
-              caseDetails: { type: 'subscription', resolution: 'discount_applied', discountPercent: 15 }
-            },
-            {
-              id: 'CANCEL_LADDER_20',
-              stepNumber: '5',
-              name: "Offer: 20% Off (Final)",
-              persona: 'Amy',
-              function: 'startSubscriptionLadder()',
-              line: 6363,
-              isBranch: true,
-              branchType: 'refund',
-              isLadderStep: true,
-              messages: [
-                {
-                  id: 'CANCEL_LADDER_20_MSG',
-                  label: "Amy's Final Offer",
-                  content: "My best offer: 20% off all future shipments. That's significant savings!"
-                }
-              ],
-              buttons: [
-                { icon: '✓', text: 'Keep Subscription', style: 'success', action: '→ Discount applied' },
-                { icon: '✗', text: 'Cancel anyway', style: 'secondary', action: '→ Full cancellation' }
-              ],
-              next: 'Accept → Done | Decline → Full Cancellation'
-            },
-            {
-              id: 'CANCEL_LADDER_20_ACCEPT',
-              stepNumber: '5a',
-              name: "20% Accepted",
-              persona: 'Amy',
-              isThankYou: true,
-              isBranch: true,
-              branchType: 'refund',
-              messages: [
-                {
-                  id: 'CANCEL_20_ACCEPT_MSG',
-                  label: "Success Message",
-                  content: "Great choice! Your 20% discount will apply to all future shipments automatically."
-                }
-              ],
-              caseDetails: { type: 'subscription', resolution: 'discount_applied', discountPercent: 20 }
-            },
-            {
-              id: 'CANCEL_FULL',
-              stepNumber: '6',
-              name: "Full Cancellation",
-              persona: 'Amy',
-              function: 'handleFullSubscriptionCancel()',
-              line: 6427,
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'CANCEL_FULL_MSG',
-                  label: "Cancellation Message",
-                  content: "I understand. Before I process the cancellation, has the product been used?"
-                }
-              ],
-              buttons: [
-                { text: "Yes, used", style: 'primary' },
-                { text: "No, unused", style: 'secondary' }
-              ],
-              next: '→ Process cancellation based on usage'
-            },
-            {
-              id: 'CANCEL_COMPLETE',
-              stepNumber: '7',
-              name: "Subscription Cancelled",
-              persona: 'Amy',
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'CANCEL_COMPLETE_MSG',
-                  label: "Final Message",
-                  content: "Your subscription has been cancelled and your refund request has been submitted."
-                }
-              ],
-              caseDetails: { type: 'subscription', resolution: 'subscription_cancelled' }
-            }
+          edges: [
+            { source: 'n1', target: 'n2' },
+            { source: 'n2', target: 'n3' },
+            { source: 'n3', target: 'n4', label: 'Expensive' },
+            { source: 'n3', target: 'n8', label: 'Too many' },
+            { source: 'n4', target: 'n5' },
+            { source: 'n5', target: 'n6', label: 'Decline' },
+            { source: 'n6', target: 'n7', label: 'Decline' },
+            { source: 'n7', target: 'n9', label: 'Decline' },
+            { source: 'n5', target: 'n9', label: 'Accept' },
+            { source: 'n6', target: 'n9', label: 'Accept' },
+            { source: 'n7', target: 'n9', label: 'Accept' },
+            { source: 'n8', target: 'n9' },
+            { source: 'n9', target: 'n10' }
           ]
         },
-        change_frequency: {
-          id: 'change_frequency',
-          name: 'Change Delivery Frequency',
-          description: 'Adjust how often deliveries arrive',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([📅 Change Frequency])
-      SELECT{Select New Interval}
-      D30[Every 30 days]
-      D45[Every 45 days]
-      D60[Every 60 days]
-      D90[Every 90 days]
-    end
-
-    subgraph API["🔌 External APIs"]
-      SHOPIFY[(🛒 Shopify<br/>Subscriptions API)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_SUB[📁 Hub: Subscriptions<br/>action: frequency_change]
-    end
-
-    START -.->|GET subscription| SHOPIFY
-    SHOPIFY -.->|Current schedule| SELECT
-    SELECT --> D30 --> D1
-    SELECT --> D45 --> D1
-    SELECT --> D60 --> D1
-    SELECT --> D90 --> D1
-    D1 --> HUB_SUB
-
-    style START fill:#FFB7C5,stroke:#1a365d
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_SUB fill:#ec4899,stroke:#db2777,color:#fff`,
-          steps: [
-            {
-              id: 'FREQ_STEP_1',
-              stepNumber: '1',
-              name: "Select New Frequency",
-              persona: 'Amy',
-              function: 'handleChangeSchedule()',
-              line: 6471,
-              messages: [
-                {
-                  id: 'FREQ_STEP_1_MSG',
-                  label: "Amy's Message",
-                  content: "How often would you like to receive your deliveries?"
-                }
-              ],
-              buttons: [
-                { text: 'Every 30 days', style: 'primary' },
-                { text: 'Every 45 days', style: 'primary' },
-                { text: 'Every 60 days', style: 'primary' },
-                { text: 'Every 90 days', style: 'primary' }
-              ],
-              next: 'Creates case with new frequency'
-            },
-            {
-              id: 'FREQ_STEP_2',
-              stepNumber: '2',
-              name: "Schedule Updated",
-              persona: 'Amy',
-              function: 'confirmScheduleChange()',
-              line: 6482,
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'FREQ_STEP_2_MSG',
-                  label: "Success Message",
-                  content: "Your deliveries will now arrive every [X] days."
-                }
-              ],
-              caseDetails: {
-                type: 'subscription',
-                resolution: 'schedule_changed'
-              }
-            }
+        pause_subscription: {
+          id: 'pause_subscription',
+          name: 'Pause Subscription',
+          description: 'Customer wants to temporarily pause their subscription',
+          nodes: [
+            { id: 'n1', type: 'start', x: 200, y: 50, data: { label: 'Pause Request', triggers: ['subscription_pause'] } },
+            { id: 'n2', type: 'message', x: 200, y: 150, data: { persona: 'amy', content: "No problem! How long would you like to pause your subscription?" } },
+            { id: 'n3', type: 'options', x: 200, y: 280, data: { prompt: 'Pause duration', options: ['1 month', '2 months', '3 months'] } },
+            { id: 'n4', type: 'api', x: 200, y: 410, data: { service: 'shopify', endpoint: 'pauseSubscription', storeAs: 'result' } },
+            { id: 'n5', type: 'case', x: 200, y: 520, data: { type: 'subscription', priority: 'low' } },
+            { id: 'n6', type: 'end', x: 200, y: 630, data: { title: 'Subscription Paused', showSurvey: true } }
+          ],
+          edges: [
+            { source: 'n1', target: 'n2' },
+            { source: 'n2', target: 'n3' },
+            { source: 'n3', target: 'n4' },
+            { source: 'n4', target: 'n5' },
+            { source: 'n5', target: 'n6' }
           ]
         },
         change_address: {
           id: 'change_address',
-          name: 'Change Shipping Address',
-          description: 'Update delivery address for subscription',
-          diagram: `flowchart TD
-    START([📍 Change Address])
-    FORM[Enter New Address]
-    SUBMIT[Submit Address]
-    DONE([✅ Address Updated])
-    
-    START --> FORM --> SUBMIT --> DONE
-    
-    style START fill:#FFB7C5,stroke:#1a365d
-    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
-          steps: [
-            {
-              id: 'ADDR_STEP_1',
-              stepNumber: '1',
-              name: "Enter New Address",
-              persona: 'Amy',
-              function: 'handleChangeAddress()',
-              line: 6505,
-              messages: [
-                {
-                  id: 'ADDR_STEP_1_MSG',
-                  label: "Amy's Message",
-                  content: "Please enter your new shipping address:"
-                }
-              ],
-              fields: [
-                { label: 'Street Address', type: 'text', required: true },
-                { label: 'Apt/Suite', type: 'text', required: false },
-                { label: 'City', type: 'text', required: true },
-                { label: 'State/Province', type: 'text', required: true },
-                { label: 'ZIP/Postal Code', type: 'text', required: true },
-                { label: 'Country', type: 'select', required: true },
-                { label: 'Phone Number', type: 'tel', required: false }
-              ],
-              buttons: [
-                { text: 'Update Address', style: 'primary' }
-              ],
-              next: 'Creates case with new address'
-            },
-            {
-              id: 'ADDR_STEP_2',
-              stepNumber: '2',
-              name: "Address Updated",
-              persona: 'Amy',
-              function: 'submitNewAddress()',
-              line: 6552,
-              isThankYou: true,
-              messages: [
-                {
-                  id: 'ADDR_STEP_2_MSG',
-                  label: "Success Message",
-                  content: "Your shipping address has been updated! Future deliveries will be sent to your new address."
-                }
-              ],
-              caseDetails: {
-                type: 'subscription',
-                resolution: 'address_changed'
-              }
-            }
-          ]
-        }
-      }
-    },
-    track_my_order: {
-      id: 'track_my_order',
-      name: 'Track My Order',
-      description: 'Order tracking and delivery status inquiries',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
-      color: '#C8E6C9',
-      subflows: {
-        tracking_status: {
-          id: 'tracking_status',
-          name: 'Check Tracking Status',
-          description: 'View current tracking information for an order',
-          diagram: `flowchart TD
-    subgraph CHAT["💬 Chat App"]
-      START([📦 Track My Order])
-      FIND[Enter Email + Order #]
-      CHECK{Tracking Available?}
-      STATUS{Package Status}
-      TRANSIT[🚚 In Transit]
-      DELIVERED[✅ Delivered]
-      NOTRECV[❓ Says Delivered but Not Received]
-      DELAYED[⏳ Stuck > 7 days]
-      SHOW[Display Timeline]
-    end
-
-    subgraph API["🔌 External APIs"]
-      SHOPIFY[(🛒 Shopify<br/>Order Lookup)]
-      PARCEL[(📦 ParcelPanel<br/>Tracking Events)]
-    end
-
-    subgraph HUB["📊 Resolution Hub"]
-      D1[(💾 D1 Database)]
-      HUB_SHIP[📁 Hub: Shipping]
-    end
-
-    START --> FIND
-    FIND -.->|GET /orders| SHOPIFY
-    SHOPIFY -.->|tracking_number| PARCEL
-    PARCEL -.->|Events| CHECK
-    CHECK -->|No tracking| D1 --> HUB_SHIP
-    CHECK -->|Has tracking| STATUS
-    STATUS -->|In Transit| TRANSIT --> SHOW
-    STATUS -->|Delivered| DELIVERED --> SHOW
-    STATUS -->|Not Received| NOTRECV --> D1
-    STATUS -->|Delayed| DELAYED --> D1
-
-    style START fill:#C8E6C9,stroke:#2d5a2e
-    style SHOW fill:#C8E6C9,stroke:#2d5a2e
-    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
-    style PARCEL fill:#5046e5,stroke:#4338ca,color:#fff
-    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_SHIP fill:#06b6d4,stroke:#0891b2,color:#fff`,
-          steps: [
-            {
-              id: 'TRACK_STEP_1',
-              stepNumber: '1',
-              name: "Enter Details",
-              persona: 'Amy',
-              function: 'showIdentifyForm()',
-              line: 1356,
-              messages: [
-                {
-                  id: 'TRACK_STEP_1_MSG',
-                  label: "Amy's Welcome",
-                  content: "Hi! I'm Amy. Let me help you track your order — just enter your details below and I'll pull it right up. 📦"
-                }
-              ],
-              fields: [
-                { label: 'Email or Phone', type: 'text', required: true },
-                { label: 'Order Number (optional)', type: 'text', required: false }
-              ],
-              next: 'Looks up order in Shopify'
-            },
-            {
-              id: 'TRACK_STEP_2',
-              stepNumber: '2',
-              name: "Show Tracking",
-              persona: 'Amy',
-              function: 'handleTrackingResult()',
-              line: 4650,
-              messages: [
-                {
-                  id: 'TRACK_STEP_2_MSG',
-                  label: "Tracking Found",
-                  content: "Here's your tracking information!"
-                }
-              ],
-              next: 'Displays tracking card with status, carrier, delivery estimate'
-            }
+          name: 'Change Address',
+          description: 'Customer wants to update their shipping address',
+          nodes: [
+            { id: 'n1', type: 'start', x: 200, y: 50, data: { label: 'Address Change', triggers: ['subscription_address'] } },
+            { id: 'n2', type: 'message', x: 200, y: 150, data: { persona: 'amy', content: "Sure! I can help you update your shipping address." } },
+            { id: 'n3', type: 'form', x: 200, y: 260, data: { formType: 'address', title: 'New Shipping Address', fields: ['name', 'street', 'city', 'state', 'zip', 'country'] } },
+            { id: 'n4', type: 'api', x: 200, y: 390, data: { service: 'shopify', endpoint: 'updateAddress', storeAs: 'result' } },
+            { id: 'n5', type: 'case', x: 200, y: 500, data: { type: 'subscription', priority: 'low' } },
+            { id: 'n6', type: 'end', x: 200, y: 610, data: { title: 'Address Updated', showSurvey: true } }
+          ],
+          edges: [
+            { source: 'n1', target: 'n2' },
+            { source: 'n2', target: 'n3' },
+            { source: 'n3', target: 'n4' },
+            { source: 'n4', target: 'n5' },
+            { source: 'n5', target: 'n6' }
           ]
         }
       }
     }
   },
 
-  load() {
-    this.render();
-  },
-
+  // Render the main flow documentation page
   render() {
-    const container = document.getElementById('flowsContent');
-    if (!container) return;
+    const mainContent = document.getElementById('mainContent');
+    if (!mainContent) return;
 
-    if (this.currentSubflow) {
-      this.renderSubflowDetail();
-    } else if (this.currentFlow) {
-      this.renderFlowSubflows();
-    } else {
-      this.renderFlowCards();
-    }
-  },
-
-  renderFlowCards() {
-    const container = document.getElementById('flowsContent');
-    if (!container) return;
-
-    const flowsArray = Object.values(this.flows);
-    
-    container.innerHTML = `
-      <div class="flows-page">
-        <div class="flows-header">
-          <div class="flows-header-content">
-            <h1 class="flows-title">Chat Flow Documentation</h1>
-            <p class="flows-subtitle">Interactive documentation for all chat app conversational flows</p>
+    mainContent.innerHTML = `
+      <div class="flow-viewer">
+        <!-- Left Panel: Flow Selector -->
+        <div class="flow-selector">
+          <div class="flow-selector-header">
+            <h3>📋 Flow Documentation</h3>
+            <input type="text" class="flow-selector-search" placeholder="Search flows..." oninput="HubFlows.filterFlows(this.value)">
+          </div>
+          <div class="flow-selector-list" id="flowSelectorList">
+            ${this.renderFlowTree()}
           </div>
         </div>
-        
-        <div class="flows-grid">
-          ${flowsArray.map(flow => this.renderFlowCard(flow)).join('')}
+
+        <!-- Center Panel: Canvas -->
+        <div class="flow-canvas-container">
+          ${this.currentSubflow ? this.renderCanvas() : this.renderEmptyCanvas()}
         </div>
-      </div>
-    `;
-  },
 
-  renderFlowCard(flow) {
-    const subflowCount = Object.keys(flow.subflows).length;
-    const documentedCount = Object.values(flow.subflows).filter(sf => sf.steps && sf.steps.length > 0).length;
-    
-    return `
-      <div class="flow-card" onclick="HubFlows.selectFlow('${flow.id}')" style="--flow-color: ${flow.color}">
-        <div class="flow-card-icon" style="background: ${flow.color}20; color: ${flow.color}">
-          ${flow.icon}
-        </div>
-        <div class="flow-card-content">
-          <h3 class="flow-card-title">${flow.name}</h3>
-          <p class="flow-card-description">${flow.description}</p>
-          <div class="flow-card-meta">
-            <span class="flow-card-count">${subflowCount} subflows</span>
-            <span class="flow-card-status">${documentedCount} documented</span>
-          </div>
-        </div>
-        <div class="flow-card-arrow">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-        </div>
-      </div>
-    `;
-  },
-
-  selectFlow(flowId) {
-    this.currentFlow = this.flows[flowId];
-    this.currentSubflow = null;
-    this.render();
-  },
-
-  renderFlowSubflows() {
-    const container = document.getElementById('flowsContent');
-    if (!container || !this.currentFlow) return;
-
-    const subflowsArray = Object.values(this.currentFlow.subflows);
-    
-    container.innerHTML = `
-      <div class="flows-page">
-        <div class="flows-breadcrumb">
-          <button class="flows-back-btn" onclick="HubFlows.goBack()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            All Flows
-          </button>
-        </div>
-        
-        <div class="flows-header" style="--flow-color: ${this.currentFlow.color}">
-          <div class="flows-header-icon" style="background: ${this.currentFlow.color}20; color: ${this.currentFlow.color}">
-            ${this.currentFlow.icon}
-          </div>
-          <div class="flows-header-content">
-            <h1 class="flows-title">${this.currentFlow.name}</h1>
-            <p class="flows-subtitle">${this.currentFlow.description}</p>
-          </div>
-        </div>
-        
-        <div class="subflows-grid">
-          ${subflowsArray.map(sf => this.renderSubflowCard(sf)).join('')}
-        </div>
-      </div>
-    `;
-  },
-
-  renderSubflowCard(subflow) {
-    const isDocumented = subflow.steps && subflow.steps.length > 0;
-    const stepCount = isDocumented ? subflow.steps.length : 0;
-    
-    return `
-      <div class="subflow-card ${isDocumented ? '' : 'subflow-card-pending'}" 
-           onclick="${isDocumented ? `HubFlows.selectSubflow('${subflow.id}')` : ''}"
-           style="--flow-color: ${this.currentFlow.color}">
-        <div class="subflow-card-header">
-          <h4 class="subflow-card-title">${subflow.name}</h4>
-          ${isDocumented 
-            ? `<span class="subflow-badge documented">Documented</span>`
-            : `<span class="subflow-badge pending">Coming Soon</span>`
-          }
-        </div>
-        <p class="subflow-card-description">${subflow.description}</p>
-        ${isDocumented ? `
-          <div class="subflow-card-footer">
-            <span class="subflow-step-count">${stepCount} steps</span>
-            <span class="subflow-view-link">View Details →</span>
-          </div>
-        ` : ''}
-      </div>
-    `;
-  },
-
-  selectSubflow(subflowId) {
-    if (!this.currentFlow) return;
-    this.currentSubflow = this.currentFlow.subflows[subflowId];
-    this.showDiagram = false;
-    this.currentStepIndex = 0; // Start at first step in simulator
-    this.render();
-  },
-
-  setView(view) {
-    this.showDiagram = (view === 'diagram');
-    this.render();
-    // Initialize Mermaid if showing diagram
-    if (this.showDiagram && typeof mermaid !== 'undefined') {
-      setTimeout(() => {
-        mermaid.init(undefined, '.mermaid-diagram');
-      }, 100);
-    }
-  },
-
-  // Simulator state
-  currentStepIndex: 0,
-
-  goToStep(index) {
-    this.currentStepIndex = index;
-    this.renderSimulator();
-  },
-
-  getFilteredSteps() {
-    const allSteps = this.currentSubflow.steps;
-    const hasBranches = this.currentSubflow.hasBranches;
-    
-    if (!hasBranches) return allSteps;
-    
-    return allSteps.filter(s => !s.branch || s.branch === this.selectedBranch || s.isLadderStep || s.id.includes('LADDER'));
-  },
-
-  nextStep() {
-    const steps = this.getFilteredSteps();
-    if (this.currentStepIndex < steps.length - 1) {
-      this.currentStepIndex++;
-      this.renderSimulator();
-    }
-  },
-
-  prevStep() {
-    if (this.currentStepIndex > 0) {
-      this.currentStepIndex--;
-      this.renderSimulator();
-    }
-  },
-
-  resetSimulator() {
-    this.currentStepIndex = 0;
-    this.renderSimulator();
-  },
-
-  renderDiagram() {
-    if (!this.currentSubflow || !this.currentSubflow.diagram) return '';
-    
-    return `
-      <div class="flow-diagram-container">
-        <div class="flow-diagram-card">
-          <div class="flow-diagram-header">
-            <h3>Flow Overview Diagram</h3>
-            <p>Visual map of the complete customer journey</p>
-          </div>
-          <div class="flow-diagram-content">
-            <div class="mermaid-diagram">
-              ${this.currentSubflow.diagram}
-            </div>
-          </div>
-          <div class="flow-diagram-legend">
-            <h4>What the colors mean</h4>
-            <div class="legend-items">
-              <div class="legend-item"><span class="legend-color" style="background: #A8D8EA"></span> Start or Case Created</div>
-              <div class="legend-item"><span class="legend-color" style="background: #C8E6C9"></span> Happy Ending</div>
-              <div class="legend-item"><span class="legend-color" style="background: #FFCDD2"></span> Cannot Proceed</div>
-              <div class="legend-item"><span class="legend-color" style="background: #E8D5E8; border-radius: 50%"></span> Customer Choice</div>
-              <div class="legend-item"><span class="legend-color" style="background: #fff; border: 1px solid #1a365d"></span> Step</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  },
-
-  renderSubflowDetail() {
-    const container = document.getElementById('flowsContent');
-    if (!container || !this.currentFlow || !this.currentSubflow) return;
-
-    const hasDiagram = this.currentSubflow.diagram;
-
-    container.innerHTML = `
-      <div class="flows-page">
-        <div class="flows-breadcrumb">
-          <button class="flows-back-btn" onclick="HubFlows.goToFlow()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            ${this.currentFlow.name}
-          </button>
-        </div>
-        
-        <div class="subflow-detail-header" style="--flow-color: ${this.currentFlow.color}">
-          <div class="subflow-detail-title-section">
-            <h1 class="subflow-detail-title">${this.currentSubflow.name}</h1>
-            <p class="subflow-detail-description">${this.currentSubflow.description}</p>
-          </div>
-          ${hasDiagram ? `
-            <div class="subflow-view-toggle">
-              <button class="view-toggle-btn ${!this.showDiagram ? 'active' : ''}" onclick="HubFlows.setView('steps')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                Simulator
-              </button>
-              <button class="view-toggle-btn ${this.showDiagram ? 'active' : ''}" onclick="HubFlows.setView('diagram')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/><path d="M7 10v4M17 10v4M10 7h4M10 17h4"/></svg>
-                Flow Diagram
-              </button>
-            </div>
-          ` : ''}
-        </div>
-        
-        ${this.showDiagram && hasDiagram ? this.renderDiagram() : `
-          <div id="flowSimulator"></div>
-        `}
-      </div>
-      
-      <!-- Suggest Edit Modal -->
-      <div class="flows-modal-overlay" id="flowsEditModal" onclick="if(event.target === this) HubFlows.closeEditModal()">
-        <div class="flows-modal">
-          <div class="flows-modal-header">
-            <h3>Suggest Edit</h3>
-            <button class="flows-modal-close" onclick="HubFlows.closeEditModal()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
-          </div>
-          <div class="flows-modal-body">
-            <div class="flows-edit-preview" id="flowsEditPreview"></div>
-            <div class="flows-edit-field">
-              <label>Suggested Change</label>
-              <textarea id="flowsSuggestedChange" placeholder="Enter your suggested change..."></textarea>
-            </div>
-            <div class="flows-edit-field">
-              <label>Reason (optional)</label>
-              <textarea id="flowsChangeReason" placeholder="Why is this change needed?"></textarea>
-            </div>
-          </div>
-          <div class="flows-modal-footer">
-            <button class="btn btn-secondary" onclick="HubFlows.closeEditModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="HubFlows.copyChangeRequest()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              Copy to Clipboard
-            </button>
-          </div>
+        <!-- Right Panel: Properties -->
+        <div class="flow-properties">
+          ${this.selectedNode ? this.renderProperties() : this.renderEmptyProperties()}
         </div>
       </div>
     `;
 
-    // Render the simulator if not showing diagram
-    if (!this.showDiagram) {
-      this.renderSimulator();
-    }
-  },
-
-  // Track selected branch for flows with branches
-  selectedBranch: null,
-
-  selectBranch(branchId) {
-    this.selectedBranch = branchId;
-    this.currentStepIndex = 0;
-    this.renderSimulator();
-  },
-
-  renderSimulator() {
-    const container = document.getElementById('flowSimulator');
-    if (!container || !this.currentSubflow) return;
-
-    // Get filtered steps based on selected branch
-    const allSteps = this.currentSubflow.steps;
-    const hasBranches = this.currentSubflow.hasBranches;
-    
-    // If flow has branches and no branch selected, use default
-    if (hasBranches && !this.selectedBranch) {
-      this.selectedBranch = this.currentSubflow.currentBranch || this.currentSubflow.branches[0]?.id;
-    }
-    
-    // Filter steps: show steps without branch + steps for selected branch + ladder steps
-    const steps = hasBranches 
-      ? allSteps.filter(s => !s.branch || s.branch === this.selectedBranch || s.isLadderStep || s.id.includes('LADDER'))
-      : allSteps;
-    
-    const currentStep = steps[this.currentStepIndex] || steps[0];
-    const persona = this.getPersonaFromStep(currentStep);
-    const personaName = persona.charAt(0).toUpperCase() + persona.slice(1);
-
-    // Render branch selector if flow has branches
-    const branchSelectorHtml = hasBranches ? this.renderBranchSelector() : '';
-
-    container.innerHTML = `
-      <div class="flow-simulator">
-        <!-- Left: Step Navigation -->
-        <div class="sim-nav">
-          <div class="sim-nav-header">
-            <h3>Flow Steps</h3>
-            <p>Click any step to jump</p>
-          </div>
-          ${branchSelectorHtml}
-          <div class="sim-nav-list" id="simNavList">
-            ${this.renderSimNavItems(steps)}
-          </div>
-          <div class="sim-nav-footer">
-            <button class="sim-nav-btn secondary" onclick="HubFlows.resetSimulator()" title="Reset">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-              Reset
-            </button>
-            <button class="sim-nav-btn primary" onclick="HubFlows.nextStep()" ${this.currentStepIndex >= steps.length - 1 ? 'disabled' : ''}>
-              ${this.currentStepIndex >= steps.length - 1 ? 'End' : 'Next'}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Center: Phone Mockup -->
-        <div class="sim-phone-container">
-          <div class="sim-phone-bg"></div>
-          <div class="sim-phone">
-            <!-- Phone Header -->
-            <div class="sim-phone-header">
-              <div class="sim-phone-avatar-ring ${persona}">
-                <img src="${this.avatars[persona]}" alt="${personaName}" class="sim-phone-avatar">
-              </div>
-              <div class="sim-phone-info">
-                <h4 class="sim-phone-name">${personaName}</h4>
-                <div class="sim-phone-status">
-                  <span class="sim-phone-status-dot"></span>
-                  Online
-                </div>
-              </div>
-              <div class="sim-phone-restart">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-                Start Over
-              </div>
-            </div>
-            
-            <!-- Phone Chat Area -->
-            <div class="sim-phone-chat" id="simPhoneChat">
-              ${this.renderSimChatContent(currentStep)}
-            </div>
-            
-            <!-- Phone Footer -->
-            <div class="sim-phone-footer">
-              <div class="sim-phone-trouble">
-                App not working? <span>Click here to report an issue</span>
-              </div>
-              <img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad" class="sim-phone-logo">
-            </div>
-          </div>
-        </div>
-
-        <!-- Right: Documentation Panel -->
-        <div class="sim-docs">
-          <div class="sim-docs-header">
-            <h3>Step Details</h3>
-            <div class="sim-docs-step-name">${currentStep.name}</div>
-          </div>
-          <div class="sim-docs-content">
-            ${this.renderSimDocs(currentStep)}
-          </div>
-        </div>
-      </div>
-    `;
-
-    // Scroll active step into view
-    setTimeout(() => {
-      const activeItem = document.querySelector('.sim-nav-item.active');
-      if (activeItem) {
-        activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 100);
-  },
-
-  renderBranchSelector() {
-    if (!this.currentSubflow.branches) return '';
-    
-    let html = `
-      <div class="sim-branch-selector">
-        <div class="sim-branch-label">Select Path:</div>
-        <div class="sim-branch-options">
-    `;
-    
-    this.currentSubflow.branches.forEach(branch => {
-      const isSelected = this.selectedBranch === branch.id;
-      html += `
-        <button class="sim-branch-btn ${isSelected ? 'active' : ''}" 
-                onclick="HubFlows.selectBranch('${branch.id}')">
-          <span class="sim-branch-icon">${branch.icon || '📋'}</span>
-          <span class="sim-branch-name">${branch.name}</span>
-        </button>
-      `;
-    });
-    
-    html += `
-        </div>
-      </div>
-    `;
-    
-    return html;
-  },
-
-  renderSimNavItems(steps) {
-    let html = '';
-    let currentSection = null;
-    let inRefundLadder = false;
-    let shownBranchHeader = false;
-
-    steps.forEach((step, index) => {
-      // Determine section
-      let newSection = null;
-      
-      // Check if this is a branch-specific step
-      if (step.branch && step.branch === this.selectedBranch && !shownBranchHeader) {
-        newSection = 'branch';
-      } else if (step.isBranchPoint) {
-        newSection = 'main';
-      } else if (!step.isBranch && !step.branch) {
-        newSection = 'main';
-      } else if (step.branchType === 'success') {
-        newSection = 'success';
-      } else if (step.branchType === 'refund' || step.isLadderStep || step.id.includes('LADDER')) {
-        // Sub-categorize refund steps
-        if (step.isThankYou) {
-          newSection = 'thankyou';
-        } else if (step.id.includes('LADDER') || step.id.includes('GUARANTEE') || step.isLadderStep) {
-          newSection = 'ladder';
-        } else if (step.id.includes('FULL') || step.id.includes('CANCEL_FULL') || step.id.includes('CANCEL_COMPLETE')) {
-          newSection = 'fullrefund';
-        } else {
-          newSection = 'refund';
+    // Auto-select first subflow if none selected
+    if (!this.currentSubflow) {
+      const firstFlow = Object.values(this.flows)[0];
+      if (firstFlow && firstFlow.subflows) {
+        const firstSubflow = Object.values(firstFlow.subflows)[0];
+        if (firstSubflow) {
+          this.selectFlow(firstFlow.id);
+          this.selectSubflow(firstFlow.id, firstSubflow.id);
         }
       }
-
-      // Add section headers
-      if (newSection !== currentSection) {
-        if (newSection === 'main' && index === 0) {
-          html += `<div class="sim-nav-section-title">📋 Main Flow</div>`;
-        } else if (newSection === 'branch' && !shownBranchHeader) {
-          // Get branch name
-          const branchInfo = this.currentSubflow.branches?.find(b => b.id === this.selectedBranch);
-          const branchName = branchInfo ? branchInfo.name : 'Selected Path';
-          html += `<div class="sim-nav-section-title">${branchInfo?.icon || '➡️'} ${branchName}</div>`;
-          shownBranchHeader = true;
-        } else if (newSection === 'success' && currentSection !== 'success') {
-          html += `<div class="sim-nav-section-title">✅ Happy Path</div>`;
-        } else if (newSection === 'ladder' && currentSection !== 'ladder') {
-          // Check if this is a subscription discount ladder or refund ladder
-          const isSubscriptionLadder = step.id.includes('CANCEL_LADDER');
-          html += `<div class="sim-nav-section-title">${isSubscriptionLadder ? '🎁 Discount Offers' : '🔄 Refund Ladder'}</div>`;
-          inRefundLadder = true;
-        } else if (newSection === 'refund' && currentSection !== 'refund' && currentSection !== 'ladder') {
-          html += `<div class="sim-nav-section-title">🔄 Refund Path</div>`;
-          inRefundLadder = true;
-        } else if (newSection === 'fullrefund' && currentSection !== 'fullrefund') {
-          html += `<div class="sim-nav-section-title" style="margin-top: 8px; color: #dc2626;">❌ Full Cancellation</div>`;
-        }
-        currentSection = newSection;
-      }
-
-      const isActive = index === this.currentStepIndex;
-      const isCompleted = index < this.currentStepIndex;
-      const stepNum = step.stepNumber || (index + 1);
-      
-      // Determine badge
-      let badge = '';
-      if (step.isBranchPoint) {
-        badge = '<span class="sim-nav-badge decision">Decision</span>';
-      } else if (step.isThankYou) {
-        badge = '<span class="sim-nav-badge success">✓ Done</span>';
-      } else if (step.branchType === 'success') {
-        badge = '<span class="sim-nav-badge success">Success</span>';
-      } else if (step.id.includes('LADDER_10') || step.id.includes('LADDER_15') || step.id.includes('LADDER_20') || step.id.includes('LADDER_30') || step.id.includes('LADDER_40') || step.id.includes('LADDER_50')) {
-        badge = '<span class="sim-nav-badge refund">Offer</span>';
-      }
-
-      // Shorter names for thank you steps
-      let displayName = step.name;
-      if (step.isThankYou && displayName.includes(':')) {
-        displayName = displayName.split(':')[1].trim();
-      }
-
-      html += `
-        <div class="sim-nav-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''} ${step.isBranch ? 'branch' : ''} ${step.isThankYou ? 'thankyou' : ''}" 
-             onclick="HubFlows.goToStep(${index})"
-             style="${step.isThankYou ? 'margin-left: 24px; font-size: 12px;' : ''}">
-          <span class="sim-nav-step-num" style="${step.isThankYou ? 'width: 22px; height: 22px; font-size: 10px;' : ''}">${stepNum}</span>
-          <span class="sim-nav-step-name">${displayName}</span>
-          ${badge}
-        </div>
-      `;
-    });
-
-    return html;
+    }
   },
 
-  getPersonaFromStep(step) {
-    const persona = (step.persona || '').toLowerCase();
-    if (persona.includes('claudia')) return 'claudia';
-    if (persona.includes('sarah')) return 'sarah';
-    return 'amy';
-  },
-
-  getPersonaTitle(persona) {
-    const titles = {
-      amy: 'Customer Support',
-      claudia: 'Dog Trainer',
-      sarah: 'CX Lead'
-    };
-    return titles[persona] || 'Support';
-  },
-
-  renderSimChatContent(step) {
-    let html = '';
-    const persona = this.getPersonaFromStep(step);
-
-    // Check if this is an offer step (refund ladder)
-    // Check for offer steps - both refund ladder (20/30/40/50) and subscription ladder (10/15/20)
-    const isOfferStep = (step.id.includes('LADDER_20') || step.id.includes('LADDER_30') || 
-                        step.id.includes('LADDER_40') || step.id.includes('LADDER_50') ||
-                        step.id.includes('LADDER_10') || step.id.includes('LADDER_15')) &&
-                        !step.id.includes('_ACCEPT');
-    
-    // Check if this is a thank you/success step
-    const isThankYouStep = step.isThankYou;
-
-    // Render messages first
-    if (step.messages && !isOfferStep && !isThankYouStep) {
-      step.messages.forEach(msg => {
-        const msgPersona = this.getPersonaFromLabel(msg.label);
-        html += `
-          <div class="sim-msg bot">
-            <img src="${this.avatars[msgPersona]}" alt="${msgPersona}" class="sim-msg-avatar">
-            <div class="sim-msg-content">
-              <span class="sim-msg-sender ${msgPersona}">${msgPersona.charAt(0).toUpperCase() + msgPersona.slice(1)}</span>
-              <div class="sim-msg-bubble">${msg.content.replace(/\n/g, '<br>')}</div>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    // OFFER CARD - For refund ladder steps
-    if (isOfferStep) {
-      // Extract percent from step ID - handles both refund (20/30/40/50) and subscription (10/15/20) ladders
-      let percent = '20';
-      if (step.id.includes('_10') || step.id.includes('LADDER_10')) percent = '10';
-      else if (step.id.includes('_15') || step.id.includes('LADDER_15')) percent = '15';
-      else if (step.id.includes('_20') || step.id.includes('LADDER_20')) percent = '20';
-      else if (step.id.includes('_30') || step.id.includes('LADDER_30')) percent = '30';
-      else if (step.id.includes('_40') || step.id.includes('LADDER_40')) percent = '40';
-      else if (step.id.includes('_50') || step.id.includes('LADDER_50')) percent = '50';
+  // Render the flow tree navigation
+  renderFlowTree() {
+    return Object.values(this.flows).map(flow => {
+      const isExpanded = this.expandedFlows[flow.id] || this.currentFlow === flow.id;
+      const subflowCount = Object.keys(flow.subflows || {}).length;
       
-      // Check if this is a subscription discount (10/15/20 OFF) vs refund (20/30/40/50 BACK)
-      const isSubscriptionOffer = step.id.includes('CANCEL_LADDER');
-      const amountText = isSubscriptionOffer ? `New price: $XX.XX/shipment` : `$XX.XX back to you`;
-      
-      // First show Amy's message
-      if (step.messages && step.messages[0]) {
-        html += `
-          <div class="sim-msg bot">
-            <img src="${this.avatars.amy}" alt="amy" class="sim-msg-avatar">
-            <div class="sim-msg-content">
-              <span class="sim-msg-sender amy">Amy</span>
-              <div class="sim-msg-bubble">${step.messages[0].content.replace(/\n/g, '<br>')}</div>
+      return `
+        <div class="flow-tree-section ${isExpanded ? 'expanded' : ''}">
+          <div class="flow-tree-parent ${isExpanded ? 'expanded' : ''}" onclick="HubFlows.toggleFlow('${flow.id}')">
+            <div class="flow-tree-parent-icon" style="background: ${flow.color}20; color: ${flow.color}">
+              ${flow.icon}
             </div>
+            <span>${flow.name}</span>
+            <span class="flow-tree-toggle">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9,18 15,12 9,6"/>
+              </svg>
+            </span>
           </div>
-        `;
-      }
-
-      // Then show the offer card
-      html += `
-        <div class="sim-offer-card">
-          <div class="sim-offer-icon">${isSubscriptionOffer ? '🎁' : '💰'}</div>
-          <div class="sim-offer-amount">${percent}%${isSubscriptionOffer ? ' OFF' : ''}</div>
-          <div class="sim-offer-value">${amountText}</div>
-          <div class="sim-offer-label">${isSubscriptionOffer ? 'Applied to all future deliveries' : 'Partial refund — keep your products'}</div>
-          <div class="sim-offer-buttons">
-            <button class="sim-offer-btn accept">${isSubscriptionOffer ? 'Keep Subscription' : 'Accept Offer'}</button>
-            <button class="sim-offer-btn decline">${isSubscriptionOffer ? 'Still cancel' : 'No thanks'}</button>
-          </div>
-          <div class="sim-offer-note">${isSubscriptionOffer ? 'You save $XX.XX every shipment!' : 'Reviewed within 1-2 days, then 3-5 days to your account'}</div>
-        </div>
-      `;
-    }
-
-    // SUCCESS/THANK YOU CARD
-    if (isThankYouStep) {
-      // Show user's acceptance response first - handle all ladder percentages
-      let percent = 'full';
-      if (step.id.includes('_10') || step.id.includes('LADDER_10')) percent = '10';
-      else if (step.id.includes('_15') || step.id.includes('LADDER_15')) percent = '15';
-      else if (step.id.includes('_20') || step.id.includes('LADDER_20')) percent = '20';
-      else if (step.id.includes('_30') || step.id.includes('LADDER_30')) percent = '30';
-      else if (step.id.includes('_40') || step.id.includes('LADDER_40')) percent = '40';
-      else if (step.id.includes('_50') || step.id.includes('LADDER_50')) percent = '50';
-      
-      const isSubscriptionOffer = step.id.includes('CANCEL_');
-      
-      const acceptText = isSubscriptionOffer 
-        ? `I'll keep my subscription with ${percent}% off`
-        : `I'll accept the ${percent === 'full' ? 'full' : percent + '%'} refund`;
-      
-      html += `
-        <div class="sim-user-response">
-          <div class="sim-user-bubble">${acceptText}</div>
-        </div>
-      `;
-
-      // Show progress indicator
-      html += `
-        <div class="sim-progress">
-          <div class="sim-progress-spinner"></div>
-          <span class="sim-progress-text">Processing your refund...</span>
-        </div>
-      `;
-
-      // Show success card
-      const thankYouMsg = step.messages && step.messages[0] ? step.messages[0].content : 'Your refund has been submitted!';
-      const caseResolution = step.caseDetails?.resolution || 'refund';
-      
-      html += `
-        <div class="sim-success-card">
-          <div class="sim-success-icon">✓</div>
-          <div class="sim-success-title">Refund Approved!</div>
-          <div class="sim-success-message">${thankYouMsg.replace(/\n/g, '<br>')}</div>
-          <div class="sim-success-case-id">
-            <strong>Case ID: #PPC-XXXXX</strong>
-            Resolution: ${caseResolution}
-          </div>
-        </div>
-      `;
-    }
-
-    // FULL REFUND - Location check
-    if (step.id === 'DOG_STEP_FULL_REFUND') {
-      if (step.messages && step.messages[0]) {
-        html += `
-          <div class="sim-msg bot">
-            <img src="${this.avatars.amy}" alt="amy" class="sim-msg-avatar">
-            <div class="sim-msg-content">
-              <span class="sim-msg-sender amy">Amy</span>
-              <div class="sim-msg-bubble">${step.messages[0].content.replace(/\n/g, '<br>')}</div>
-            </div>
-          </div>
-        `;
-      }
-
-      // Show decision for US vs International
-      html += `
-        <div class="sim-case-card">
-          <div class="sim-case-header">
-            <div class="sim-case-icon">🌍</div>
-            <div>
-              <div class="sim-case-title">Location Check</div>
-              <div class="sim-case-subtitle">Determines return requirement</div>
-            </div>
-          </div>
-          <div class="sim-case-details">
-            <div class="sim-case-row">
-              <span class="sim-case-label">US Customer</span>
-              <span class="sim-case-value">Return required →</span>
-            </div>
-            <div class="sim-case-row">
-              <span class="sim-case-label">International</span>
-              <span class="sim-case-value">Keep product →</span>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    // FULL REFUND - US with return
-    if (step.id === 'DOG_STEP_FULL_US' || step.id === 'DOG_STEP_FULL_INTL') {
-      // Show messages
-      if (step.messages) {
-        step.messages.forEach(msg => {
-          html += `
-            <div class="sim-msg bot">
-              <img src="${this.avatars.amy}" alt="amy" class="sim-msg-avatar">
-              <div class="sim-msg-content">
-                <span class="sim-msg-sender amy">Amy</span>
-                <div class="sim-msg-bubble">${msg.content.replace(/\n/g, '<br>')}</div>
-              </div>
-            </div>
-          `;
-        });
-      }
-
-      // Show success card for full refund
-      const isUS = step.id === 'DOG_STEP_FULL_US';
-      html += `
-        <div class="sim-success-card">
-          <div class="sim-success-icon">✓</div>
-          <div class="sim-success-title">Full Refund ${isUS ? '+ Return' : 'Approved'}!</div>
-          <div class="sim-success-message">
-            ${isUS ? 'Your return label has been sent.<br>Refund processed upon receipt.' : 'Your full refund is being processed.<br>No return needed - keep the product!'}
-          </div>
-          <div class="sim-success-case-id">
-            <strong>Case ID: #PPC-XXXXX</strong>
-            Resolution: ${step.caseDetails?.resolution || 'full_refund'}
-          </div>
-        </div>
-      `;
-    }
-
-    // Regular form if present
-    if (step.fields && !isOfferStep && !isThankYouStep) {
-      html += `<div class="sim-form">`;
-      step.fields.forEach(field => {
-        html += `
-          <div class="sim-form-group">
-            <label class="sim-form-label">${field.label}${field.required ? ' *' : ''}</label>
-            ${field.type === 'textarea' 
-              ? `<textarea class="sim-form-input" placeholder="${field.placeholder || ''}" rows="3"></textarea>`
-              : `<input type="text" class="sim-form-input" placeholder="${field.placeholder || ''}">`
-            }
-          </div>
-        `;
-      });
-      html += `</div>`;
-    }
-
-    // Regular buttons if present (not for offer steps which have their own buttons)
-    if (step.buttons && !isOfferStep) {
-      html += `<div class="sim-buttons">`;
-      step.buttons.forEach(btn => {
-        const btnClass = btn.style || 'primary';
-        const iconHtml = btn.icon ? `<span class="btn-icon">${btn.icon}</span>` : '';
-        html += `<button class="sim-btn ${btnClass}">${iconHtml}${btn.text}</button>`;
-      });
-      html += `</div>`;
-    }
-
-    return html;
-  },
-
-  renderSimDocs(step) {
-    let html = '';
-
-    // Step info
-    html += `
-      <div class="sim-docs-section">
-        <div class="sim-docs-section-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-          Step Info
-        </div>
-        <div class="sim-docs-info">
-          <div class="sim-docs-info-row">
-            <span class="sim-docs-info-label">ID</span>
-            <span class="sim-docs-info-value"><code>${step.id}</code></span>
-          </div>
-          <div class="sim-docs-info-row">
-            <span class="sim-docs-info-label">Persona</span>
-            <span class="sim-docs-info-value">${step.persona}</span>
-          </div>
-          <div class="sim-docs-info-row">
-            <span class="sim-docs-info-label">Function</span>
-            <span class="sim-docs-info-value"><code>${step.function}</code></span>
-          </div>
-          <div class="sim-docs-info-row">
-            <span class="sim-docs-info-label">Line</span>
-            <span class="sim-docs-info-value">${step.line}</span>
-          </div>
-        </div>
-      </div>
-    `;
-
-    // Messages (editable)
-    if (step.messages && step.messages.length > 0) {
-      html += `
-        <div class="sim-docs-section">
-          <div class="sim-docs-section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-            Messages
-          </div>
-          ${step.messages.map(msg => `
-            <div class="sim-docs-message">
-              <button class="sim-docs-edit-btn" onclick="HubFlows.openEditModalById('${msg.id}')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Edit
-              </button>
-              <div class="sim-docs-message-label">${msg.label}</div>
-              <div class="sim-docs-message-content">${msg.content.replace(/\n/g, '<br>')}</div>
-            </div>
-          `).join('')}
-        </div>
-      `;
-
-      // Store message data for edit modal
-      step.messages.forEach(msg => {
-        this.messageData[msg.id] = { stepId: step.id, ...msg };
-      });
-    }
-
-    // Branches (decision points)
-    if (step.branches && step.branches.length > 0) {
-      html += `
-        <div class="sim-docs-section">
-          <div class="sim-docs-section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v10"/><path d="M21 12h-6m-6 0H1"/></svg>
-            Decision Branches
-          </div>
-          <div class="sim-docs-info">
-            ${step.branches.map(b => `
-              <div class="sim-docs-info-row">
-                <span class="sim-docs-info-label">${b.condition}</span>
-                <span class="sim-docs-info-value" style="font-size: 11px;">${b.action}</span>
+          <div class="flow-tree-children">
+            ${Object.values(flow.subflows || {}).map(subflow => `
+              <div class="flow-tree-child ${this.currentSubflow?.id === subflow.id ? 'active' : ''}" 
+                   onclick="HubFlows.selectSubflow('${flow.id}', '${subflow.id}')">
+                <span class="flow-tree-child-dot"></span>
+                <span>${subflow.name}</span>
               </div>
             `).join('')}
           </div>
         </div>
       `;
-    }
+    }).join('');
+  },
 
-    // Case Details (for thank you screens)
-    if (step.caseDetails) {
-      html += `
-        <div class="sim-docs-section">
-          <div class="sim-docs-section-title" style="color: #059669;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
-            📋 Case Created in Hub
+  // Render empty canvas state
+  renderEmptyCanvas() {
+    return `
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--gray-400)">
+        <div style="text-align:center">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:16px;opacity:0.3">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M3 9h18"/>
+            <path d="M9 21V9"/>
+          </svg>
+          <p style="font-weight:500;margin:0 0 4px">Select a flow</p>
+          <span style="font-size:13px">Choose a flow from the left panel</span>
+        </div>
+      </div>
+    `;
+  },
+
+  // Render the canvas with nodes
+  renderCanvas() {
+    const subflow = this.currentSubflow;
+    if (!subflow || !subflow.nodes) return this.renderEmptyCanvas();
+
+    const nodesHtml = subflow.nodes.map(node => this.renderNode(node)).join('');
+    
+    return `
+      <!-- Title bar -->
+      <div class="flow-canvas-title">
+        <h4>${subflow.name}</h4>
+        <p>${subflow.description}</p>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="flow-canvas-toolbar">
+        <button class="flow-canvas-toolbar-btn" onclick="HubFlows.zoomIn()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>
+          Zoom In
+        </button>
+        <button class="flow-canvas-toolbar-btn" onclick="HubFlows.zoomOut()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M8 11h6"/></svg>
+          Zoom Out
+        </button>
+        <button class="flow-canvas-toolbar-btn" onclick="HubFlows.fitView()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+          Fit View
+        </button>
+      </div>
+
+      <!-- Canvas -->
+      <div class="flow-canvas" id="flowCanvas" onclick="HubFlows.handleCanvasClick(event)">
+        <div class="flow-canvas-inner" id="flowCanvasInner" style="transform: scale(1); transform-origin: top left;">
+          ${nodesHtml}
+          <svg class="flow-edges-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
+            ${this.renderEdges()}
+          </svg>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="flow-controls">
+        <button class="flow-control-btn" onclick="HubFlows.zoomIn()" title="Zoom In">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        </button>
+        <button class="flow-control-btn" onclick="HubFlows.zoomOut()" title="Zoom Out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+        </button>
+        <button class="flow-control-btn" onclick="HubFlows.fitView()" title="Fit View">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        </button>
+      </div>
+
+      <!-- MiniMap -->
+      <div class="flow-minimap">
+        <div class="flow-minimap-nodes">
+          ${subflow.nodes.map(node => `
+            <div class="flow-minimap-node" style="left:${node.x / 5}px;top:${node.y / 12}px;background:var(--node-color-${node.type}, #3b82f6)"></div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  // Render a single node
+  renderNode(node) {
+    const isSelected = this.selectedNode?.id === node.id;
+    const icon = this.nodeIcons[node.type] || this.nodeIcons.message;
+    const content = this.getNodeContent(node);
+    
+    return `
+      <div class="flow-node ${isSelected ? 'selected' : ''}" 
+           data-type="${node.type}" 
+           data-id="${node.id}"
+           style="left:${node.x}px;top:${node.y}px"
+           onclick="HubFlows.selectNode('${node.id}', event)">
+        <div class="flow-node-handle top"></div>
+        <div class="flow-node-header">
+          <div class="flow-node-icon">${icon}</div>
+          <span class="flow-node-type">${node.type}</span>
+        </div>
+        <div class="flow-node-content">${content}</div>
+        <div class="flow-node-handle bottom"></div>
+      </div>
+    `;
+  },
+
+  // Get display content for a node
+  getNodeContent(node) {
+    const data = node.data || {};
+    switch (node.type) {
+      case 'start':
+        return data.label || 'Start';
+      case 'message':
+        return (data.content || 'Message...').substring(0, 60) + ((data.content || '').length > 60 ? '...' : '');
+      case 'options':
+        return data.prompt || 'Choose an option';
+      case 'condition':
+        return `${data.variable || 'variable'} ${data.operator || '='} ${data.value || '?'}`;
+      case 'form':
+        return data.title || 'Form';
+      case 'api':
+        return `${data.service || 'API'}: ${data.endpoint || 'call'}`;
+      case 'ai':
+        return `${data.persona || 'AI'} (${data.model || 'gpt-4o'})`;
+      case 'ladder':
+        return `Refund: ${(data.steps || [20,30,40]).join('% → ')}%`;
+      case 'offer':
+        return `${data.percent || 20}% Offer`;
+      case 'case':
+        return `Create ${data.type || 'case'} case`;
+      case 'end':
+        return data.title || 'End';
+      default:
+        return node.type;
+    }
+  },
+
+  // Render SVG edges
+  renderEdges() {
+    const subflow = this.currentSubflow;
+    if (!subflow || !subflow.edges) return '';
+
+    return subflow.edges.map(edge => {
+      const sourceNode = subflow.nodes.find(n => n.id === edge.source);
+      const targetNode = subflow.nodes.find(n => n.id === edge.target);
+      if (!sourceNode || !targetNode) return '';
+
+      const x1 = sourceNode.x + 100; // center of node
+      const y1 = sourceNode.y + 60; // bottom of node
+      const x2 = targetNode.x + 100;
+      const y2 = targetNode.y; // top of node
+
+      // Create a smooth bezier curve
+      const midY = (y1 + y2) / 2;
+      const path = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+
+      return `
+        <path d="${path}" class="flow-edge-path" marker-end="url(#arrowhead)"/>
+        ${edge.label ? `<text x="${(x1+x2)/2}" y="${midY - 10}" text-anchor="middle" fill="#6b7280" font-size="11">${edge.label}</text>` : ''}
+      `;
+    }).join('') + `
+      <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#9ca3af"/>
+        </marker>
+      </defs>
+    `;
+  },
+
+  // Render empty properties state
+  renderEmptyProperties() {
+    return `
+      <div class="flow-properties-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        <p>Select a node</p>
+        <span>Click on a node to view its properties</span>
+      </div>
+    `;
+  },
+
+  // Render properties panel for selected node
+  renderProperties() {
+    const node = this.selectedNode;
+    if (!node) return this.renderEmptyProperties();
+
+    const icon = this.nodeIcons[node.type] || this.nodeIcons.message;
+    const typeColors = {
+      start: '#22c55e', message: '#3b82f6', options: '#8b5cf6', condition: '#f59e0b',
+      form: '#10b981', api: '#ec4899', ai: '#6366f1', ladder: '#14b8a6',
+      offer: '#22c55e', case: '#f97316', end: '#ef4444'
+    };
+    const color = typeColors[node.type] || '#3b82f6';
+
+    return `
+      <div class="flow-properties-header">
+        <div class="flow-properties-header-left">
+          <div class="flow-properties-icon" style="background:${color}20;color:${color}">${icon}</div>
+          <div class="flow-properties-title">
+            <h3>${node.type} Node</h3>
+            <span>ID: ${node.id}</span>
           </div>
-          <div class="sim-docs-info" style="background: #ecfdf5; border: 1px solid #a7f3d0;">
-            <div class="sim-docs-info-row">
-              <span class="sim-docs-info-label">Type</span>
-              <span class="sim-docs-info-value"><code>${step.caseDetails.type}</code></span>
+        </div>
+      </div>
+      <div class="flow-properties-content">
+        ${this.renderNodeProperties(node)}
+        
+        <button class="flow-simulate-btn" onclick="HubFlows.openSimulator('${node.id}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>
+          Simulate This Step
+        </button>
+      </div>
+    `;
+  },
+
+  // Render properties based on node type
+  renderNodeProperties(node) {
+    const data = node.data || {};
+    let html = '';
+
+    switch (node.type) {
+      case 'start':
+        html = `
+          <div class="flow-properties-section">
+            <div class="flow-properties-section-title">Configuration</div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Label</label>
+              <div class="flow-property-value">${data.label || 'Start'}</div>
             </div>
-            <div class="sim-docs-info-row">
-              <span class="sim-docs-info-label">Resolution</span>
-              <span class="sim-docs-info-value" style="color: #059669; font-weight: 600;">${step.caseDetails.resolution}</span>
-            </div>
-            ${step.caseDetails.refundAmount ? `
-              <div class="sim-docs-info-row">
-                <span class="sim-docs-info-label">Refund Amount</span>
-                <span class="sim-docs-info-value" style="color: #059669;">${step.caseDetails.refundAmount}</span>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Triggers</label>
+              <div class="flow-property-badges">
+                ${(data.triggers || ['general']).map(t => `<span class="flow-property-badge">${t}</span>`).join('')}
               </div>
-            ` : ''}
-            <div class="sim-docs-info-row">
-              <span class="sim-docs-info-label">Issue Text</span>
-              <span class="sim-docs-info-value" style="font-size: 11px;">${step.caseDetails.issueText}</span>
             </div>
-            <div class="sim-docs-info-row">
-              <span class="sim-docs-info-label">Status</span>
-              <span class="sim-docs-info-value"><code>${step.caseDetails.status}</code></span>
-            </div>
-            ${step.caseDetails.returnLabel ? `
-              <div class="sim-docs-info-row">
-                <span class="sim-docs-info-label">Return Label</span>
-                <span class="sim-docs-info-value">${step.caseDetails.returnLabel}</span>
-              </div>
-            ` : ''}
           </div>
-        </div>
-      `;
-    }
+        `;
+        break;
 
-    // Richpanel Note
-    if (step.richpanelNote) {
-      html += `
-        <div class="sim-docs-section">
-          <div class="sim-docs-section-title" style="color: #7c3aed;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
-            Richpanel Sync
-          </div>
-          <p style="font-size: 12px; color: var(--gray-600); line-height: 1.5;">${step.richpanelNote}</p>
-        </div>
-      `;
-    }
-
-    // Customer Email
-    if (step.customerEmailSent) {
-      html += `
-        <div class="sim-docs-section">
-          <div class="sim-docs-section-title" style="color: #2563eb;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
-            📧 Customer Email Sent
-          </div>
-          ${step.emailContents ? `
-            <ul style="font-size: 12px; color: var(--gray-600); margin: 8px 0 0 16px; line-height: 1.6;">
-              ${step.emailContents.map(e => `<li>${e}</li>`).join('')}
-            </ul>
-          ` : `
-            <p style="font-size: 12px; color: var(--gray-600);">Confirmation email with refund details and timeline</p>
-          `}
-        </div>
-      `;
-    }
-
-    // Data stored
-    if (step.dataStored && step.dataStored.length > 0) {
-      html += `
-        <div class="sim-docs-section">
-          <div class="sim-docs-section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
-            Data Stored
-          </div>
-          <div class="sim-docs-data-list">
-            ${step.dataStored.map(d => `<span class="sim-docs-data-badge">${d}</span>`).join('')}
-          </div>
-        </div>
-      `;
-    }
-
-    // API info
-    if (step.api) {
-      const isOpenAI = step.api.service?.toLowerCase().includes('openai');
-      html += `
-        <div class="sim-docs-section">
-          <div class="sim-docs-section-title" style="color: ${isOpenAI ? '#10a37f' : 'var(--gray-700)'};">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-            ${isOpenAI ? '🤖' : '🔗'} API: ${step.api.service}
-          </div>
-          <div class="sim-docs-info">
-            <div class="sim-docs-info-row">
-              <span class="sim-docs-info-label">Endpoint</span>
-              <span class="sim-docs-info-value"><code>${step.api.endpoint}</code></span>
-            </div>
-            ${step.api.method ? `
-            <div class="sim-docs-info-row">
-              <span class="sim-docs-info-label">Method</span>
-              <span class="sim-docs-info-value">${step.api.method}</span>
-            </div>
-            ` : ''}
-            ${step.api.model ? `
-            <div class="sim-docs-info-row">
-              <span class="sim-docs-info-label">Model</span>
-              <span class="sim-docs-info-value" style="color: #10a37f; font-weight: 600;"><code>${step.api.model}</code></span>
-            </div>
-            ` : ''}
-            ${step.api.temperature !== undefined ? `
-            <div class="sim-docs-info-row">
-              <span class="sim-docs-info-label">Temperature</span>
-              <span class="sim-docs-info-value">${step.api.temperature}</span>
-            </div>
-            ` : ''}
-            ${step.api.maxTokens ? `
-            <div class="sim-docs-info-row">
-              <span class="sim-docs-info-label">Max Tokens</span>
-              <span class="sim-docs-info-value">${step.api.maxTokens.toLocaleString()}</span>
-            </div>
-            ` : ''}
-          </div>
-          ${step.api.explanation ? `
-            <p style="font-size: 13px; color: var(--gray-600); margin-top: 12px; line-height: 1.5;">${step.api.explanation}</p>
-          ` : ''}
-          ${step.api.systemPrompt ? `
-            <div style="margin-top: 16px;">
-              <div style="font-size: 12px; font-weight: 600; color: var(--gray-700); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-                System Prompt
-              </div>
-              <div style="background: linear-gradient(145deg, #f0fdf4 0%, #ecfdf5 100%); border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; font-size: 12px; color: #166534; font-family: 'Monaco', 'Menlo', monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto; line-height: 1.5;">
-${step.api.systemPrompt.substring(0, 1000)}${step.api.systemPrompt.length > 1000 ? '\n\n... [truncated]' : ''}
+      case 'message':
+        html = `
+          <div class="flow-properties-section">
+            <div class="flow-properties-section-title">Message Configuration</div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Persona</label>
+              <div class="flow-property-value">
+                <span class="flow-property-badge ${data.persona}">${data.persona || 'amy'}</span>
               </div>
             </div>
-          ` : ''}
-        </div>
-      `;
-    }
-
-    // Next step info
-    if (step.next) {
-      html += `
-        <div class="sim-docs-section">
-          <div class="sim-docs-section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            Next
+            <div class="flow-property-field">
+              <label class="flow-property-label">Content</label>
+              <div class="flow-property-value message">${data.content || 'No message'}</div>
+            </div>
           </div>
-          <p style="font-size: 13px; color: var(--gray-600);">${step.next}</p>
-        </div>
-      `;
-    }
+        `;
+        break;
 
-    // Outcome
-    if (step.outcome) {
-      html += `
-        <div class="sim-docs-section">
-          <div class="sim-docs-section-title" style="color: #059669;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
-            ✅ Outcome
+      case 'options':
+        html = `
+          <div class="flow-properties-section">
+            <div class="flow-properties-section-title">Options Configuration</div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Prompt</label>
+              <div class="flow-property-value">${data.prompt || 'Choose an option'}</div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Options</label>
+              <div class="flow-property-badges">
+                ${(data.options || []).map(o => `<span class="flow-property-badge purple">${typeof o === 'string' ? o : o.label}</span>`).join('')}
+              </div>
+            </div>
           </div>
-          <p style="font-size: 13px; color: #059669; font-weight: 500;">${step.outcome}</p>
-        </div>
-      `;
+        `;
+        break;
+
+      case 'condition':
+        html = `
+          <div class="flow-properties-section">
+            <div class="flow-properties-section-title">Condition Logic</div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Variable</label>
+              <div class="flow-property-value code">${data.variable || '{{variable}}'}</div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Operator</label>
+              <div class="flow-property-value">${data.operator || 'equals'}</div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Value</label>
+              <div class="flow-property-value">${data.value || ''}</div>
+            </div>
+          </div>
+        `;
+        break;
+
+      case 'form':
+        html = `
+          <div class="flow-properties-section">
+            <div class="flow-properties-section-title">Form Configuration</div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Form Type</label>
+              <div class="flow-property-value">${data.formType || 'custom'}</div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Title</label>
+              <div class="flow-property-value">${data.title || 'Form'}</div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Fields</label>
+              <div class="flow-property-badges">
+                ${(data.fields || []).map(f => `<span class="flow-property-badge green">${f}</span>`).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+        break;
+
+      case 'api':
+        html = `
+          <div class="flow-properties-section">
+            <div class="flow-properties-section-title">API Configuration</div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Service</label>
+              <div class="flow-property-value">
+                <span class="flow-property-badge orange">${data.service || 'shopify'}</span>
+              </div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Endpoint</label>
+              <div class="flow-property-value code">${data.endpoint || 'lookupOrder'}</div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Store As</label>
+              <div class="flow-property-value code">${data.storeAs || 'result'}</div>
+            </div>
+          </div>
+        `;
+        break;
+
+      case 'ai':
+        html = `
+          <div class="flow-properties-section">
+            <div class="flow-properties-section-title">AI Configuration</div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Persona</label>
+              <div class="flow-property-value">
+                <span class="flow-property-badge purple">${data.persona || 'claudia'}</span>
+              </div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Model</label>
+              <div class="flow-property-value code">${data.model || 'gpt-4o-mini'}</div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Prompt</label>
+              <div class="flow-property-value message">${data.prompt || 'Generate response'}</div>
+            </div>
+          </div>
+        `;
+        break;
+
+      case 'ladder':
+        html = `
+          <div class="flow-properties-section">
+            <div class="flow-properties-section-title">Refund Ladder</div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Steps (%)</label>
+              <div class="flow-property-badges">
+                ${(data.steps || [20,30,40,50]).map(s => `<span class="flow-property-badge green">${s}%</span>`).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+        break;
+
+      case 'offer':
+        html = `
+          <div class="flow-properties-section">
+            <div class="flow-properties-section-title">Offer Details</div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Refund Percent</label>
+              <div class="flow-property-value" style="font-size:24px;font-weight:700;color:#22c55e">${data.percent || 20}%</div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Label</label>
+              <div class="flow-property-value">${data.label || 'Keep product + refund'}</div>
+            </div>
+          </div>
+        `;
+        break;
+
+      case 'case':
+        html = `
+          <div class="flow-properties-section">
+            <div class="flow-properties-section-title">Case Configuration</div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Case Type</label>
+              <div class="flow-property-value">
+                <span class="flow-property-badge orange">${data.type || 'refund'}</span>
+              </div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Priority</label>
+              <div class="flow-property-value">${data.priority || 'normal'}</div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Hub Routing</label>
+              <div class="flow-property-value">📁 Hub: ${(data.type || 'refund').charAt(0).toUpperCase() + (data.type || 'refund').slice(1)}s</div>
+            </div>
+          </div>
+        `;
+        break;
+
+      case 'end':
+        html = `
+          <div class="flow-properties-section">
+            <div class="flow-properties-section-title">End Configuration</div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Title</label>
+              <div class="flow-property-value">${data.title || 'Thank You!'}</div>
+            </div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Show Survey</label>
+              <div class="flow-property-value">${data.showSurvey !== false ? '✅ Yes' : '❌ No'}</div>
+            </div>
+          </div>
+        `;
+        break;
+
+      default:
+        html = `
+          <div class="flow-properties-section">
+            <div class="flow-properties-section-title">Properties</div>
+            <div class="flow-property-field">
+              <label class="flow-property-label">Data</label>
+              <div class="flow-property-value code">${JSON.stringify(data, null, 2)}</div>
+            </div>
+          </div>
+        `;
     }
 
     return html;
   },
 
-  renderStep(step, index) {
-    const personaColors = {
-      'Amy': '#A8D8EA',
-      'Claudia': '#FFB7C5',
-      'Amy → Claudia': '#E8D5E8'
-    };
-    const personaColor = personaColors[step.persona] || '#FFDAB9';
-    
-    // Use custom stepNumber if provided, otherwise fall back to index
-    const stepNumber = step.stepNumber || (index + 1);
-    const isBranch = step.isBranch;
-    const isBranchPoint = step.isBranchPoint;
-    
-    // Determine step styling based on type
-    let stepClass = 'flow-step';
-    if (isBranch) stepClass += ' flow-step-branch';
-    if (step.branchType === 'success') stepClass += ' flow-step-success';
-    if (step.branchType === 'refund') stepClass += ' flow-step-refund';
-    if (isBranchPoint) stepClass += ' flow-step-decision';
-    
-    return `
-      <div class="${stepClass}" style="--step-color: ${personaColor}">
-        <div class="flow-step-connector">
-          <div class="flow-step-number ${isBranch ? 'flow-step-number-branch' : ''}">${stepNumber}</div>
-          ${index < this.currentSubflow.steps.length - 1 ? '<div class="flow-step-line"></div>' : ''}
-        </div>
-        
-        <div class="flow-step-content">
-          <div class="flow-step-header">
-            <div class="flow-step-title-section">
-              <h3 class="flow-step-title">${step.name}</h3>
-              <div class="flow-step-meta">
-                <span class="flow-step-persona" style="background: ${personaColor}30; color: ${personaColor === '#A8D8EA' ? '#1a365d' : '#6b4c5a'}">${step.persona}</span>
-                <span class="flow-step-function">${step.function} <span class="flow-step-line-num">line ${step.line}</span></span>
-              </div>
-            </div>
-            <span class="flow-step-id">${step.id}</span>
-          </div>
-          
-          ${isBranchPoint ? `<div class="flow-branch-point-indicator">⚡ Decision Point - Flow branches here</div>` : ''}
-          ${isBranch ? `<div class="flow-branch-indicator ${step.branchType}">${step.branchType === 'success' ? '✅ Success Branch' : '🔄 Refund Branch'}</div>` : ''}
-          
-          ${step.description ? `<p class="flow-step-description">${step.description}</p>` : ''}
-          ${step.branchNote ? `<p class="flow-branch-note">${step.branchNote}</p>` : ''}
-          
-          ${step.messages ? this.renderMessages(step.messages, step.id) : ''}
-          ${step.fields ? this.renderFields(step.fields) : ''}
-          ${step.buttons ? this.renderButtons(step.buttons) : ''}
-          ${step.api ? this.renderAPI(step.api) : ''}
-          ${step.dataStored ? this.renderDataStored(step.dataStored) : ''}
-          ${step.substeps ? this.renderSubsteps(step.substeps) : ''}
-          ${step.outcome ? `<div class="flow-step-outcome"><strong>Outcome:</strong> ${step.outcome}</div>` : ''}
-          ${step.next ? `<div class="flow-step-next">Next: ${step.next}</div>` : ''}
-        </div>
-      </div>
-    `;
+  // Event handlers
+  toggleFlow(flowId) {
+    this.expandedFlows[flowId] = !this.expandedFlows[flowId];
+    this.render();
   },
 
-  // Store message data for edit modal
-  messageData: {},
-
-  // Persona avatars for chat preview
-  avatars: {
-    amy: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face',
-    sarah: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
-    claudia: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face',
+  selectFlow(flowId) {
+    this.currentFlow = flowId;
+    this.expandedFlows[flowId] = true;
   },
 
-  getPersonaFromLabel(label) {
-    const lower = label.toLowerCase();
-    if (lower.includes('claudia')) return 'claudia';
-    if (lower.includes('sarah')) return 'sarah';
-    return 'amy';
-  },
-
-  renderMessages(messages, stepId, persona = 'amy') {
-    // Store messages for later retrieval
-    messages.forEach(msg => {
-      this.messageData[msg.id] = { stepId, ...msg };
-    });
-    
-    return `
-      <div class="flow-messages">
-        <!-- Chat Preview -->
-        <div class="chat-preview">
-          <div class="chat-preview-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
-            <span class="chat-preview-label">How it looks in the chat app</span>
-          </div>
-          <div class="chat-preview-phone">
-            <div class="chat-preview-messages">
-              ${messages.map(msg => {
-                const msgPersona = this.getPersonaFromLabel(msg.label);
-                return `
-                  <div class="chat-msg bot">
-                    <img src="${this.avatars[msgPersona]}" alt="${msgPersona}" class="chat-msg-avatar">
-                    <div class="chat-msg-content">
-                      <span class="chat-msg-sender ${msgPersona}">${msgPersona.charAt(0).toUpperCase() + msgPersona.slice(1)}</span>
-                      <div class="chat-msg-bubble">${msg.content.replace(/\n/g, '<br>')}</div>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          </div>
-        </div>
-        
-        <!-- Editable Text Reference -->
-        ${messages.map(msg => `
-          <div class="flow-message">
-            <div class="flow-message-header">
-              <span class="flow-message-label">${msg.label}</span>
-              <button class="flow-suggest-btn" onclick="HubFlows.openEditModalById('${msg.id}')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Edit
-              </button>
-            </div>
-            <div class="flow-message-content">${msg.content.replace(/\n/g, '<br>')}</div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  },
-
-  renderFields(fields) {
-    return `
-      <div class="flow-fields">
-        <!-- Chat Preview of Form -->
-        <div class="chat-preview">
-          <div class="chat-preview-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
-            <span class="chat-preview-label">How the form looks in the chat app</span>
-          </div>
-          <div class="chat-preview-phone">
-            <div class="chat-preview-messages">
-              <div class="chat-form-preview">
-                ${fields.map(field => `
-                  <div class="chat-form-group">
-                    <label class="chat-form-label">${field.label}${field.required ? ' *' : ''}</label>
-                    ${field.type === 'textarea' 
-                      ? `<div class="chat-form-input textarea">${field.placeholder || ''}</div>`
-                      : `<div class="chat-form-input">${field.placeholder || ''}</div>`
-                    }
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Field Details Table -->
-        <h4 class="flow-section-title">Form Fields</h4>
-        <div class="flow-fields-table">
-          <div class="flow-fields-row flow-fields-header">
-            <span>Field</span>
-            <span>Type</span>
-            <span>Required</span>
-            <span>Placeholder</span>
-          </div>
-          ${fields.map(field => `
-            <div class="flow-fields-row">
-              <span class="flow-field-name">${field.label}</span>
-              <span class="flow-field-type">${field.type}</span>
-              <span class="flow-field-required">${field.required ? '✓' : '—'}</span>
-              <span class="flow-field-placeholder">${field.placeholder || '—'}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  },
-
-  renderButtons(buttons) {
-    return `
-      <div class="flow-buttons">
-        <!-- Chat Preview of Buttons -->
-        <div class="chat-preview">
-          <div class="chat-preview-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
-            <span class="chat-preview-label">How buttons look in the chat app</span>
-          </div>
-          <div class="chat-preview-phone">
-            <div class="chat-preview-messages">
-              <div class="chat-buttons-preview">
-                ${buttons.map(btn => `
-                  <div class="chat-btn-preview ${btn.style || 'primary'}">${btn.text}</div>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Button Details -->
-        <h4 class="flow-section-title">User Actions</h4>
-        <div class="flow-buttons-list">
-          ${buttons.map(btn => `
-            <div class="flow-button-item">
-              <span class="flow-button-text ${btn.style || ''}">${btn.text}</span>
-              <span class="flow-button-action">${btn.action}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  },
-
-  renderAPI(api) {
-    return `
-      <div class="flow-api">
-        <h4 class="flow-section-title">🔌 API Integration: ${api.service || 'External Service'}</h4>
-        
-        ${api.explanation ? `
-          <div class="flow-api-explanation">
-            <strong>What happens here:</strong>
-            <p>${api.explanation}</p>
-          </div>
-        ` : ''}
-        
-        <div class="flow-api-details">
-          <div class="flow-api-row">
-            <span class="flow-api-label">Endpoint</span>
-            <code class="flow-api-value">${api.endpoint}</code>
-          </div>
-          <div class="flow-api-row">
-            <span class="flow-api-label">Method</span>
-            <code class="flow-api-value">${api.method}</code>
-          </div>
-          ${api.requestBody ? `
-            <div class="flow-api-row">
-              <span class="flow-api-label">Scenario</span>
-              <code class="flow-api-value">${api.requestBody.scenario}</code>
-            </div>
-            <div class="flow-api-row">
-              <span class="flow-api-label">Model</span>
-              <code class="flow-api-value">${api.requestBody.model}</code>
-            </div>
-          ` : ''}
-        </div>
-        
-        ${api.dataUsed ? `
-          <div class="flow-api-data-used">
-            <strong>Data sent to API:</strong>
-            <ul>
-              ${api.dataUsed.map(d => `<li>${d}</li>`).join('')}
-            </ul>
-          </div>
-        ` : ''}
-        
-        ${api.systemPrompt ? `
-          <div class="flow-api-prompt">
-            <div class="flow-api-prompt-header">
-              <strong>📝 Full System Prompt (sent to OpenAI):</strong>
-              <button class="flow-api-copy-btn" onclick="HubFlows.copyPrompt(this)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                Copy
-              </button>
-            </div>
-            <pre class="flow-api-prompt-content">${api.systemPrompt}</pre>
-          </div>
-        ` : ''}
-      </div>
-    `;
-  },
-
-  copyPrompt(btn) {
-    const pre = btn.closest('.flow-api-prompt').querySelector('pre');
-    if (pre) {
-      navigator.clipboard.writeText(pre.textContent).then(() => {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 6L9 17l-5-5"/></svg> Copied!';
-        setTimeout(() => { btn.innerHTML = originalText; }, 2000);
-      });
-    }
-  },
-
-  renderDataStored(dataStored) {
-    return `
-      <div class="flow-data-stored">
-        <h4 class="flow-section-title">Data Stored</h4>
-        <ul class="flow-data-list">
-          ${dataStored.map(d => `<li><code>${d}</code></li>`).join('')}
-        </ul>
-      </div>
-    `;
-  },
-
-  renderSubsteps(substeps) {
-    return `
-      <div class="flow-substeps">
-        <h4 class="flow-section-title">Refund Ladder Steps</h4>
-        <div class="flow-substeps-timeline">
-          ${substeps.map((sub, i) => `
-            <div class="flow-substep">
-              <div class="flow-substep-header">
-                <span class="flow-substep-badge">${i + 1}</span>
-                <span class="flow-substep-name">${sub.name}</span>
-              </div>
-              ${sub.message ? `<div class="flow-substep-message">${sub.message}</div>` : ''}
-              ${sub.logic ? `<div class="flow-substep-logic"><strong>Logic:</strong> ${sub.logic}</div>` : ''}
-              ${sub.buttons ? `
-                <div class="flow-substep-actions">
-                  ${sub.buttons.map(btn => `
-                    <div class="flow-substep-btn">
-                      <span class="btn-text">${btn.text}</span>
-                      <span class="btn-action">→ ${btn.action}</span>
-                    </div>
-                  `).join('')}
-                </div>
-              ` : ''}
-              ${sub.outcomes ? `
-                <div class="flow-substep-outcomes">
-                  <div class="outcome expired"><strong>If Expired:</strong> ${sub.outcomes.expired.message}</div>
-                  <div class="outcome valid"><strong>If Valid:</strong> ${sub.outcomes.valid}</div>
-                </div>
-              ` : ''}
-              ${sub.locationCheck ? `
-                <div class="flow-substep-location">
-                  <div class="location domestic"><strong>US/Domestic:</strong> ${sub.locationCheck.domestic.message} <em>(Case: ${sub.locationCheck.domestic.caseType})</em></div>
-                  <div class="location international"><strong>International:</strong> ${sub.locationCheck.international.message} <em>(Case: ${sub.locationCheck.international.caseType})</em></div>
-                </div>
-              ` : ''}
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  },
-
-  goBack() {
-    if (this.currentSubflow) {
-      this.currentSubflow = null;
-    } else {
-      this.currentFlow = null;
+  selectSubflow(flowId, subflowId) {
+    this.currentFlow = flowId;
+    this.expandedFlows[flowId] = true;
+    const flow = this.flows[flowId];
+    if (flow && flow.subflows && flow.subflows[subflowId]) {
+      this.currentSubflow = flow.subflows[subflowId];
+      this.selectedNode = null;
     }
     this.render();
   },
 
-  goToFlow() {
-    this.currentSubflow = null;
-    this.render();
+  selectNode(nodeId, event) {
+    event.stopPropagation();
+    const node = this.currentSubflow?.nodes?.find(n => n.id === nodeId);
+    if (node) {
+      this.selectedNode = node;
+      this.render();
+    }
   },
 
-  openEditModalById(messageId) {
-    const data = this.messageData[messageId];
-    if (!data) {
-      console.error('Message data not found for:', messageId);
+  handleCanvasClick(event) {
+    if (event.target.classList.contains('flow-canvas') || event.target.classList.contains('flow-canvas-inner')) {
+      this.selectedNode = null;
+      this.render();
+    }
+  },
+
+  filterFlows(query) {
+    // Simple filter - expand flows that match
+    query = query.toLowerCase();
+    if (!query) {
+      this.render();
       return;
     }
-    this.openEditModal(data.stepId, data.id, data.label, data.content);
-  },
-
-  openEditModal(stepId, elementId, label, content) {
-    this.editContext = { stepId, elementId, label, content };
     
-    const preview = document.getElementById('flowsEditPreview');
-    if (preview) {
-      preview.innerHTML = `
-        <div class="edit-preview-row"><strong>Step:</strong> ${stepId}</div>
-        <div class="edit-preview-row"><strong>Element:</strong> ${label}</div>
-        <div class="edit-preview-row"><strong>Current:</strong></div>
-        <div class="edit-preview-content">${content.replace(/\n/g, '<br>')}</div>
-      `;
-    }
-    
-    document.getElementById('flowsSuggestedChange').value = '';
-    document.getElementById('flowsChangeReason').value = '';
-    document.getElementById('flowsEditModal').classList.add('active');
-  },
-
-  closeEditModal() {
-    document.getElementById('flowsEditModal').classList.remove('active');
-    this.editContext = null;
-  },
-
-  copyChangeRequest() {
-    if (!this.editContext) return;
-    
-    const suggested = document.getElementById('flowsSuggestedChange').value;
-    const reason = document.getElementById('flowsChangeReason').value;
-    
-    const request = `
-══════════════════════════════════════
-FLOW CHANGE REQUEST
-══════════════════════════════════════
-Flow:     ${this.currentFlow?.name || 'Unknown'}
-Subflow:  ${this.currentSubflow?.name || 'Unknown'}
-Step:     ${this.editContext.stepId}
-Element:  ${this.editContext.label}
-
-CURRENT COPY:
-"${this.editContext.content}"
-
-SUGGESTED CHANGE:
-"${suggested || '[No suggestion provided]'}"
-
-REASON:
-${reason || '[No reason provided]'}
-══════════════════════════════════════
-    `.trim();
-    
-    navigator.clipboard.writeText(request).then(() => {
-      HubUI.showToast('Change request copied to clipboard!', 'success');
-      this.closeEditModal();
-    }).catch(() => {
-      HubUI.showToast('Failed to copy', 'error');
+    Object.keys(this.flows).forEach(flowId => {
+      const flow = this.flows[flowId];
+      const matches = flow.name.toLowerCase().includes(query) ||
+        Object.values(flow.subflows || {}).some(sf => sf.name.toLowerCase().includes(query));
+      this.expandedFlows[flowId] = matches;
     });
+    this.render();
+  },
+
+  // Zoom controls
+  currentZoom: 1,
+  
+  zoomIn() {
+    this.currentZoom = Math.min(this.currentZoom + 0.1, 2);
+    const inner = document.getElementById('flowCanvasInner');
+    if (inner) inner.style.transform = `scale(${this.currentZoom})`;
+  },
+
+  zoomOut() {
+    this.currentZoom = Math.max(this.currentZoom - 0.1, 0.5);
+    const inner = document.getElementById('flowCanvasInner');
+    if (inner) inner.style.transform = `scale(${this.currentZoom})`;
+  },
+
+  fitView() {
+    this.currentZoom = 1;
+    const inner = document.getElementById('flowCanvasInner');
+    if (inner) inner.style.transform = `scale(1)`;
+  },
+
+  // Simulator popup
+  openSimulator(nodeId) {
+    const node = this.currentSubflow?.nodes?.find(n => n.id === nodeId);
+    if (!node) return;
+
+    this.simulatorOpen = true;
+    const modal = document.createElement('div');
+    modal.className = 'flow-simulator-modal';
+    modal.id = 'flowSimulatorModal';
+    modal.innerHTML = this.renderSimulator(node);
+    document.body.appendChild(modal);
+  },
+
+  closeSimulator() {
+    this.simulatorOpen = false;
+    const modal = document.getElementById('flowSimulatorModal');
+    if (modal) modal.remove();
+  },
+
+  renderSimulator(node) {
+    const persona = node.data?.persona || 'amy';
+    const personaNames = { amy: 'Amy', claudia: 'Claudia', sarah: 'Sarah' };
+    const personaName = personaNames[persona] || 'Amy';
+
+    return `
+      <div class="flow-simulator-container">
+        <!-- Header -->
+        <div class="flow-simulator-header">
+          <div class="flow-simulator-header-left">
+            <div class="flow-simulator-avatar">🐕</div>
+            <div class="flow-simulator-info">
+              <h4>PuppyPad Support</h4>
+              <p>${personaName} is here to help</p>
+            </div>
+          </div>
+          <button class="flow-simulator-close" onclick="HubFlows.closeSimulator()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Messages -->
+        <div class="flow-simulator-messages">
+          ${this.renderSimulatorContent(node)}
+        </div>
+
+        <!-- Footer -->
+        <div class="flow-simulator-footer">
+          <button class="flow-simulator-footer-btn secondary" onclick="HubFlows.closeSimulator()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+            Close
+          </button>
+          <button class="flow-simulator-footer-btn primary" onclick="HubFlows.simulateNext()">
+            Next Step
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    `;
+  },
+
+  renderSimulatorContent(node) {
+    const data = node.data || {};
+    const persona = data.persona || 'amy';
+
+    switch (node.type) {
+      case 'start':
+        return `
+          <div class="flow-simulator-message bot">
+            <div class="flow-simulator-persona-avatar ${persona}">${persona.charAt(0).toUpperCase()}</div>
+            <div class="flow-simulator-bubble bot">
+              <strong>Flow Started:</strong> ${data.label || 'Start'}
+            </div>
+          </div>
+        `;
+
+      case 'message':
+        return `
+          <div class="flow-simulator-message bot">
+            <div class="flow-simulator-persona-avatar ${persona}">${persona.charAt(0).toUpperCase()}</div>
+            <div class="flow-simulator-bubble bot">${data.content || 'Hello!'}</div>
+          </div>
+        `;
+
+      case 'options':
+        return `
+          <div class="flow-simulator-message bot">
+            <div class="flow-simulator-persona-avatar amy">A</div>
+            <div>
+              <div class="flow-simulator-bubble bot">${data.prompt || 'Please choose:'}</div>
+              <div class="flow-simulator-options">
+                ${(data.options || []).map(opt => `
+                  <button class="flow-simulator-option">${typeof opt === 'string' ? opt : opt.label}</button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+
+      case 'form':
+        return `
+          <div class="flow-simulator-message bot">
+            <div class="flow-simulator-persona-avatar amy">A</div>
+            <div class="flow-simulator-bubble bot">
+              <strong>${data.title || 'Please fill out this form'}</strong><br><br>
+              ${(data.fields || []).map(f => `📝 ${f}`).join('<br>')}
+            </div>
+          </div>
+        `;
+
+      case 'api':
+        return `
+          <div class="flow-simulator-message bot">
+            <div class="flow-simulator-persona-avatar amy">A</div>
+            <div class="flow-simulator-bubble bot">
+              ⚡ <strong>API Call:</strong> ${data.service} → ${data.endpoint}<br>
+              <small>Storing result in: ${data.storeAs}</small>
+            </div>
+          </div>
+        `;
+
+      case 'ai':
+        return `
+          <div class="flow-simulator-typing">
+            <div class="flow-simulator-persona-avatar ${persona}">${persona.charAt(0).toUpperCase()}</div>
+            <div class="flow-simulator-typing-dots">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+          <div class="flow-simulator-message bot" style="margin-top:8px">
+            <div class="flow-simulator-persona-avatar ${persona}">${persona.charAt(0).toUpperCase()}</div>
+            <div class="flow-simulator-bubble bot">
+              🤖 <strong>AI Response</strong> (${data.model || 'gpt-4o'})<br><br>
+              <em>"${data.prompt || 'Generating response...'}"</em>
+            </div>
+          </div>
+        `;
+
+      case 'offer':
+        return `
+          <div class="flow-simulator-message bot">
+            <div class="flow-simulator-persona-avatar amy">A</div>
+            <div>
+              <div class="flow-simulator-bubble bot">
+                🎁 <strong>Special Offer</strong><br><br>
+                <div style="background:#dcfce7;padding:12px;border-radius:8px;margin:8px 0">
+                  <div style="font-size:24px;font-weight:700;color:#22c55e">${data.percent || 20}% OFF</div>
+                  <div style="font-size:12px;color:#166534">${data.label || 'Keep your product + get a refund'}</div>
+                </div>
+              </div>
+              <div class="flow-simulator-options">
+                <button class="flow-simulator-option" style="background:#dcfce7;border-color:#22c55e;color:#166534">✓ Accept Offer</button>
+                <button class="flow-simulator-option">No thanks</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+      case 'case':
+        return `
+          <div class="flow-simulator-message bot">
+            <div class="flow-simulator-persona-avatar amy">A</div>
+            <div class="flow-simulator-bubble bot">
+              📁 <strong>Creating Case</strong><br><br>
+              Type: ${data.type || 'refund'}<br>
+              Priority: ${data.priority || 'normal'}<br>
+              Routing to: Hub ${data.type || 'refund'}s
+            </div>
+          </div>
+        `;
+
+      case 'end':
+        return `
+          <div style="text-align:center;padding:40px">
+            <div style="width:80px;height:80px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            </div>
+            <h3 style="margin:0 0 8px;font-size:20px">${data.title || 'Thank You!'}</h3>
+            ${data.showSurvey !== false ? '<p style="color:#6b7280;font-size:14px">How was your experience?<br>⭐⭐⭐⭐⭐</p>' : ''}
+          </div>
+        `;
+
+      default:
+        return `
+          <div class="flow-simulator-message bot">
+            <div class="flow-simulator-persona-avatar amy">A</div>
+            <div class="flow-simulator-bubble bot">
+              <strong>${node.type}</strong><br>
+              ${JSON.stringify(data)}
+            </div>
+          </div>
+        `;
+    }
+  },
+
+  simulateNext() {
+    // Find next node in the flow
+    if (!this.selectedNode || !this.currentSubflow) return;
+    
+    const currentId = this.selectedNode.id;
+    const edge = this.currentSubflow.edges?.find(e => e.source === currentId);
+    if (edge) {
+      const nextNode = this.currentSubflow.nodes?.find(n => n.id === edge.target);
+      if (nextNode) {
+        this.selectedNode = nextNode;
+        this.closeSimulator();
+        this.openSimulator(nextNode.id);
+        this.render();
+      }
+    } else {
+      HubUI.showToast('End of flow reached', 'info');
+    }
+  },
+
+  // Entry point - called when navigating to flows page
+  show() {
+    this.render();
   }
 };
 
-// ============================================
-// SOP LINKS PAGE
-// ============================================
+// Note: Old HubFlows code (4500+ lines) was removed and replaced with React Flow style viewer above
 const HubSOP = {
   sops: [],
   currentCategory: '',
