@@ -4660,51 +4660,60 @@ const HubFlows = {
           description: 'When customer reports their dog is not using the PuppyPad',
           // Mermaid diagram definition - compact and clear
           diagram: `flowchart TD
-    START([🐕 Start])
-    S1[Amy Intro]
-    S2[Dog Form]
-    S3[Claudia]
-    S4[AI Tips]
-    S5{Happy?}
-    HAPPY([✅ Done])
-    REFUND[Refund Options]
-    G{Within 90 days?}
-    NO([❌ Expired])
-    R20[Offer 20%]
-    R30[Offer 30%]
-    R40[Offer 40%]
-    R50[Offer 50%]
-    FULL[Full Refund]
-    LOC{Location?}
-    C20([20% Refund Created])
-    C30([30% Refund Created])
-    C40([40% Refund Created])
-    C50([50% Refund Created])
-    CRET([Full Refund + Return])
-    CKEEP([Full Refund + Keep])
+    subgraph CHAT["💬 Chat App"]
+      START([🐕 Dog Not Using])
+      S1[Amy Intro]
+      S2[Dog Info Form]
+      S3[Transition to Claudia]
+      S5{Happy with Tips?}
+      HAPPY([✅ Resolved - No Case])
+      REFUND[Wants Refund]
+      G{Within 90 days?}
+      NO([❌ Guarantee Expired])
+      R20[20% Offer]
+      R30[30% Offer]
+      R40[40% Offer]
+      R50[50% Offer]
+      FULL[Full Refund]
+      LOC{US or Intl?}
+    end
 
-    START --> S1 --> S2 --> S3 --> S4 --> S5
+    subgraph API["🔌 External APIs"]
+      OPENAI[(🤖 OpenAI<br/>gpt-4o)]
+      SHOPIFY[(🛒 Shopify<br/>Order Data)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_REFUND[📁 Hub: Refunds]
+      HUB_RETURN[📁 Hub: Returns]
+    end
+
+    START --> S1 --> S2 --> S3
+    S3 -.->|POST /api/ai-response| OPENAI
+    OPENAI -.->|AI Training Tips| S3
+    S3 --> S5
     S5 -->|Yes| HAPPY
     S5 -->|No| REFUND --> G
-    G -->|No| NO
-    G -->|Yes| R20
-    R20 -->|Accept| C20
-    R20 -->|More| R30
-    R30 -->|Accept| C30
-    R30 -->|More| R40
-    R40 -->|Accept| C40
-    R40 -->|More| R50
-    R50 -->|Accept| C50
+    G -.->|Check delivered_at| SHOPIFY
+    G -->|Expired| NO
+    G -->|Valid| R20
+    R20 -->|Accept| D1
+    R20 -->|Decline| R30 -->|Decline| R40 -->|Decline| R50
+    R50 -->|Accept| D1
     R50 -->|Full| FULL --> LOC
-    LOC -->|US| CRET
-    LOC -->|Intl| CKEEP
+    LOC -->|US| HUB_RETURN
+    LOC -->|Intl| HUB_REFUND
+    D1 --> HUB_REFUND
 
     style START fill:#A8D8EA,stroke:#1a365d
     style HAPPY fill:#C8E6C9,stroke:#2d5a2e
     style NO fill:#FFCDD2,stroke:#c62828
-    style S5 fill:#E8D5E8,stroke:#6a4c93
-    style G fill:#E8D5E8,stroke:#6a4c93
-    style LOC fill:#E8D5E8,stroke:#6a4c93`,
+    style OPENAI fill:#10a37f,stroke:#0d8a6a,color:#fff
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff
+    style HUB_RETURN fill:#8b5cf6,stroke:#7c3aed,color:#fff`,
           steps: [
             {
               id: 'DOG_STEP_1',
@@ -5253,20 +5262,41 @@ End with an encouraging message about consistency and patience.`,
           name: 'Missing Item',
           description: 'Items missing from the order',
           diagram: `flowchart TD
-    START([📦 Missing Item])
-    PHOTO[Upload Photos]
-    DESC[Describe Missing]
-    OFFER{Resolution}
-    RESHIP[Reship + Bonus]
-    REFUND[Refund Missing]
-    DONE([✅ Case Created])
-    
-    START --> PHOTO --> DESC --> OFFER
-    OFFER -->|Reship| RESHIP --> DONE
-    OFFER -->|Refund| REFUND --> DONE
-    
+    subgraph CHAT["💬 Chat App"]
+      START([📦 Missing Item])
+      LIST[Show Expected Items]
+      PHOTO[Upload Photos]
+      DESC[Describe Missing]
+      OFFER{Resolution Choice}
+      RESHIP[Reship + 10% Bonus]
+      REFUND[Partial Refund]
+    end
+
+    subgraph API["🔌 External APIs"]
+      SHOPIFY[(🛒 Shopify<br/>Order Items)]
+      STORAGE[(☁️ R2 Storage<br/>Photo Upload)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_SHIP[📁 Hub: Shipping]
+      HUB_REFUND[📁 Hub: Refunds]
+    end
+
+    START -.->|GET line_items| SHOPIFY
+    SHOPIFY -.->|Item list| LIST
+    LIST --> PHOTO
+    PHOTO -.->|Upload images| STORAGE
+    PHOTO --> DESC --> OFFER
+    OFFER -->|Reship| RESHIP --> D1 --> HUB_SHIP
+    OFFER -->|Refund| REFUND --> D1 --> HUB_REFUND
+
     style START fill:#A8D8EA,stroke:#1a365d
-    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style STORAGE fill:#f97316,stroke:#ea580c,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_SHIP fill:#06b6d4,stroke:#0891b2,color:#fff
+    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff`,
           steps: [
             {
               id: 'MISSING_STEP_1',
@@ -5368,19 +5398,35 @@ End with an encouraging message about consistency and patience.`,
           name: 'Damaged Product',
           description: 'Product arrived damaged or defective',
           diagram: `flowchart TD
-    START([💔 Damaged Item])
-    PHOTO[Upload Photos]
-    OFFER{Preference?}
-    REPLACE[Send Replacement]
-    REFUND[Process Refund]
-    DONE([✅ Case Created])
-    
-    START --> PHOTO --> OFFER
-    OFFER -->|Replace| REPLACE --> DONE
-    OFFER -->|Refund| REFUND --> DONE
-    
+    subgraph CHAT["💬 Chat App"]
+      START([💔 Damaged Product])
+      PHOTO[Upload Damage Photos]
+      OFFER{Customer Preference}
+      REPLACE[Free Replacement]
+      REFUND[Full Refund]
+    end
+
+    subgraph API["🔌 External APIs"]
+      STORAGE[(☁️ R2 Storage<br/>Photo Evidence)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_SHIP[📁 Hub: Shipping<br/>type: reship]
+      HUB_REFUND[📁 Hub: Refunds<br/>type: damaged]
+    end
+
+    START --> PHOTO
+    PHOTO -.->|Upload images| STORAGE
+    PHOTO --> OFFER
+    OFFER -->|Replace| REPLACE --> D1 --> HUB_SHIP
+    OFFER -->|Refund| REFUND --> D1 --> HUB_REFUND
+
     style START fill:#FFCDD2,stroke:#c62828
-    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+    style STORAGE fill:#f97316,stroke:#ea580c,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_SHIP fill:#06b6d4,stroke:#0891b2,color:#fff
+    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff`,
           steps: [
             {
               id: 'DAMAGED_STEP_1',
@@ -5462,15 +5508,34 @@ End with an encouraging message about consistency and patience.`,
           name: 'Wrong Item Received',
           description: 'Customer received incorrect item',
           diagram: `flowchart TD
-    START([🔀 Wrong Item])
-    PHOTO[Upload Photos]
-    CONFIRM[Confirm Wrong Item]
-    SHIP([✅ Correct Item Shipped])
-    
-    START --> PHOTO --> CONFIRM --> SHIP
-    
+    subgraph CHAT["💬 Chat App"]
+      START([🔀 Wrong Item Received])
+      PHOTO[Upload Photo of Wrong Item]
+      CONFIRM[Confirm & Ship Correct]
+    end
+
+    subgraph API["🔌 External APIs"]
+      STORAGE[(☁️ R2 Storage<br/>Photo Evidence)]
+      SHOPIFY[(🛒 Shopify<br/>Original Order)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_SHIP[📁 Hub: Shipping<br/>type: wrong_item]
+    end
+
+    START --> PHOTO
+    PHOTO -.->|Upload images| STORAGE
+    PHOTO -.->|Compare to| SHOPIFY
+    PHOTO --> CONFIRM
+    CONFIRM --> D1 --> HUB_SHIP
+
     style START fill:#A8D8EA,stroke:#1a365d
-    style SHIP fill:#C8E6C9,stroke:#2d5a2e`,
+    style CONFIRM fill:#C8E6C9,stroke:#2d5a2e
+    style STORAGE fill:#f97316,stroke:#ea580c,color:#fff
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_SHIP fill:#06b6d4,stroke:#0891b2,color:#fff`,
           steps: [
             {
               id: 'WRONG_STEP_1',
@@ -5515,31 +5580,49 @@ End with an encouraging message about consistency and patience.`,
           name: 'Charged Unexpectedly',
           description: 'Customer was charged when they did not expect it',
           diagram: `flowchart TD
-    START([💳 Unexpected Charge])
-    SHOW[Show Order Details]
-    RECOG{Recognize?}
-    
-    YES_PATH[Yes - Confirmed]
-    NO_PATH[No - Not Recognized]
-    
-    EXPLAIN[Explain Order Sources]
-    PITCH[Product Benefits Pitch]
-    KEEP{Keep or Refund?}
-    
-    OFFER20[20% Refund Offer]
-    LADDER[Refund Ladder]
-    DONE([✅ Resolution])
-    
-    START --> SHOW --> RECOG
-    RECOG -->|Yes| YES_PATH --> OFFER20
-    RECOG -->|No| NO_PATH --> EXPLAIN --> PITCH --> KEEP
+    subgraph CHAT["💬 Chat App"]
+      START([💳 Unexpected Charge])
+      SHOW[Show Order Details]
+      RECOG{Recognize Order?}
+      YES_PATH[Recognizes - Offer 20%]
+      NO_PATH[Doesn't Recognize]
+      EXPLAIN[Explain Sources]
+      KEEP{Keep Products?}
+      LADDER[Refund Ladder]
+      DONE([✅ Resolved])
+    end
+
+    subgraph API["🔌 External APIs"]
+      OPENAI[(🤖 OpenAI<br/>gpt-4o-mini<br/>product_benefits)]
+      SHOPIFY[(🛒 Shopify<br/>Order Details)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_REFUND[📁 Hub: Refunds]
+    end
+
+    START -.->|GET order data| SHOPIFY
+    SHOPIFY -.->|Order info| SHOW
+    SHOW --> RECOG
+    RECOG -->|Yes| YES_PATH
+    RECOG -->|No| NO_PATH --> EXPLAIN
+    EXPLAIN -.->|POST /api/ai-response| OPENAI
+    OPENAI -.->|Product Pitch| EXPLAIN
+    EXPLAIN --> KEEP
     KEEP -->|Keep| DONE
     KEEP -->|Refund| LADDER
-    OFFER20 -->|Accept| DONE
-    OFFER20 -->|Decline| LADDER --> DONE
-    
+    YES_PATH -->|Accept 20%| D1
+    YES_PATH -->|Decline| LADDER
+    LADDER --> D1
+    D1 --> HUB_REFUND
+
     style START fill:#fef3c7,stroke:#92400e
-    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+    style DONE fill:#C8E6C9,stroke:#2d5a2e
+    style OPENAI fill:#10a37f,stroke:#0d8a6a,color:#fff
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff`,
           hasBranches: true,
           branches: [
             { id: 'recognized', name: 'Recognizes Order', icon: '✅' },
@@ -5812,27 +5895,45 @@ Make them WANT to keep the products by highlighting the genuine benefits. Focus 
           name: 'Order Not Received',
           description: 'Customer has not received their order',
           diagram: `flowchart TD
-    START([🚚 Not Received])
-    TRACK[Check Tracking]
-    STATUS{Status?}
-    
-    TRANSIT[In Transit]
-    DELIVERED[Shows Delivered]
-    NOTRACK[No Tracking]
-    STUCK[Stuck/Delayed]
-    
-    WAIT[Ask to Wait]
-    VERIFY[Verify Address]
-    CASE([📋 Create Case])
-    
-    START --> TRACK --> STATUS
+    subgraph CHAT["💬 Chat App"]
+      START([🚚 Not Received])
+      TRACK[Check Tracking]
+      STATUS{Tracking Status?}
+      TRANSIT[In Transit - ETA shown]
+      DELIVERED[Shows Delivered]
+      NOTRACK[No Tracking Info]
+      STUCK[Stuck > 7 days]
+      WAIT[Ask to Wait]
+      VERIFY[Verify Address]
+    end
+
+    subgraph API["🔌 External APIs"]
+      PARCEL[(📦 ParcelPanel<br/>Tracking API v2)]
+      SHOPIFY[(🛒 Shopify<br/>Fulfillment)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_SHIP[📁 Hub: Shipping]
+    end
+
+    START -.->|GET tracking_number| SHOPIFY
+    SHOPIFY -.->|tracking_number| PARCEL
+    PARCEL -.->|Tracking events| TRACK
+    TRACK --> STATUS
     STATUS -->|In Transit| TRANSIT --> WAIT
     STATUS -->|Delivered| DELIVERED --> VERIFY
-    STATUS -->|No Info| NOTRACK --> CASE
-    STATUS -->|Stuck| STUCK --> CASE
-    
+    STATUS -->|No Info| NOTRACK --> D1
+    STATUS -->|Stuck| STUCK --> D1
+    VERIFY -->|Not at address| D1
+    D1 --> HUB_SHIP
+
     style START fill:#A8D8EA,stroke:#1a365d
-    style CASE fill:#C8E6C9,stroke:#2d5a2e`,
+    style WAIT fill:#fef3c7,stroke:#92400e
+    style PARCEL fill:#5046e5,stroke:#4338ca,color:#fff
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_SHIP fill:#06b6d4,stroke:#0891b2,color:#fff`,
           steps: [
             {
               id: 'NOTRECV_STEP_1',
@@ -5907,31 +6008,51 @@ Make them WANT to keep the products by highlighting the genuine benefits. Focus 
           name: 'Changed Mind',
           description: 'Customer changed their mind about the purchase',
           diagram: `flowchart TD
-    START([💭 Changed Mind])
-    ASK[Ask Why]
-    AI[AI Generates Response]
-    HAPPY{Satisfied?}
-    DONE([✅ Happy])
-    L20[20% Refund]
-    L30[30% Refund]
-    L40[40% Refund]
-    L50[50% Refund]
-    FULL[Full Refund]
-    
-    START --> ASK --> AI --> HAPPY
+    subgraph CHAT["💬 Chat App"]
+      START([💭 Changed Mind])
+      ASK[Ask Reason - Text Input]
+      HAPPY{Satisfied?}
+      DONE([✅ Resolved - No Case])
+      L20[20% Offer]
+      L30[30% Offer]
+      L40[40% Offer]
+      L50[50% Offer]
+      FULL{US or Intl?}
+    end
+
+    subgraph API["🔌 External APIs"]
+      OPENAI[(🤖 OpenAI<br/>gpt-4o-mini<br/>temp: 0.7)]
+      SHOPIFY[(🛒 Shopify<br/>Order/Address)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_REFUND[📁 Hub: Refunds]
+      HUB_RETURN[📁 Hub: Returns]
+    end
+
+    START --> ASK
+    ASK -.->|POST /api/ai-response<br/>scenario: changed_mind| OPENAI
+    OPENAI -.->|Personalized Response| ASK
+    ASK --> HAPPY
     HAPPY -->|Yes| DONE
     HAPPY -->|No| L20
-    L20 -->|Accept| DONE
-    L20 -->|Decline| L30
-    L30 -->|Accept| DONE
-    L30 -->|Decline| L40
-    L40 -->|Accept| DONE
-    L40 -->|Decline| L50
-    L50 -->|Accept| DONE
-    L50 -->|Decline| FULL
-    
+    L20 -->|Accept| D1
+    L20 -->|Decline| L30 -->|Decline| L40 -->|Decline| L50
+    L50 -->|Accept| D1
+    L50 -->|Full| FULL
+    FULL -.->|Check country| SHOPIFY
+    FULL -->|US| HUB_RETURN
+    FULL -->|Intl| HUB_REFUND
+    D1 --> HUB_REFUND
+
     style START fill:#E8D5E8,stroke:#6a4c93
-    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+    style DONE fill:#C8E6C9,stroke:#2d5a2e
+    style OPENAI fill:#10a37f,stroke:#0d8a6a,color:#fff
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff
+    style HUB_RETURN fill:#8b5cf6,stroke:#7c3aed,color:#fff`,
           steps: [
             {
               id: 'MIND_STEP_1',
@@ -6165,25 +6286,51 @@ Respond appropriately based on their situation. Don't mention refunds or returns
           name: 'Not Met Expectations',
           description: 'Product did not meet customer expectations',
           diagram: `flowchart TD
-    START([😕 Not As Expected])
-    ASK[Ask Details]
-    AI[AI Response + Tips]
-    HAPPY{Satisfied?}
-    DONE([✅ Happy])
-    L20[20% Refund]
-    L30[30% Refund]
-    L40[40% Refund]
-    L50[50% Refund]
-    FULL[Full Refund]
-    
-    START --> ASK --> AI --> HAPPY
+    subgraph CHAT["💬 Chat App"]
+      START([😕 Not As Expected])
+      ASK[Ask What Disappointed]
+      HAPPY{Satisfied with Tips?}
+      DONE([✅ Resolved - No Case])
+      L20[20% Offer]
+      L30[30% Offer]
+      L40[40% Offer]
+      L50[50% Offer]
+      FULL{US or Intl?}
+    end
+
+    subgraph API["🔌 External APIs"]
+      OPENAI[(🤖 OpenAI<br/>gpt-4o-mini<br/>Tips & Suggestions)]
+      SHOPIFY[(🛒 Shopify<br/>Address Check)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_REFUND[📁 Hub: Refunds]
+      HUB_RETURN[📁 Hub: Returns]
+    end
+
+    START --> ASK
+    ASK -.->|POST /api/ai-response| OPENAI
+    OPENAI -.->|Personalized tips| ASK
+    ASK --> HAPPY
     HAPPY -->|Yes| DONE
     HAPPY -->|No| L20
-    L20 -->|Accept| DONE
-    L20 -->|Decline| L30 -->|Decline| L40 -->|Decline| L50 -->|Decline| FULL
-    
+    L20 -->|Accept| D1
+    L20 -->|Decline| L30 -->|Decline| L40 -->|Decline| L50
+    L50 -->|Accept| D1
+    L50 -->|Full| FULL
+    FULL -.->|Check country| SHOPIFY
+    FULL -->|US| HUB_RETURN
+    FULL -->|Intl| HUB_REFUND
+    D1 --> HUB_REFUND
+
     style START fill:#E8D5E8,stroke:#6a4c93
-    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+    style DONE fill:#C8E6C9,stroke:#2d5a2e
+    style OPENAI fill:#10a37f,stroke:#0d8a6a,color:#fff
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff
+    style HUB_RETURN fill:#8b5cf6,stroke:#7c3aed,color:#fff`,
           steps: [
             {
               id: 'EXPECT_STEP_1',
@@ -6398,20 +6545,36 @@ Respond appropriately based on their situation. Don't mention refunds or returns
           name: 'Ordered By Mistake',
           description: 'Customer ordered by mistake or wants to change order',
           diagram: `flowchart TD
-    START([🔄 Ordered Mistake])
-    CHECK{Order Fulfilled?}
-    NOTYET[Not Yet → Change Order]
-    SHIPPED[Already Shipped]
-    CHANGE[Process Change]
-    LADDER[Refund Ladder]
-    DONE([✅ Done])
-    
-    START --> CHECK
-    CHECK -->|No| NOTYET --> CHANGE --> DONE
-    CHECK -->|Yes| SHIPPED --> LADDER --> DONE
-    
+    subgraph CHAT["💬 Chat App"]
+      START([🔄 Ordered By Mistake])
+      CHECK{Order Shipped?}
+      NOTYET[Not Shipped - Can Change]
+      SHIPPED[Already Shipped]
+      CHANGE[Process Change]
+      LADDER[Refund Ladder 20-50%]
+      DONE([✅ Change Processed])
+    end
+
+    subgraph API["🔌 External APIs"]
+      SHOPIFY[(🛒 Shopify<br/>fulfillment_status)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_REFUND[📁 Hub: Refunds]
+    end
+
+    START -.->|Check fulfillment| SHOPIFY
+    SHOPIFY -.->|Status| CHECK
+    CHECK -->|unfulfilled| NOTYET --> CHANGE --> DONE
+    CHECK -->|fulfilled| SHIPPED --> LADDER
+    LADDER --> D1 --> HUB_REFUND
+
     style START fill:#A8D8EA,stroke:#1a365d
-    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+    style DONE fill:#C8E6C9,stroke:#2d5a2e
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff`,
           steps: [
             {
               id: 'MISTAKE_STEP_1',
@@ -6467,26 +6630,36 @@ Respond appropriately based on their situation. Don't mention refunds or returns
           name: 'Quality / Material Difference',
           description: 'Customer notices material differences between products',
           diagram: `flowchart TD
-    START([🔍 Quality Question])
-    EXPLAIN[Explain Versions]
-    COMPARE[Show Comparison]
-    CHOICE{Customer Choice}
-    KEEP[Keep As-Is]
-    UPGRADE[Pay for Upgrade]
-    REFUND[Want Refund]
-    
-    FREE[Free Reship Offer]
-    CASE([✅ Case Created])
-    
+    subgraph CHAT["💬 Chat App"]
+      START([🔍 Quality/Material Question])
+      EXPLAIN[Explain Original vs 2.0]
+      COMPARE[Show Comparison Card]
+      CHOICE{Customer Decision}
+      KEEP[Keep As-Is]
+      UPGRADE[Pay Diff for Upgrade]
+      REFUND[Want Refund]
+      FREE[Free 2.0 Reship Offer]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_NONE([No Case - Satisfied])
+      HUB_SHIP[📁 Hub: Shipping<br/>type: upgrade/reship]
+      HUB_REFUND[📁 Hub: Refunds]
+    end
+
     START --> EXPLAIN --> COMPARE --> CHOICE
-    CHOICE -->|Keep| KEEP --> CASE
-    CHOICE -->|Upgrade| UPGRADE --> CASE
+    CHOICE -->|Keep| KEEP --> HUB_NONE
+    CHOICE -->|Upgrade| UPGRADE --> D1 --> HUB_SHIP
     CHOICE -->|Refund| REFUND --> FREE
-    FREE -->|Accept| CASE
-    FREE -->|Decline| CASE
-    
+    FREE -->|Accept| D1 --> HUB_SHIP
+    FREE -->|Decline| D1 --> HUB_REFUND
+
     style START fill:#E8D5E8,stroke:#6a4c93
-    style CASE fill:#C8E6C9,stroke:#2d5a2e`,
+    style HUB_NONE fill:#C8E6C9,stroke:#2d5a2e
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_SHIP fill:#06b6d4,stroke:#0891b2,color:#fff
+    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff`,
           steps: [
             {
               id: 'QUALITY_STEP_1',
@@ -6624,16 +6797,42 @@ Respond appropriately based on their situation. Don't mention refunds or returns
           name: 'Other Reason',
           description: 'Customer has a different issue not covered by other options',
           diagram: `flowchart TD
-    START([💬 Other Reason])
-    ASK[Ask for Details]
-    REVIEW[Review Issue]
-    LADDER[Refund Ladder]
-    DONE([✅ Case Created])
-    
-    START --> ASK --> REVIEW --> LADDER --> DONE
-    
+    subgraph CHAT["💬 Chat App"]
+      START([💬 Other Reason])
+      ASK[Free Text Input]
+      REVIEW[Amy Reviews Issue]
+      L20[20% Offer]
+      L30[30% Offer]
+      L40[40% Offer]
+      L50[50% Offer]
+      FULL{US or Intl?}
+    end
+
+    subgraph API["🔌 External APIs"]
+      SHOPIFY[(🛒 Shopify<br/>Address Check)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_REFUND[📁 Hub: Refunds]
+      HUB_RETURN[📁 Hub: Returns]
+    end
+
+    START --> ASK --> REVIEW --> L20
+    L20 -->|Accept| D1
+    L20 -->|Decline| L30 -->|Decline| L40 -->|Decline| L50
+    L50 -->|Accept| D1
+    L50 -->|Full| FULL
+    FULL -.->|Check country| SHOPIFY
+    FULL -->|US| HUB_RETURN
+    FULL -->|Intl| HUB_REFUND
+    D1 --> HUB_REFUND
+
     style START fill:#CBD5E1,stroke:#475569
-    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_REFUND fill:#3b82f6,stroke:#2563eb,color:#fff
+    style HUB_RETURN fill:#8b5cf6,stroke:#7c3aed,color:#fff`,
           steps: [
             {
               id: 'OTHER_STEP_1',
@@ -6783,24 +6982,38 @@ Respond appropriately based on their situation. Don't mention refunds or returns
           name: 'Pause Subscription',
           description: 'Temporarily pause subscription deliveries',
           diagram: `flowchart TD
-    START([⏸️ Pause Request])
-    S1[Select Subscription]
-    S2[Choose Duration]
-    OPT{Duration}
-    D30[30 Days]
-    D60[60 Days]
-    D90[90 Days]
-    CUST[Custom Date]
-    CASE([✅ Case Created])
-    
-    START --> S1 --> S2 --> OPT
-    OPT -->|30 days| D30 --> CASE
-    OPT -->|60 days| D60 --> CASE
-    OPT -->|90 days| D90 --> CASE
-    OPT -->|Custom| CUST --> CASE
-    
+    subgraph CHAT["💬 Chat App"]
+      START([⏸️ Pause Subscription])
+      S1[Select Subscription]
+      S2{Choose Duration}
+      D30[30 Days]
+      D60[60 Days]
+      D90[90 Days]
+      CUST[Custom Date Picker]
+    end
+
+    subgraph API["🔌 External APIs"]
+      SHOPIFY[(🛒 Shopify<br/>Subscriptions)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_SUB[📁 Hub: Subscriptions<br/>action: pause]
+    end
+
+    START -.->|GET subscriptions| SHOPIFY
+    SHOPIFY -.->|Subscription list| S1
+    S1 --> S2
+    S2 -->|30d| D30 --> D1
+    S2 -->|60d| D60 --> D1
+    S2 -->|90d| D90 --> D1
+    S2 -->|Custom| CUST --> D1
+    D1 --> HUB_SUB
+
     style START fill:#FFB7C5,stroke:#1a365d
-    style CASE fill:#C8E6C9,stroke:#2d5a2e`,
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_SUB fill:#ec4899,stroke:#db2777,color:#fff`,
           steps: [
             {
               id: 'PAUSE_STEP_1',
@@ -6890,42 +7103,61 @@ Respond appropriately based on their situation. Don't mention refunds or returns
           name: 'Cancel Subscription',
           description: 'Cancel subscription with retention offers',
           diagram: `flowchart TD
-    START([❌ Cancel Request])
-    WHY{Why Cancel?}
-    EXP[Too Expensive]
-    MANY[Have Too Many]
-    NOTW[Not Working]
-    MOVE[Moving]
-    OTHER[Other]
-    
-    PAUSE[Offer Pause]
-    ADDR[Offer Address Change]
-    DETAILS[Ask for Details]
-    LADDER[Discount Ladder]
-    
-    D10[Offer 10% Off]
-    D15[Offer 15% Off]
-    D20[Offer 20% Off]
-    
-    ACCEPT([✅ Kept with Discount])
-    PAUSED([✅ Subscription Paused])
-    UPDATED([✅ Address Updated])
-    CANCEL([Subscription Cancelled])
-    
+    subgraph CHAT["💬 Chat App"]
+      START([❌ Cancel Request])
+      WHY{Why Cancel?}
+      EXP[💰 Too Expensive]
+      MANY[📦 Have Too Many]
+      NOTW[🐕 Not Working]
+      MOVE[🏠 Moving]
+      OTHER[💬 Other Reason]
+      PAUSE[Offer Pause]
+      ADDR[Offer Address Change]
+      DETAILS[Ask for Details]
+      D10[10% Off Forever]
+      D15[15% Off Forever]
+      D20[20% Off Forever]
+      ACCEPT[Kept with Discount]
+      PAUSED[Subscription Paused]
+      UPDATED[Address Updated]
+      CANCEL[Cancelled]
+    end
+
+    subgraph API["🔌 External APIs"]
+      SHOPIFY[(🛒 Shopify<br/>Subscriptions)]
+      OPENAI[(🤖 OpenAI<br/>subscription_expensive)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_SUB[📁 Hub: Subscriptions]
+    end
+
     START --> WHY
-    WHY -->|Expensive| EXP --> LADDER
+    WHY -->|Expensive| EXP -.->|AI retention msg| OPENAI
+    EXP --> D10
     WHY -->|Too Many| MANY --> PAUSE
-    WHY -->|Not Working| NOTW --> DETAILS --> LADDER
+    WHY -->|Not Working| NOTW --> DETAILS --> D10
     WHY -->|Moving| MOVE --> ADDR
-    WHY -->|Other| OTHER --> LADDER
+    WHY -->|Other| OTHER --> D10
     
-    PAUSE -->|Accept| PAUSED
-    PAUSE -->|Decline| LADDER
-    ADDR -->|Accept| UPDATED
-    ADDR -->|Decline| LADDER
+    PAUSE -->|Accept| PAUSED --> D1
+    PAUSE -->|Decline| D10
+    ADDR -->|Accept| UPDATED --> D1
+    ADDR -->|Decline| D10
     
-    LADDER --> D10
-    D10 -->|Accept| ACCEPT
+    D10 -->|Accept| ACCEPT --> D1
+    D10 -->|Decline| D15 -->|Decline| D20
+    D20 -->|Decline| CANCEL --> D1
+    D1 --> HUB_SUB
+
+    style START fill:#FFCDD2,stroke:#c62828
+    style ACCEPT fill:#C8E6C9,stroke:#2d5a2e
+    style CANCEL fill:#FFCDD2,stroke:#c62828
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style OPENAI fill:#10a37f,stroke:#0d8a6a,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_SUB fill:#ec4899,stroke:#db2777,color:#fff`
     D10 -->|Decline| D15
     D15 -->|Accept| ACCEPT
     D15 -->|Decline| D20
@@ -7296,22 +7528,36 @@ Respond appropriately based on their situation. Don't mention refunds or returns
           name: 'Change Delivery Frequency',
           description: 'Adjust how often deliveries arrive',
           diagram: `flowchart TD
-    START([📅 Change Schedule])
-    SELECT[Select Frequency]
-    D30[Every 30 days]
-    D45[Every 45 days]
-    D60[Every 60 days]
-    D90[Every 90 days]
-    DONE([✅ Schedule Updated])
-    
-    START --> SELECT
-    SELECT --> D30 --> DONE
-    SELECT --> D45 --> DONE
-    SELECT --> D60 --> DONE
-    SELECT --> D90 --> DONE
-    
+    subgraph CHAT["💬 Chat App"]
+      START([📅 Change Frequency])
+      SELECT{Select New Interval}
+      D30[Every 30 days]
+      D45[Every 45 days]
+      D60[Every 60 days]
+      D90[Every 90 days]
+    end
+
+    subgraph API["🔌 External APIs"]
+      SHOPIFY[(🛒 Shopify<br/>Subscriptions API)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_SUB[📁 Hub: Subscriptions<br/>action: frequency_change]
+    end
+
+    START -.->|GET subscription| SHOPIFY
+    SHOPIFY -.->|Current schedule| SELECT
+    SELECT --> D30 --> D1
+    SELECT --> D45 --> D1
+    SELECT --> D60 --> D1
+    SELECT --> D90 --> D1
+    D1 --> HUB_SUB
+
     style START fill:#FFB7C5,stroke:#1a365d
-    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_SUB fill:#ec4899,stroke:#db2777,color:#fff`,
           steps: [
             {
               id: 'FREQ_STEP_1',
@@ -7436,31 +7682,45 @@ Respond appropriately based on their situation. Don't mention refunds or returns
           name: 'Check Tracking Status',
           description: 'View current tracking information for an order',
           diagram: `flowchart TD
-    START([📦 Track Order])
-    FIND[Find Order]
-    CHECK{Tracking Found?}
-    NOTRACK[No Tracking → Create Case]
-    STATUS{Delivery Status}
-    
-    TRANSIT[In Transit]
-    DELIVERED[Delivered]
-    NOTRECV[Not Received]
-    DELAYED[Delayed/Stuck]
-    
-    SHOW([✅ Show Tracking])
-    CASE([📋 Create Case])
-    
-    START --> FIND --> CHECK
-    CHECK -->|No| NOTRACK --> CASE
-    CHECK -->|Yes| STATUS
+    subgraph CHAT["💬 Chat App"]
+      START([📦 Track My Order])
+      FIND[Enter Email + Order #]
+      CHECK{Tracking Available?}
+      STATUS{Package Status}
+      TRANSIT[🚚 In Transit]
+      DELIVERED[✅ Delivered]
+      NOTRECV[❓ Says Delivered but Not Received]
+      DELAYED[⏳ Stuck > 7 days]
+      SHOW[Display Timeline]
+    end
+
+    subgraph API["🔌 External APIs"]
+      SHOPIFY[(🛒 Shopify<br/>Order Lookup)]
+      PARCEL[(📦 ParcelPanel<br/>Tracking Events)]
+    end
+
+    subgraph HUB["📊 Resolution Hub"]
+      D1[(💾 D1 Database)]
+      HUB_SHIP[📁 Hub: Shipping]
+    end
+
+    START --> FIND
+    FIND -.->|GET /orders| SHOPIFY
+    SHOPIFY -.->|tracking_number| PARCEL
+    PARCEL -.->|Events| CHECK
+    CHECK -->|No tracking| D1 --> HUB_SHIP
+    CHECK -->|Has tracking| STATUS
     STATUS -->|In Transit| TRANSIT --> SHOW
     STATUS -->|Delivered| DELIVERED --> SHOW
-    STATUS -->|Not Received| NOTRECV --> CASE
-    STATUS -->|Delayed| DELAYED --> CASE
-    
+    STATUS -->|Not Received| NOTRECV --> D1
+    STATUS -->|Delayed| DELAYED --> D1
+
     style START fill:#C8E6C9,stroke:#2d5a2e
     style SHOW fill:#C8E6C9,stroke:#2d5a2e
-    style CASE fill:#A8D8EA,stroke:#1a365d`,
+    style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
+    style PARCEL fill:#5046e5,stroke:#4338ca,color:#fff
+    style D1 fill:#f38020,stroke:#c66a1a,color:#fff
+    style HUB_SHIP fill:#06b6d4,stroke:#0891b2,color:#fff`,
           steps: [
             {
               id: 'TRACK_STEP_1',
