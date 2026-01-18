@@ -5248,23 +5248,613 @@ End with an encouraging message about consistency and patience.`,
             }
           ]
         },
-        where_is_my_order: {
-          id: 'where_is_my_order',
-          name: 'Where Is My Order',
-          description: 'Tracking and delivery status inquiries',
-          steps: [] // To be documented
+        missing_item: {
+          id: 'missing_item',
+          name: 'Missing Item',
+          description: 'Items missing from the order',
+          diagram: `flowchart TD
+    START([📦 Missing Item])
+    PHOTO[Upload Photos]
+    DESC[Describe Missing]
+    OFFER{Resolution}
+    RESHIP[Reship + Bonus]
+    REFUND[Refund Missing]
+    DONE([✅ Case Created])
+    
+    START --> PHOTO --> DESC --> OFFER
+    OFFER -->|Reship| RESHIP --> DONE
+    OFFER -->|Refund| REFUND --> DONE
+    
+    style START fill:#A8D8EA,stroke:#1a365d
+    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'MISSING_STEP_1',
+              stepNumber: '1',
+              name: "Upload Evidence",
+              persona: 'Amy',
+              function: 'handleMissingItem()',
+              line: 3240,
+              messages: [
+                {
+                  id: 'MISSING_STEP_1_MSG',
+                  label: "Amy's Message",
+                  content: "I'm sorry to hear something was missing from your order. Here's what you should have received:\n\n[List of items]\n\nTo help us investigate, please upload photos of what you did receive (including the packaging):"
+                }
+              ],
+              next: 'Shows upload area for photos'
+            },
+            {
+              id: 'MISSING_STEP_2',
+              stepNumber: '2',
+              name: "Describe Missing Items",
+              persona: 'Amy',
+              function: 'handleMissingItemEvidence()',
+              line: 3270,
+              messages: [
+                {
+                  id: 'MISSING_STEP_2_MSG',
+                  label: "Amy's Message",
+                  content: "Thanks for those photos!\n\nNow, please describe exactly what was missing from your order. Include as much detail as possible..."
+                }
+              ],
+              next: 'User describes missing items'
+            },
+            {
+              id: 'MISSING_STEP_3',
+              stepNumber: '3',
+              name: "Resolution Options",
+              persona: 'Amy',
+              function: 'handleMissingItemEvidence()',
+              line: 3277,
+              messages: [
+                {
+                  id: 'MISSING_STEP_3_MSG',
+                  label: "Amy's Offer",
+                  content: "Thank you for letting us know. I've noted everything down and our team will look into this.\n\nTo make things right, we'd love to reship the missing items to you... and as an apology for the trouble, we'll include an extra item on us!"
+                }
+              ],
+              buttons: [
+                { text: 'Yes, send my missing items', style: 'primary' },
+                { text: "No, I'd like a different solution", style: 'secondary' }
+              ],
+              next: 'Reship or show refund option'
+            },
+            {
+              id: 'MISSING_STEP_RESHIP',
+              stepNumber: '4A',
+              name: "Reship + Bonus",
+              persona: 'Amy',
+              function: 'handleMissingItemReship()',
+              line: 3287,
+              isThankYou: true,
+              branchType: 'success',
+              messages: [
+                {
+                  id: 'MISSING_RESHIP_MSG',
+                  label: "Success Message",
+                  content: "Our team will review your case within 1-2 days and ship your missing items plus a bonus item for the inconvenience.\n\nYou'll receive an email with tracking details once it ships!"
+                }
+              ],
+              caseDetails: {
+                type: 'shipping',
+                resolution: 'reship_missing_item_bonus'
+              }
+            },
+            {
+              id: 'MISSING_STEP_REFUND',
+              stepNumber: '4B',
+              name: "Refund Missing",
+              persona: 'Amy',
+              function: 'handleMissingItemRefund()',
+              line: 3318,
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'MISSING_REFUND_MSG',
+                  label: "Success Message",
+                  content: "Our team will calculate the refund amount based on what was missing and process it within 1-2 business days."
+                }
+              ],
+              caseDetails: {
+                type: 'refund',
+                resolution: 'refund_missing_item'
+              }
+            }
+          ]
         },
         damaged_product: {
           id: 'damaged_product',
           name: 'Damaged Product',
           description: 'Product arrived damaged or defective',
-          steps: [] // To be documented
+          diagram: `flowchart TD
+    START([💔 Damaged Item])
+    PHOTO[Upload Photos]
+    OFFER{Preference?}
+    REPLACE[Send Replacement]
+    REFUND[Process Refund]
+    DONE([✅ Case Created])
+    
+    START --> PHOTO --> OFFER
+    OFFER -->|Replace| REPLACE --> DONE
+    OFFER -->|Refund| REFUND --> DONE
+    
+    style START fill:#FFCDD2,stroke:#c62828
+    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'DAMAGED_STEP_1',
+              stepNumber: '1',
+              name: "Upload Photos",
+              persona: 'Amy',
+              function: 'handleDamaged()',
+              line: 3515,
+              messages: [
+                {
+                  id: 'DAMAGED_STEP_1_MSG',
+                  label: "Amy's Message",
+                  content: "I'm so sorry your order arrived damaged. To help process this quickly, please upload photos of the damage (including packaging if relevant):"
+                }
+              ],
+              next: 'Shows upload area'
+            },
+            {
+              id: 'DAMAGED_STEP_2',
+              stepNumber: '2',
+              name: "Choose Resolution",
+              persona: 'Amy',
+              function: 'handleDamagedEvidence()',
+              line: 3424,
+              messages: [
+                {
+                  id: 'DAMAGED_STEP_2_MSG',
+                  label: "Amy's Message",
+                  content: "Thank you for the photos. I can see the damage and I'm very sorry this happened.\n\nI'd like to make this right. Would you prefer a replacement or a refund?"
+                }
+              ],
+              buttons: [
+                { text: 'Send me a replacement', style: 'primary' },
+                { text: "I'd prefer a refund", style: 'secondary' }
+              ],
+              next: 'Creates case based on choice'
+            },
+            {
+              id: 'DAMAGED_STEP_REPLACE',
+              stepNumber: '3A',
+              name: "Replacement Sent",
+              persona: 'Amy',
+              isThankYou: true,
+              branchType: 'success',
+              messages: [
+                {
+                  id: 'DAMAGED_REPLACE_MSG',
+                  label: "Success Message",
+                  content: "Your replacement is being prepared! You'll receive tracking details via email within 1-2 business days.\n\nNo need to return the damaged item."
+                }
+              ],
+              caseDetails: {
+                type: 'shipping',
+                resolution: 'reship_damaged'
+              }
+            },
+            {
+              id: 'DAMAGED_STEP_REFUND',
+              stepNumber: '3B',
+              name: "Refund Processed",
+              persona: 'Amy',
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'DAMAGED_REFUND_MSG',
+                  label: "Success Message",
+                  content: "Your refund has been submitted. You can expect it within 3-5 business days.\n\nNo need to return the damaged item."
+                }
+              ],
+              caseDetails: {
+                type: 'refund',
+                resolution: 'refund_damaged'
+              }
+            }
+          ]
         },
         wrong_item: {
           id: 'wrong_item',
           name: 'Wrong Item Received',
           description: 'Customer received incorrect item',
-          steps: [] // To be documented
+          diagram: `flowchart TD
+    START([🔀 Wrong Item])
+    PHOTO[Upload Photos]
+    CONFIRM[Confirm Wrong Item]
+    SHIP([✅ Correct Item Shipped])
+    
+    START --> PHOTO --> CONFIRM --> SHIP
+    
+    style START fill:#A8D8EA,stroke:#1a365d
+    style SHIP fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'WRONG_STEP_1',
+              stepNumber: '1',
+              name: "Upload Photos",
+              persona: 'Amy',
+              function: 'handleWrongItem()',
+              line: 3520,
+              messages: [
+                {
+                  id: 'WRONG_STEP_1_MSG',
+                  label: "Amy's Message",
+                  content: "I'm sorry to hear you received the wrong item! To help us investigate, please upload photos of what you received:"
+                }
+              ],
+              next: 'Shows upload area'
+            },
+            {
+              id: 'WRONG_STEP_2',
+              stepNumber: '2',
+              name: "Correct Item Shipped",
+              persona: 'Amy',
+              function: 'handleWrongItemEvidence()',
+              line: 3465,
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'WRONG_STEP_2_MSG',
+                  label: "Amy's Message",
+                  content: "Thank you for the photos. I've confirmed you received the wrong item and I sincerely apologize for this error.\n\nI'll ship the correct item right away. You can keep or donate the wrong item - no need to return it."
+                }
+              ],
+              caseDetails: {
+                type: 'shipping',
+                resolution: 'reship_wrong_item'
+              }
+            }
+          ]
+        },
+        charged_unexpectedly: {
+          id: 'charged_unexpectedly',
+          name: 'Charged Unexpectedly',
+          description: 'Customer was charged when they did not expect it',
+          diagram: `flowchart TD
+    START([💳 Unexpected Charge])
+    CHECK{Order Delivered?}
+    DEL[Delivered]
+    NOTDEL[Not Delivered]
+    
+    RECOG{Recognize Order?}
+    YES[Yes - Keep It]
+    NO[No - Refund]
+    
+    OFFER[20% Refund Offer]
+    LADDER[Refund Ladder]
+    DONE([✅ Case Created])
+    
+    START --> CHECK
+    CHECK -->|Yes| DEL --> RECOG
+    CHECK -->|No| NOTDEL --> OFFER
+    RECOG -->|Yes| YES --> DONE
+    RECOG -->|No| NO --> LADDER --> DONE
+    OFFER -->|Accept| DONE
+    OFFER -->|Decline| LADDER
+    
+    style START fill:#fef3c7,stroke:#92400e
+    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'CHARGED_STEP_1',
+              stepNumber: '1',
+              name: "Check Recognition",
+              persona: 'Amy',
+              function: 'handleChargedUnexpectedly()',
+              line: 3525,
+              messages: [
+                {
+                  id: 'CHARGED_STEP_1_MSG',
+                  label: "Amy's Message",
+                  content: "I'm sorry you were charged unexpectedly. Let me help figure this out.\n\nLooking at your order, do you recognize the products you received?"
+                }
+              ],
+              buttons: [
+                { text: "Yes, I recognize them", style: 'primary' },
+                { text: "No, I don't recognize this", style: 'secondary' }
+              ],
+              next: 'Routes based on recognition'
+            },
+            {
+              id: 'CHARGED_STEP_OFFER',
+              stepNumber: '2',
+              name: "Offer Resolution",
+              persona: 'Amy',
+              messages: [
+                {
+                  id: 'CHARGED_OFFER_MSG',
+                  label: "Amy's Offer",
+                  content: "I understand this charge was unexpected. As a gesture of goodwill, I can offer you a 20% refund while you keep everything you received.\n\nWould that work for you?"
+                }
+              ],
+              buttons: [
+                { text: 'Accept 20% refund', style: 'primary' },
+                { text: "I'd like a full refund", style: 'secondary' }
+              ],
+              next: 'Accept or go to refund ladder'
+            }
+          ]
+        },
+        not_received: {
+          id: 'not_received',
+          name: 'Order Not Received',
+          description: 'Customer has not received their order',
+          diagram: `flowchart TD
+    START([🚚 Not Received])
+    TRACK[Check Tracking]
+    STATUS{Status?}
+    
+    TRANSIT[In Transit]
+    DELIVERED[Shows Delivered]
+    NOTRACK[No Tracking]
+    STUCK[Stuck/Delayed]
+    
+    WAIT[Ask to Wait]
+    VERIFY[Verify Address]
+    CASE([📋 Create Case])
+    
+    START --> TRACK --> STATUS
+    STATUS -->|In Transit| TRANSIT --> WAIT
+    STATUS -->|Delivered| DELIVERED --> VERIFY
+    STATUS -->|No Info| NOTRACK --> CASE
+    STATUS -->|Stuck| STUCK --> CASE
+    
+    style START fill:#A8D8EA,stroke:#1a365d
+    style CASE fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'NOTRECV_STEP_1',
+              stepNumber: '1',
+              name: "Check Tracking",
+              persona: 'Amy',
+              function: 'handleNotReceived()',
+              line: 4603,
+              messages: [
+                {
+                  id: 'NOTRECV_STEP_1_MSG',
+                  label: "Amy's Message",
+                  content: "I'm sorry your order hasn't arrived yet. Let me check the tracking information for you..."
+                }
+              ],
+              next: 'Fetches tracking from ParcelPanel'
+            },
+            {
+              id: 'NOTRECV_STEP_TRANSIT',
+              stepNumber: '2A',
+              name: "In Transit",
+              persona: 'Amy',
+              messages: [
+                {
+                  id: 'NOTRECV_TRANSIT_MSG',
+                  label: "In Transit Message",
+                  content: "Good news! Your package is still in transit and on its way.\n\n[Tracking details shown]\n\nWould you like me to keep you updated on this?"
+                }
+              ],
+              next: 'Shows tracking card'
+            },
+            {
+              id: 'NOTRECV_STEP_DELIVERED',
+              stepNumber: '2B',
+              name: "Shows Delivered",
+              persona: 'Amy',
+              messages: [
+                {
+                  id: 'NOTRECV_DELIVERED_MSG',
+                  label: "Delivered Message",
+                  content: "Our tracking shows this was delivered on [date]. Let me help investigate this.\n\nCan you check with neighbors or your building management? Sometimes packages are left in safe spots."
+                }
+              ],
+              buttons: [
+                { text: "I'll check and come back", style: 'secondary' },
+                { text: "I already checked - it's missing", style: 'primary' }
+              ],
+              next: 'Create case if still missing'
+            },
+            {
+              id: 'NOTRECV_STEP_CASE',
+              stepNumber: '3',
+              name: "Create Investigation Case",
+              persona: 'Amy',
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'NOTRECV_CASE_MSG',
+                  label: "Case Created",
+                  content: "I've created a case for our team to investigate. They'll look into this and get back to you within 1-2 business days."
+                }
+              ],
+              caseDetails: {
+                type: 'shipping',
+                resolution: 'investigate_missing'
+              }
+            }
+          ]
+        },
+        changed_mind: {
+          id: 'changed_mind',
+          name: 'Changed Mind',
+          description: 'Customer changed their mind about the purchase',
+          diagram: `flowchart TD
+    START([💭 Changed Mind])
+    ASK[Ask Why]
+    AI[AI Generates Response]
+    HAPPY{Satisfied?}
+    DONE([✅ Happy])
+    LADDER[Refund Ladder]
+    
+    START --> ASK --> AI --> HAPPY
+    HAPPY -->|Yes| DONE
+    HAPPY -->|No| LADDER
+    
+    style START fill:#E8D5E8,stroke:#6a4c93
+    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'MIND_STEP_1',
+              stepNumber: '1',
+              name: "Ask Reason",
+              persona: 'Amy',
+              function: 'handleChangedMind()',
+              line: 3012,
+              messages: [
+                {
+                  id: 'MIND_STEP_1_MSG',
+                  label: "Amy's Message",
+                  content: "I understand! Can you share a bit more about what changed? I might be able to help or suggest something that would work better for you."
+                }
+              ],
+              next: 'User types their reason'
+            },
+            {
+              id: 'MIND_STEP_2',
+              stepNumber: '2',
+              name: "AI Response",
+              persona: 'Amy',
+              apiConnection: {
+                service: 'OpenAI GPT-4o',
+                endpoint: '/api/ai',
+                systemPrompt: "You are Amy, a friendly customer support rep for PuppyPad. The customer changed their mind. Try to understand and address their concern."
+              },
+              messages: [
+                {
+                  id: 'MIND_STEP_2_MSG',
+                  label: "AI-Generated Response",
+                  content: "[Dynamic response based on customer's reason]"
+                }
+              ],
+              buttons: [
+                { text: "That's helpful, thanks!", style: 'primary' },
+                { text: 'No, I still want a refund', style: 'secondary' }
+              ],
+              next: 'Happy → Done | Refund → Refund Ladder'
+            }
+          ]
+        },
+        not_met_expectations: {
+          id: 'not_met_expectations',
+          name: 'Not Met Expectations',
+          description: 'Product did not meet customer expectations',
+          diagram: `flowchart TD
+    START([😕 Not As Expected])
+    ASK[Ask Details]
+    AI[AI Response + Tips]
+    HAPPY{Satisfied?}
+    DONE([✅ Happy])
+    LADDER[Refund Ladder]
+    
+    START --> ASK --> AI --> HAPPY
+    HAPPY -->|Yes| DONE
+    HAPPY -->|No| LADDER
+    
+    style START fill:#E8D5E8,stroke:#6a4c93
+    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'EXPECT_STEP_1',
+              stepNumber: '1',
+              name: "Ask Details",
+              persona: 'Amy',
+              function: 'handleNotMetExpectations()',
+              line: 3079,
+              messages: [
+                {
+                  id: 'EXPECT_STEP_1_MSG',
+                  label: "Amy's Message",
+                  content: "I'm sorry to hear the product didn't meet your expectations. Can you tell me more about what you were hoping for? I'd love to see if there's anything I can do to help."
+                }
+              ],
+              next: 'User describes expectations'
+            },
+            {
+              id: 'EXPECT_STEP_2',
+              stepNumber: '2',
+              name: "AI Response",
+              persona: 'Amy',
+              apiConnection: {
+                service: 'OpenAI GPT-4o',
+                endpoint: '/api/ai',
+                systemPrompt: "You are Amy. The customer says the product didn't meet expectations. Address their specific concern and offer helpful tips."
+              },
+              buttons: [
+                { text: "Those tips are helpful!", style: 'primary' },
+                { text: "No, I'd like a refund", style: 'secondary' }
+              ],
+              next: 'Happy → Done | Refund → Refund Ladder'
+            }
+          ]
+        },
+        ordered_mistake: {
+          id: 'ordered_mistake',
+          name: 'Ordered By Mistake',
+          description: 'Customer ordered by mistake or wants to change order',
+          diagram: `flowchart TD
+    START([🔄 Ordered Mistake])
+    CHECK{Order Fulfilled?}
+    NOTYET[Not Yet → Change Order]
+    SHIPPED[Already Shipped]
+    CHANGE[Process Change]
+    LADDER[Refund Ladder]
+    DONE([✅ Done])
+    
+    START --> CHECK
+    CHECK -->|No| NOTYET --> CHANGE --> DONE
+    CHECK -->|Yes| SHIPPED --> LADDER --> DONE
+    
+    style START fill:#A8D8EA,stroke:#1a365d
+    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'MISTAKE_STEP_1',
+              stepNumber: '1',
+              name: "Check Fulfillment",
+              persona: 'Amy',
+              function: 'handleOrderedMistake()',
+              line: 3181,
+              messages: [
+                {
+                  id: 'MISTAKE_STEP_1_MSG',
+                  label: "Amy's Message",
+                  content: "I understand! Let me check if your order has shipped yet..."
+                }
+              ],
+              next: 'Checks fulfillment status'
+            },
+            {
+              id: 'MISTAKE_STEP_CHANGE',
+              stepNumber: '2A',
+              name: "Change Order",
+              persona: 'Amy',
+              messages: [
+                {
+                  id: 'MISTAKE_CHANGE_MSG',
+                  label: "Not Yet Shipped",
+                  content: "Good news! Your order hasn't shipped yet, so I can help you make changes.\n\nWhat would you like to change?"
+                }
+              ],
+              buttons: [
+                { text: 'Change my order', style: 'primary' },
+                { text: 'I want a refund', style: 'secondary' }
+              ]
+            },
+            {
+              id: 'MISTAKE_STEP_SHIPPED',
+              stepNumber: '2B',
+              name: "Already Shipped",
+              persona: 'Amy',
+              messages: [
+                {
+                  id: 'MISTAKE_SHIPPED_MSG',
+                  label: "Already Shipped",
+                  content: "Your order has already shipped, so I can't make changes to it. But don't worry - let me see what I can do for you..."
+                }
+              ],
+              next: 'Goes to refund ladder'
+            }
+          ]
         }
       }
     },
@@ -5279,19 +5869,458 @@ End with an encouraging message about consistency and patience.`,
           id: 'pause_subscription',
           name: 'Pause Subscription',
           description: 'Temporarily pause subscription deliveries',
-          steps: [] // To be documented
+          diagram: `flowchart TD
+    START([⏸️ Pause Request])
+    S1[Select Subscription]
+    S2[Choose Duration]
+    OPT{Duration}
+    D30[30 Days]
+    D60[60 Days]
+    D90[90 Days]
+    CUST[Custom Date]
+    CASE([✅ Case Created])
+    
+    START --> S1 --> S2 --> OPT
+    OPT -->|30 days| D30 --> CASE
+    OPT -->|60 days| D60 --> CASE
+    OPT -->|90 days| D90 --> CASE
+    OPT -->|Custom| CUST --> CASE
+    
+    style START fill:#FFB7C5,stroke:#1a365d
+    style CASE fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'PAUSE_STEP_1',
+              stepNumber: '1',
+              name: "Select Subscription",
+              persona: 'Amy',
+              function: 'showSubscriptionCards()',
+              line: 6124,
+              messages: [
+                {
+                  id: 'PAUSE_STEP_1_MSG',
+                  label: "Amy's Message",
+                  content: "I found [X] subscription(s). Which one would you like to manage?"
+                }
+              ],
+              next: 'Shows subscription cards for selection'
+            },
+            {
+              id: 'PAUSE_STEP_2',
+              stepNumber: '2',
+              name: "Choose Action",
+              persona: 'Amy',
+              function: 'showSubscriptionActions()',
+              line: 6200,
+              messages: [
+                {
+                  id: 'PAUSE_STEP_2_MSG',
+                  label: "Amy's Message",
+                  content: "What would you like to do with this subscription?"
+                }
+              ],
+              buttons: [
+                { text: '⏸️ Pause Subscription', style: 'primary' },
+                { text: '❌ Cancel Subscription', style: 'secondary' },
+                { text: '📅 Change Delivery Schedule', style: 'secondary' },
+                { text: '📍 Change Shipping Address', style: 'secondary' }
+              ],
+              next: 'User selects Pause'
+            },
+            {
+              id: 'PAUSE_STEP_3',
+              stepNumber: '3',
+              name: "Select Duration",
+              persona: 'Amy',
+              function: 'handlePauseSubscription()',
+              line: 6211,
+              messages: [
+                {
+                  id: 'PAUSE_STEP_3_MSG',
+                  label: "Amy's Message",
+                  content: "How long would you like to pause your subscription?"
+                }
+              ],
+              buttons: [
+                { text: '30 days', style: 'primary' },
+                { text: '60 days', style: 'primary' },
+                { text: '90 days', style: 'primary' },
+                { text: 'Custom date', style: 'secondary' }
+              ],
+              next: 'Creates case with pause duration'
+            },
+            {
+              id: 'PAUSE_STEP_4',
+              stepNumber: '4',
+              name: "Pause Confirmed",
+              persona: 'Amy',
+              function: 'confirmPause()',
+              line: 6222,
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'PAUSE_STEP_4_MSG',
+                  label: "Success Message",
+                  content: "Your subscription will automatically resume on [Date]."
+                }
+              ],
+              caseDetails: {
+                type: 'subscription',
+                resolution: 'subscription_paused',
+                actionType: 'pause'
+              }
+            }
+          ]
         },
         cancel_subscription: {
           id: 'cancel_subscription',
           name: 'Cancel Subscription',
-          description: 'Cancel subscription completely',
-          steps: [] // To be documented
+          description: 'Cancel subscription with retention offers',
+          diagram: `flowchart TD
+    START([❌ Cancel Request])
+    WHY{Why Cancel?}
+    EXP[Too Expensive]
+    MANY[Have Too Many]
+    NOTW[Not Working]
+    MOVE[Moving]
+    OTHER[Other]
+    
+    PAUSE[Offer Pause]
+    ADDR[Offer Address Change]
+    LADDER[Discount Ladder]
+    
+    D10[Offer 10% Off]
+    D15[Offer 15% Off]
+    D20[Offer 20% Off]
+    
+    ACCEPT([✅ Kept with Discount])
+    CANCEL([Subscription Cancelled])
+    
+    START --> WHY
+    WHY -->|Expensive| EXP --> LADDER
+    WHY -->|Too Many| MANY --> PAUSE
+    WHY -->|Not Working| NOTW --> LADDER
+    WHY -->|Moving| MOVE --> ADDR
+    WHY -->|Other| OTHER --> LADDER
+    
+    PAUSE -->|Accept| ACCEPT
+    PAUSE -->|Decline| LADDER
+    ADDR -->|Accept| ACCEPT
+    ADDR -->|Decline| LADDER
+    
+    LADDER --> D10
+    D10 -->|Accept| ACCEPT
+    D10 -->|Decline| D15
+    D15 -->|Accept| ACCEPT
+    D15 -->|Decline| D20
+    D20 -->|Accept| ACCEPT
+    D20 -->|Decline| CANCEL
+    
+    style START fill:#FFCDD2,stroke:#c62828
+    style ACCEPT fill:#C8E6C9,stroke:#2d5a2e
+    style CANCEL fill:#FFCDD2,stroke:#c62828`,
+          steps: [
+            {
+              id: 'CANCEL_STEP_1',
+              stepNumber: '1',
+              name: "Cancel Reason",
+              persona: 'Amy',
+              function: 'handleCancelSubscription()',
+              line: 6297,
+              messages: [
+                {
+                  id: 'CANCEL_STEP_1_MSG',
+                  label: "Amy's Message",
+                  content: "I'm sorry to see you go 😔 Can you tell me why you'd like to cancel?"
+                }
+              ],
+              buttons: [
+                { text: "It's too expensive", style: 'primary' },
+                { text: "I have too many", style: 'primary' },
+                { text: "They don't work as described", style: 'primary' },
+                { text: "I'm moving", style: 'primary' },
+                { text: "Other reason", style: 'secondary' }
+              ],
+              next: 'Routes based on reason'
+            },
+            {
+              id: 'CANCEL_STEP_LADDER',
+              stepNumber: '2',
+              name: "Discount Ladder",
+              persona: 'Amy',
+              function: 'startSubscriptionLadder()',
+              line: 6359,
+              isBranchPoint: true,
+              messages: [
+                {
+                  id: 'CANCEL_LADDER_10',
+                  label: "10% Offer",
+                  content: "How about 10% off all future shipments? That's ongoing savings on every delivery!"
+                },
+                {
+                  id: 'CANCEL_LADDER_15',
+                  label: "15% Offer",
+                  content: "Let me do better — 15% off all future shipments. That really adds up over time!"
+                },
+                {
+                  id: 'CANCEL_LADDER_20',
+                  label: "20% Offer (Final)",
+                  content: "My best offer: 20% off all future shipments. That's significant savings!"
+                }
+              ],
+              next: 'Accept → Discount Applied | Decline All → Full Cancel'
+            },
+            {
+              id: 'CANCEL_STEP_ACCEPT',
+              stepNumber: '3A',
+              name: "Discount Accepted",
+              persona: 'Amy',
+              function: 'acceptSubscriptionOffer()',
+              line: 6395,
+              isThankYou: true,
+              branchType: 'success',
+              messages: [
+                {
+                  id: 'CANCEL_ACCEPT_MSG',
+                  label: "Success Message",
+                  content: "Great choice! Your [X]% discount will apply to all future shipments automatically."
+                }
+              ],
+              caseDetails: {
+                type: 'subscription',
+                resolution: 'discount_applied'
+              }
+            },
+            {
+              id: 'CANCEL_STEP_FULL',
+              stepNumber: '3B',
+              name: "Full Cancellation",
+              persona: 'Amy',
+              function: 'handleFullSubscriptionCancel()',
+              line: 6427,
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'CANCEL_FULL_MSG',
+                  label: "Cancellation Message",
+                  content: "Your subscription has been cancelled and your refund request has been submitted."
+                }
+              ],
+              caseDetails: {
+                type: 'subscription',
+                resolution: 'subscription_cancelled'
+              }
+            }
+          ]
         },
         change_frequency: {
           id: 'change_frequency',
           name: 'Change Delivery Frequency',
           description: 'Adjust how often deliveries arrive',
-          steps: [] // To be documented
+          diagram: `flowchart TD
+    START([📅 Change Schedule])
+    SELECT[Select Frequency]
+    D30[Every 30 days]
+    D45[Every 45 days]
+    D60[Every 60 days]
+    D90[Every 90 days]
+    DONE([✅ Schedule Updated])
+    
+    START --> SELECT
+    SELECT --> D30 --> DONE
+    SELECT --> D45 --> DONE
+    SELECT --> D60 --> DONE
+    SELECT --> D90 --> DONE
+    
+    style START fill:#FFB7C5,stroke:#1a365d
+    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'FREQ_STEP_1',
+              stepNumber: '1',
+              name: "Select New Frequency",
+              persona: 'Amy',
+              function: 'handleChangeSchedule()',
+              line: 6471,
+              messages: [
+                {
+                  id: 'FREQ_STEP_1_MSG',
+                  label: "Amy's Message",
+                  content: "How often would you like to receive your deliveries?"
+                }
+              ],
+              buttons: [
+                { text: 'Every 30 days', style: 'primary' },
+                { text: 'Every 45 days', style: 'primary' },
+                { text: 'Every 60 days', style: 'primary' },
+                { text: 'Every 90 days', style: 'primary' }
+              ],
+              next: 'Creates case with new frequency'
+            },
+            {
+              id: 'FREQ_STEP_2',
+              stepNumber: '2',
+              name: "Schedule Updated",
+              persona: 'Amy',
+              function: 'confirmScheduleChange()',
+              line: 6482,
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'FREQ_STEP_2_MSG',
+                  label: "Success Message",
+                  content: "Your deliveries will now arrive every [X] days."
+                }
+              ],
+              caseDetails: {
+                type: 'subscription',
+                resolution: 'schedule_changed'
+              }
+            }
+          ]
+        },
+        change_address: {
+          id: 'change_address',
+          name: 'Change Shipping Address',
+          description: 'Update delivery address for subscription',
+          diagram: `flowchart TD
+    START([📍 Change Address])
+    FORM[Enter New Address]
+    SUBMIT[Submit Address]
+    DONE([✅ Address Updated])
+    
+    START --> FORM --> SUBMIT --> DONE
+    
+    style START fill:#FFB7C5,stroke:#1a365d
+    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'ADDR_STEP_1',
+              stepNumber: '1',
+              name: "Enter New Address",
+              persona: 'Amy',
+              function: 'handleChangeAddress()',
+              line: 6505,
+              messages: [
+                {
+                  id: 'ADDR_STEP_1_MSG',
+                  label: "Amy's Message",
+                  content: "Please enter your new shipping address:"
+                }
+              ],
+              fields: [
+                { label: 'Street Address', type: 'text', required: true },
+                { label: 'Apt/Suite', type: 'text', required: false },
+                { label: 'City', type: 'text', required: true },
+                { label: 'State/Province', type: 'text', required: true },
+                { label: 'ZIP/Postal Code', type: 'text', required: true },
+                { label: 'Country', type: 'select', required: true },
+                { label: 'Phone Number', type: 'tel', required: false }
+              ],
+              buttons: [
+                { text: 'Update Address', style: 'primary' }
+              ],
+              next: 'Creates case with new address'
+            },
+            {
+              id: 'ADDR_STEP_2',
+              stepNumber: '2',
+              name: "Address Updated",
+              persona: 'Amy',
+              function: 'submitNewAddress()',
+              line: 6552,
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'ADDR_STEP_2_MSG',
+                  label: "Success Message",
+                  content: "Your shipping address has been updated! Future deliveries will be sent to your new address."
+                }
+              ],
+              caseDetails: {
+                type: 'subscription',
+                resolution: 'address_changed'
+              }
+            }
+          ]
+        }
+      }
+    },
+    track_my_order: {
+      id: 'track_my_order',
+      name: 'Track My Order',
+      description: 'Order tracking and delivery status inquiries',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
+      color: '#C8E6C9',
+      subflows: {
+        tracking_status: {
+          id: 'tracking_status',
+          name: 'Check Tracking Status',
+          description: 'View current tracking information for an order',
+          diagram: `flowchart TD
+    START([📦 Track Order])
+    FIND[Find Order]
+    CHECK{Tracking Found?}
+    NOTRACK[No Tracking → Create Case]
+    STATUS{Delivery Status}
+    
+    TRANSIT[In Transit]
+    DELIVERED[Delivered]
+    NOTRECV[Not Received]
+    DELAYED[Delayed/Stuck]
+    
+    SHOW([✅ Show Tracking])
+    CASE([📋 Create Case])
+    
+    START --> FIND --> CHECK
+    CHECK -->|No| NOTRACK --> CASE
+    CHECK -->|Yes| STATUS
+    STATUS -->|In Transit| TRANSIT --> SHOW
+    STATUS -->|Delivered| DELIVERED --> SHOW
+    STATUS -->|Not Received| NOTRECV --> CASE
+    STATUS -->|Delayed| DELAYED --> CASE
+    
+    style START fill:#C8E6C9,stroke:#2d5a2e
+    style SHOW fill:#C8E6C9,stroke:#2d5a2e
+    style CASE fill:#A8D8EA,stroke:#1a365d`,
+          steps: [
+            {
+              id: 'TRACK_STEP_1',
+              stepNumber: '1',
+              name: "Enter Details",
+              persona: 'Amy',
+              function: 'showIdentifyForm()',
+              line: 1356,
+              messages: [
+                {
+                  id: 'TRACK_STEP_1_MSG',
+                  label: "Amy's Welcome",
+                  content: "Hi! I'm Amy. Let me help you track your order — just enter your details below and I'll pull it right up. 📦"
+                }
+              ],
+              fields: [
+                { label: 'Email or Phone', type: 'text', required: true },
+                { label: 'Order Number (optional)', type: 'text', required: false }
+              ],
+              next: 'Looks up order in Shopify'
+            },
+            {
+              id: 'TRACK_STEP_2',
+              stepNumber: '2',
+              name: "Show Tracking",
+              persona: 'Amy',
+              function: 'handleTrackingResult()',
+              line: 4650,
+              messages: [
+                {
+                  id: 'TRACK_STEP_2_MSG',
+                  label: "Tracking Found",
+                  content: "Here's your tracking information!"
+                }
+              ],
+              next: 'Displays tracking card with status, carrier, delivery estimate'
+            }
+          ]
         }
       }
     }
