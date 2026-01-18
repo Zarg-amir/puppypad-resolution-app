@@ -3345,6 +3345,7 @@ const HubNavigation = {
       'analytics': 'analyticsView',
       'audit': 'auditView',
       'users': 'usersView',
+      'flows': 'flowsView',
       'sop': 'sopView',
       'email-templates': 'emailTemplatesView',
       'case-detail': 'caseDetailView'
@@ -3385,6 +3386,8 @@ const HubNavigation = {
       HubEnhancedAuditLog.show();
     } else if (page === 'users') {
       HubUsers.show();
+    } else if (page === 'flows') {
+      HubFlows.load();
     } else if (page === 'sop') {
       HubSOP.load();
     } else if (page === 'email-templates') {
@@ -3406,6 +3409,7 @@ const HubNavigation = {
       analytics: 'Performance',
       audit: 'Audit Log',
       users: 'User Management',
+      flows: 'Flow Documentation',
       sop: 'SOP Links',
       'email-templates': 'Email Templates',
       'case-detail': 'Case Details'
@@ -3448,6 +3452,8 @@ const HubNavigation = {
       path = '/hub/audit';
     } else if (page === 'users') {
       path = '/hub/users';
+    } else if (page === 'flows') {
+      path = '/hub/flows';
     } else if (page === 'sop') {
       path = '/hub/sop';
     } else if (page === 'email-templates') {
@@ -4627,6 +4633,708 @@ const HubDuplicates = {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+};
+
+// ============================================
+// FLOW DOCUMENTATION PAGE
+// ============================================
+const HubFlows = {
+  currentFlow: null,
+  currentSubflow: null,
+  editContext: null,
+
+  // Flow data structure
+  flows: {
+    help_with_order: {
+      id: 'help_with_order',
+      name: 'Help With Order',
+      description: 'Customer support flows for order-related issues',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+      color: '#A8D8EA',
+      subflows: {
+        dog_not_using: {
+          id: 'dog_not_using',
+          name: 'Dog Not Using Product',
+          description: 'When customer reports their dog is not using the PuppyPad',
+          steps: [
+            {
+              id: 'DOG_STEP_1',
+              name: "Amy's Introduction",
+              persona: 'Amy',
+              function: 'handleDogNotUsing()',
+              line: 2128,
+              messages: [
+                {
+                  id: 'DOG_STEP_1_MESSAGE',
+                  label: "Amy's Message",
+                  content: "I understand — the main reason you purchased this was to solve your problem, and we want to make sure it works for you! 🐕\n\nLet me get some details about your pup so we can help."
+                }
+              ],
+              next: 'Renders dog info form'
+            },
+            {
+              id: 'DOG_STEP_2',
+              name: 'Dog Info Form',
+              persona: 'Amy',
+              function: 'renderDogInfoForm()',
+              line: 2136,
+              fields: [
+                { id: 'DOG_FORM_NAME', label: "Dog's Name", type: 'text', required: true, placeholder: 'e.g., Max' },
+                { id: 'DOG_FORM_BREED', label: 'Breed', type: 'text', required: true, placeholder: 'e.g., Golden Retriever' },
+                { id: 'DOG_FORM_AGE', label: 'Age', type: 'text', required: true, placeholder: 'e.g., 2 years' },
+                { id: 'DOG_FORM_METHODS', label: 'What have you tried so far?', type: 'textarea', required: false, placeholder: "Tell us what methods you've already attempted..." }
+              ],
+              buttons: [
+                { id: 'DOG_FORM_ADD_BTN', text: '+ Add Another Dog', style: 'secondary', action: 'Adds another dog entry' },
+                { id: 'DOG_FORM_SUBMIT_BTN', text: 'Get Personalized Tips', style: 'primary', action: 'Validates form, submits dog info' }
+              ],
+              dataStored: ['state.dogs (array of dog objects)', 'state.methodsTried']
+            },
+            {
+              id: 'DOG_STEP_3',
+              name: 'Transition to Dr. Claudia',
+              persona: 'Amy → Claudia',
+              function: 'submitDogInfo()',
+              line: 2222,
+              messages: [
+                {
+                  id: 'DOG_STEP_3_AMY_MESSAGE',
+                  label: "Amy's Handoff",
+                  content: "Thanks for sharing! I'm connecting you with our in-house veterinarian, Dr. Claudia. She's amazing at this! 🩺❤️"
+                },
+                {
+                  id: 'DOG_STEP_3_CLAUDIA_INTRO',
+                  label: "Claudia's Introduction",
+                  content: "Hi! I'm Dr. Claudia, PuppyPad's veterinary consultant. I've helped thousands of pet parents with potty training challenges.\n\nBased on what you've shared about [dog name(s)], here are my personalized recommendations:"
+                }
+              ],
+              api: {
+                endpoint: '/api/ai-response',
+                method: 'POST',
+                model: 'gpt-4o',
+                scenario: 'dog_tips',
+                systemPrompt: 'You are Dr. Claudia, a friendly veterinarian...',
+                dataUsed: ['Dog names', 'Breeds', 'Ages', 'Methods tried']
+              }
+            },
+            {
+              id: 'DOG_STEP_4',
+              name: 'AI-Generated Tips',
+              persona: 'Claudia',
+              function: 'displayDogTips()',
+              line: 2280,
+              messages: [
+                {
+                  id: 'DOG_STEP_4_TIPS',
+                  label: 'AI Tips',
+                  content: '[Dynamic AI-generated tips based on dog info]\n\nExample output:\n• Tip 1: For [breed], try placing the pad near...\n• Tip 2: At [age], dogs respond well to...\n• Tip 3: Since you mentioned [method], consider...'
+                },
+                {
+                  id: 'DOG_STEP_4_CLOSING',
+                  label: 'Closing Message',
+                  content: "Give these a try for 5-7 days and you should see improvement! 🌟"
+                }
+              ],
+              next: 'Shows satisfaction check'
+            },
+            {
+              id: 'DOG_STEP_5',
+              name: 'Satisfaction Check',
+              persona: 'Amy',
+              function: 'showSatisfactionCheck()',
+              line: 2320,
+              messages: [
+                {
+                  id: 'DOG_STEP_5_MESSAGE',
+                  label: "Amy's Question",
+                  content: "Did Dr. Claudia's tips help? Are you feeling good about trying these suggestions?"
+                }
+              ],
+              buttons: [
+                { id: 'DOG_STEP_5_YES', text: "😊 Yes, I'll try these!", style: 'success', action: 'Goes to Happy Ending (Step 6A)' },
+                { id: 'DOG_STEP_5_NO', text: "😔 No, I need more help", style: 'warning', action: 'Goes to Refund Ladder (Step 6B)' }
+              ]
+            },
+            {
+              id: 'DOG_STEP_6A',
+              name: 'Satisfied - Flow Complete',
+              persona: 'Amy',
+              function: 'handleSatisfied()',
+              line: 2350,
+              messages: [
+                {
+                  id: 'DOG_STEP_6A_MESSAGE',
+                  label: 'Success Message',
+                  content: "That's wonderful! 🎉 Remember, consistency is key. If you have any questions while trying these tips, just come back and chat with us.\n\nWishing you and your pup the best! 🐾💙"
+                }
+              ],
+              outcome: 'No case created - customer satisfied',
+              caseCreated: false
+            },
+            {
+              id: 'DOG_STEP_6B',
+              name: 'Refund Ladder',
+              persona: 'Amy',
+              function: 'startRefundLadder()',
+              line: 2380,
+              description: 'Customer not satisfied with tips, enters refund ladder',
+              substeps: [
+                {
+                  id: 'DOG_LADDER_GUARANTEE',
+                  name: '90-Day Guarantee Check',
+                  logic: 'Checks if order is within 90 days of delivery',
+                  outcomes: {
+                    expired: {
+                      message: "I understand you're not satisfied, but unfortunately your 90-day guarantee period has expired. We can't process a refund at this time.\n\nWould you like me to help you with anything else?",
+                      caseCreated: false
+                    },
+                    valid: 'Proceeds to Ladder Step 1'
+                  }
+                },
+                {
+                  id: 'DOG_LADDER_20',
+                  name: 'Ladder Step 1: 20% Offer',
+                  message: "I completely understand. Since the product isn't working for your pup, I'd like to offer you a 20% partial refund as a gesture of goodwill.\n\nThis way you can keep trying the tips while getting some money back. Would that work for you?",
+                  buttons: [
+                    { text: '✓ Accept 20% Refund', action: 'Creates case: partial_20' },
+                    { text: '✗ I need more help', action: 'Goes to 30% offer' }
+                  ]
+                },
+                {
+                  id: 'DOG_LADDER_30',
+                  name: 'Ladder Step 2: 30% Offer',
+                  message: "I hear you. Let me increase that offer to 30% partial refund. This gives you a significant refund while still having the product to work with.\n\nWould 30% back work for you?",
+                  buttons: [
+                    { text: '✓ Accept 30% Refund', action: 'Creates case: partial_30' },
+                    { text: '✗ I need more help', action: 'Goes to 40% offer' }
+                  ]
+                },
+                {
+                  id: 'DOG_LADDER_40',
+                  name: 'Ladder Step 3: 40% Offer',
+                  message: "I really want to make this right. How about 40% partial refund? That's almost half your money back.\n\nDoes that sound fair?",
+                  buttons: [
+                    { text: '✓ Accept 40% Refund', action: 'Creates case: partial_40' },
+                    { text: '✗ I need more help', action: 'Goes to 50% offer' }
+                  ]
+                },
+                {
+                  id: 'DOG_LADDER_50',
+                  name: 'Ladder Step 4: 50% Offer',
+                  message: "Okay, let's do 50% back - that's half of what you paid. This is a generous offer that lets you keep trying while getting substantial money back.\n\nWhat do you say?",
+                  buttons: [
+                    { text: '✓ Accept 50% Refund', action: 'Creates case: partial_50' },
+                    { text: '✗ I want a full refund', action: 'Goes to full refund' }
+                  ]
+                },
+                {
+                  id: 'DOG_LADDER_FULL',
+                  name: 'Ladder Step 5: Full Refund',
+                  message: "I understand completely. We stand behind our 90-day satisfaction guarantee, and I'll process a full refund for you.",
+                  locationCheck: {
+                    domestic: {
+                      message: "Since you're in the US, we'll need you to return the product. I'll send you a prepaid return label.\n\nOnce we receive the return, your full refund will be processed within 3-5 business days.",
+                      caseType: 'full + return'
+                    },
+                    international: {
+                      message: "Since you're outside the US, please keep the product - no need to return it! Your full refund will be processed within 3-5 business days.",
+                      caseType: 'full + keep'
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        where_is_my_order: {
+          id: 'where_is_my_order',
+          name: 'Where Is My Order',
+          description: 'Tracking and delivery status inquiries',
+          steps: [] // To be documented
+        },
+        damaged_product: {
+          id: 'damaged_product',
+          name: 'Damaged Product',
+          description: 'Product arrived damaged or defective',
+          steps: [] // To be documented
+        },
+        wrong_item: {
+          id: 'wrong_item',
+          name: 'Wrong Item Received',
+          description: 'Customer received incorrect item',
+          steps: [] // To be documented
+        }
+      }
+    },
+    managing_my_subscription: {
+      id: 'managing_my_subscription',
+      name: 'Managing My Subscription',
+      description: 'Subscription management flows',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>`,
+      color: '#FFB7C5',
+      subflows: {
+        pause_subscription: {
+          id: 'pause_subscription',
+          name: 'Pause Subscription',
+          description: 'Temporarily pause subscription deliveries',
+          steps: [] // To be documented
+        },
+        cancel_subscription: {
+          id: 'cancel_subscription',
+          name: 'Cancel Subscription',
+          description: 'Cancel subscription completely',
+          steps: [] // To be documented
+        },
+        change_frequency: {
+          id: 'change_frequency',
+          name: 'Change Delivery Frequency',
+          description: 'Adjust how often deliveries arrive',
+          steps: [] // To be documented
+        }
+      }
+    }
+  },
+
+  load() {
+    this.render();
+  },
+
+  render() {
+    const container = document.getElementById('flowsContent');
+    if (!container) return;
+
+    if (this.currentSubflow) {
+      this.renderSubflowDetail();
+    } else if (this.currentFlow) {
+      this.renderFlowSubflows();
+    } else {
+      this.renderFlowCards();
+    }
+  },
+
+  renderFlowCards() {
+    const container = document.getElementById('flowsContent');
+    if (!container) return;
+
+    const flowsArray = Object.values(this.flows);
+    
+    container.innerHTML = `
+      <div class="flows-page">
+        <div class="flows-header">
+          <div class="flows-header-content">
+            <h1 class="flows-title">Chat Flow Documentation</h1>
+            <p class="flows-subtitle">Interactive documentation for all chat app conversational flows</p>
+          </div>
+        </div>
+        
+        <div class="flows-grid">
+          ${flowsArray.map(flow => this.renderFlowCard(flow)).join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  renderFlowCard(flow) {
+    const subflowCount = Object.keys(flow.subflows).length;
+    const documentedCount = Object.values(flow.subflows).filter(sf => sf.steps && sf.steps.length > 0).length;
+    
+    return `
+      <div class="flow-card" onclick="HubFlows.selectFlow('${flow.id}')" style="--flow-color: ${flow.color}">
+        <div class="flow-card-icon" style="background: ${flow.color}20; color: ${flow.color}">
+          ${flow.icon}
+        </div>
+        <div class="flow-card-content">
+          <h3 class="flow-card-title">${flow.name}</h3>
+          <p class="flow-card-description">${flow.description}</p>
+          <div class="flow-card-meta">
+            <span class="flow-card-count">${subflowCount} subflows</span>
+            <span class="flow-card-status">${documentedCount} documented</span>
+          </div>
+        </div>
+        <div class="flow-card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+      </div>
+    `;
+  },
+
+  selectFlow(flowId) {
+    this.currentFlow = this.flows[flowId];
+    this.currentSubflow = null;
+    this.render();
+  },
+
+  renderFlowSubflows() {
+    const container = document.getElementById('flowsContent');
+    if (!container || !this.currentFlow) return;
+
+    const subflowsArray = Object.values(this.currentFlow.subflows);
+    
+    container.innerHTML = `
+      <div class="flows-page">
+        <div class="flows-breadcrumb">
+          <button class="flows-back-btn" onclick="HubFlows.goBack()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            All Flows
+          </button>
+        </div>
+        
+        <div class="flows-header" style="--flow-color: ${this.currentFlow.color}">
+          <div class="flows-header-icon" style="background: ${this.currentFlow.color}20; color: ${this.currentFlow.color}">
+            ${this.currentFlow.icon}
+          </div>
+          <div class="flows-header-content">
+            <h1 class="flows-title">${this.currentFlow.name}</h1>
+            <p class="flows-subtitle">${this.currentFlow.description}</p>
+          </div>
+        </div>
+        
+        <div class="subflows-grid">
+          ${subflowsArray.map(sf => this.renderSubflowCard(sf)).join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  renderSubflowCard(subflow) {
+    const isDocumented = subflow.steps && subflow.steps.length > 0;
+    const stepCount = isDocumented ? subflow.steps.length : 0;
+    
+    return `
+      <div class="subflow-card ${isDocumented ? '' : 'subflow-card-pending'}" 
+           onclick="${isDocumented ? `HubFlows.selectSubflow('${subflow.id}')` : ''}"
+           style="--flow-color: ${this.currentFlow.color}">
+        <div class="subflow-card-header">
+          <h4 class="subflow-card-title">${subflow.name}</h4>
+          ${isDocumented 
+            ? `<span class="subflow-badge documented">Documented</span>`
+            : `<span class="subflow-badge pending">Coming Soon</span>`
+          }
+        </div>
+        <p class="subflow-card-description">${subflow.description}</p>
+        ${isDocumented ? `
+          <div class="subflow-card-footer">
+            <span class="subflow-step-count">${stepCount} steps</span>
+            <span class="subflow-view-link">View Details →</span>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  },
+
+  selectSubflow(subflowId) {
+    if (!this.currentFlow) return;
+    this.currentSubflow = this.currentFlow.subflows[subflowId];
+    this.render();
+  },
+
+  renderSubflowDetail() {
+    const container = document.getElementById('flowsContent');
+    if (!container || !this.currentFlow || !this.currentSubflow) return;
+
+    container.innerHTML = `
+      <div class="flows-page">
+        <div class="flows-breadcrumb">
+          <button class="flows-back-btn" onclick="HubFlows.goToFlow()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            ${this.currentFlow.name}
+          </button>
+        </div>
+        
+        <div class="subflow-detail-header" style="--flow-color: ${this.currentFlow.color}">
+          <div class="subflow-detail-title-section">
+            <h1 class="subflow-detail-title">${this.currentSubflow.name}</h1>
+            <p class="subflow-detail-description">${this.currentSubflow.description}</p>
+          </div>
+        </div>
+        
+        <div class="flow-steps-container">
+          ${this.currentSubflow.steps.map((step, index) => this.renderStep(step, index)).join('')}
+        </div>
+      </div>
+      
+      <!-- Suggest Edit Modal -->
+      <div class="flows-modal-overlay" id="flowsEditModal" onclick="if(event.target === this) HubFlows.closeEditModal()">
+        <div class="flows-modal">
+          <div class="flows-modal-header">
+            <h3>Suggest Edit</h3>
+            <button class="flows-modal-close" onclick="HubFlows.closeEditModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="flows-modal-body">
+            <div class="flows-edit-preview" id="flowsEditPreview"></div>
+            <div class="flows-edit-field">
+              <label>Suggested Change</label>
+              <textarea id="flowsSuggestedChange" placeholder="Enter your suggested change..."></textarea>
+            </div>
+            <div class="flows-edit-field">
+              <label>Reason (optional)</label>
+              <textarea id="flowsChangeReason" placeholder="Why is this change needed?"></textarea>
+            </div>
+          </div>
+          <div class="flows-modal-footer">
+            <button class="btn btn-secondary" onclick="HubFlows.closeEditModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="HubFlows.copyChangeRequest()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Copy to Clipboard
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderStep(step, index) {
+    const personaColors = {
+      'Amy': '#A8D8EA',
+      'Claudia': '#FFB7C5',
+      'Amy → Claudia': '#E8D5E8'
+    };
+    const personaColor = personaColors[step.persona] || '#FFDAB9';
+    
+    return `
+      <div class="flow-step" style="--step-color: ${personaColor}">
+        <div class="flow-step-connector">
+          <div class="flow-step-number">${index + 1}</div>
+          ${index < this.currentSubflow.steps.length - 1 ? '<div class="flow-step-line"></div>' : ''}
+        </div>
+        
+        <div class="flow-step-content">
+          <div class="flow-step-header">
+            <div class="flow-step-title-section">
+              <h3 class="flow-step-title">${step.name}</h3>
+              <div class="flow-step-meta">
+                <span class="flow-step-persona" style="background: ${personaColor}30; color: ${personaColor === '#A8D8EA' ? '#1a365d' : '#6b4c5a'}">${step.persona}</span>
+                <span class="flow-step-function">${step.function} <span class="flow-step-line-num">line ${step.line}</span></span>
+              </div>
+            </div>
+            <span class="flow-step-id">${step.id}</span>
+          </div>
+          
+          ${step.description ? `<p class="flow-step-description">${step.description}</p>` : ''}
+          
+          ${step.messages ? this.renderMessages(step.messages, step.id) : ''}
+          ${step.fields ? this.renderFields(step.fields) : ''}
+          ${step.buttons ? this.renderButtons(step.buttons) : ''}
+          ${step.api ? this.renderAPI(step.api) : ''}
+          ${step.dataStored ? this.renderDataStored(step.dataStored) : ''}
+          ${step.substeps ? this.renderSubsteps(step.substeps) : ''}
+          ${step.outcome ? `<div class="flow-step-outcome"><strong>Outcome:</strong> ${step.outcome}</div>` : ''}
+          ${step.next ? `<div class="flow-step-next">Next: ${step.next}</div>` : ''}
+        </div>
+      </div>
+    `;
+  },
+
+  renderMessages(messages, stepId) {
+    return `
+      <div class="flow-messages">
+        ${messages.map(msg => `
+          <div class="flow-message">
+            <div class="flow-message-header">
+              <span class="flow-message-label">${msg.label}</span>
+              <button class="flow-suggest-btn" onclick="HubFlows.openEditModal('${stepId}', '${msg.id}', '${msg.label}', \`${msg.content.replace(/`/g, '\\`').replace(/\\/g, '\\\\')}\`)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit
+              </button>
+            </div>
+            <div class="flow-message-content">${msg.content.replace(/\n/g, '<br>')}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  },
+
+  renderFields(fields) {
+    return `
+      <div class="flow-fields">
+        <h4 class="flow-section-title">Form Fields</h4>
+        <div class="flow-fields-table">
+          <div class="flow-fields-row flow-fields-header">
+            <span>Field</span>
+            <span>Type</span>
+            <span>Required</span>
+            <span>Placeholder</span>
+          </div>
+          ${fields.map(field => `
+            <div class="flow-fields-row">
+              <span class="flow-field-name">${field.label}</span>
+              <span class="flow-field-type">${field.type}</span>
+              <span class="flow-field-required">${field.required ? '✓' : '—'}</span>
+              <span class="flow-field-placeholder">${field.placeholder || '—'}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  renderButtons(buttons) {
+    return `
+      <div class="flow-buttons">
+        <h4 class="flow-section-title">User Actions</h4>
+        <div class="flow-buttons-list">
+          ${buttons.map(btn => `
+            <div class="flow-button-item">
+              <span class="flow-button-text ${btn.style || ''}">${btn.text}</span>
+              <span class="flow-button-action">${btn.action}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  renderAPI(api) {
+    return `
+      <div class="flow-api">
+        <h4 class="flow-section-title">API Integration</h4>
+        <div class="flow-api-details">
+          <div class="flow-api-row">
+            <span class="flow-api-label">Endpoint</span>
+            <code class="flow-api-value">${api.endpoint}</code>
+          </div>
+          <div class="flow-api-row">
+            <span class="flow-api-label">Method</span>
+            <code class="flow-api-value">${api.method}</code>
+          </div>
+          <div class="flow-api-row">
+            <span class="flow-api-label">Model</span>
+            <code class="flow-api-value">${api.model}</code>
+          </div>
+          <div class="flow-api-row">
+            <span class="flow-api-label">Data Used</span>
+            <span class="flow-api-value">${api.dataUsed.join(', ')}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderDataStored(dataStored) {
+    return `
+      <div class="flow-data-stored">
+        <h4 class="flow-section-title">Data Stored</h4>
+        <ul class="flow-data-list">
+          ${dataStored.map(d => `<li><code>${d}</code></li>`).join('')}
+        </ul>
+      </div>
+    `;
+  },
+
+  renderSubsteps(substeps) {
+    return `
+      <div class="flow-substeps">
+        <h4 class="flow-section-title">Refund Ladder Steps</h4>
+        <div class="flow-substeps-timeline">
+          ${substeps.map((sub, i) => `
+            <div class="flow-substep">
+              <div class="flow-substep-header">
+                <span class="flow-substep-badge">${i + 1}</span>
+                <span class="flow-substep-name">${sub.name}</span>
+              </div>
+              ${sub.message ? `<div class="flow-substep-message">${sub.message}</div>` : ''}
+              ${sub.logic ? `<div class="flow-substep-logic"><strong>Logic:</strong> ${sub.logic}</div>` : ''}
+              ${sub.buttons ? `
+                <div class="flow-substep-actions">
+                  ${sub.buttons.map(btn => `
+                    <div class="flow-substep-btn">
+                      <span class="btn-text">${btn.text}</span>
+                      <span class="btn-action">→ ${btn.action}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+              ${sub.outcomes ? `
+                <div class="flow-substep-outcomes">
+                  <div class="outcome expired"><strong>If Expired:</strong> ${sub.outcomes.expired.message}</div>
+                  <div class="outcome valid"><strong>If Valid:</strong> ${sub.outcomes.valid}</div>
+                </div>
+              ` : ''}
+              ${sub.locationCheck ? `
+                <div class="flow-substep-location">
+                  <div class="location domestic"><strong>US/Domestic:</strong> ${sub.locationCheck.domestic.message} <em>(Case: ${sub.locationCheck.domestic.caseType})</em></div>
+                  <div class="location international"><strong>International:</strong> ${sub.locationCheck.international.message} <em>(Case: ${sub.locationCheck.international.caseType})</em></div>
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  goBack() {
+    if (this.currentSubflow) {
+      this.currentSubflow = null;
+    } else {
+      this.currentFlow = null;
+    }
+    this.render();
+  },
+
+  goToFlow() {
+    this.currentSubflow = null;
+    this.render();
+  },
+
+  openEditModal(stepId, elementId, label, content) {
+    this.editContext = { stepId, elementId, label, content };
+    
+    const preview = document.getElementById('flowsEditPreview');
+    if (preview) {
+      preview.innerHTML = `
+        <div class="edit-preview-row"><strong>Step:</strong> ${stepId}</div>
+        <div class="edit-preview-row"><strong>Element:</strong> ${label}</div>
+        <div class="edit-preview-row"><strong>Current:</strong></div>
+        <div class="edit-preview-content">${content.replace(/\n/g, '<br>')}</div>
+      `;
+    }
+    
+    document.getElementById('flowsSuggestedChange').value = '';
+    document.getElementById('flowsChangeReason').value = '';
+    document.getElementById('flowsEditModal').classList.add('active');
+  },
+
+  closeEditModal() {
+    document.getElementById('flowsEditModal').classList.remove('active');
+    this.editContext = null;
+  },
+
+  copyChangeRequest() {
+    if (!this.editContext) return;
+    
+    const suggested = document.getElementById('flowsSuggestedChange').value;
+    const reason = document.getElementById('flowsChangeReason').value;
+    
+    const request = `
+══════════════════════════════════════
+FLOW CHANGE REQUEST
+══════════════════════════════════════
+Flow:     ${this.currentFlow?.name || 'Unknown'}
+Subflow:  ${this.currentSubflow?.name || 'Unknown'}
+Step:     ${this.editContext.stepId}
+Element:  ${this.editContext.label}
+
+CURRENT COPY:
+"${this.editContext.content}"
+
+SUGGESTED CHANGE:
+"${suggested || '[No suggestion provided]'}"
+
+REASON:
+${reason || '[No reason provided]'}
+══════════════════════════════════════
+    `.trim();
+    
+    navigator.clipboard.writeText(request).then(() => {
+      HubUI.showToast('Change request copied to clipboard!', 'success');
+      this.closeEditModal();
+    }).catch(() => {
+      HubUI.showToast('Failed to copy', 'error');
+    });
   }
 };
 
