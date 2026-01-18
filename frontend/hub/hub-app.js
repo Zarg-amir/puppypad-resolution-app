@@ -5633,16 +5633,56 @@ End with an encouraging message about consistency and patience.`,
               name: "Product Benefits",
               persona: 'Amy',
               branch: 'not_recognized',
-              apiConnection: {
-                service: 'OpenAI GPT-4o',
+              api: {
+                service: 'OpenAI',
                 endpoint: '/api/ai-response',
-                systemPrompt: "Generate a friendly pitch about the products in the order, highlighting benefits"
+                method: 'POST',
+                model: 'gpt-4o-mini',
+                temperature: 0.75,
+                maxTokens: 600,
+                explanation: 'Generates an exciting product pitch to convince the customer to keep items they didn\'t recognize ordering. Focuses on problem-solution messaging.',
+                requestBody: {
+                  scenarioType: 'product_benefits_pitch',
+                  scenarioData: {
+                    customerName: '[From order lookup]',
+                    products: '[Product names from order]',
+                    productSkus: '[SKUs from order]',
+                    orderTotal: '[Order total]'
+                  }
+                },
+                systemPrompt: `You are Amy, a warm and knowledgeable customer support specialist for PuppyPad.
+
+A customer doesn't recognize a charge on their account. You've already explained that it was likely ordered by someone in their household or as a gift. Now your job is to EXCITE them about the products they received!
+
+=== YOUR GOAL ===
+Make them WANT to keep the products by highlighting the genuine benefits. Focus on problem-solution messaging - what problems do these products solve for pet owners?
+
+=== APPROACH ===
+1. Mention the SPECIFIC products from their order by name
+2. For each product, explain ONE key benefit using problem-solution framing
+3. Share a quick "customers love this because..." moment
+4. Make it feel like a happy accident - they got something great!
+5. Keep it genuine - don't oversell or be pushy
+
+=== PROBLEM-SOLUTION EXAMPLES ===
+- PuppyPad: "Tired of buying disposables every week? This reusable pad lasts years and saves hundreds!"
+- BusyPet: "Does your pup get bored and destructive? This keeps them mentally stimulated for hours!"
+- CalmBuddy: "Anxious during storms or fireworks? The pheromone diffuser helps dogs relax naturally."
+- CozyBed: "Older dogs with joint pain? The orthopedic design supports their joints perfectly."
+
+=== TONE & STYLE ===
+- Warm, enthusiastic but genuine
+- SHORT paragraphs (2-3 sentences max)
+- Use ellipses (...) for pauses, NEVER em-dashes
+- This is a CHAT message, NOT an email
+- Make it feel like discovering something great, not a sales pitch
+- NEVER sign off with "Warm regards", "Best", etc.`
               },
               messages: [
                 {
                   id: 'CHARGED_PITCH_MSG',
                   label: "AI Product Pitch",
-                  content: "[Dynamic pitch about the products, their benefits, and why customers love them]"
+                  content: "[Dynamic pitch about the specific products in their order - AI uses problem-solution messaging to highlight genuine benefits and make them want to keep the items]"
                 }
               ],
               buttons: [
@@ -5917,16 +5957,65 @@ End with an encouraging message about consistency and patience.`,
               stepNumber: '2',
               name: "AI Response",
               persona: 'Amy',
-              apiConnection: {
-                service: 'OpenAI GPT-4o',
+              api: {
+                service: 'OpenAI',
                 endpoint: '/api/ai-response',
-                systemPrompt: "You are Amy, a friendly customer support rep for PuppyPad. The customer changed their mind. Try to understand and address their concern with helpful suggestions."
+                method: 'POST',
+                model: 'gpt-4o-mini',
+                temperature: 0.7,
+                maxTokens: 800,
+                explanation: 'Generates a personalized response based on WHY the customer changed their mind. The AI identifies the reason category and responds appropriately.',
+                requestBody: {
+                  scenarioType: 'changed_mind',
+                  scenarioData: {
+                    customerName: '[From order lookup]',
+                    customerMessage: '[Customer\'s typed reason]',
+                    orderItems: '[Products from their order]'
+                  }
+                },
+                systemPrompt: `You are Amy, a warm customer support specialist for a PET PRODUCTS brand. A customer is reconsidering their purchase. Read their message carefully and identify WHY, then respond appropriately.
+
+=== IDENTIFY THE REASON & RESPOND ACCORDINGLY ===
+
+1. PET LOSS OR REHOMED (dog died, gave away pet, pet very sick)
+   → Express genuine sympathy
+   → Suggest: donate to shelter, gift to friend/neighbor, keep for future pet
+   → Make them feel good about helping other animals
+
+2. DOG NO LONGER NEEDS IT (trained, goes outside now, solved the problem)
+   → Congratulate them! But gently mention:
+   → Great for backup during bad weather, travel, or emergencies
+   → Useful as your dog ages (senior dogs have accidents)
+   → Good to have on hand "just in case"
+
+3. IMPULSE BUY ("bought too quickly", "didn't think it through")
+   → Reassure them it was actually a good decision
+   → Explain the real benefits and quality
+   → Help them see the value they're getting
+
+4. ORDERED TOO MANY ("only need one", "didn't realize it was a multipack")
+   → These are reusable and last a long time
+   → Having extras means less frequent washing
+   → Great for multiple rooms or rotation
+
+5. FOUND DIFFERENT SOLUTION ("went with another option", "bought something else")
+   → Explain what makes THIS product different/better
+   → Focus on quality, durability, features
+
+=== TONE & STYLE ===
+- Warm, caring, genuine - like talking to a helpful friend
+- SHORT paragraphs (2-3 sentences max)
+- Use ellipses (...) for pauses, NEVER em-dashes
+- This is a CHAT message, NOT an email
+- NEVER sign off with "Warm regards", "Best", etc.
+
+Respond appropriately based on their situation. Don't mention refunds or returns. End naturally - no sign-offs.`
               },
               messages: [
                 {
                   id: 'MIND_STEP_2_MSG',
                   label: "AI-Generated Response",
-                  content: "[Dynamic response based on customer's reason - Amy provides personalized help and suggestions]"
+                  content: "[Dynamic response based on customer's reason - Amy identifies the category (pet loss, dog trained, impulse buy, ordered too many, or found alternative) and responds with appropriate empathy and suggestions]"
                 }
               ],
               buttons: [
@@ -6120,16 +6209,50 @@ End with an encouraging message about consistency and patience.`,
               stepNumber: '2',
               name: "AI Response + Tips",
               persona: 'Amy',
-              apiConnection: {
-                service: 'OpenAI GPT-4o',
+              api: {
+                service: 'OpenAI',
                 endpoint: '/api/ai-response',
-                systemPrompt: "You are Amy. The customer says the product didn't meet expectations. Address their specific concern and offer helpful tips."
+                method: 'POST',
+                model: 'gpt-4o-mini',
+                temperature: 0.7,
+                maxTokens: 800,
+                explanation: 'Uses the same "changed_mind" scenario as customer disappointment. AI reads their specific concern and generates a personalized response with tips.',
+                requestBody: {
+                  scenarioType: 'changed_mind',
+                  scenarioData: {
+                    customerName: '[From order lookup]',
+                    customerMessage: '[Customer\'s typed disappointment]',
+                    orderItems: '[Products from their order]'
+                  }
+                },
+                systemPrompt: `You are Amy, a warm customer support specialist for a PET PRODUCTS brand. A customer says the product didn't meet their expectations.
+
+=== YOUR APPROACH ===
+1. Acknowledge their disappointment with genuine empathy
+2. Ask clarifying questions if needed to understand the specific issue
+3. Provide helpful tips based on what they shared
+4. Focus on how the product can still work for them
+
+=== COMMON ISSUES & RESPONSES ===
+- "Not absorbent enough" → Explain proper break-in period, washing instructions
+- "Doesn't smell proof" → Tips for proper cleaning routine
+- "Dog won't use it" → Offer to connect with Dr. Claudia for training tips
+- "Too small/big" → Explain sizing options
+- "Quality concerns" → Explain our materials and durability
+
+=== TONE & STYLE ===
+- Warm, caring, genuine - like talking to a helpful friend
+- SHORT paragraphs (2-3 sentences max)
+- Use ellipses (...) for pauses, NEVER em-dashes
+- This is a CHAT message, NOT an email
+- Be helpful and solution-focused
+- NEVER sign off with "Warm regards", "Best", etc.`
               },
               messages: [
                 {
                   id: 'EXPECT_STEP_2_MSG',
                   label: "AI-Generated Response",
-                  content: "[Dynamic response addressing the specific concern with helpful tips and suggestions]"
+                  content: "[Dynamic response addressing the specific concern with helpful tips and suggestions - AI analyzes what disappointed them and provides targeted advice]"
                 }
               ],
               buttons: [
@@ -6336,6 +6459,313 @@ End with an encouraging message about consistency and patience.`,
                 }
               ],
               next: 'Goes to refund ladder'
+            }
+          ]
+        },
+        quality_difference: {
+          id: 'quality_difference',
+          name: 'Quality / Material Difference',
+          description: 'Customer notices material differences between products',
+          diagram: `flowchart TD
+    START([🔍 Quality Question])
+    EXPLAIN[Explain Versions]
+    COMPARE[Show Comparison]
+    CHOICE{Customer Choice}
+    KEEP[Keep As-Is]
+    UPGRADE[Pay for Upgrade]
+    REFUND[Want Refund]
+    
+    FREE[Free Reship Offer]
+    CASE([✅ Case Created])
+    
+    START --> EXPLAIN --> COMPARE --> CHOICE
+    CHOICE -->|Keep| KEEP --> CASE
+    CHOICE -->|Upgrade| UPGRADE --> CASE
+    CHOICE -->|Refund| REFUND --> FREE
+    FREE -->|Accept| CASE
+    FREE -->|Decline| CASE
+    
+    style START fill:#E8D5E8,stroke:#6a4c93
+    style CASE fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'QUALITY_STEP_1',
+              stepNumber: '1',
+              name: "Explain Material Versions",
+              persona: 'Amy',
+              function: 'handleQualityDifference()',
+              line: 3743,
+              messages: [
+                {
+                  id: 'QUALITY_MSG_1',
+                  label: "Amy's Opening",
+                  content: "Hey! 👋 Thanks for reaching out... I can see you've received different materials in your order and you're wondering what's going on.\n\nTotally get it. Let me explain because honestly... this is actually good news for you."
+                },
+                {
+                  id: 'QUALITY_MSG_2',
+                  label: "Version Explanation",
+                  content: "So here's what's happening...\n\nWe've been quietly upgrading our PuppyPad materials over the past few months. Which means right now, there are two versions floating around:\n\n<strong>Original PuppyPad</strong> — our 5-layer design that earned us 37,000+ five-star reviews\n\n<strong>PuppyPad 2.0</strong> — our newer 6-layer design with upgraded materials\n\nDuring this transition period, some orders ship with Original, some with 2.0... it just depends on what's available in our warehouse when your order gets packed."
+                }
+              ],
+              buttons: [
+                { icon: '📖', text: "I understand, show me the differences", style: 'primary' }
+              ],
+              next: '→ Shows detailed comparison'
+            },
+            {
+              id: 'QUALITY_STEP_2',
+              stepNumber: '2',
+              name: "Show Comparison Details",
+              persona: 'Amy',
+              line: 3780,
+              messages: [
+                {
+                  id: 'QUALITY_COMPARE_MSG',
+                  label: "Detailed Comparison",
+                  content: "[Shows detailed comparison card with Original vs PuppyPad 2.0 features, layers, materials, and benefits]"
+                },
+                {
+                  id: 'QUALITY_CHOICE_MSG',
+                  label: "Ask Customer Choice",
+                  content: "So that's the full picture! 💙\n\nNow I want to make sure you're completely happy here... what would you like to do?"
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: "I'd like to keep my order as it is", style: 'success' },
+                { icon: '↑', text: "I don't mind paying more to get the newer material ones", style: 'primary' },
+                { icon: '←', text: "I'd prefer a refund for the older material ones", style: 'secondary' }
+              ],
+              next: 'Routes based on customer preference'
+            },
+            {
+              id: 'QUALITY_KEEP',
+              stepNumber: '3A',
+              name: "Keep Order As-Is",
+              persona: 'Amy',
+              function: 'handleQualityKeepOrder()',
+              line: 3864,
+              isThankYou: true,
+              branchType: 'success',
+              messages: [
+                {
+                  id: 'QUALITY_KEEP_MSG',
+                  label: "Thank You Message",
+                  content: "Amazing... thank you so much for understanding! 💙\n\nGive your PuppyPad a go... I think you're going to love it. And if anything doesn't feel right after a week or two, just message us. We've got you covered.\n\nYour pup's gonna do great with it 🐾"
+                }
+              ],
+              caseDetails: { type: 'resolution', resolution: 'customer_keeping' }
+            },
+            {
+              id: 'QUALITY_UPGRADE',
+              stepNumber: '3B',
+              name: "Pay for Upgrade",
+              persona: 'Amy',
+              function: 'handleQualityPayMore()',
+              line: 3873,
+              messages: [
+                {
+                  id: 'QUALITY_UPGRADE_MSG',
+                  label: "Upgrade Process",
+                  content: "That's really sweet of you to offer... we appreciate that so much 💙\n\nSo here's how we can make this work...\n\nWe can generate a custom checkout link for you to pay just the difference for PuppyPad 2.0 ($20 per pad).\n\nHave the Original material pads been used?"
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: "Yes, they've been used", style: 'primary' },
+                { icon: '✕', text: "No, they're unused / can be repackaged", style: 'secondary' }
+              ],
+              next: 'Routes based on usage → Creates upgrade case'
+            },
+            {
+              id: 'QUALITY_REFUND',
+              stepNumber: '3C',
+              name: "Want Refund → Free Reship Offer",
+              persona: 'Amy',
+              function: 'handleQualityRefund()',
+              line: 3959,
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'QUALITY_REFUND_MSG',
+                  label: "Manager Check",
+                  content: "Totally understand. Let me just check with my manager quickly to see if there's something else we can do for you here...\n\nOne moment 💙"
+                },
+                {
+                  id: 'QUALITY_OFFER_MSG',
+                  label: "Free Reship Offer",
+                  content: "Okay I'm back!\n\nSo I spoke with my manager and here's what we'd like to do...\n\nWe really value our customers and we want to make sure you're fully satisfied. So instead of a refund, what we can do is ship out our new PuppyPad 2.0 to you... <strong>completely free of charge</strong>.\n\nNo extra cost to you at all."
+                }
+              ],
+              buttons: [
+                { icon: '🎁', text: "Yes, that sounds great!", style: 'success' },
+                { icon: '💰', text: "I'd still prefer just a refund", style: 'secondary' }
+              ],
+              next: 'Accept free reship → Thank You | Decline → Refund process'
+            },
+            {
+              id: 'QUALITY_COMPLETE',
+              stepNumber: '4',
+              name: "Case Created",
+              persona: 'Amy',
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'QUALITY_COMPLETE_MSG',
+                  label: "Confirmation",
+                  content: "Your request has been submitted. Our team will process this within 24-48 hours and you'll receive confirmation via email."
+                }
+              ],
+              caseDetails: { type: 'quality', resolution: 'quality_resolution' }
+            }
+          ]
+        },
+        other_reason: {
+          id: 'other_reason',
+          name: 'Other Reason',
+          description: 'Customer has a different issue not covered by other options',
+          diagram: `flowchart TD
+    START([💬 Other Reason])
+    ASK[Ask for Details]
+    REVIEW[Review Issue]
+    LADDER[Refund Ladder]
+    DONE([✅ Case Created])
+    
+    START --> ASK --> REVIEW --> LADDER --> DONE
+    
+    style START fill:#CBD5E1,stroke:#475569
+    style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+          steps: [
+            {
+              id: 'OTHER_STEP_1',
+              stepNumber: '1',
+              name: "Ask for Details",
+              persona: 'Amy',
+              function: 'handleOtherReason()',
+              line: 4587,
+              messages: [
+                {
+                  id: 'OTHER_MSG_1',
+                  label: "Amy's Message",
+                  content: "No problem — tell me what's going on and I'll do my best to help:"
+                }
+              ],
+              fields: [
+                { label: 'Describe your issue', type: 'textarea', placeholder: 'Please tell us what happened...', required: true }
+              ],
+              next: 'Customer describes their issue'
+            },
+            {
+              id: 'OTHER_STEP_2',
+              stepNumber: '2',
+              name: "Acknowledge & Offer",
+              persona: 'Amy',
+              line: 4594,
+              messages: [
+                {
+                  id: 'OTHER_MSG_2',
+                  label: "Amy's Response",
+                  content: "Thank you for explaining. Let me see what options I have for you."
+                }
+              ],
+              next: '→ Starts Refund Ladder'
+            },
+            // Refund Ladder for Other Reason
+            {
+              id: 'OTHER_LADDER_20',
+              stepNumber: '3',
+              name: "Offer: 20% Refund",
+              persona: 'Amy',
+              function: 'startRefundLadder()',
+              line: 2570,
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'OTHER_L20_MSG',
+                  label: "Amy's 20% Offer",
+                  content: "I understand your situation. I'd like to offer you a 20% partial refund while you keep the product."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 20% Refund', style: 'success' },
+                { icon: '✗', text: 'I need more help', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → 30% Offer'
+            },
+            {
+              id: 'OTHER_LADDER_30',
+              stepNumber: '4',
+              name: "Offer: 30% Refund",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'OTHER_L30_MSG',
+                  label: "Amy's 30% Offer",
+                  content: "Let me offer you 30% back — that's a significant refund while you keep everything."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 30% Refund', style: 'success' },
+                { icon: '✗', text: 'I need more help', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → 40% Offer'
+            },
+            {
+              id: 'OTHER_LADDER_40',
+              stepNumber: '5',
+              name: "Offer: 40% Refund",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'OTHER_L40_MSG',
+                  label: "Amy's 40% Offer",
+                  content: "My manager approved 40% back for you."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 40% Refund', style: 'success' },
+                { icon: '✗', text: 'I need more help', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → 50% Offer'
+            },
+            {
+              id: 'OTHER_LADDER_50',
+              stepNumber: '6',
+              name: "Offer: 50% Refund (Final)",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'OTHER_L50_MSG',
+                  label: "Final Offer",
+                  content: "Our maximum: 50% refund. Half your money back, keep everything."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 50% Refund', style: 'success' },
+                { icon: '✗', text: 'I want a full refund', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → Full Refund'
+            },
+            {
+              id: 'OTHER_COMPLETE',
+              stepNumber: '7',
+              name: "Case Created",
+              persona: 'Amy',
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'OTHER_COMPLETE_MSG',
+                  label: "Confirmation",
+                  content: "Your request has been submitted. Our team will review and process within 1-2 business days."
+                }
+              ],
+              caseDetails: { type: 'other', resolution: 'other_resolution' }
             }
           ]
         }
@@ -8012,24 +8442,56 @@ End with an encouraging message about consistency and patience.`,
 
     // API info
     if (step.api) {
+      const isOpenAI = step.api.service?.toLowerCase().includes('openai');
       html += `
         <div class="sim-docs-section">
-          <div class="sim-docs-section-title">
+          <div class="sim-docs-section-title" style="color: ${isOpenAI ? '#10a37f' : 'var(--gray-700)'};">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-            API: ${step.api.service}
+            ${isOpenAI ? '🤖' : '🔗'} API: ${step.api.service}
           </div>
           <div class="sim-docs-info">
             <div class="sim-docs-info-row">
               <span class="sim-docs-info-label">Endpoint</span>
               <span class="sim-docs-info-value"><code>${step.api.endpoint}</code></span>
             </div>
+            ${step.api.method ? `
             <div class="sim-docs-info-row">
               <span class="sim-docs-info-label">Method</span>
               <span class="sim-docs-info-value">${step.api.method}</span>
             </div>
+            ` : ''}
+            ${step.api.model ? `
+            <div class="sim-docs-info-row">
+              <span class="sim-docs-info-label">Model</span>
+              <span class="sim-docs-info-value" style="color: #10a37f; font-weight: 600;"><code>${step.api.model}</code></span>
+            </div>
+            ` : ''}
+            ${step.api.temperature !== undefined ? `
+            <div class="sim-docs-info-row">
+              <span class="sim-docs-info-label">Temperature</span>
+              <span class="sim-docs-info-value">${step.api.temperature}</span>
+            </div>
+            ` : ''}
+            ${step.api.maxTokens ? `
+            <div class="sim-docs-info-row">
+              <span class="sim-docs-info-label">Max Tokens</span>
+              <span class="sim-docs-info-value">${step.api.maxTokens.toLocaleString()}</span>
+            </div>
+            ` : ''}
           </div>
           ${step.api.explanation ? `
             <p style="font-size: 13px; color: var(--gray-600); margin-top: 12px; line-height: 1.5;">${step.api.explanation}</p>
+          ` : ''}
+          ${step.api.systemPrompt ? `
+            <div style="margin-top: 16px;">
+              <div style="font-size: 12px; font-weight: 600; color: var(--gray-700); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                System Prompt
+              </div>
+              <div style="background: linear-gradient(145deg, #f0fdf4 0%, #ecfdf5 100%); border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; font-size: 12px; color: #166534; font-family: 'Monaco', 'Menlo', monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto; line-height: 1.5;">
+${step.api.systemPrompt.substring(0, 1000)}${step.api.systemPrompt.length > 1000 ? '\n\n... [truncated]' : ''}
+              </div>
+            </div>
           ` : ''}
         </div>
       `;
