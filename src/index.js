@@ -19077,13 +19077,15 @@ button.template-tab:focus {
   position: relative;
   background: linear-gradient(135deg, #1a365d 0%, #2d3748 100%);
   border-radius: 20px;
-  padding: 28px 20px;
+  padding: 24px 18px;
   color: white;
   text-align: center;
   overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 40px rgba(26, 54, 93, 0.2);
-  margin: 16px 0;
-  max-width: 320px;
+  box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.15), 0 0 30px rgba(26, 54, 93, 0.15);
+  margin: 12px auto;
+  width: calc(100% - 16px);
+  max-width: 280px;
+  align-self: center;
 }
 
 .sim-offer-card::before {
@@ -19122,10 +19124,10 @@ button.template-tab:focus {
 
 .sim-offer-amount {
   font-family: 'Space Grotesk', 'Poppins', sans-serif;
-  font-size: 56px;
+  font-size: 48px;
   font-weight: 800;
   line-height: 1;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.8) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -19190,13 +19192,15 @@ button.template-tab:focus {
 /* Success Card - Exact replica from chat app */
 .sim-success-card {
   text-align: center;
-  padding: 32px 20px;
+  padding: 24px 18px;
   border-radius: 20px;
   background: linear-gradient(135deg, #E8FFF0 0%, #D1FAE5 100%);
   border: 1px solid rgba(34, 197, 94, 0.2);
   animation: sim-success-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-  margin: 16px 0;
-  max-width: 320px;
+  margin: 12px auto;
+  width: calc(100% - 16px);
+  max-width: 280px;
+  align-self: center;
 }
 
 @keyframes sim-success-enter {
@@ -19253,12 +19257,14 @@ button.template-tab:focus {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 14px 18px;
   background: white;
   border-radius: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  margin: 12px 0;
-  max-width: 280px;
+  margin: 10px auto;
+  width: calc(100% - 16px);
+  max-width: 260px;
+  align-self: center;
 }
 
 .sim-progress-spinner {
@@ -19283,8 +19289,8 @@ button.template-tab:focus {
 /* User Response Bubble */
 .sim-user-response {
   align-self: flex-end;
-  max-width: 85%;
-  margin: 8px 0;
+  max-width: 80%;
+  margin: 8px 8px 8px auto;
 }
 
 .sim-user-bubble {
@@ -19301,11 +19307,13 @@ button.template-tab:focus {
 .sim-case-card {
   background: white;
   border-radius: 16px;
-  padding: 20px;
+  padding: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   border: 1px solid #e5e7eb;
-  margin: 12px 0;
-  max-width: 320px;
+  margin: 10px auto;
+  width: calc(100% - 16px);
+  max-width: 280px;
+  align-self: center;
 }
 
 .sim-case-header {
@@ -19669,10 +19677,11 @@ button.template-tab:focus {
 .sim-phone-chat {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 16px 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  align-items: stretch;
 }
 
 /* Chat Messages */
