@@ -6190,30 +6190,12 @@ button.template-tab:focus {
   border-radius: var(--radius-xl);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.flow-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background: var(--flow-color, var(--sakura));
-  opacity: 0;
-  transition: opacity 0.3s ease;
 }
 
 .flow-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.08), 0 0 0 1px var(--flow-color, var(--sakura));
-  border-color: transparent;
-}
-
-.flow-card:hover::before {
-  opacity: 1;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+  border-color: var(--flow-color, var(--sakura));
 }
 
 .flow-card-icon {
@@ -6298,20 +6280,6 @@ button.template-tab:focus {
   border-radius: var(--radius-xl);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.subflow-card::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--flow-color, var(--sakura)) 0%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
 }
 
 .subflow-card:hover:not(.subflow-card-pending) {
@@ -6320,18 +6288,10 @@ button.template-tab:focus {
   border-color: var(--flow-color, var(--sakura));
 }
 
-.subflow-card:hover:not(.subflow-card-pending)::after {
-  opacity: 1;
-}
-
 .subflow-card-pending {
   opacity: 0.5;
   cursor: default;
   background: var(--gray-50);
-}
-
-.subflow-card-pending::after {
-  display: none;
 }
 
 .subflow-card-header {
@@ -7925,6 +7885,65 @@ button.template-tab:focus {
   margin: 6px 0 0 0;
 }
 
+/* Branch Selector */
+.sim-branch-selector {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--gray-100);
+  background: var(--gray-50);
+}
+
+.sim-branch-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.sim-branch-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sim-branch-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.sim-branch-btn:hover {
+  border-color: var(--brand-navy);
+  background: var(--brand-navy-soft);
+}
+
+.sim-branch-btn.active {
+  background: linear-gradient(135deg, var(--brand-navy) 0%, #2c5282 100%);
+  border-color: var(--brand-navy);
+  color: white;
+}
+
+.sim-branch-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.sim-branch-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sim-nav-list {
   flex: 1;
   overflow-y: auto;
@@ -8265,34 +8284,67 @@ button.template-tab:focus {
 .sim-buttons {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin: 10px 0;
 }
 
+/* Option Buttons - Match actual chat app styling */
 .sim-btn {
-  padding: 12px 20px;
+  width: 100%;
+  padding: 14px 16px;
+  background: white;
+  border: 1px solid var(--gray-200);
   border-radius: 12px;
+  text-align: left;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 14px;
-  font-weight: 600;
-  text-align: center;
+  font-weight: 500;
+  color: var(--gray-700);
   cursor: default;
-  border: none;
+  transition: all 0.2s ease;
+}
+
+.sim-btn .btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
 }
 
 .sim-btn.primary {
   background: linear-gradient(135deg, #1a365d 0%, #2d3748 100%);
   color: white;
+  border: none;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(26, 54, 93, 0.2);
+}
+
+.sim-btn.primary .btn-icon {
+  background: transparent;
+  width: auto;
+  height: auto;
+  color: white;
 }
 
 .sim-btn.secondary {
   background: white;
-  border: 2px solid var(--gray-200);
+  border: 1px solid var(--gray-200);
   color: var(--gray-700);
 }
 
 .sim-btn.success {
-  background: #22c55e;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
   color: white;
+  border: none;
+  justify-content: center;
 }
 
 /* Phone Footer */

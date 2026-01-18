@@ -5516,66 +5516,254 @@ End with an encouraging message about consistency and patience.`,
           description: 'Customer was charged when they did not expect it',
           diagram: `flowchart TD
     START([💳 Unexpected Charge])
-    CHECK{Order Delivered?}
-    DEL[Delivered]
-    NOTDEL[Not Delivered]
+    SHOW[Show Order Details]
+    RECOG{Recognize?}
     
-    RECOG{Recognize Order?}
-    YES[Yes - Keep It]
-    NO[No - Refund]
+    YES_PATH[Yes - Confirmed]
+    NO_PATH[No - Not Recognized]
     
-    OFFER[20% Refund Offer]
+    EXPLAIN[Explain Order Sources]
+    PITCH[Product Benefits Pitch]
+    KEEP{Keep or Refund?}
+    
+    OFFER20[20% Refund Offer]
     LADDER[Refund Ladder]
-    DONE([✅ Case Created])
+    DONE([✅ Resolution])
     
-    START --> CHECK
-    CHECK -->|Yes| DEL --> RECOG
-    CHECK -->|No| NOTDEL --> OFFER
-    RECOG -->|Yes| YES --> DONE
-    RECOG -->|No| NO --> LADDER --> DONE
-    OFFER -->|Accept| DONE
-    OFFER -->|Decline| LADDER
+    START --> SHOW --> RECOG
+    RECOG -->|Yes| YES_PATH --> OFFER20
+    RECOG -->|No| NO_PATH --> EXPLAIN --> PITCH --> KEEP
+    KEEP -->|Keep| DONE
+    KEEP -->|Refund| LADDER
+    OFFER20 -->|Accept| DONE
+    OFFER20 -->|Decline| LADDER --> DONE
     
     style START fill:#fef3c7,stroke:#92400e
     style DONE fill:#C8E6C9,stroke:#2d5a2e`,
+          hasBranches: true,
+          branches: [
+            { id: 'recognized', name: 'Recognizes Order', icon: '✅' },
+            { id: 'not_recognized', name: "Doesn't Recognize", icon: '❓' }
+          ],
+          currentBranch: 'recognized',
           steps: [
             {
-              id: 'CHARGED_STEP_1',
+              id: 'CHARGED_SHOW_ORDER',
               stepNumber: '1',
-              name: "Check Recognition",
+              name: "Show Order Details",
               persona: 'Amy',
               function: 'handleChargedUnexpectedly()',
               line: 3525,
+              isBranchPoint: true,
               messages: [
                 {
-                  id: 'CHARGED_STEP_1_MSG',
+                  id: 'CHARGED_SHOW_MSG',
                   label: "Amy's Message",
-                  content: "I'm sorry you were charged unexpectedly. Let me help figure this out.\n\nLooking at your order, do you recognize the products you received?"
+                  content: "I'm sorry you were charged unexpectedly. Let me help figure this out.\n\nHere's what I see for your order:\n[Order Details: Items, Date, Amount]\n\nDo you recognize this order?"
                 }
               ],
               buttons: [
-                { text: "Yes, I recognize them", style: 'primary' },
-                { text: "No, I don't recognize this", style: 'secondary' }
+                { icon: '✅', text: "Yes, this is it", style: 'primary', branch: 'recognized' },
+                { icon: '❓', text: "No, I don't recognize this", style: 'secondary', branch: 'not_recognized' }
               ],
               next: 'Routes based on recognition'
             },
+            
+            // BRANCH: RECOGNIZED
             {
-              id: 'CHARGED_STEP_OFFER',
+              id: 'CHARGED_CONFIRMED',
               stepNumber: '2',
-              name: "Offer Resolution",
+              name: "Order Confirmed",
               persona: 'Amy',
+              branch: 'recognized',
+              function: 'handleChargedUnexpectedlyConfirmed()',
+              line: 3554,
               messages: [
                 {
-                  id: 'CHARGED_OFFER_MSG',
-                  label: "Amy's Offer",
-                  content: "I understand this charge was unexpected. As a gesture of goodwill, I can offer you a 20% refund while you keep everything you received.\n\nWould that work for you?"
+                  id: 'CHARGED_CONF_MSG',
+                  label: "Amy's Message",
+                  content: "Great! Now I see that this order was delivered on [Date].\n\nI understand the charge may have been unexpected. As a gesture of goodwill, I'd like to offer you a 20% refund while you keep everything you received."
                 }
               ],
               buttons: [
-                { text: 'Accept 20% refund', style: 'primary' },
-                { text: "I'd like a full refund", style: 'secondary' }
+                { icon: '✓', text: 'Accept 20% refund', style: 'success' },
+                { icon: '✗', text: "I'd like a full refund", style: 'secondary' }
               ],
-              next: 'Accept or go to refund ladder'
+              next: 'Accept 20% → Done | Decline → Refund Ladder'
+            },
+            {
+              id: 'CHARGED_20_ACCEPT',
+              stepNumber: '2a',
+              name: "20% Accepted",
+              persona: 'Amy',
+              branch: 'recognized',
+              isThankYou: true,
+              branchType: 'success',
+              messages: [
+                {
+                  id: 'CHARGED_20_MSG',
+                  label: "Success Message",
+                  content: "Your 20% refund has been submitted and will be processed within 1-2 business days."
+                }
+              ],
+              caseDetails: { type: 'refund', resolution: 'partial_refund_20' }
+            },
+            
+            // BRANCH: NOT RECOGNIZED
+            {
+              id: 'CHARGED_EXPLAIN',
+              stepNumber: '2',
+              name: "Explain Order Sources",
+              persona: 'Amy',
+              branch: 'not_recognized',
+              function: 'handleChargedUnexpectedlyNotRecognized()',
+              line: 3642,
+              messages: [
+                {
+                  id: 'CHARGED_EXPLAIN_MSG',
+                  label: "Amy's Message",
+                  content: "I understand — it can be confusing when you don't recognize a charge! 🤔\n\nHere's the thing: our system doesn't store payment details or allow manual charges, so this order was definitely placed through our website. It could be:\n\n• A family member or friend ordered for you as a surprise 🎁\n• You might have ordered a while back and forgot\n• Someone in your household made a purchase\n\nBut don't worry — I'm here to help either way! Let me tell you about what's actually in this order..."
+                }
+              ],
+              next: '→ Product Benefits Pitch'
+            },
+            {
+              id: 'CHARGED_PITCH',
+              stepNumber: '3',
+              name: "Product Benefits",
+              persona: 'Amy',
+              branch: 'not_recognized',
+              apiConnection: {
+                service: 'OpenAI GPT-4o',
+                endpoint: '/api/ai-response',
+                systemPrompt: "Generate a friendly pitch about the products in the order, highlighting benefits"
+              },
+              messages: [
+                {
+                  id: 'CHARGED_PITCH_MSG',
+                  label: "AI Product Pitch",
+                  content: "[Dynamic pitch about the products, their benefits, and why customers love them]"
+                }
+              ],
+              buttons: [
+                { icon: '✅', text: "OK, I'll keep them!", style: 'success' },
+                { icon: '💰', text: "No, I'd still like a refund", style: 'secondary' }
+              ],
+              next: 'Keep → Done | Refund → Refund Ladder'
+            },
+            {
+              id: 'CHARGED_KEEP',
+              stepNumber: '3a',
+              name: "Customer Keeping Order",
+              persona: 'Amy',
+              branch: 'not_recognized',
+              isThankYou: true,
+              branchType: 'success',
+              messages: [
+                {
+                  id: 'CHARGED_KEEP_MSG',
+                  label: "Success Message",
+                  content: "That's wonderful! I think you're going to love them. If you have any questions about using the products, I'm always here to help! 😊"
+                }
+              ],
+              caseDetails: { type: 'resolution', resolution: 'customer_keeping' }
+            },
+            
+            // SHARED REFUND LADDER
+            {
+              id: 'CHARGED_LADDER_20',
+              stepNumber: '4',
+              name: "Offer: 20% Refund",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'CHARGED_L20_MSG',
+                  label: "Amy's 20% Offer",
+                  content: "I understand. Let me offer you a 20% partial refund while you keep the products."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 20%', style: 'success' },
+                { icon: '✗', text: 'Need more', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → 30%'
+            },
+            {
+              id: 'CHARGED_LADDER_30',
+              stepNumber: '5',
+              name: "Offer: 30% Refund",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'CHARGED_L30_MSG',
+                  label: "Amy's 30% Offer",
+                  content: "Let me offer you 30% back — that's a significant refund while you keep everything."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 30%', style: 'success' },
+                { icon: '✗', text: 'Need more', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → 40%'
+            },
+            {
+              id: 'CHARGED_LADDER_40',
+              stepNumber: '6',
+              name: "Offer: 40% Refund",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'CHARGED_L40_MSG',
+                  label: "Amy's 40% Offer",
+                  content: "My manager approved 40% back for you."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 40%', style: 'success' },
+                { icon: '✗', text: 'Need more', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → 50%'
+            },
+            {
+              id: 'CHARGED_LADDER_50',
+              stepNumber: '7',
+              name: "Offer: 50% Refund (Final)",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'CHARGED_L50_MSG',
+                  label: "Final Offer",
+                  content: "Our maximum: 50% refund. Half your money back, keep everything."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 50%', style: 'success' },
+                { icon: '✗', text: 'Full refund', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → Full Refund'
+            },
+            {
+              id: 'CHARGED_COMPLETE',
+              stepNumber: '8',
+              name: "Refund Submitted",
+              persona: 'Amy',
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'CHARGED_COMP_MSG',
+                  label: "Final Message",
+                  content: "Your refund has been submitted and will be processed within 1-2 business days."
+                }
+              ],
+              caseDetails: { type: 'refund', resolution: 'refund_processed' }
             }
           ]
         },
@@ -5684,11 +5872,23 @@ End with an encouraging message about consistency and patience.`,
     AI[AI Generates Response]
     HAPPY{Satisfied?}
     DONE([✅ Happy])
-    LADDER[Refund Ladder]
+    L20[20% Refund]
+    L30[30% Refund]
+    L40[40% Refund]
+    L50[50% Refund]
+    FULL[Full Refund]
     
     START --> ASK --> AI --> HAPPY
     HAPPY -->|Yes| DONE
-    HAPPY -->|No| LADDER
+    HAPPY -->|No| L20
+    L20 -->|Accept| DONE
+    L20 -->|Decline| L30
+    L30 -->|Accept| DONE
+    L30 -->|Decline| L40
+    L40 -->|Accept| DONE
+    L40 -->|Decline| L50
+    L50 -->|Accept| DONE
+    L50 -->|Decline| FULL
     
     style START fill:#E8D5E8,stroke:#6a4c93
     style DONE fill:#C8E6C9,stroke:#2d5a2e`,
@@ -5707,6 +5907,9 @@ End with an encouraging message about consistency and patience.`,
                   content: "I understand! Can you share a bit more about what changed? I might be able to help or suggest something that would work better for you."
                 }
               ],
+              fields: [
+                { label: 'What changed?', type: 'textarea', placeholder: 'Please share what made you change your mind...' }
+              ],
               next: 'User types their reason'
             },
             {
@@ -5716,21 +5919,155 @@ End with an encouraging message about consistency and patience.`,
               persona: 'Amy',
               apiConnection: {
                 service: 'OpenAI GPT-4o',
-                endpoint: '/api/ai',
-                systemPrompt: "You are Amy, a friendly customer support rep for PuppyPad. The customer changed their mind. Try to understand and address their concern."
+                endpoint: '/api/ai-response',
+                systemPrompt: "You are Amy, a friendly customer support rep for PuppyPad. The customer changed their mind. Try to understand and address their concern with helpful suggestions."
               },
               messages: [
                 {
                   id: 'MIND_STEP_2_MSG',
                   label: "AI-Generated Response",
-                  content: "[Dynamic response based on customer's reason]"
+                  content: "[Dynamic response based on customer's reason - Amy provides personalized help and suggestions]"
                 }
               ],
               buttons: [
-                { text: "That's helpful, thanks!", style: 'primary' },
-                { text: 'No, I still want a refund', style: 'secondary' }
+                { icon: '✅', text: "Yes, I'll keep it!", style: 'success' },
+                { icon: '💰', text: 'No, I still want a refund', style: 'secondary' }
               ],
-              next: 'Happy → Done | Refund → Refund Ladder'
+              next: 'Happy → Thank You | Refund → Refund Ladder'
+            },
+            {
+              id: 'MIND_HAPPY',
+              stepNumber: '3A',
+              name: "Customer Satisfied",
+              persona: 'Amy',
+              isThankYou: true,
+              branchType: 'success',
+              messages: [
+                {
+                  id: 'MIND_HAPPY_MSG',
+                  label: "Success Message",
+                  content: "That makes me so happy to hear! I really think you're going to love it. If you ever have any questions, I'm always here to help. 😊"
+                }
+              ],
+              caseDetails: { type: 'resolution', resolution: 'customer_satisfied' }
+            },
+            // Refund Ladder Steps
+            {
+              id: 'MIND_LADDER_20',
+              stepNumber: '3',
+              name: "Offer: 20% Refund",
+              persona: 'Amy',
+              function: 'startRefundLadder()',
+              line: 2570,
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'MIND_L20_MSG',
+                  label: "Amy's 20% Offer",
+                  content: "I understand. As a valued customer, I'd like to offer you a 20% partial refund while you keep the product and continue trying."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 20% Refund', style: 'success' },
+                { icon: '✗', text: 'I need more help', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → 30% Offer'
+            },
+            {
+              id: 'MIND_LADDER_30',
+              stepNumber: '4',
+              name: "Offer: 30% Refund",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'MIND_L30_MSG',
+                  label: "Amy's 30% Offer",
+                  content: "I really want to make this right. Let me offer you a 30% refund — that's a significant amount back while you keep everything."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 30% Refund', style: 'success' },
+                { icon: '✗', text: 'I need more help', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → 40% Offer'
+            },
+            {
+              id: 'MIND_LADDER_40',
+              stepNumber: '5',
+              name: "Offer: 40% Refund",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'MIND_L40_MSG',
+                  label: "Amy's 40% Offer (Manager Approved)",
+                  content: "Great news! My manager has approved a 40% refund for you. That's nearly half your money back and you still get to keep the products."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 40% Refund', style: 'success' },
+                { icon: '✗', text: 'I need more help', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → 50% Offer'
+            },
+            {
+              id: 'MIND_LADDER_50',
+              stepNumber: '6',
+              name: "Offer: 50% Refund (Final)",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'MIND_L50_MSG',
+                  label: "Amy's Final Offer",
+                  content: "Okay, I've just spoken with my manager again and they've approved our maximum offer: 50% refund. This is the very best we can do — half your money back, no return needed."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 50% Refund', style: 'success' },
+                { icon: '✗', text: 'I want a full refund', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → Full Refund Process'
+            },
+            {
+              id: 'MIND_FULL_REFUND',
+              stepNumber: '7',
+              name: "Full Refund Process",
+              persona: 'Amy',
+              function: 'handleFullRefund()',
+              line: 2730,
+              messages: [
+                {
+                  id: 'MIND_FULL_MSG',
+                  label: "Amy's Message",
+                  content: "I completely understand. Let's proceed with a full refund. First, I need to know — has the product been used?"
+                }
+              ],
+              buttons: [
+                { text: "Yes, it's been used", style: 'primary' },
+                { text: "No, it's unused", style: 'secondary' }
+              ],
+              next: 'Routes based on product condition'
+            },
+            {
+              id: 'MIND_COMPLETE',
+              stepNumber: '8',
+              name: "Refund Submitted",
+              persona: 'Amy',
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'MIND_COMPLETE_MSG',
+                  label: "Final Message",
+                  content: "Your refund request has been submitted. Our team will review and process within 1-2 business days."
+                }
+              ],
+              caseDetails: { type: 'refund', resolution: 'refund_processed' }
             }
           ]
         },
@@ -5744,11 +6081,17 @@ End with an encouraging message about consistency and patience.`,
     AI[AI Response + Tips]
     HAPPY{Satisfied?}
     DONE([✅ Happy])
-    LADDER[Refund Ladder]
+    L20[20% Refund]
+    L30[30% Refund]
+    L40[40% Refund]
+    L50[50% Refund]
+    FULL[Full Refund]
     
     START --> ASK --> AI --> HAPPY
     HAPPY -->|Yes| DONE
-    HAPPY -->|No| LADDER
+    HAPPY -->|No| L20
+    L20 -->|Accept| DONE
+    L20 -->|Decline| L30 -->|Decline| L40 -->|Decline| L50 -->|Decline| FULL
     
     style START fill:#E8D5E8,stroke:#6a4c93
     style DONE fill:#C8E6C9,stroke:#2d5a2e`,
@@ -5764,26 +6107,166 @@ End with an encouraging message about consistency and patience.`,
                 {
                   id: 'EXPECT_STEP_1_MSG',
                   label: "Amy's Message",
-                  content: "I'm sorry to hear the product didn't meet your expectations. Can you tell me more about what you were hoping for? I'd love to see if there's anything I can do to help."
+                  content: "I'm really sorry to hear that 😔 We always want our products to exceed expectations. Could you share what specifically didn't meet your expectations?"
                 }
               ],
-              next: 'User describes expectations'
+              fields: [
+                { label: 'What disappointed you?', type: 'textarea', placeholder: 'Please describe what you expected vs what you received...' }
+              ],
+              next: 'User describes the issue'
             },
             {
               id: 'EXPECT_STEP_2',
               stepNumber: '2',
-              name: "AI Response",
+              name: "AI Response + Tips",
               persona: 'Amy',
               apiConnection: {
                 service: 'OpenAI GPT-4o',
-                endpoint: '/api/ai',
+                endpoint: '/api/ai-response',
                 systemPrompt: "You are Amy. The customer says the product didn't meet expectations. Address their specific concern and offer helpful tips."
               },
-              buttons: [
-                { text: "Those tips are helpful!", style: 'primary' },
-                { text: "No, I'd like a refund", style: 'secondary' }
+              messages: [
+                {
+                  id: 'EXPECT_STEP_2_MSG',
+                  label: "AI-Generated Response",
+                  content: "[Dynamic response addressing the specific concern with helpful tips and suggestions]"
+                }
               ],
-              next: 'Happy → Done | Refund → Refund Ladder'
+              buttons: [
+                { icon: '✅', text: "Yes, I'll give it another try", style: 'success' },
+                { icon: '💰', text: "No, I'd like a refund", style: 'secondary' }
+              ],
+              next: 'Happy → Thank You | Refund → Refund Ladder'
+            },
+            {
+              id: 'EXPECT_HAPPY',
+              stepNumber: '3A',
+              name: "Customer Will Try Again",
+              persona: 'Amy',
+              isThankYou: true,
+              branchType: 'success',
+              messages: [
+                {
+                  id: 'EXPECT_HAPPY_MSG',
+                  label: "Success Message",
+                  content: "That makes me so happy to hear! Give those tips a try and I really think you'll see a difference. I'm always here if you need more help! 😊"
+                }
+              ],
+              caseDetails: { type: 'resolution', resolution: 'customer_satisfied' }
+            },
+            {
+              id: 'EXPECT_LADDER_20',
+              stepNumber: '3',
+              name: "Offer: 20% Refund",
+              persona: 'Amy',
+              function: 'startRefundLadder()',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'EXPECT_L20_MSG',
+                  label: "Amy's 20% Offer",
+                  content: "Thank you for that feedback — I've noted it down. Let me make this right with a 20% partial refund while you keep the product."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 20% Refund', style: 'success' },
+                { icon: '✗', text: 'I need more help', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → 30% Offer'
+            },
+            {
+              id: 'EXPECT_LADDER_30',
+              stepNumber: '4',
+              name: "Offer: 30% Refund",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'EXPECT_L30_MSG',
+                  label: "Amy's 30% Offer",
+                  content: "I really want to make this right. Let me offer you a 30% refund — that's a significant amount back while you keep everything."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 30% Refund', style: 'success' },
+                { icon: '✗', text: 'I need more help', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → 40% Offer'
+            },
+            {
+              id: 'EXPECT_LADDER_40',
+              stepNumber: '5',
+              name: "Offer: 40% Refund",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'EXPECT_L40_MSG',
+                  label: "Amy's 40% Offer",
+                  content: "Great news! My manager has approved a 40% refund for you."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 40% Refund', style: 'success' },
+                { icon: '✗', text: 'I need more help', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → 50% Offer'
+            },
+            {
+              id: 'EXPECT_LADDER_50',
+              stepNumber: '6',
+              name: "Offer: 50% Refund (Final)",
+              persona: 'Amy',
+              isBranch: true,
+              branchType: 'refund',
+              messages: [
+                {
+                  id: 'EXPECT_L50_MSG',
+                  label: "Amy's Final Offer",
+                  content: "Our maximum offer: 50% refund. This is the very best we can do — half your money back, no return needed."
+                }
+              ],
+              buttons: [
+                { icon: '✓', text: 'Accept 50% Refund', style: 'success' },
+                { icon: '✗', text: 'I want a full refund', style: 'secondary' }
+              ],
+              next: 'Accept → Done | Decline → Full Refund'
+            },
+            {
+              id: 'EXPECT_FULL',
+              stepNumber: '7',
+              name: "Full Refund Process",
+              persona: 'Amy',
+              messages: [
+                {
+                  id: 'EXPECT_FULL_MSG',
+                  label: "Amy's Message",
+                  content: "I completely understand. Let's proceed with a full refund. First, has the product been used?"
+                }
+              ],
+              buttons: [
+                { text: "Yes, it's been used", style: 'primary' },
+                { text: "No, it's unused", style: 'secondary' }
+              ],
+              next: 'Process full refund based on usage'
+            },
+            {
+              id: 'EXPECT_COMPLETE',
+              stepNumber: '8',
+              name: "Refund Submitted",
+              persona: 'Amy',
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'EXPECT_COMPLETE_MSG',
+                  label: "Final Message",
+                  content: "Your refund request has been submitted. Our team will review and process within 1-2 business days."
+                }
+              ],
+              caseDetails: { type: 'refund', resolution: 'refund_processed' }
             }
           ]
         },
@@ -5987,6 +6470,7 @@ End with an encouraging message about consistency and patience.`,
     
     PAUSE[Offer Pause]
     ADDR[Offer Address Change]
+    DETAILS[Ask for Details]
     LADDER[Discount Ladder]
     
     D10[Offer 10% Off]
@@ -5994,18 +6478,20 @@ End with an encouraging message about consistency and patience.`,
     D20[Offer 20% Off]
     
     ACCEPT([✅ Kept with Discount])
+    PAUSED([✅ Subscription Paused])
+    UPDATED([✅ Address Updated])
     CANCEL([Subscription Cancelled])
     
     START --> WHY
     WHY -->|Expensive| EXP --> LADDER
     WHY -->|Too Many| MANY --> PAUSE
-    WHY -->|Not Working| NOTW --> LADDER
+    WHY -->|Not Working| NOTW --> DETAILS --> LADDER
     WHY -->|Moving| MOVE --> ADDR
     WHY -->|Other| OTHER --> LADDER
     
-    PAUSE -->|Accept| ACCEPT
+    PAUSE -->|Accept| PAUSED
     PAUSE -->|Decline| LADDER
-    ADDR -->|Accept| ACCEPT
+    ADDR -->|Accept| UPDATED
     ADDR -->|Decline| LADDER
     
     LADDER --> D10
@@ -6018,40 +6504,215 @@ End with an encouraging message about consistency and patience.`,
     
     style START fill:#FFCDD2,stroke:#c62828
     style ACCEPT fill:#C8E6C9,stroke:#2d5a2e
+    style PAUSED fill:#C8E6C9,stroke:#2d5a2e
+    style UPDATED fill:#C8E6C9,stroke:#2d5a2e
     style CANCEL fill:#FFCDD2,stroke:#c62828`,
+          // Flow has multiple branches based on cancel reason
+          hasBranches: true,
+          branches: [
+            { id: 'expensive', name: "It's too expensive", icon: '💰' },
+            { id: 'too_many', name: 'I have too many', icon: '📦' },
+            { id: 'not_working', name: "They don't work", icon: '❌' },
+            { id: 'moving', name: "I'm moving", icon: '🏠' },
+            { id: 'other', name: 'Other reason', icon: '💬' }
+          ],
+          currentBranch: 'expensive', // Default branch to show
           steps: [
+            // STEP 1: Cancel Reason (shown for all branches)
             {
-              id: 'CANCEL_STEP_1',
+              id: 'CANCEL_REASON',
               stepNumber: '1',
-              name: "Cancel Reason",
+              name: "Why Cancel?",
               persona: 'Amy',
               function: 'handleCancelSubscription()',
               line: 6297,
+              isBranchPoint: true,
               messages: [
                 {
-                  id: 'CANCEL_STEP_1_MSG',
+                  id: 'CANCEL_REASON_MSG',
                   label: "Amy's Message",
                   content: "I'm sorry to see you go 😔 Can you tell me why you'd like to cancel?"
                 }
               ],
               buttons: [
-                { text: "It's too expensive", style: 'primary' },
-                { text: "I have too many", style: 'primary' },
-                { text: "They don't work as described", style: 'primary' },
-                { text: "I'm moving", style: 'primary' },
-                { text: "Other reason", style: 'secondary' }
+                { icon: '💰', text: "It's too expensive", style: 'primary', branch: 'expensive' },
+                { icon: '📦', text: "I have too many", style: 'primary', branch: 'too_many' },
+                { icon: '❌', text: "They don't work as described", style: 'primary', branch: 'not_working' },
+                { icon: '🏠', text: "I'm moving", style: 'primary', branch: 'moving' },
+                { icon: '💬', text: "Other reason", style: 'secondary', branch: 'other' }
               ],
-              next: 'Routes based on reason → Discount Ladder'
+              next: 'Routes based on reason selected'
+            },
+            
+            // ========== BRANCH: TOO EXPENSIVE ==========
+            {
+              id: 'EXPENSIVE_INTRO',
+              stepNumber: '2',
+              name: "Acknowledge Budget",
+              persona: 'Amy',
+              branch: 'expensive',
+              function: 'handleCancelReason("expensive")',
+              line: 6312,
+              messages: [
+                {
+                  id: 'EXPENSIVE_INTRO_MSG',
+                  label: "Amy's Message",
+                  content: "I completely understand — budgets matter! Before you go, let me see if I can help make this more affordable..."
+                }
+              ],
+              next: '→ 10% Discount Offer'
+            },
+            
+            // ========== BRANCH: TOO MANY ==========
+            {
+              id: 'TOO_MANY_PAUSE_OFFER',
+              stepNumber: '2',
+              name: "Offer Pause Instead",
+              persona: 'Amy',
+              branch: 'too_many',
+              function: 'handleCancelReason("too_many")',
+              line: 6317,
+              messages: [
+                {
+                  id: 'TOO_MANY_MSG',
+                  label: "Amy's Message",
+                  content: "Got it! Instead of cancelling, would you like to pause your subscription and have it resume later? That way you're locked in at the same price — prices may increase in the future!"
+                }
+              ],
+              buttons: [
+                { icon: '⏸️', text: "Yes, pause instead", style: 'success', action: '→ Goes to Pause Flow' },
+                { icon: '❌', text: "No, I want to cancel", style: 'secondary', action: '→ Discount Ladder' }
+              ],
+              next: 'Accept → Pause | Decline → Discount Ladder'
             },
             {
-              id: 'CANCEL_LADDER_10',
+              id: 'TOO_MANY_PAUSE_ACCEPT',
+              stepNumber: '2a',
+              name: "Pause Accepted",
+              persona: 'Amy',
+              branch: 'too_many',
+              isThankYou: true,
+              isBranch: true,
+              branchType: 'success',
+              messages: [
+                {
+                  id: 'TOO_MANY_PAUSE_MSG',
+                  label: "Success Message",
+                  content: "Perfect! How long would you like to pause? (30, 60, 90 days, or custom date)"
+                }
+              ],
+              next: '→ Continues to Pause Duration Selection'
+            },
+            
+            // ========== BRANCH: NOT WORKING ==========
+            {
+              id: 'NOT_WORKING_ASK',
               stepNumber: '2',
-              name: "Offer 1: 10% Off Future Shipments",
+              name: "Ask What's Not Working",
+              persona: 'Amy',
+              branch: 'not_working',
+              function: 'handleCancelReason("not_working")',
+              line: 6328,
+              messages: [
+                {
+                  id: 'NOT_WORKING_MSG',
+                  label: "Amy's Message",
+                  content: "I'm sorry to hear that! Could you tell me more about what's not working? I'd love to try to help."
+                }
+              ],
+              fields: [
+                { label: "What's not working?", type: 'textarea', placeholder: 'Please describe the issue...' }
+              ],
+              next: '→ Customer explains issue'
+            },
+            {
+              id: 'NOT_WORKING_RESPONSE',
+              stepNumber: '3',
+              name: "Acknowledge & Offer",
+              persona: 'Amy',
+              branch: 'not_working',
+              line: 6334,
+              messages: [
+                {
+                  id: 'NOT_WORKING_RESP_MSG',
+                  label: "Amy's Message",
+                  content: "Thank you for sharing that. Let me see what I can offer to make this right..."
+                }
+              ],
+              next: '→ 10% Discount Offer'
+            },
+            
+            // ========== BRANCH: MOVING ==========
+            {
+              id: 'MOVING_ADDRESS_OFFER',
+              stepNumber: '2',
+              name: "Offer Address Change",
+              persona: 'Amy',
+              branch: 'moving',
+              function: 'handleCancelReason("moving")',
+              line: 6340,
+              messages: [
+                {
+                  id: 'MOVING_MSG',
+                  label: "Amy's Message",
+                  content: "No problem! Would you like to update your shipping address instead of cancelling? We can ship to your new location!"
+                }
+              ],
+              buttons: [
+                { icon: '📍', text: "Yes, update my address", style: 'success', action: '→ Goes to Address Change Flow' },
+                { icon: '❌', text: "No, I still want to cancel", style: 'secondary', action: '→ Discount Ladder' }
+              ],
+              next: 'Accept → Address Form | Decline → Discount Ladder'
+            },
+            {
+              id: 'MOVING_ADDRESS_ACCEPT',
+              stepNumber: '2a',
+              name: "Address Update",
+              persona: 'Amy',
+              branch: 'moving',
+              isThankYou: true,
+              isBranch: true,
+              branchType: 'success',
+              messages: [
+                {
+                  id: 'MOVING_ADDRESS_MSG',
+                  label: "Success Message",
+                  content: "Great! Please enter your new shipping address and we'll update your subscription."
+                }
+              ],
+              next: '→ Continues to Address Form'
+            },
+            
+            // ========== BRANCH: OTHER ==========
+            {
+              id: 'OTHER_INTRO',
+              stepNumber: '2',
+              name: "Acknowledge & Offer",
+              persona: 'Amy',
+              branch: 'other',
+              function: 'handleCancelReason("other")',
+              line: 6352,
+              messages: [
+                {
+                  id: 'OTHER_MSG',
+                  label: "Amy's Message",
+                  content: "Thank you for letting me know. Before you go, let me see if there's anything I can offer..."
+                }
+              ],
+              next: '→ 10% Discount Offer'
+            },
+            
+            // ========== DISCOUNT LADDER (shared across branches) ==========
+            {
+              id: 'CANCEL_LADDER_10',
+              stepNumber: '3',
+              name: "Offer: 10% Off",
               persona: 'Amy',
               function: 'startSubscriptionLadder()',
               line: 6359,
               isBranch: true,
               branchType: 'refund',
+              isLadderStep: true,
               messages: [
                 {
                   id: 'CANCEL_LADDER_10_MSG',
@@ -6060,18 +6721,14 @@ End with an encouraging message about consistency and patience.`,
                 }
               ],
               buttons: [
-                { text: '✓ Keep Subscription', style: 'success', action: '→ Discount applied, subscription kept' },
-                { text: '✗ Still cancel', style: 'secondary', action: '→ Proceeds to 15% offer' }
+                { icon: '✓', text: 'Keep Subscription', style: 'success', action: '→ Discount applied' },
+                { icon: '✗', text: 'Still cancel', style: 'secondary', action: '→ 15% offer' }
               ],
-              onAccept: {
-                resolution: 'discount_applied',
-                message: 'Customer retained with 10% discount'
-              },
-              next: 'Accept → Thank You | Decline → 15% Offer'
+              next: 'Accept → Done | Decline → 15% Offer'
             },
             {
               id: 'CANCEL_LADDER_10_ACCEPT',
-              stepNumber: '2a',
+              stepNumber: '3a',
               name: "10% Accepted",
               persona: 'Amy',
               isThankYou: true,
@@ -6084,21 +6741,18 @@ End with an encouraging message about consistency and patience.`,
                   content: "Great choice! Your 10% discount will apply to all future shipments automatically."
                 }
               ],
-              caseDetails: {
-                type: 'subscription',
-                resolution: 'discount_applied',
-                discountPercent: 10
-              }
+              caseDetails: { type: 'subscription', resolution: 'discount_applied', discountPercent: 10 }
             },
             {
               id: 'CANCEL_LADDER_15',
-              stepNumber: '3',
-              name: "Offer 2: 15% Off Future Shipments",
+              stepNumber: '4',
+              name: "Offer: 15% Off",
               persona: 'Amy',
               function: 'startSubscriptionLadder()',
               line: 6362,
               isBranch: true,
               branchType: 'refund',
+              isLadderStep: true,
               messages: [
                 {
                   id: 'CANCEL_LADDER_15_MSG',
@@ -6107,18 +6761,14 @@ End with an encouraging message about consistency and patience.`,
                 }
               ],
               buttons: [
-                { text: '✓ Keep Subscription', style: 'success', action: '→ Discount applied, subscription kept' },
-                { text: '✗ Still cancel', style: 'secondary', action: '→ Proceeds to 20% offer' }
+                { icon: '✓', text: 'Keep Subscription', style: 'success', action: '→ Discount applied' },
+                { icon: '✗', text: 'Still cancel', style: 'secondary', action: '→ 20% offer' }
               ],
-              onAccept: {
-                resolution: 'discount_applied',
-                message: 'Customer retained with 15% discount'
-              },
-              next: 'Accept → Thank You | Decline → 20% Offer'
+              next: 'Accept → Done | Decline → 20% Offer'
             },
             {
               id: 'CANCEL_LADDER_15_ACCEPT',
-              stepNumber: '3a',
+              stepNumber: '4a',
               name: "15% Accepted",
               persona: 'Amy',
               isThankYou: true,
@@ -6131,41 +6781,34 @@ End with an encouraging message about consistency and patience.`,
                   content: "Great choice! Your 15% discount will apply to all future shipments automatically."
                 }
               ],
-              caseDetails: {
-                type: 'subscription',
-                resolution: 'discount_applied',
-                discountPercent: 15
-              }
+              caseDetails: { type: 'subscription', resolution: 'discount_applied', discountPercent: 15 }
             },
             {
               id: 'CANCEL_LADDER_20',
-              stepNumber: '4',
-              name: "Offer 3: 20% Off (Final Offer)",
+              stepNumber: '5',
+              name: "Offer: 20% Off (Final)",
               persona: 'Amy',
               function: 'startSubscriptionLadder()',
               line: 6363,
               isBranch: true,
               branchType: 'refund',
+              isLadderStep: true,
               messages: [
                 {
                   id: 'CANCEL_LADDER_20_MSG',
-                  label: "Amy's 20% Offer (Final)",
+                  label: "Amy's Final Offer",
                   content: "My best offer: 20% off all future shipments. That's significant savings!"
                 }
               ],
               buttons: [
-                { text: '✓ Keep Subscription', style: 'success', action: '→ Discount applied, subscription kept' },
-                { text: '✗ Cancel anyway', style: 'secondary', action: '→ Proceeds to full cancellation' }
+                { icon: '✓', text: 'Keep Subscription', style: 'success', action: '→ Discount applied' },
+                { icon: '✗', text: 'Cancel anyway', style: 'secondary', action: '→ Full cancellation' }
               ],
-              onAccept: {
-                resolution: 'discount_applied',
-                message: 'Customer retained with 20% discount'
-              },
-              next: 'Accept → Thank You | Decline → Full Cancellation'
+              next: 'Accept → Done | Decline → Full Cancellation'
             },
             {
               id: 'CANCEL_LADDER_20_ACCEPT',
-              stepNumber: '4a',
+              stepNumber: '5a',
               name: "20% Accepted",
               persona: 'Amy',
               isThankYou: true,
@@ -6178,15 +6821,11 @@ End with an encouraging message about consistency and patience.`,
                   content: "Great choice! Your 20% discount will apply to all future shipments automatically."
                 }
               ],
-              caseDetails: {
-                type: 'subscription',
-                resolution: 'discount_applied',
-                discountPercent: 20
-              }
+              caseDetails: { type: 'subscription', resolution: 'discount_applied', discountPercent: 20 }
             },
             {
-              id: 'CANCEL_STEP_FULL',
-              stepNumber: '5',
+              id: 'CANCEL_FULL',
+              stepNumber: '6',
               name: "Full Cancellation",
               persona: 'Amy',
               function: 'handleFullSubscriptionCancel()',
@@ -6196,13 +6835,29 @@ End with an encouraging message about consistency and patience.`,
                 {
                   id: 'CANCEL_FULL_MSG',
                   label: "Cancellation Message",
+                  content: "I understand. Before I process the cancellation, has the product been used?"
+                }
+              ],
+              buttons: [
+                { text: "Yes, used", style: 'primary' },
+                { text: "No, unused", style: 'secondary' }
+              ],
+              next: '→ Process cancellation based on usage'
+            },
+            {
+              id: 'CANCEL_COMPLETE',
+              stepNumber: '7',
+              name: "Subscription Cancelled",
+              persona: 'Amy',
+              isThankYou: true,
+              messages: [
+                {
+                  id: 'CANCEL_COMPLETE_MSG',
+                  label: "Final Message",
                   content: "Your subscription has been cancelled and your refund request has been submitted."
                 }
               ],
-              caseDetails: {
-                type: 'subscription',
-                resolution: 'subscription_cancelled'
-              }
+              caseDetails: { type: 'subscription', resolution: 'subscription_cancelled' }
             }
           ]
         },
@@ -6573,8 +7228,18 @@ End with an encouraging message about consistency and patience.`,
     this.renderSimulator();
   },
 
+  getFilteredSteps() {
+    const allSteps = this.currentSubflow.steps;
+    const hasBranches = this.currentSubflow.hasBranches;
+    
+    if (!hasBranches) return allSteps;
+    
+    return allSteps.filter(s => !s.branch || s.branch === this.selectedBranch || s.isLadderStep || s.id.includes('LADDER'));
+  },
+
   nextStep() {
-    if (this.currentStepIndex < this.currentSubflow.steps.length - 1) {
+    const steps = this.getFilteredSteps();
+    if (this.currentStepIndex < steps.length - 1) {
       this.currentStepIndex++;
       this.renderSimulator();
     }
@@ -6698,14 +7363,39 @@ End with an encouraging message about consistency and patience.`,
     }
   },
 
+  // Track selected branch for flows with branches
+  selectedBranch: null,
+
+  selectBranch(branchId) {
+    this.selectedBranch = branchId;
+    this.currentStepIndex = 0;
+    this.renderSimulator();
+  },
+
   renderSimulator() {
     const container = document.getElementById('flowSimulator');
     if (!container || !this.currentSubflow) return;
 
-    const steps = this.currentSubflow.steps;
-    const currentStep = steps[this.currentStepIndex];
+    // Get filtered steps based on selected branch
+    const allSteps = this.currentSubflow.steps;
+    const hasBranches = this.currentSubflow.hasBranches;
+    
+    // If flow has branches and no branch selected, use default
+    if (hasBranches && !this.selectedBranch) {
+      this.selectedBranch = this.currentSubflow.currentBranch || this.currentSubflow.branches[0]?.id;
+    }
+    
+    // Filter steps: show steps without branch + steps for selected branch + ladder steps
+    const steps = hasBranches 
+      ? allSteps.filter(s => !s.branch || s.branch === this.selectedBranch || s.isLadderStep || s.id.includes('LADDER'))
+      : allSteps;
+    
+    const currentStep = steps[this.currentStepIndex] || steps[0];
     const persona = this.getPersonaFromStep(currentStep);
     const personaName = persona.charAt(0).toUpperCase() + persona.slice(1);
+
+    // Render branch selector if flow has branches
+    const branchSelectorHtml = hasBranches ? this.renderBranchSelector() : '';
 
     container.innerHTML = `
       <div class="flow-simulator">
@@ -6715,6 +7405,7 @@ End with an encouraging message about consistency and patience.`,
             <h3>Flow Steps</h3>
             <p>Click any step to jump</p>
           </div>
+          ${branchSelectorHtml}
           <div class="sim-nav-list" id="simNavList">
             ${this.renderSimNavItems(steps)}
           </div>
@@ -6789,25 +7480,60 @@ End with an encouraging message about consistency and patience.`,
     }, 100);
   },
 
+  renderBranchSelector() {
+    if (!this.currentSubflow.branches) return '';
+    
+    let html = `
+      <div class="sim-branch-selector">
+        <div class="sim-branch-label">Select Path:</div>
+        <div class="sim-branch-options">
+    `;
+    
+    this.currentSubflow.branches.forEach(branch => {
+      const isSelected = this.selectedBranch === branch.id;
+      html += `
+        <button class="sim-branch-btn ${isSelected ? 'active' : ''}" 
+                onclick="HubFlows.selectBranch('${branch.id}')">
+          <span class="sim-branch-icon">${branch.icon || '📋'}</span>
+          <span class="sim-branch-name">${branch.name}</span>
+        </button>
+      `;
+    });
+    
+    html += `
+        </div>
+      </div>
+    `;
+    
+    return html;
+  },
+
   renderSimNavItems(steps) {
     let html = '';
     let currentSection = null;
     let inRefundLadder = false;
+    let shownBranchHeader = false;
 
     steps.forEach((step, index) => {
       // Determine section
       let newSection = null;
-      if (!step.isBranch) {
+      
+      // Check if this is a branch-specific step
+      if (step.branch && step.branch === this.selectedBranch && !shownBranchHeader) {
+        newSection = 'branch';
+      } else if (step.isBranchPoint) {
+        newSection = 'main';
+      } else if (!step.isBranch && !step.branch) {
         newSection = 'main';
       } else if (step.branchType === 'success') {
         newSection = 'success';
-      } else if (step.branchType === 'refund') {
+      } else if (step.branchType === 'refund' || step.isLadderStep || step.id.includes('LADDER')) {
         // Sub-categorize refund steps
         if (step.isThankYou) {
           newSection = 'thankyou';
-        } else if (step.id.includes('LADDER') || step.id.includes('GUARANTEE')) {
+        } else if (step.id.includes('LADDER') || step.id.includes('GUARANTEE') || step.isLadderStep) {
           newSection = 'ladder';
-        } else if (step.id.includes('FULL')) {
+        } else if (step.id.includes('FULL') || step.id.includes('CANCEL_FULL') || step.id.includes('CANCEL_COMPLETE')) {
           newSection = 'fullrefund';
         } else {
           newSection = 'refund';
@@ -6818,6 +7544,12 @@ End with an encouraging message about consistency and patience.`,
       if (newSection !== currentSection) {
         if (newSection === 'main' && index === 0) {
           html += `<div class="sim-nav-section-title">📋 Main Flow</div>`;
+        } else if (newSection === 'branch' && !shownBranchHeader) {
+          // Get branch name
+          const branchInfo = this.currentSubflow.branches?.find(b => b.id === this.selectedBranch);
+          const branchName = branchInfo ? branchInfo.name : 'Selected Path';
+          html += `<div class="sim-nav-section-title">${branchInfo?.icon || '➡️'} ${branchName}</div>`;
+          shownBranchHeader = true;
         } else if (newSection === 'success' && currentSection !== 'success') {
           html += `<div class="sim-nav-section-title">✅ Happy Path</div>`;
         } else if (newSection === 'ladder' && currentSection !== 'ladder') {
@@ -6829,7 +7561,7 @@ End with an encouraging message about consistency and patience.`,
           html += `<div class="sim-nav-section-title">🔄 Refund Path</div>`;
           inRefundLadder = true;
         } else if (newSection === 'fullrefund' && currentSection !== 'fullrefund') {
-          html += `<div class="sim-nav-section-title" style="margin-top: 8px; color: #dc2626;">💰 Full Refund</div>`;
+          html += `<div class="sim-nav-section-title" style="margin-top: 8px; color: #dc2626;">❌ Full Cancellation</div>`;
         }
         currentSection = newSection;
       }
@@ -7102,7 +7834,8 @@ End with an encouraging message about consistency and patience.`,
       html += `<div class="sim-buttons">`;
       step.buttons.forEach(btn => {
         const btnClass = btn.style || 'primary';
-        html += `<button class="sim-btn ${btnClass}">${btn.text}</button>`;
+        const iconHtml = btn.icon ? `<span class="btn-icon">${btn.icon}</span>` : '';
+        html += `<button class="sim-btn ${btnClass}">${iconHtml}${btn.text}</button>`;
       });
       html += `</div>`;
     }
