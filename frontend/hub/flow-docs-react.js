@@ -4,24 +4,14 @@
  * Uses React 18 + React Flow via CDN
  */
 
-// Wait for React and ReactFlow to be available
+// Wait for React to be available (no React Flow dependency - using custom SVG)
 (function initFlowDocs() {
-  if (typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof ReactFlow === 'undefined') {
+  if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
     setTimeout(initFlowDocs, 100);
     return;
   }
 
-  const { useState, useCallback, useEffect, useMemo } = React;
-  const { 
-    ReactFlow: ReactFlowComponent, 
-    Controls, 
-    Background, 
-    useNodesState, 
-    useEdgesState,
-    Handle,
-    Position,
-    MarkerType
-  } = ReactFlow;
+  const { useState, useCallback, useEffect, useMemo, useRef } = React;
 
   // ============================================
   // FLOW DATA - All flows with nodes and edges
@@ -397,82 +387,7 @@
     return iconMap[type] || Icons.helpCircle;
   };
 
-  // Base custom node component
-  const CustomNode = ({ data, type, selected }) => {
-    const colors = nodeColors[type] || nodeColors.message;
-    const IconComponent = getNodeIcon(type);
-    
-    const nodeStyle = {
-      background: colors.bg,
-      border: `2px solid ${selected ? colors.icon : colors.border}`,
-      borderRadius: '12px',
-      padding: '12px 16px',
-      minWidth: '180px',
-      maxWidth: '260px',
-      boxShadow: selected ? `0 0 0 2px ${colors.icon}40, 0 4px 12px rgba(0,0,0,0.1)` : '0 2px 8px rgba(0,0,0,0.08)',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease'
-    };
-
-    const headerStyle = {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      marginBottom: data.content || data.description ? '8px' : '0'
-    };
-
-    const iconStyle = {
-      width: '24px',
-      height: '24px',
-      color: colors.icon,
-      flexShrink: 0
-    };
-
-    const titleStyle = {
-      fontWeight: 600,
-      fontSize: '13px',
-      color: colors.text,
-      textTransform: 'capitalize'
-    };
-
-    const contentStyle = {
-      fontSize: '11px',
-      color: '#6b7280',
-      lineHeight: '1.4',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      WebkitLineClamp: 2,
-      WebkitBoxOrient: 'vertical'
-    };
-
-    return React.createElement('div', { style: nodeStyle },
-      React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: colors.icon } }),
-      React.createElement('div', { style: headerStyle },
-        React.createElement('div', { style: iconStyle }, React.createElement(IconComponent)),
-        React.createElement('span', { style: titleStyle }, type.replace('_', ' '))
-      ),
-      (data.content || data.description || data.label) && React.createElement('div', { style: contentStyle },
-        data.content || data.description || data.label
-      ),
-      type !== 'end' && React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: colors.icon } })
-    );
-  };
-
-  // Node type definitions for React Flow
-  const nodeTypes = {
-    start: (props) => React.createElement(CustomNode, { ...props, type: 'start' }),
-    message: (props) => React.createElement(CustomNode, { ...props, type: 'message' }),
-    options: (props) => React.createElement(CustomNode, { ...props, type: 'options' }),
-    condition: (props) => React.createElement(CustomNode, { ...props, type: 'condition' }),
-    form: (props) => React.createElement(CustomNode, { ...props, type: 'form' }),
-    api: (props) => React.createElement(CustomNode, { ...props, type: 'api' }),
-    ai: (props) => React.createElement(CustomNode, { ...props, type: 'ai' }),
-    ladder: (props) => React.createElement(CustomNode, { ...props, type: 'ladder' }),
-    offer: (props) => React.createElement(CustomNode, { ...props, type: 'offer' }),
-    case: (props) => React.createElement(CustomNode, { ...props, type: 'case' }),
-    end: (props) => React.createElement(CustomNode, { ...props, type: 'end' })
-  };
+  // Note: Using custom SVG-based flow visualization instead of React Flow
 
   // ============================================
   // SIMULATOR POPUP COMPONENT
@@ -1039,17 +954,130 @@
   };
 
   // ============================================
-  // FLOW CANVAS VIEW
+  // FLOW CANVAS VIEW (Custom SVG-based)
   // ============================================
   const FlowCanvas = ({ subflow, onBack, parentFlow }) => {
-    const [nodes, setNodes, onNodesChange] = useNodesState(subflow.nodes || []);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(subflow.edges || []);
     const [selectedNode, setSelectedNode] = useState(null);
     const [simulatorNode, setSimulatorNode] = useState(null);
+    const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 800, height: 800 });
+    const [zoom, setZoom] = useState(1);
+    const svgRef = useRef(null);
 
-    const onNodeClick = useCallback((event, node) => {
+    const nodes = subflow.nodes || [];
+    const edges = subflow.edges || [];
+
+    // Calculate viewBox based on nodes
+    useEffect(() => {
+      if (nodes.length > 0) {
+        const minX = Math.min(...nodes.map(n => n.position.x)) - 50;
+        const maxX = Math.max(...nodes.map(n => n.position.x)) + 300;
+        const minY = Math.min(...nodes.map(n => n.position.y)) - 50;
+        const maxY = Math.max(...nodes.map(n => n.position.y)) + 150;
+        setViewBox({ x: minX, y: minY, width: maxX - minX, height: maxY - minY });
+      }
+    }, [nodes]);
+
+    const handleNodeClick = (node) => {
       setSelectedNode(node);
-    }, []);
+    };
+
+    const handleZoomIn = () => setZoom(z => Math.min(z * 1.2, 3));
+    const handleZoomOut = () => setZoom(z => Math.max(z / 1.2, 0.3));
+    const handleZoomReset = () => setZoom(1);
+
+    // Render edge path
+    const renderEdge = (edge) => {
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      const targetNode = nodes.find(n => n.id === edge.target);
+      if (!sourceNode || !targetNode) return null;
+
+      const sx = sourceNode.position.x + 100; // Center of node
+      const sy = sourceNode.position.y + 60;  // Bottom of node
+      const tx = targetNode.position.x + 100; // Center of node
+      const ty = targetNode.position.y;       // Top of node
+
+      // Smooth step path
+      const midY = (sy + ty) / 2;
+      const path = `M ${sx} ${sy} C ${sx} ${midY}, ${tx} ${midY}, ${tx} ${ty}`;
+
+      return React.createElement('g', { key: edge.id },
+        React.createElement('path', {
+          d: path,
+          fill: 'none',
+          stroke: edge.style?.stroke || '#94a3b8',
+          strokeWidth: 2,
+          markerEnd: 'url(#arrowhead)'
+        }),
+        edge.label && React.createElement('text', {
+          x: (sx + tx) / 2,
+          y: midY - 8,
+          textAnchor: 'middle',
+          fill: '#6b7280',
+          fontSize: 11,
+          fontWeight: 500
+        }, edge.label)
+      );
+    };
+
+    // Render node
+    const renderNode = (node) => {
+      const colors = nodeColors[node.type] || nodeColors.message;
+      const IconComponent = getNodeIcon(node.type);
+      const isSelected = selectedNode?.id === node.id;
+
+      return React.createElement('g', { 
+        key: node.id,
+        transform: `translate(${node.position.x}, ${node.position.y})`,
+        onClick: () => handleNodeClick(node),
+        style: { cursor: 'pointer' }
+      },
+        // Node background
+        React.createElement('rect', {
+          width: 200,
+          height: 60,
+          rx: 12,
+          fill: colors.bg,
+          stroke: isSelected ? colors.icon : colors.border,
+          strokeWidth: isSelected ? 3 : 2,
+          filter: isSelected ? 'url(#selectedShadow)' : 'url(#nodeShadow)'
+        }),
+        // Icon container
+        React.createElement('rect', {
+          x: 12,
+          y: 12,
+          width: 36,
+          height: 36,
+          rx: 8,
+          fill: 'white',
+          fillOpacity: 0.8
+        }),
+        // Icon (simplified - just show type letter)
+        React.createElement('text', {
+          x: 30,
+          y: 36,
+          textAnchor: 'middle',
+          fill: colors.icon,
+          fontSize: 14,
+          fontWeight: 700
+        }, node.type[0].toUpperCase()),
+        // Type label
+        React.createElement('text', {
+          x: 60,
+          y: 26,
+          fill: colors.text,
+          fontSize: 12,
+          fontWeight: 600,
+          textTransform: 'capitalize'
+        }, node.type.replace('_', ' ')),
+        // Content preview
+        React.createElement('text', {
+          x: 60,
+          y: 44,
+          fill: '#6b7280',
+          fontSize: 10
+        }, (node.data?.content || node.data?.label || '').slice(0, 25) + ((node.data?.content || '').length > 25 ? '...' : ''))
+      );
+    };
 
     const containerStyle = {
       display: 'flex',
@@ -1062,7 +1090,9 @@
 
     const canvasStyle = {
       flex: 1,
-      height: '100%'
+      height: '100%',
+      position: 'relative',
+      overflow: 'hidden'
     };
 
     const propertiesPanelStyle = {
@@ -1076,6 +1106,32 @@
       padding: '16px 20px',
       borderBottom: '1px solid #e5e7eb',
       background: 'white'
+    };
+
+    const controlsStyle = {
+      position: 'absolute',
+      bottom: '16px',
+      left: '16px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px',
+      background: 'white',
+      borderRadius: '8px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+      overflow: 'hidden'
+    };
+
+    const controlBtnStyle = {
+      width: '36px',
+      height: '36px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: 'none',
+      background: 'white',
+      cursor: 'pointer',
+      fontSize: '18px',
+      color: '#374151'
     };
 
     return React.createElement('div', null,
@@ -1108,24 +1164,53 @@
       // Canvas and properties panel
       React.createElement('div', { style: containerStyle },
         React.createElement('div', { style: canvasStyle },
-          React.createElement(ReactFlowComponent, {
-            nodes: nodes,
-            edges: edges,
-            onNodesChange: onNodesChange,
-            onEdgesChange: onEdgesChange,
-            onNodeClick: onNodeClick,
-            nodeTypes: nodeTypes,
-            fitView: true,
-            fitViewOptions: { padding: 0.2 },
-            defaultEdgeOptions: {
-              type: 'smoothstep',
-              style: { stroke: '#94a3b8', strokeWidth: 2 },
-              markerEnd: { type: MarkerType.ArrowClosed, color: '#94a3b8' }
-            },
-            proOptions: { hideAttribution: true }
+          // SVG Canvas
+          React.createElement('svg', {
+            ref: svgRef,
+            width: '100%',
+            height: '100%',
+            viewBox: `${viewBox.x} ${viewBox.y} ${viewBox.width / zoom} ${viewBox.height / zoom}`,
+            style: { background: 'transparent' }
           },
-            React.createElement(Controls, { position: 'bottom-left' }),
-            React.createElement(Background, { color: '#e5e7eb', gap: 16 })
+            // Defs for filters and markers
+            React.createElement('defs', null,
+              React.createElement('marker', {
+                id: 'arrowhead',
+                markerWidth: 10,
+                markerHeight: 7,
+                refX: 10,
+                refY: 3.5,
+                orient: 'auto'
+              },
+                React.createElement('polygon', {
+                  points: '0 0, 10 3.5, 0 7',
+                  fill: '#94a3b8'
+                })
+              ),
+              React.createElement('filter', { id: 'nodeShadow', x: '-20%', y: '-20%', width: '140%', height: '140%' },
+                React.createElement('feDropShadow', { dx: 0, dy: 2, stdDeviation: 3, floodOpacity: 0.1 })
+              ),
+              React.createElement('filter', { id: 'selectedShadow', x: '-20%', y: '-20%', width: '140%', height: '140%' },
+                React.createElement('feDropShadow', { dx: 0, dy: 4, stdDeviation: 6, floodOpacity: 0.2 })
+              )
+            ),
+            // Grid pattern
+            React.createElement('defs', null,
+              React.createElement('pattern', { id: 'grid', width: 20, height: 20, patternUnits: 'userSpaceOnUse' },
+                React.createElement('circle', { cx: 1, cy: 1, r: 1, fill: '#e5e7eb' })
+              )
+            ),
+            React.createElement('rect', { width: '100%', height: '100%', fill: 'url(#grid)' }),
+            // Edges
+            edges.map(renderEdge),
+            // Nodes
+            nodes.map(renderNode)
+          ),
+          // Zoom controls
+          React.createElement('div', { style: controlsStyle },
+            React.createElement('button', { style: controlBtnStyle, onClick: handleZoomIn }, '+'),
+            React.createElement('button', { style: controlBtnStyle, onClick: handleZoomReset }, '⌂'),
+            React.createElement('button', { style: controlBtnStyle, onClick: handleZoomOut }, '−')
           )
         ),
         React.createElement('div', { style: propertiesPanelStyle },
