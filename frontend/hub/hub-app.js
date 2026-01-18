@@ -4859,85 +4859,392 @@ End with an encouraging message about consistency and patience.`,
               outcome: 'Flow ends successfully. No case is created in the Resolution Hub. Customer will try the tips.',
               caseCreated: false
             },
+            // REFUND PATH - Step 6B: 90-Day Guarantee Check
             {
-              id: 'DOG_STEP_6B',
+              id: 'DOG_STEP_6B_GUARANTEE',
               stepNumber: '6B',
-              name: 'Refund Ladder (Customer Not Satisfied)',
+              name: '90-Day Guarantee Check',
               persona: 'Amy',
-              function: 'startRefundLadder()',
+              function: 'checkGuaranteeEligibility()',
               line: 2380,
               isBranch: true,
               branchType: 'refund',
-              description: 'Customer was not satisfied with Dr. Claudia\'s tips. Amy now enters the refund ladder to offer escalating partial refunds before a full refund.',
-              substeps: [
+              description: 'Before offering refunds, the system checks if the order is within the 90-day satisfaction guarantee period.',
+              messages: [
                 {
-                  id: 'DOG_LADDER_GUARANTEE',
-                  name: '90-Day Guarantee Check',
-                  logic: 'System automatically checks if the order delivery date is within the last 90 days. This uses the Shopify order data already retrieved when the customer entered their order number.',
-                  apiNote: 'Uses stored order.delivered_at date compared to current date',
-                  outcomes: {
-                    expired: {
-                      message: "I understand you're not satisfied, but unfortunately your 90-day guarantee period has expired. We can't process a refund at this time.\n\nWould you like me to help you with anything else?",
-                      caseCreated: false
-                    },
-                    valid: 'Customer is within guarantee period → Proceeds to Ladder Step 1 (20% Offer)'
-                  }
-                },
-                {
-                  id: 'DOG_LADDER_20',
-                  name: 'Ladder Step 1: 20% Partial Refund Offer',
-                  message: "I completely understand. Since the product isn't working for your pup, I'd like to offer you a 20% partial refund as a gesture of goodwill.\n\nThis way you can keep trying the tips while getting some money back. Would that work for you?",
-                  buttons: [
-                    { text: '✓ Accept 20% Refund', action: 'Creates case with resolution "partial_20" → Flow ends' },
-                    { text: '✗ I need more help', action: 'Proceeds to 30% offer' }
-                  ]
-                },
-                {
-                  id: 'DOG_LADDER_30',
-                  name: 'Ladder Step 2: 30% Partial Refund Offer',
-                  message: "I hear you. Let me increase that offer to 30% partial refund. This gives you a significant refund while still having the product to work with.\n\nWould 30% back work for you?",
-                  buttons: [
-                    { text: '✓ Accept 30% Refund', action: 'Creates case with resolution "partial_30" → Flow ends' },
-                    { text: '✗ I need more help', action: 'Proceeds to 40% offer' }
-                  ]
-                },
-                {
-                  id: 'DOG_LADDER_40',
-                  name: 'Ladder Step 3: 40% Partial Refund Offer',
-                  message: "I really want to make this right. How about 40% partial refund? That's almost half your money back.\n\nDoes that sound fair?",
-                  buttons: [
-                    { text: '✓ Accept 40% Refund', action: 'Creates case with resolution "partial_40" → Flow ends' },
-                    { text: '✗ I need more help', action: 'Proceeds to 50% offer' }
-                  ]
-                },
-                {
-                  id: 'DOG_LADDER_50',
-                  name: 'Ladder Step 4: 50% Partial Refund Offer',
-                  message: "Okay, let's do 50% back - that's half of what you paid. This is a generous offer that lets you keep trying while getting substantial money back.\n\nWhat do you say?",
-                  buttons: [
-                    { text: '✓ Accept 50% Refund', action: 'Creates case with resolution "partial_50" → Flow ends' },
-                    { text: '✗ I want a full refund', action: 'Proceeds to full refund' }
-                  ]
-                },
-                {
-                  id: 'DOG_LADDER_FULL',
-                  name: 'Ladder Step 5: Full Refund',
-                  message: "I understand completely. We stand behind our 90-day satisfaction guarantee, and I'll process a full refund for you.",
-                  locationCheck: {
-                    explanation: 'System checks the customer\'s shipping country from the Shopify order. US customers must return the product to receive a refund. International customers keep the product (due to shipping costs).',
-                    domestic: {
-                      message: "Since you're in the US, we'll need you to return the product. I'll send you a prepaid return label.\n\nOnce we receive the return, your full refund will be processed within 3-5 business days.",
-                      caseType: 'full + return',
-                      caseNote: 'Case is created with resolution "Process full refund" and return instructions are sent'
-                    },
-                    international: {
-                      message: "Since you're outside the US, please keep the product - no need to return it! Your full refund will be processed within 3-5 business days.",
-                      caseType: 'full + keep',
-                      caseNote: 'Case is created with resolution "Process full refund" - no return required'
-                    }
-                  }
+                  id: 'DOG_6B_GUARANTEE_MSG',
+                  label: 'System Check',
+                  content: '⏳ Checking order delivery date against 90-day guarantee window...'
                 }
-              ]
+              ],
+              api: {
+                service: 'Shopify Order Data',
+                endpoint: 'Uses stored order.delivered_at',
+                method: 'Local check',
+                explanation: 'The system automatically checks if the order delivery date is within the last 90 days. This uses the Shopify order data already retrieved when the customer entered their order number. No additional API call needed.'
+              },
+              branches: [
+                { condition: 'Expired (>90 days)', action: 'Shows "guarantee expired" message, flow ends' },
+                { condition: 'Valid (≤90 days)', action: 'Proceeds to 20% offer' }
+              ],
+              expiredMessage: {
+                id: 'DOG_6B_EXPIRED_MSG',
+                label: 'Amy\'s Message (Guarantee Expired)',
+                content: "I understand you're not satisfied, but unfortunately your 90-day guarantee period has expired. We can't process a refund at this time.\n\nWould you like me to help you with anything else?"
+              },
+              next: 'If valid → 20% Offer'
+            },
+            // REFUND PATH - Step 7: 20% Offer
+            {
+              id: 'DOG_STEP_LADDER_20',
+              stepNumber: '7',
+              name: 'Offer 1: 20% Partial Refund',
+              persona: 'Amy',
+              function: 'showRefundOffer(20)',
+              line: 2420,
+              isBranch: true,
+              branchType: 'refund',
+              description: 'First offer in the refund ladder - 20% partial refund as a gesture of goodwill.',
+              messages: [
+                {
+                  id: 'DOG_LADDER_20_MSG',
+                  label: 'Amy\'s 20% Offer',
+                  content: "I completely understand. Since the product isn't working for your pup, I'd like to offer you a 20% partial refund as a gesture of goodwill.\n\nThis way you can keep trying the tips while getting some money back. Would that work for you?"
+                }
+              ],
+              buttons: [
+                { text: '✓ Accept 20% Refund', style: 'success', action: '→ Creates case, shows thank you' },
+                { text: '✗ I need more help', style: 'secondary', action: '→ Proceeds to 30% offer' }
+              ],
+              onAccept: {
+                thankYouMessage: "Thank you! I've submitted your 20% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.\n\nYou can keep using the product and trying Dr. Claudia's tips!",
+                caseCreated: {
+                  type: 'refund',
+                  resolution: 'partial_20',
+                  issueType: 'Dog not using product',
+                  hubNote: 'Customer accepted 20% partial refund after dog training tips didn\'t work'
+                },
+                customerEmail: 'Refund confirmation email with amount and timeline'
+              },
+              next: 'Accept → Thank You | Decline → 30% Offer'
+            },
+            // Thank You for 20%
+            {
+              id: 'DOG_STEP_THANKYOU_20',
+              stepNumber: '7a',
+              name: 'Thank You: 20% Accepted',
+              persona: 'Amy',
+              function: 'showRefundThankYou(20)',
+              line: 2445,
+              isBranch: true,
+              branchType: 'refund',
+              isThankYou: true,
+              description: 'Confirmation screen when customer accepts 20% refund.',
+              messages: [
+                {
+                  id: 'DOG_THANKYOU_20_MSG',
+                  label: 'Thank You Message',
+                  content: "Thank you! I've submitted your 20% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.\n\nYou can keep using the product and trying Dr. Claudia's tips!"
+                }
+              ],
+              caseDetails: {
+                type: 'refund',
+                resolution: 'partial_20',
+                refundAmount: '20% of order total',
+                issueText: 'Dog not using product - customer accepted 20% partial refund',
+                status: 'pending',
+                assignedTo: 'CX Team queue'
+              },
+              richpanelNote: 'Case synced to Richpanel with refund details and customer conversation summary',
+              customerEmailSent: true,
+              surveyTriggered: true,
+              outcome: 'Flow ends. Case created in Resolution Hub. Customer receives confirmation email.'
+            },
+            // REFUND PATH - Step 8: 30% Offer
+            {
+              id: 'DOG_STEP_LADDER_30',
+              stepNumber: '8',
+              name: 'Offer 2: 30% Partial Refund',
+              persona: 'Amy',
+              function: 'showRefundOffer(30)',
+              line: 2480,
+              isBranch: true,
+              branchType: 'refund',
+              description: 'Second offer - increased to 30% partial refund.',
+              messages: [
+                {
+                  id: 'DOG_LADDER_30_MSG',
+                  label: 'Amy\'s 30% Offer',
+                  content: "I hear you. Let me increase that offer to 30% partial refund. This gives you a significant refund while still having the product to work with.\n\nWould 30% back work for you?"
+                }
+              ],
+              buttons: [
+                { text: '✓ Accept 30% Refund', style: 'success', action: '→ Creates case, shows thank you' },
+                { text: '✗ I need more help', style: 'secondary', action: '→ Proceeds to 40% offer' }
+              ],
+              onAccept: {
+                thankYouMessage: "Thank you! I've submitted your 30% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.",
+                caseCreated: {
+                  type: 'refund',
+                  resolution: 'partial_30',
+                  issueType: 'Dog not using product',
+                  hubNote: 'Customer accepted 30% partial refund after declining 20%'
+                }
+              },
+              next: 'Accept → Thank You | Decline → 40% Offer'
+            },
+            // Thank You for 30%
+            {
+              id: 'DOG_STEP_THANKYOU_30',
+              stepNumber: '8a',
+              name: 'Thank You: 30% Accepted',
+              persona: 'Amy',
+              function: 'showRefundThankYou(30)',
+              line: 2505,
+              isBranch: true,
+              branchType: 'refund',
+              isThankYou: true,
+              description: 'Confirmation screen when customer accepts 30% refund.',
+              messages: [
+                {
+                  id: 'DOG_THANKYOU_30_MSG',
+                  label: 'Thank You Message',
+                  content: "Thank you! I've submitted your 30% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank."
+                }
+              ],
+              caseDetails: {
+                type: 'refund',
+                resolution: 'partial_30',
+                refundAmount: '30% of order total',
+                issueText: 'Dog not using product - customer accepted 30% partial refund',
+                status: 'pending'
+              },
+              outcome: 'Flow ends. Case created. Customer receives confirmation email.'
+            },
+            // REFUND PATH - Step 9: 40% Offer
+            {
+              id: 'DOG_STEP_LADDER_40',
+              stepNumber: '9',
+              name: 'Offer 3: 40% Partial Refund',
+              persona: 'Amy',
+              function: 'showRefundOffer(40)',
+              line: 2540,
+              isBranch: true,
+              branchType: 'refund',
+              description: 'Third offer - 40% partial refund, almost half the money back.',
+              messages: [
+                {
+                  id: 'DOG_LADDER_40_MSG',
+                  label: 'Amy\'s 40% Offer',
+                  content: "I really want to make this right. How about 40% partial refund? That's almost half your money back.\n\nDoes that sound fair?"
+                }
+              ],
+              buttons: [
+                { text: '✓ Accept 40% Refund', style: 'success', action: '→ Creates case, shows thank you' },
+                { text: '✗ I need more help', style: 'secondary', action: '→ Proceeds to 50% offer' }
+              ],
+              onAccept: {
+                thankYouMessage: "Thank you! I've submitted your 40% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.",
+                caseCreated: {
+                  type: 'refund',
+                  resolution: 'partial_40',
+                  issueType: 'Dog not using product',
+                  hubNote: 'Customer accepted 40% partial refund after declining 20% and 30%'
+                }
+              },
+              next: 'Accept → Thank You | Decline → 50% Offer'
+            },
+            // Thank You for 40%
+            {
+              id: 'DOG_STEP_THANKYOU_40',
+              stepNumber: '9a',
+              name: 'Thank You: 40% Accepted',
+              persona: 'Amy',
+              function: 'showRefundThankYou(40)',
+              line: 2565,
+              isBranch: true,
+              branchType: 'refund',
+              isThankYou: true,
+              description: 'Confirmation screen when customer accepts 40% refund.',
+              messages: [
+                {
+                  id: 'DOG_THANKYOU_40_MSG',
+                  label: 'Thank You Message',
+                  content: "Thank you! I've submitted your 40% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank."
+                }
+              ],
+              caseDetails: {
+                type: 'refund',
+                resolution: 'partial_40',
+                refundAmount: '40% of order total',
+                issueText: 'Dog not using product - customer accepted 40% partial refund',
+                status: 'pending'
+              },
+              outcome: 'Flow ends. Case created. Customer receives confirmation email.'
+            },
+            // REFUND PATH - Step 10: 50% Offer
+            {
+              id: 'DOG_STEP_LADDER_50',
+              stepNumber: '10',
+              name: 'Offer 4: 50% Partial Refund',
+              persona: 'Amy',
+              function: 'showRefundOffer(50)',
+              line: 2600,
+              isBranch: true,
+              branchType: 'refund',
+              description: 'Fourth offer - 50% partial refund, half the money back.',
+              messages: [
+                {
+                  id: 'DOG_LADDER_50_MSG',
+                  label: 'Amy\'s 50% Offer',
+                  content: "Okay, let's do 50% back - that's half of what you paid. This is a generous offer that lets you keep trying while getting substantial money back.\n\nWhat do you say?"
+                }
+              ],
+              buttons: [
+                { text: '✓ Accept 50% Refund', style: 'success', action: '→ Creates case, shows thank you' },
+                { text: '✗ I want a full refund', style: 'danger', action: '→ Proceeds to full refund' }
+              ],
+              onAccept: {
+                thankYouMessage: "Thank you! I've submitted your 50% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.",
+                caseCreated: {
+                  type: 'refund',
+                  resolution: 'partial_50',
+                  issueType: 'Dog not using product',
+                  hubNote: 'Customer accepted 50% partial refund after declining all lower offers'
+                }
+              },
+              next: 'Accept → Thank You | Decline → Full Refund'
+            },
+            // Thank You for 50%
+            {
+              id: 'DOG_STEP_THANKYOU_50',
+              stepNumber: '10a',
+              name: 'Thank You: 50% Accepted',
+              persona: 'Amy',
+              function: 'showRefundThankYou(50)',
+              line: 2625,
+              isBranch: true,
+              branchType: 'refund',
+              isThankYou: true,
+              description: 'Confirmation screen when customer accepts 50% refund.',
+              messages: [
+                {
+                  id: 'DOG_THANKYOU_50_MSG',
+                  label: 'Thank You Message',
+                  content: "Thank you! I've submitted your 50% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank."
+                }
+              ],
+              caseDetails: {
+                type: 'refund',
+                resolution: 'partial_50',
+                refundAmount: '50% of order total',
+                issueText: 'Dog not using product - customer accepted 50% partial refund',
+                status: 'pending'
+              },
+              outcome: 'Flow ends. Case created. Customer receives confirmation email.'
+            },
+            // REFUND PATH - Step 11: Full Refund
+            {
+              id: 'DOG_STEP_FULL_REFUND',
+              stepNumber: '11',
+              name: 'Full Refund Request',
+              persona: 'Amy',
+              function: 'processFullRefund()',
+              line: 2660,
+              isBranch: true,
+              branchType: 'refund',
+              description: 'Customer declined all partial offers. Full refund is processed based on location.',
+              messages: [
+                {
+                  id: 'DOG_FULL_REFUND_MSG',
+                  label: 'Amy\'s Full Refund Message',
+                  content: "I understand completely. We stand behind our 90-day satisfaction guarantee, and I'll process a full refund for you."
+                }
+              ],
+              api: {
+                service: 'Shopify Order Data',
+                endpoint: 'order.shipping_address.country',
+                method: 'Local check',
+                explanation: 'System checks the customer\'s shipping country from the Shopify order. US customers must return the product to receive a refund. International customers keep the product (shipping costs make returns impractical).'
+              },
+              branches: [
+                { condition: 'US Customer', action: 'Shows return instructions' },
+                { condition: 'International', action: 'Customer keeps product, refund processed' }
+              ],
+              next: 'Location check determines return requirement'
+            },
+            // Full Refund - US (with return)
+            {
+              id: 'DOG_STEP_FULL_US',
+              stepNumber: '11a',
+              name: 'Full Refund: US Customer (Return Required)',
+              persona: 'Amy',
+              function: 'showFullRefundUS()',
+              line: 2690,
+              isBranch: true,
+              branchType: 'refund',
+              isThankYou: true,
+              description: 'US customers must return the product to receive full refund.',
+              messages: [
+                {
+                  id: 'DOG_FULL_US_MSG',
+                  label: 'Amy\'s Return Instructions',
+                  content: "Since you're in the US, we'll need you to return the product. I'll send you a prepaid return label via email.\n\nOnce we receive the return, your full refund will be processed within 3-5 business days."
+                },
+                {
+                  id: 'DOG_FULL_US_CONFIRM',
+                  label: 'Confirmation Message',
+                  content: "I've submitted your full refund request and return label request. 📦\n\nYou'll receive an email shortly with:\n• Prepaid return shipping label\n• Return instructions\n• Refund confirmation\n\nThank you for giving PuppyPad a try!"
+                }
+              ],
+              caseDetails: {
+                type: 'return',
+                resolution: 'full_refund_return',
+                refundAmount: '100% of order total',
+                issueText: 'Dog not using product - full refund with return (US customer)',
+                status: 'pending',
+                returnLabel: 'Auto-generated via EasyPost'
+              },
+              richpanelNote: 'Return case created. Label generation triggered.',
+              customerEmailSent: true,
+              emailContents: ['Prepaid return label (PDF)', 'Return instructions', 'Refund confirmation with timeline'],
+              outcome: 'Case created. Return label sent. Refund processed upon receipt.'
+            },
+            // Full Refund - International (keep product)
+            {
+              id: 'DOG_STEP_FULL_INTL',
+              stepNumber: '11b',
+              name: 'Full Refund: International (Keep Product)',
+              persona: 'Amy',
+              function: 'showFullRefundIntl()',
+              line: 2720,
+              isBranch: true,
+              branchType: 'refund',
+              isThankYou: true,
+              description: 'International customers keep the product - shipping makes returns impractical.',
+              messages: [
+                {
+                  id: 'DOG_FULL_INTL_MSG',
+                  label: 'Amy\'s Message',
+                  content: "Since you're outside the US, please keep the product - no need to return it! Your full refund will be processed within 3-5 business days."
+                },
+                {
+                  id: 'DOG_FULL_INTL_CONFIRM',
+                  label: 'Confirmation Message',
+                  content: "I've submitted your full refund request. 🎉\n\nYou'll receive an email confirmation shortly. The refund will appear in your account within 3-5 business days depending on your bank.\n\nThank you for giving PuppyPad a try - you're welcome to keep the product!"
+                }
+              ],
+              caseDetails: {
+                type: 'refund',
+                resolution: 'full_refund_keep',
+                refundAmount: '100% of order total',
+                issueText: 'Dog not using product - full refund, no return (international)',
+                status: 'pending',
+                returnRequired: false
+              },
+              richpanelNote: 'Refund case created. No return required (international).',
+              customerEmailSent: true,
+              outcome: 'Case created. Refund processed. Customer keeps product.'
             }
           ]
         },
@@ -5333,34 +5640,71 @@ End with an encouraging message about consistency and patience.`,
   renderSimNavItems(steps) {
     let html = '';
     let currentSection = null;
+    let inRefundLadder = false;
 
     steps.forEach((step, index) => {
-      // Check if we need a new section header
-      if (step.isBranch && step.branchType !== currentSection) {
-        currentSection = step.branchType;
-        const sectionTitle = step.branchType === 'success' ? '✅ Happy Path' : '🔄 Refund Path';
-        html += `<div class="sim-nav-section-title">${sectionTitle}</div>`;
-      } else if (!step.isBranch && currentSection !== 'main') {
-        currentSection = 'main';
-        if (index === 0) {
-          html += `<div class="sim-nav-section-title">Main Flow</div>`;
+      // Determine section
+      let newSection = null;
+      if (!step.isBranch) {
+        newSection = 'main';
+      } else if (step.branchType === 'success') {
+        newSection = 'success';
+      } else if (step.branchType === 'refund') {
+        // Sub-categorize refund steps
+        if (step.isThankYou) {
+          newSection = 'thankyou';
+        } else if (step.id.includes('LADDER') || step.id.includes('GUARANTEE')) {
+          newSection = 'ladder';
+        } else if (step.id.includes('FULL')) {
+          newSection = 'fullrefund';
+        } else {
+          newSection = 'refund';
         }
+      }
+
+      // Add section headers
+      if (newSection !== currentSection) {
+        if (newSection === 'main' && index === 0) {
+          html += `<div class="sim-nav-section-title">📋 Main Flow</div>`;
+        } else if (newSection === 'success' && currentSection !== 'success') {
+          html += `<div class="sim-nav-section-title">✅ Happy Path</div>`;
+        } else if ((newSection === 'refund' || newSection === 'ladder') && currentSection !== 'refund' && currentSection !== 'ladder') {
+          html += `<div class="sim-nav-section-title">🔄 Refund Path</div>`;
+          inRefundLadder = true;
+        } else if (newSection === 'fullrefund' && currentSection !== 'fullrefund') {
+          html += `<div class="sim-nav-section-title" style="margin-top: 8px; color: #dc2626;">💰 Full Refund</div>`;
+        }
+        currentSection = newSection;
       }
 
       const isActive = index === this.currentStepIndex;
       const isCompleted = index < this.currentStepIndex;
       const stepNum = step.stepNumber || (index + 1);
       
+      // Determine badge
       let badge = '';
-      if (step.isBranchPoint) badge = '<span class="sim-nav-badge decision">Decision</span>';
-      else if (step.branchType === 'success') badge = '<span class="sim-nav-badge success">Success</span>';
-      else if (step.branchType === 'refund') badge = '<span class="sim-nav-badge refund">Refund</span>';
+      if (step.isBranchPoint) {
+        badge = '<span class="sim-nav-badge decision">Decision</span>';
+      } else if (step.isThankYou) {
+        badge = '<span class="sim-nav-badge success">✓ Done</span>';
+      } else if (step.branchType === 'success') {
+        badge = '<span class="sim-nav-badge success">Success</span>';
+      } else if (step.id.includes('LADDER_20') || step.id.includes('LADDER_30') || step.id.includes('LADDER_40') || step.id.includes('LADDER_50')) {
+        badge = '<span class="sim-nav-badge refund">Offer</span>';
+      }
+
+      // Shorter names for thank you steps
+      let displayName = step.name;
+      if (step.isThankYou && displayName.includes(':')) {
+        displayName = displayName.split(':')[1].trim();
+      }
 
       html += `
-        <div class="sim-nav-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''} ${step.isBranch ? 'branch' : ''}" 
-             onclick="HubFlows.goToStep(${index})">
-          <span class="sim-nav-step-num">${stepNum}</span>
-          <span class="sim-nav-step-name">${step.name}</span>
+        <div class="sim-nav-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''} ${step.isBranch ? 'branch' : ''} ${step.isThankYou ? 'thankyou' : ''}" 
+             onclick="HubFlows.goToStep(${index})"
+             style="${step.isThankYou ? 'margin-left: 24px; font-size: 12px;' : ''}">
+          <span class="sim-nav-step-num" style="${step.isThankYou ? 'width: 22px; height: 22px; font-size: 10px;' : ''}">${stepNum}</span>
+          <span class="sim-nav-step-name">${displayName}</span>
           ${badge}
         </div>
       `;
@@ -5497,6 +5841,100 @@ End with an encouraging message about consistency and patience.`,
       });
     }
 
+    // Branches (decision points)
+    if (step.branches && step.branches.length > 0) {
+      html += `
+        <div class="sim-docs-section">
+          <div class="sim-docs-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v10"/><path d="M21 12h-6m-6 0H1"/></svg>
+            Decision Branches
+          </div>
+          <div class="sim-docs-info">
+            ${step.branches.map(b => `
+              <div class="sim-docs-info-row">
+                <span class="sim-docs-info-label">${b.condition}</span>
+                <span class="sim-docs-info-value" style="font-size: 11px;">${b.action}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Case Details (for thank you screens)
+    if (step.caseDetails) {
+      html += `
+        <div class="sim-docs-section">
+          <div class="sim-docs-section-title" style="color: #059669;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+            📋 Case Created in Hub
+          </div>
+          <div class="sim-docs-info" style="background: #ecfdf5; border: 1px solid #a7f3d0;">
+            <div class="sim-docs-info-row">
+              <span class="sim-docs-info-label">Type</span>
+              <span class="sim-docs-info-value"><code>${step.caseDetails.type}</code></span>
+            </div>
+            <div class="sim-docs-info-row">
+              <span class="sim-docs-info-label">Resolution</span>
+              <span class="sim-docs-info-value" style="color: #059669; font-weight: 600;">${step.caseDetails.resolution}</span>
+            </div>
+            ${step.caseDetails.refundAmount ? `
+              <div class="sim-docs-info-row">
+                <span class="sim-docs-info-label">Refund Amount</span>
+                <span class="sim-docs-info-value" style="color: #059669;">${step.caseDetails.refundAmount}</span>
+              </div>
+            ` : ''}
+            <div class="sim-docs-info-row">
+              <span class="sim-docs-info-label">Issue Text</span>
+              <span class="sim-docs-info-value" style="font-size: 11px;">${step.caseDetails.issueText}</span>
+            </div>
+            <div class="sim-docs-info-row">
+              <span class="sim-docs-info-label">Status</span>
+              <span class="sim-docs-info-value"><code>${step.caseDetails.status}</code></span>
+            </div>
+            ${step.caseDetails.returnLabel ? `
+              <div class="sim-docs-info-row">
+                <span class="sim-docs-info-label">Return Label</span>
+                <span class="sim-docs-info-value">${step.caseDetails.returnLabel}</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // Richpanel Note
+    if (step.richpanelNote) {
+      html += `
+        <div class="sim-docs-section">
+          <div class="sim-docs-section-title" style="color: #7c3aed;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+            Richpanel Sync
+          </div>
+          <p style="font-size: 12px; color: var(--gray-600); line-height: 1.5;">${step.richpanelNote}</p>
+        </div>
+      `;
+    }
+
+    // Customer Email
+    if (step.customerEmailSent) {
+      html += `
+        <div class="sim-docs-section">
+          <div class="sim-docs-section-title" style="color: #2563eb;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+            📧 Customer Email Sent
+          </div>
+          ${step.emailContents ? `
+            <ul style="font-size: 12px; color: var(--gray-600); margin: 8px 0 0 16px; line-height: 1.6;">
+              ${step.emailContents.map(e => `<li>${e}</li>`).join('')}
+            </ul>
+          ` : `
+            <p style="font-size: 12px; color: var(--gray-600);">Confirmation email with refund details and timeline</p>
+          `}
+        </div>
+      `;
+    }
+
     // Data stored
     if (step.dataStored && step.dataStored.length > 0) {
       html += `
@@ -5554,11 +5992,11 @@ End with an encouraging message about consistency and patience.`,
     if (step.outcome) {
       html += `
         <div class="sim-docs-section">
-          <div class="sim-docs-section-title">
+          <div class="sim-docs-section-title" style="color: #059669;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
-            Outcome
+            ✅ Outcome
           </div>
-          <p style="font-size: 13px; color: var(--gray-600);">${step.outcome}</p>
+          <p style="font-size: 13px; color: #059669; font-weight: 500;">${step.outcome}</p>
         </div>
       `;
     }
