@@ -4663,7 +4663,7 @@ const HubFlows = {
     START([🐕 Start])
     S1[Amy Intro]
     S2[Dog Form]
-    S3[Dr. Claudia]
+    S3[Claudia]
     S4[AI Tips]
     S5{Happy?}
     HAPPY([✅ Done])
@@ -4744,7 +4744,7 @@ const HubFlows = {
             {
               id: 'DOG_STEP_3',
               stepNumber: '3',
-              name: 'Transition to Dr. Claudia',
+              name: 'Transition to Claudia',
               persona: 'Amy → Claudia',
               function: 'submitDogInfo()',
               line: 2222,
@@ -4752,19 +4752,19 @@ const HubFlows = {
                 {
                   id: 'DOG_STEP_3_AMY_MESSAGE',
                   label: "Amy's Handoff",
-                  content: "Thanks for sharing! I'm connecting you with our in-house veterinarian, Dr. Claudia. She's amazing at this! 🩺❤️"
+                  content: "Thanks for sharing! I'm connecting you with our dog trainer, Claudia. She's amazing at this! 🐾❤️"
                 },
                 {
                   id: 'DOG_STEP_3_CLAUDIA_INTRO',
                   label: "Claudia's Introduction",
-                  content: "Hi! I'm Dr. Claudia, PuppyPad's veterinary consultant. I've helped thousands of pet parents with potty training challenges.\n\nBased on what you've shared about [dog name(s)], here are my personalized recommendations:"
+                  content: "Hi! I'm Claudia, PuppyPad's dog training expert. I've helped thousands of pet parents with potty training challenges.\n\nBased on what you've shared about [dog name(s)], here are my personalized recommendations:"
                 }
               ],
               api: {
                 service: 'OpenAI GPT-4o',
                 endpoint: '/api/ai-response',
                 method: 'POST',
-                explanation: 'This step calls the OpenAI API to generate personalized dog training tips. The system sends all the collected dog information to GPT-4o, which acts as "Dr. Claudia" - a friendly veterinarian persona. The AI analyzes the dog\'s breed, age, and what the customer has already tried, then generates customized recommendations.',
+                explanation: 'This step calls the OpenAI API to generate personalized dog training tips. The system sends all the collected dog information to GPT-4o, which acts as "Claudia" - a friendly dog trainer persona. The AI analyzes the dog\'s breed, age, and what the customer has already tried, then generates customized recommendations.',
                 requestBody: {
                   scenario: 'dog_tips',
                   model: 'gpt-4o',
@@ -4774,7 +4774,7 @@ const HubFlows = {
                     customerName: '[From order lookup]'
                   }
                 },
-                systemPrompt: `You are Dr. Claudia, PuppyPad's friendly in-house veterinarian and potty training expert. You've helped thousands of pet parents successfully train their dogs to use PuppyPad.
+                systemPrompt: `You are Claudia, PuppyPad's friendly dog trainer and potty training expert. You've helped thousands of pet parents successfully train their dogs to use PuppyPad.
 
 Your personality:
 - Warm, encouraging, and supportive
@@ -4831,7 +4831,7 @@ End with an encouraging message about consistency and patience.`,
                 {
                   id: 'DOG_STEP_5_MESSAGE',
                   label: "Amy's Question",
-                  content: "Did Dr. Claudia's tips help? Are you feeling good about trying these suggestions?"
+                  content: "Did Claudia's tips help? Are you feeling good about trying these suggestions?"
                 }
               ],
               buttons: [
@@ -4917,7 +4917,7 @@ End with an encouraging message about consistency and patience.`,
                 { text: '✗ I need more help', style: 'secondary', action: '→ Proceeds to 30% offer' }
               ],
               onAccept: {
-                thankYouMessage: "Thank you! I've submitted your 20% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.\n\nYou can keep using the product and trying Dr. Claudia's tips!",
+                thankYouMessage: "Thank you! I've submitted your 20% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.\n\nYou can keep using the product and trying Claudia's tips!",
                 caseCreated: {
                   type: 'refund',
                   resolution: 'partial_20',
@@ -4944,7 +4944,7 @@ End with an encouraging message about consistency and patience.`,
                 {
                   id: 'DOG_THANKYOU_20_MSG',
                   label: 'Thank You Message',
-                  content: "Thank you! I've submitted your 20% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.\n\nYou can keep using the product and trying Dr. Claudia's tips!"
+                  content: "Thank you! I've submitted your 20% partial refund request. 🎉\n\nOur team will process this within 1-2 business days. You'll receive an email confirmation, then the refund will appear in your account within 3-5 business days depending on your bank.\n\nYou can keep using the product and trying Claudia's tips!"
                 }
               ],
               caseDetails: {
@@ -6236,7 +6236,7 @@ Respond appropriately based on their situation. Don't mention refunds or returns
 === COMMON ISSUES & RESPONSES ===
 - "Not absorbent enough" → Explain proper break-in period, washing instructions
 - "Doesn't smell proof" → Tips for proper cleaning routine
-- "Dog won't use it" → Offer to connect with Dr. Claudia for training tips
+- "Dog won't use it" → Offer to connect with Claudia for training tips
 - "Too small/big" → Explain sizing options
 - "Quality concerns" → Explain our materials and durability
 
@@ -8042,7 +8042,7 @@ Respond appropriately based on their situation. Don't mention refunds or returns
   getPersonaTitle(persona) {
     const titles = {
       amy: 'Customer Support',
-      claudia: 'Veterinarian',
+      claudia: 'Dog Trainer',
       sarah: 'CX Lead'
     };
     return titles[persona] || 'Support';

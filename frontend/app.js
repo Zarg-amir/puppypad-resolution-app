@@ -38,7 +38,7 @@ const PERSONAS = {
   },
   claudia: {
     name: 'Claudia',
-    title: 'Veterinarian',
+    title: 'Dog Trainer',
     avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face',
     color: '#A78BFA',
   },
@@ -817,7 +817,7 @@ const PERSONA_INFO = {
   },
   claudia: {
     name: 'Claudia',
-    role: 'In-House Veterinarian',
+    role: 'Dog Trainer',
     avatar: CONFIG.AVATARS.claudia
   }
 };
@@ -2273,7 +2273,7 @@ async function submitDogInfo() {
 
   addEditableUserMessage(summaryHtml, () => renderDogInfoForm(), 'Edit Info');
 
-  await addBotMessage("Thanks for sharing! I'm connecting you with our in-house veterinarian, Dr. Claudia. She's amazing at this! 🩺❤️");
+  await addBotMessage("Thanks for sharing! I'm connecting you with our dog trainer, Claudia. She's amazing at this! 🐾❤️");
 
   setPersona('claudia');
 
@@ -2282,8 +2282,8 @@ async function submitDogInfo() {
   // Get product name from order
   const productName = state.selectedOrder?.lineItems?.[0]?.name || 'PuppyPad';
 
-  // Call AI API for Dr. Claudia tips
-  showProgress("Dr. Claudia is preparing your tips...");
+  // Call AI API for Claudia tips
+  showProgress("Claudia is preparing your tips...");
 
   try {
     const response = await fetch(`${CONFIG.API_URL}/api/ai-response`, {
@@ -2341,7 +2341,7 @@ Give it 5-7 days of consistency and you should see great progress!`, 'claudia');
   // Small delay before Amy responds - feels more natural
   await new Promise(resolve => setTimeout(resolve, 1500));
 
-  await addBotMessage("Did Dr. Claudia's tips help? Are you happy to give these a try?");
+  await addBotMessage("Did Claudia's tips help? Are you happy to give these a try?");
 
   showSatisfactionButtons();
 }

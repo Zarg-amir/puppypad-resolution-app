@@ -172,7 +172,7 @@ After analyzing the current codebase against the detailed specification, this do
       <div class="team-preview">
         <div class="team-avatars">
           <img src="amy-avatar.jpg" alt="Amy" class="team-avatar" title="Amy - Customer Support">
-          <img src="claudia-avatar.jpg" alt="Claudia" class="team-avatar" title="Claudia - Veterinarian">
+          <img src="claudia-avatar.jpg" alt="Claudia" class="team-avatar" title="Claudia - Dog Trainer">
           <img src="sarah-avatar.jpg" alt="Sarah" class="team-avatar" title="Sarah - CX Lead">
         </div>
         <span class="team-text">Our support team is ready to help</span>
@@ -752,7 +752,7 @@ const PERSONAS = {
   },
   claudia: {
     name: 'Claudia',
-    role: 'In-House Veterinarian',
+    role: 'Dog Trainer',
     avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face',
     gradient: 'var(--claudia-gradient)',
     bubbleBg: 'var(--claudia-bg)',
