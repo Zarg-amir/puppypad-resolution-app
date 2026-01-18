@@ -4882,10 +4882,10 @@ const HubFlows = {
 
   // Render the main flow documentation page
   render() {
-    const mainContent = document.getElementById('mainContent');
-    if (!mainContent) return;
+    const flowsContent = document.getElementById('flowsContent');
+    if (!flowsContent) return;
 
-    mainContent.innerHTML = `
+    flowsContent.innerHTML = `
       <div class="flow-viewer">
         <!-- Left Panel: Flow Selector -->
         <div class="flow-selector">
