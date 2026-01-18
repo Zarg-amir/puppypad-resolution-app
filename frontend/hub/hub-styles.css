@@ -7967,48 +7967,14 @@ button.template-tab:focus {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: linear-gradient(135deg, #FFF8E7 0%, #FFF5F5 50%, #F0F7FF 100%);
-  border-radius: 20px;
+  background: transparent;
   position: relative;
   overflow: hidden;
 }
 
-/* Animated gradient orbs like the chat app */
+/* Background element (kept for potential future use but hidden) */
 .sim-phone-bg {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-.sim-phone-bg::before {
-  content: '';
-  position: absolute;
-  width: 60%;
-  height: 60%;
-  background: #FFB7C5;
-  filter: blur(80px);
-  opacity: 0.5;
-  top: -20%;
-  left: -10%;
-  animation: simOrb 12s ease-in-out infinite;
-}
-
-.sim-phone-bg::after {
-  content: '';
-  position: absolute;
-  width: 50%;
-  height: 50%;
-  background: #A8D8EA;
-  filter: blur(80px);
-  opacity: 0.5;
-  bottom: -10%;
-  right: -10%;
-  animation: simOrb 15s ease-in-out infinite reverse;
-}
-
-@keyframes simOrb {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(20px, -20px) scale(1.1); }
+  display: none;
 }
 
 /* Phone Device Frame */
