@@ -22271,18 +22271,144 @@ function getFlowDocsHTML() {
       };
 
       // ============================================
+      // SIMULATOR MODAL COMPONENT
+      // ============================================
+      const SimulatorModal = ({ node, onClose }) => {
+        if (!node) return null;
+        
+        const getNodeContent = () => {
+          switch (node.type) {
+            case 'message':
+              return { type: 'message', persona: node.data?.persona || 'amy', content: node.data?.content || '' };
+            case 'options':
+              return { type: 'options', prompt: node.data?.prompt || '', options: node.data?.options || [] };
+            case 'offer':
+              return { type: 'offer', percent: node.data?.percent || 20, label: node.data?.label || 'Keep product' };
+            case 'form':
+              return { type: 'form', formType: node.data?.formType || 'address' };
+            default:
+              return { type: 'info', message: \`\${node.type} step\` };
+          }
+        };
+        
+        const content = getNodeContent();
+        
+        return React.createElement('div', {
+          style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+          onClick: onClose
+        },
+          React.createElement('div', {
+            style: { width: '380px', maxHeight: '90vh', background: 'linear-gradient(180deg, #fef7f0 0%, #fdf2f8 50%, #f5f3ff 100%)', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' },
+            onClick: (e) => e.stopPropagation()
+          },
+            // Chat Header
+            React.createElement('div', { style: { padding: '16px 20px', background: 'white', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
+                // Amy Avatar with gradient ring
+                React.createElement('div', { style: { width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+                  React.createElement('div', { style: { width: '100%', height: '100%', borderRadius: '50%', background: '#fecdd3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' } }, '👩')
+                ),
+                React.createElement('div', null,
+                  React.createElement('div', { style: { fontWeight: 600, fontSize: '16px', color: '#1f2937' } }, 'Amy'),
+                  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#10b981' } },
+                    React.createElement('div', { style: { width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' } }),
+                    'Online'
+                  )
+                )
+              ),
+              React.createElement('button', {
+                onClick: onClose,
+                style: { padding: '8px 16px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '20px', fontSize: '13px', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }
+              }, 
+                React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                  React.createElement('path', { d: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' }),
+                  React.createElement('path', { d: 'M3 3v5h5' })
+                ),
+                'Start Over'
+              )
+            ),
+            // Chat Body
+            React.createElement('div', { style: { padding: '20px', minHeight: '400px', maxHeight: '500px', overflowY: 'auto' } },
+              // Amy Message
+              content.type === 'message' && React.createElement('div', { style: { marginBottom: '16px' } },
+                React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', gap: '10px' } },
+                  React.createElement('div', { style: { width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)', padding: '2px', flexShrink: 0 } },
+                    React.createElement('div', { style: { width: '100%', height: '100%', borderRadius: '50%', background: '#fecdd3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' } }, '👩')
+                  ),
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' } },
+                      React.createElement('span', { style: { fontWeight: 600, fontSize: '14px', color: '#1f2937' } }, content.persona === 'amy' ? 'Amy' : 'Claudia'),
+                      React.createElement('span', { style: { fontSize: '12px', color: '#9ca3af' } }, 'Customer Support')
+                    ),
+                    React.createElement('div', { style: { background: 'white', padding: '14px 16px', borderRadius: '16px', borderTopLeftRadius: '4px', fontSize: '14px', lineHeight: '1.6', color: '#374151', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' } }, content.content)
+                  )
+                )
+              ),
+              // Options
+              content.type === 'options' && React.createElement('div', null,
+                React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '20px' } },
+                  React.createElement('div', { style: { width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)', padding: '2px', flexShrink: 0 } },
+                    React.createElement('div', { style: { width: '100%', height: '100%', borderRadius: '50%', background: '#fecdd3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' } }, '👩')
+                  ),
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' } },
+                      React.createElement('span', { style: { fontWeight: 600, fontSize: '14px', color: '#1f2937' } }, 'Amy'),
+                      React.createElement('span', { style: { fontSize: '12px', color: '#9ca3af' } }, 'Customer Support')
+                    ),
+                    React.createElement('div', { style: { background: 'white', padding: '14px 16px', borderRadius: '16px', borderTopLeftRadius: '4px', fontSize: '14px', lineHeight: '1.6', color: '#374151', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' } }, content.prompt)
+                  )
+                ),
+                React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px' } },
+                  (content.options || []).map((opt, i) =>
+                    React.createElement('button', {
+                      key: i,
+                      style: { width: '100%', padding: '14px 18px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', color: '#374151', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }
+                    }, opt.label || opt)
+                  )
+                )
+              ),
+              // Offer Card
+              content.type === 'offer' && React.createElement('div', { style: { background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' } },
+                React.createElement('div', { style: { textAlign: 'center', marginBottom: '16px' } },
+                  React.createElement('div', { style: { width: '56px', height: '56px', margin: '0 auto 12px', borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+                    React.createElement(Icons.Gift, { style: { color: '#10b981', width: 28, height: 28 } })
+                  ),
+                  React.createElement('p', { style: { fontSize: '28px', fontWeight: 700, color: '#10b981', margin: 0 } }, \`\${content.percent}% Refund\`),
+                  React.createElement('p', { style: { fontSize: '14px', color: '#6b7280', marginTop: '4px' } }, content.label)
+                ),
+                React.createElement('div', { style: { display: 'flex', gap: '12px' } },
+                  React.createElement('button', { style: { flex: 1, padding: '12px', background: '#10b981', border: 'none', borderRadius: '10px', color: 'white', fontWeight: 600, fontSize: '14px', cursor: 'pointer' } }, 'Accept'),
+                  React.createElement('button', { style: { flex: 1, padding: '12px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', color: '#6b7280', fontWeight: 500, fontSize: '14px', cursor: 'pointer' } }, 'Decline')
+                )
+              )
+            ),
+            // Footer
+            React.createElement('div', { style: { padding: '12px 20px', background: 'white', borderTop: '1px solid #f3f4f6', textAlign: 'center' } },
+              React.createElement('p', { style: { fontSize: '12px', color: '#9ca3af', margin: 0 } }, 
+                'App not working? ',
+                React.createElement('span', { style: { color: '#3b82f6', textDecoration: 'underline', cursor: 'pointer' } }, 'Click here to report an issue')
+              ),
+              React.createElement('div', { style: { marginTop: '8px', fontSize: '14px', fontWeight: 700, color: '#cbd5e1', letterSpacing: '2px' } }, 'PUPPYPAD')
+            )
+          )
+        );
+      };
+
+      // ============================================
       // FLOW CANVAS COMPONENT
       // ============================================
       const FlowCanvas = ({ subflow, parentFlow, allSubflows, viewingEntry, onSelectSubflow, onSelectEntry, onSubflowNodeClick, onBackToFlows }) => {
         const [nodes, setNodes, onNodesChange] = useNodesState(subflow.nodes || []);
         const [edges, setEdges, onEdgesChange] = useEdgesState(subflow.edges || []);
         const [selectedNode, setSelectedNode] = useState(null);
+        const [showSimulator, setShowSimulator] = useState(false);
 
         // Update nodes when subflow changes
         useEffect(() => {
           setNodes(subflow.nodes || []);
           setEdges(subflow.edges || []);
           setSelectedNode(null);
+          setShowSimulator(false);
         }, [subflow.id]);
 
         const onNodeClick = useCallback((event, node) => {
@@ -22340,72 +22466,171 @@ function getFlowDocsHTML() {
           // Right Panel - Properties
           React.createElement('div', { 
             style: { 
-              width: '300px', 
-              background: 'rgba(255,255,255,0.95)',
+              width: '320px', 
+              background: 'rgba(255,255,255,0.98)',
               backdropFilter: 'blur(8px)',
               borderLeft: '1px solid #e5e7eb',
-              padding: '20px',
-              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
               flexShrink: 0
             } 
           },
             selectedNode ? 
-              React.createElement('div', null,
-                React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' } },
-                  React.createElement('div', { 
-                    style: { width: '32px', height: '32px', borderRadius: '50%', background: (nodeColors[selectedNode.type] || '#94a3b8') + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', color: nodeColors[selectedNode.type] || '#94a3b8' } 
-                  }, 
-                    selectedNode.type === 'message' ? React.createElement(Icons.MessageSquare, null) :
-                    selectedNode.type === 'options' ? React.createElement(Icons.List, null) :
-                    selectedNode.type === 'condition' ? React.createElement(Icons.GitBranch, null) :
-                    selectedNode.type === 'api' ? React.createElement(Icons.Zap, null) :
-                    selectedNode.type === 'ai' ? React.createElement(Icons.Bot, null) :
-                    selectedNode.type === 'offer' ? React.createElement(Icons.Gift, null) :
-                    selectedNode.type === 'case' ? React.createElement(Icons.FolderOpen, null) :
-                    selectedNode.type === 'form' ? React.createElement(Icons.FileText, null) :
-                    selectedNode.type === 'end' ? React.createElement(Icons.Flag, null) :
-                    React.createElement(Icons.Play, null)
-                  ),
-                  React.createElement('div', null,
-                    React.createElement('h3', { style: { fontSize: '16px', fontWeight: 600, margin: 0, textTransform: 'capitalize' } }, 
-                      selectedNode.type === 'ai' ? 'AI Response' : selectedNode.type + ' Node'
+              React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } },
+                // Header
+                React.createElement('div', { style: { padding: '20px', borderBottom: '1px solid #f3f4f6' } },
+                  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
+                    React.createElement('div', { 
+                      style: { width: '40px', height: '40px', borderRadius: '10px', background: (nodeColors[selectedNode.type] || '#94a3b8') + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', color: nodeColors[selectedNode.type] || '#94a3b8' } 
+                    }, 
+                      selectedNode.type === 'message' ? React.createElement(Icons.MessageSquare, null) :
+                      selectedNode.type === 'options' ? React.createElement(Icons.List, null) :
+                      selectedNode.type === 'condition' ? React.createElement(Icons.GitBranch, null) :
+                      selectedNode.type === 'api' ? React.createElement(Icons.Zap, null) :
+                      selectedNode.type === 'ai' ? React.createElement(Icons.Bot, null) :
+                      selectedNode.type === 'offer' ? React.createElement(Icons.Gift, null) :
+                      selectedNode.type === 'case' ? React.createElement(Icons.FolderOpen, null) :
+                      selectedNode.type === 'form' ? React.createElement(Icons.FileText, null) :
+                      selectedNode.type === 'end' ? React.createElement(Icons.Flag, null) :
+                      React.createElement(Icons.Play, null)
                     ),
-                    React.createElement('p', { style: { fontSize: '12px', color: '#9ca3af', margin: 0 } }, \`ID: \${selectedNode.id}\`)
+                    React.createElement('div', null,
+                      React.createElement('h3', { style: { fontSize: '16px', fontWeight: 600, margin: 0, textTransform: 'capitalize', color: '#111827' } }, 
+                        selectedNode.type === 'ai' ? 'AI Response' : selectedNode.type + ' Node'
+                      ),
+                      React.createElement('p', { style: { fontSize: '12px', color: '#9ca3af', margin: 0, marginTop: '2px' } }, \`ID: \${selectedNode.id}\`)
+                    )
                   )
                 ),
-                selectedNode.data?.persona && React.createElement('div', { style: { marginBottom: '16px' } },
-                  React.createElement('label', { style: { fontSize: '12px', fontWeight: 500, color: '#6b7280', display: 'block', marginBottom: '6px' } }, 'Persona'),
-                  React.createElement('div', { style: { padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', fontSize: '14px', border: '1px solid #e5e7eb' } }, 
-                    selectedNode.data.persona === 'amy' ? 'Amy (Support)' : selectedNode.data.persona === 'claudia' ? 'Claudia (Trainer)' : selectedNode.data.persona
+                // Content
+                React.createElement('div', { style: { flex: 1, padding: '20px', overflowY: 'auto' } },
+                  // Node Type Badge
+                  React.createElement('div', { style: { marginBottom: '16px' } },
+                    React.createElement('span', { 
+                      style: { display: 'inline-block', padding: '4px 10px', background: (nodeColors[selectedNode.type] || '#94a3b8') + '15', color: nodeColors[selectedNode.type] || '#94a3b8', borderRadius: '6px', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' } 
+                    }, selectedNode.type)
+                  ),
+                  // Persona
+                  selectedNode.data?.persona && React.createElement('div', { style: { marginBottom: '16px' } },
+                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Persona'),
+                    React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', border: '1px solid #e5e7eb' } }, 
+                      selectedNode.data.persona === 'amy' ? 'Amy (Support)' : selectedNode.data.persona === 'claudia' ? 'Claudia (Trainer)' : selectedNode.data.persona
+                    )
+                  ),
+                  // Message Content
+                  selectedNode.data?.content && React.createElement('div', { style: { marginBottom: '16px' } },
+                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Message'),
+                    React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', lineHeight: '1.6', border: '1px solid #e5e7eb', color: '#374151' } }, selectedNode.data.content)
+                  ),
+                  // Options Prompt
+                  selectedNode.data?.prompt && React.createElement('div', { style: { marginBottom: '16px' } },
+                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Prompt'),
+                    React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', lineHeight: '1.6', border: '1px solid #e5e7eb' } }, selectedNode.data.prompt)
+                  ),
+                  // Options List
+                  selectedNode.data?.options && React.createElement('div', { style: { marginBottom: '16px' } },
+                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, \`Options (\${selectedNode.data.options.length})\`),
+                    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
+                      selectedNode.data.options.map((opt, i) => 
+                        React.createElement('div', { key: i, style: { padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', fontSize: '13px', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '8px' } },
+                          React.createElement('span', { style: { width: '20px', height: '20px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, color: '#6b7280' } }, i + 1),
+                          opt.label || opt
+                        )
+                      )
+                    )
+                  ),
+                  // API Integration
+                  selectedNode.data?.service && React.createElement('div', { style: { marginBottom: '16px' } },
+                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Integration'),
+                    React.createElement('div', { style: { padding: '12px 14px', background: '#fdf4ff', borderRadius: '10px', fontSize: '14px', border: '1px solid #f5d0fe' } }, 
+                      React.createElement('div', { style: { fontWeight: 600, color: '#a855f7', marginBottom: '4px' } }, selectedNode.data.service),
+                      React.createElement('code', { style: { fontSize: '12px', color: '#7e22ce', background: '#fae8ff', padding: '2px 6px', borderRadius: '4px' } }, selectedNode.data.endpoint)
+                    )
+                  ),
+                  // Refund Offer
+                  selectedNode.data?.percent && React.createElement('div', { style: { marginBottom: '16px' } },
+                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Offer Details'),
+                    React.createElement('div', { style: { padding: '16px', background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)', borderRadius: '12px', textAlign: 'center' } },
+                      React.createElement('div', { style: { fontSize: '32px', fontWeight: 700, color: '#059669' } }, \`\${selectedNode.data.percent}%\`),
+                      React.createElement('div', { style: { fontSize: '13px', color: '#047857', marginTop: '4px' } }, selectedNode.data.label || 'Refund')
+                    )
+                  ),
+                  // AI Model
+                  selectedNode.data?.model && React.createElement('div', { style: { marginBottom: '16px' } },
+                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'AI Configuration'),
+                    React.createElement('div', { style: { padding: '12px 14px', background: '#eef2ff', borderRadius: '10px', border: '1px solid #c7d2fe' } },
+                      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '8px' } },
+                        React.createElement('span', { style: { fontSize: '12px', color: '#6b7280' } }, 'Model'),
+                        React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#4f46e5' } }, selectedNode.data.model)
+                      ),
+                      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between' } },
+                        React.createElement('span', { style: { fontSize: '12px', color: '#6b7280' } }, 'Provider'),
+                        React.createElement('span', { style: { fontSize: '12px', fontWeight: 500, color: '#374151' } }, 'OpenAI')
+                      )
+                    )
+                  ),
+                  // Case Type
+                  selectedNode.data?.type && selectedNode.type === 'case' && React.createElement('div', { style: { marginBottom: '16px' } },
+                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Case Details'),
+                    React.createElement('div', { style: { padding: '12px 14px', background: '#fff7ed', borderRadius: '10px', border: '1px solid #fed7aa' } },
+                      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '8px' } },
+                        React.createElement('span', { style: { fontSize: '12px', color: '#6b7280' } }, 'Type'),
+                        React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#ea580c', textTransform: 'capitalize' } }, selectedNode.data.type)
+                      ),
+                      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between' } },
+                        React.createElement('span', { style: { fontSize: '12px', color: '#6b7280' } }, 'Priority'),
+                        React.createElement('span', { style: { fontSize: '12px', fontWeight: 500, color: '#374151', textTransform: 'capitalize' } }, selectedNode.data.priority || 'Normal')
+                      )
+                    )
+                  ),
+                  // Condition
+                  selectedNode.data?.variable && React.createElement('div', { style: { marginBottom: '16px' } },
+                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Condition Logic'),
+                    React.createElement('div', { style: { padding: '12px 14px', background: '#fffbeb', borderRadius: '10px', border: '1px solid #fde68a', fontFamily: 'monospace', fontSize: '13px' } },
+                      React.createElement('code', null, \`if (\${selectedNode.data.variable} \${selectedNode.data.operator || '==='} "\${selectedNode.data.value || ''}")\`)
+                    )
                   )
                 ),
-                selectedNode.data?.content && React.createElement('div', { style: { marginBottom: '16px' } },
-                  React.createElement('label', { style: { fontSize: '12px', fontWeight: 500, color: '#6b7280', display: 'block', marginBottom: '6px' } }, 'Message'),
-                  React.createElement('div', { style: { padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', fontSize: '14px', lineHeight: '1.5', border: '1px solid #e5e7eb' } }, selectedNode.data.content)
-                ),
-                selectedNode.data?.service && React.createElement('div', { style: { marginBottom: '16px' } },
-                  React.createElement('label', { style: { fontSize: '12px', fontWeight: 500, color: '#6b7280', display: 'block', marginBottom: '6px' } }, 'Integration'),
-                  React.createElement('div', { style: { padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', fontSize: '14px', border: '1px solid #e5e7eb' } }, 
-                    \`\${selectedNode.data.service}.\${selectedNode.data.endpoint}\`
+                // Simulate Button
+                (selectedNode.type === 'message' || selectedNode.type === 'options' || selectedNode.type === 'offer') && 
+                React.createElement('div', { style: { padding: '16px 20px', borderTop: '1px solid #f3f4f6' } },
+                  React.createElement('button', {
+                    onClick: () => setShowSimulator(true),
+                    style: { 
+                      width: '100%', 
+                      padding: '14px 20px', 
+                      background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', 
+                      border: 'none', 
+                      borderRadius: '12px', 
+                      color: 'white', 
+                      fontSize: '14px', 
+                      fontWeight: 600, 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '10px',
+                      boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
+                      transition: 'all 0.2s'
+                    }
+                  },
+                    React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                      React.createElement('polygon', { points: '5 3 19 12 5 21 5 3' })
+                    ),
+                    'Simulate This Step'
                   )
-                ),
-                selectedNode.data?.percent && React.createElement('div', { style: { marginBottom: '16px' } },
-                  React.createElement('label', { style: { fontSize: '12px', fontWeight: 500, color: '#6b7280', display: 'block', marginBottom: '6px' } }, 'Refund Amount'),
-                  React.createElement('div', { style: { padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', fontSize: '14px', border: '1px solid #e5e7eb' } }, \`\${selectedNode.data.percent}%\`)
-                ),
-                selectedNode.data?.model && React.createElement('div', { style: { marginBottom: '16px' } },
-                  React.createElement('label', { style: { fontSize: '12px', fontWeight: 500, color: '#6b7280', display: 'block', marginBottom: '6px' } }, 'AI Model'),
-                  React.createElement('div', { style: { padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', fontSize: '14px', border: '1px solid #e5e7eb' } }, selectedNode.data.model)
                 )
               )
-            : React.createElement('div', { style: { textAlign: 'center', color: '#9ca3af', padding: '60px 20px' } },
-                React.createElement('div', { style: { width: '48px', height: '48px', margin: '0 auto 16px', background: '#f3f4f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+            : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af', padding: '40px' } },
+                React.createElement('div', { style: { width: '64px', height: '64px', margin: '0 auto 20px', background: '#f3f4f6', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
                   React.createElement(Icons.Eye, null)
                 ),
-                React.createElement('p', { style: { fontWeight: 500, marginBottom: '4px' } }, 'Select a node'),
-                React.createElement('p', { style: { fontSize: '13px' } }, 'Click on a node to view its properties')
+                React.createElement('p', { style: { fontWeight: 600, marginBottom: '6px', color: '#6b7280', fontSize: '15px' } }, 'Select a node'),
+                React.createElement('p', { style: { fontSize: '13px', textAlign: 'center', lineHeight: '1.5' } }, 'Click on any node in the canvas to view its properties and details')
               )
-          )
+          ),
+          // Simulator Modal
+          showSimulator && React.createElement(SimulatorModal, { node: selectedNode, onClose: () => setShowSimulator(false) })
         );
       };
 
