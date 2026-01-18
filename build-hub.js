@@ -12,15 +12,17 @@
  * - For JS: Use JSON.stringify to create a single-line double-quoted string
  * 
  * The functions in index.js have specific known structures:
- * - getResolutionHubHTML: starts at line 9450, uses template literal
- * - getHubStylesCSS: starts at line 10911, uses template literal  
- * - getHubAppJS: starts at line 12882, uses double-quoted string
+ * - getResolutionHubHTML: uses template literal
+ * - getFlowDocsHTML: uses template literal (flow documentation page)
+ * - getHubStylesCSS: uses template literal  
+ * - getHubAppJS: uses double-quoted string
  */
 
 const fs = require('fs');
 const path = require('path');
 
 const HUB_HTML_PATH = path.join(__dirname, 'frontend/hub/index.html');
+const FLOW_DOCS_PATH = path.join(__dirname, 'frontend/hub/flows.html');
 const HUB_APP_PATH = path.join(__dirname, 'frontend/hub/hub-app.js');
 const HUB_CSS_PATH = path.join(__dirname, 'frontend/hub/hub-styles.css');
 const INDEX_PATH = path.join(__dirname, 'src/index.js');
@@ -28,12 +30,20 @@ const INDEX_PATH = path.join(__dirname, 'src/index.js');
 console.log('🔨 Building hub files into Worker...\n');
 
 // Read source files
-let hubHTML, hubAppJS, hubCSS;
+let hubHTML, flowDocsHTML, hubAppJS, hubCSS;
 try {
   hubHTML = fs.readFileSync(HUB_HTML_PATH, 'utf8');
   console.log(`✓ Read ${HUB_HTML_PATH} (${hubHTML.length} bytes)`);
 } catch (e) {
   console.error(`✗ Failed to read ${HUB_HTML_PATH}:`, e.message);
+  process.exit(1);
+}
+
+try {
+  flowDocsHTML = fs.readFileSync(FLOW_DOCS_PATH, 'utf8');
+  console.log(`✓ Read ${FLOW_DOCS_PATH} (${flowDocsHTML.length} bytes)`);
+} catch (e) {
+  console.error(`✗ Failed to read ${FLOW_DOCS_PATH}:`, e.message);
   process.exit(1);
 }
 
@@ -159,6 +169,27 @@ if (hubCSSEndLine === -1) {
 const hubCSSReplacement = `function getHubStylesCSS() {\n  return \`${escapeForTemplate(hubCSS)}\`;\n}`;
 lines.splice(hubCSSLine, hubCSSEndLine - hubCSSLine + 1, ...hubCSSReplacement.split('\n'));
 console.log(`✓ Updated getHubStylesCSS() (was lines ${hubCSSLine + 1} to ${hubCSSEndLine + 1})`);
+
+// Re-find Flow Docs HTML function (line numbers may have shifted)
+const flowDocsLine = findFunctionLine(lines, 'getFlowDocsHTML');
+if (flowDocsLine === -1) {
+  console.error('✗ Could not find getFlowDocsHTML() function');
+  process.exit(1);
+}
+let flowDocsEndLine = findTemplateFunctionEndLine(lines, flowDocsLine);
+if (flowDocsEndLine === -1) {
+  // For single-line functions, find the closing brace
+  flowDocsEndLine = findJsonFunctionEndLine(lines, flowDocsLine);
+}
+if (flowDocsEndLine === -1) {
+  console.error('✗ Could not find end of getFlowDocsHTML() function');
+  process.exit(1);
+}
+
+// Replace getFlowDocsHTML
+const flowDocsReplacement = `function getFlowDocsHTML() {\n  return \`${escapeForTemplate(flowDocsHTML)}\`;\n}`;
+lines.splice(flowDocsLine, flowDocsEndLine - flowDocsLine + 1, ...flowDocsReplacement.split('\n'));
+console.log(`✓ Updated getFlowDocsHTML() (was lines ${flowDocsLine + 1} to ${flowDocsEndLine + 1})`);
 
 // Re-find HTML function (line numbers may have shifted)
 const hubHTMLLine = findFunctionLine(lines, 'getResolutionHubHTML');

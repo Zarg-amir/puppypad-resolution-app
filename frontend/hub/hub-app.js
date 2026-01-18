@@ -6026,12 +6026,6 @@ const HubCaseDetail = {
                 <div class="case-info-label">Assigned To</div>
                 <div class="case-info-value">${HubUsers.renderAssigneeCell(c.case_id, c.assigned_to)}</div>
               </div>
-              ${c.clickup_task_url ? `
-              <div class="case-info-row">
-                <div class="case-info-label">ClickUp</div>
-                <div class="case-info-value"><a href="${c.clickup_task_url}" target="_blank">View Task</a></div>
-              </div>
-              ` : ''}
             </div>
           </div>
         </div>

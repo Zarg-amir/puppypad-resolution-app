@@ -86,6 +86,21 @@ export const PRODUCT_DOC_MAP = {
 // ============================================
 
 /**
+ * Get the case ID prefix for a case type
+ */
+export function getCasePrefix(caseType) {
+  const prefixMap = {
+    'refund': 'REF',
+    'return': 'RET',
+    'shipping': 'SHP',
+    'subscription': 'SUB',
+    'manual': 'HLP',
+    'help': 'HLP'
+  };
+  return prefixMap[caseType] || 'HLP';
+}
+
+/**
  * Check if a carrier is a China/international carrier
  */
 export function isChinaCarrier(carrierName) {

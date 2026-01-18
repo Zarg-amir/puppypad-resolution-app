@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow Documentation | Resolution Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --brand-navy: #1a365d;
+      --brand-navy-light: #2c5282;
+      --accent-teal: #4fd1c5;
+      --accent-coral: #f56565;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --info: #3b82f6;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #FFF8E7 0%, #FFF5F5 50%, #F0F7FF 100%);
+      background-attachment: fixed;
+      color: var(--gray-800);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding: 24px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .page-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--brand-navy);
+    }
+
+    .page-subtitle {
+      color: var(--gray-500);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--brand-navy);
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .back-link:hover {
+      background: var(--brand-navy-light);
+      transform: translateY(-1px);
+    }
+
+    /* Flow Selector */
+    .flow-selector {
+      margin-bottom: 24px;
+      padding: 16px 24px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .flow-selector label {
+      font-weight: 600;
+      margin-right: 12px;
+      color: var(--gray-700);
+    }
+
+    .flow-selector select {
+      padding: 10px 16px;
+      border: 2px solid var(--gray-200);
+      border-radius: 8px;
+      font-size: 14px;
+      min-width: 300px;
+      cursor: pointer;
+    }
+
+    .flow-selector select:focus {
+      outline: none;
+      border-color: var(--accent-teal);
+    }
+
+    /* Diagram Section */
+    .diagram-section {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--gray-100);
+    }
+
+    .section-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--brand-navy);
+    }
+
+    .collapse-btn {
+      padding: 8px 16px;
+      background: var(--gray-100);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-600);
+      transition: all 0.2s;
+    }
+
+    .collapse-btn:hover {
+      background: var(--gray-200);
+    }
+
+    .mermaid {
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* Step Cards */
+    .steps-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .step-card {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      border-left: 4px solid var(--accent-teal);
+    }
+
+    .step-card.branch {
+      border-left-color: var(--warning);
+    }
+
+    .step-card.refund-ladder {
+      border-left-color: var(--accent-coral);
+    }
+
+    .step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .step-info {
+      flex: 1;
+    }
+
+    .step-number {
+      display: inline-block;
+      background: var(--brand-navy);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .step-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--gray-800);
+      margin-bottom: 4px;
+    }
+
+    .step-id {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--gray-400);
+      background: var(--gray-100);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .step-meta {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .meta-item {
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+
+    .meta-item strong {
+      color: var(--gray-700);
+    }
+
+    /* Message Block */
+    .message-block {
+      background: var(--gray-50);
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      position: relative;
+    }
+
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .message-label {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--gray-600);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .message-id {
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--gray-400);
+      background: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .suggest-edit-btn {
+      padding: 6px 12px;
+      background: var(--info);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .suggest-edit-btn:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    .message-content {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--gray-700);
+      white-space: pre-wrap;
+      border: 1px solid var(--gray-200);
+    }
+
+    .message-content.amy {
+      border-left: 3px solid var(--accent-teal);
+    }
+
+    .message-content.claudia {
+      border-left: 3px solid #9333ea;
+    }
+
+    /* Form Fields Table */
+    .form-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 13px;
+    }
+
+    .form-table th {
+      background: var(--brand-navy);
+      color: white;
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    .form-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--gray-200);
+      background: white;
+    }
+
+    .form-table tr:nth-child(even) td {
+      background: var(--gray-50);
+    }
+
+    .field-id {
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--gray-500);
+    }
+
+    /* Buttons Table */
+    .buttons-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 13px;
+    }
+
+    .buttons-table th {
+      background: var(--gray-700);
+      color: white;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    .buttons-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--gray-200);
+      background: white;
+    }
+
+    /* Offer Card Preview */
+    .offer-card-preview {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 2px solid var(--success);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 16px 0;
+      text-align: center;
+    }
+
+    .offer-card-preview .percentage {
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--success);
+    }
+
+    .offer-card-preview .amount {
+      font-size: 18px;
+      color: var(--gray-600);
+      margin-top: 4px;
+    }
+
+    .offer-card-preview .description {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-top: 8px;
+    }
+
+    /* API Config Block */
+    .api-config {
+      background: var(--gray-800);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+      color: #e5e7eb;
+      font-family: monospace;
+      font-size: 12px;
+      overflow-x: auto;
+    }
+
+    .api-config .key {
+      color: #93c5fd;
+    }
+
+    .api-config .value {
+      color: #86efac;
+    }
+
+    /* Data Structure Block */
+    .data-block {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+      color: #e2e8f0;
+      font-family: monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* Next Action */
+    .next-action {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 16px;
+      padding: 12px;
+      background: var(--gray-100);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--gray-600);
+    }
+
+    .next-action strong {
+      color: var(--gray-700);
+    }
+
+    /* Divider */
+    .step-divider {
+      height: 2px;
+      background: linear-gradient(to right, var(--accent-teal), transparent);
+      margin: 8px 0;
+    }
+
+    /* Sub-steps (Refund Ladder) */
+    .sub-steps {
+      margin-left: 24px;
+      padding-left: 24px;
+      border-left: 3px solid var(--gray-200);
+    }
+
+    .sub-step {
+      background: var(--gray-50);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+
+    .sub-step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .sub-step-title {
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+
+    .sub-step-badge {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-manager {
+      background: var(--warning);
+      color: white;
+    }
+
+    .badge-instant {
+      background: var(--success);
+      color: white;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .modal-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--gray-400);
+    }
+
+    .modal-close:hover {
+      color: var(--gray-600);
+    }
+
+    .change-request-preview {
+      background: var(--gray-50);
+      border-radius: 8px;
+      padding: 16px;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      margin-bottom: 16px;
+      border: 1px solid var(--gray-200);
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid var(--gray-200);
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 12px;
+      resize: vertical;
+    }
+
+    .modal-input:focus {
+      outline: none;
+      border-color: var(--info);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .modal-btn.primary {
+      background: var(--info);
+      color: white;
+    }
+
+    .modal-btn.primary:hover {
+      background: #2563eb;
+    }
+
+    .modal-btn.secondary {
+      background: var(--gray-100);
+      color: var(--gray-700);
+    }
+
+    .modal-btn.secondary:hover {
+      background: var(--gray-200);
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--success);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 2000;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">Flow Documentation</h1>
+        <p class="page-subtitle">Detailed documentation for chat app flows with edit suggestions</p>
+      </div>
+      <a href="/hub" class="back-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Hub
+      </a>
+    </header>
+
+    <!-- Flow Selector -->
+    <div class="flow-selector">
+      <label for="flowSelect">Select Flow:</label>
+      <select id="flowSelect">
+        <option value="dog_not_using" selected>Help With Order → Dog Not Using</option>
+        <option value="other" disabled>More flows coming soon...</option>
+      </select>
+    </div>
+
+    <!-- Diagram Section -->
+    <section class="diagram-section">
+      <div class="section-header">
+        <h2 class="section-title">Flow Overview</h2>
+        <button class="collapse-btn" onclick="toggleDiagram()">Collapse</button>
+      </div>
+      <div id="diagramContainer">
+        <div class="mermaid">
+flowchart TD
+    A[Start: Dog Not Using] --> B[Step 1: Amy Introduction]
+    B --> C[Step 2: Dog Info Form]
+    C --> D[Step 3: Transition to Claudia]
+    D --> E[Step 4: AI-Generated Tips]
+    E --> F[Step 5: Satisfaction Check]
+    F -->|Yes, I'll try these!| G[Step 6A: Happy Ending]
+    F -->|No, need more help| H[Step 6B: Refund Ladder]
+    
+    G --> G1[Success - No Case Created]
+    
+    H --> H0{90-Day Guarantee Check}
+    H0 -->|Expired| HX[Guarantee Expired - Flow Ends]
+    H0 -->|Valid| H1[Ladder Step 1: 20% Offer]
+    H1 -->|Accept| CASE1[Submit Case: partial_20]
+    H1 -->|Decline| H2[Ladder Step 2: 30% Offer]
+    H2 -->|Accept| CASE2[Submit Case: partial_30]
+    H2 -->|Decline| H3[Ladder Step 3: 40% Offer]
+    H3 -->|Accept| CASE3[Submit Case: partial_40]
+    H3 -->|Decline| H4[Ladder Step 4: 50% Offer]
+    H4 -->|Accept| CASE4[Submit Case: partial_50]
+    H4 -->|Decline| H5[Ladder Step 5: Full Refund]
+    
+    H5 --> LOC{Location Check}
+    LOC -->|US/Domestic| H5A[Return Required]
+    LOC -->|International| H5B[Keep Product]
+    H5A --> CASE5A[Submit Case: full + return]
+    H5B --> CASE5B[Submit Case: full + keep]
+    
+    style A fill:#4fd1c5,color:#fff
+    style G1 fill:#10b981,color:#fff
+    style HX fill:#ef4444,color:#fff
+    style CASE1 fill:#3b82f6,color:#fff
+    style CASE2 fill:#3b82f6,color:#fff
+    style CASE3 fill:#3b82f6,color:#fff
+    style CASE4 fill:#3b82f6,color:#fff
+    style CASE5A fill:#3b82f6,color:#fff
+    style CASE5B fill:#3b82f6,color:#fff
+        </div>
+      </div>
+    </section>
+
+    <!-- Steps Container -->
+    <div class="steps-container" id="stepsContainer">
+      <!-- Steps will be rendered by JavaScript -->
+    </div>
+  </div>
+
+  <!-- Suggest Edit Modal -->
+  <div class="modal-overlay" id="suggestEditModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Suggest Edit</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="change-request-preview" id="changeRequestPreview"></div>
+      <label style="display: block; margin-bottom: 8px; font-weight: 500;">Suggested Change:</label>
+      <textarea class="modal-input" id="suggestedChange" rows="4" placeholder="Enter your suggested change..."></textarea>
+      <label style="display: block; margin-bottom: 8px; font-weight: 500;">Reason (optional):</label>
+      <textarea class="modal-input" id="changeReason" rows="2" placeholder="Why is this change needed?"></textarea>
+      <div class="modal-actions">
+        <button class="modal-btn secondary" onclick="closeModal()">Cancel</button>
+        <button class="modal-btn primary" onclick="copyChangeRequest()">Copy to Clipboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">Copied to clipboard!</div>
+
+  <script>
+    // Initialize Mermaid
+    mermaid.initialize({ 
+      startOnLoad: true,
+      theme: 'default',
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        curve: 'basis'
+      }
+    });
+
+    // Flow Data - dog_not_using
+    const flowData = {
+      dog_not_using: {
+        name: "Dog Not Using",
+        parent: "help_with_order",
+        steps: [
+          {
+            id: "DOG_STEP_1",
+            number: 1,
+            title: "Amy's Introduction",
+            persona: "Amy",
+            function: "handleDogNotUsing()",
+            functionLine: 2128,
+            messages: [
+              {
+                id: "DOG_STEP_1_MESSAGE",
+                label: "Amy's Message",
+                persona: "amy",
+                content: `I understand — the main reason you purchased this was to solve your problem, and we want to make sure it works for you! 🐕
+
+Let me get some details about your pup so we can help.`
+              }
+            ],
+            nextAction: "Renders dog info form"
+          },
+          {
+            id: "DOG_STEP_2",
+            number: 2,
+            title: "Dog Info Form",
+            persona: "Amy",
+            function: "renderDogInfoForm()",
+            functionLine: 2136,
+            formFields: [
+              { id: "DOG_FORM_NAME", label: "Dog's Name *", type: "text input", required: true, placeholder: "e.g., Max", validation: "Shows error if empty" },
+              { id: "DOG_FORM_BREED", label: "Breed *", type: "text input", required: true, placeholder: "e.g., Golden Retriever", validation: "Shows error if empty" },
+              { id: "DOG_FORM_AGE", label: "Age *", type: "text input", required: true, placeholder: "e.g., 2 years", validation: "Shows error if empty" },
+              { id: "DOG_FORM_METHODS", label: "What have you tried so far?", type: "textarea (3 rows)", required: false, placeholder: "Tell us what methods you've already attempted...", validation: "None" }
+            ],
+            buttons: [
+              { id: "DOG_FORM_ADD_BTN", text: "+ Add Another Dog", style: "Secondary/outline", action: "Adds another dog entry (Dog 2, Dog 3, etc.)" },
+              { id: "DOG_FORM_SUBMIT_BTN", text: "Get Personalized Tips", style: "Primary (full width)", action: "Validates form, submits dog info" }
+            ],
+            dataStored: `state.dogs = [
+  { name: "Max", breed: "Golden Retriever", age: "2 years" },
+  { name: "Bella", breed: "Labrador", age: "4 years" }
+];
+state.methodsTried = "Tried treats but he ignores it";`
+          },
+          {
+            id: "DOG_STEP_3",
+            number: 3,
+            title: "Transition to Dr. Claudia",
+            persona: "Amy → Claudia",
+            function: "submitDogInfo()",
+            functionLine: 2222,
+            messages: [
+              {
+                id: "DOG_STEP_3_AMY_MESSAGE",
+                label: "Amy's Handoff Message",
+                persona: "amy",
+                content: `Thanks for sharing! I'm connecting you with our in-house veterinarian, Dr. Claudia. She's amazing at this! 🩺❤️`
+              },
+              {
+                id: "DOG_STEP_3_CLAUDIA_INTRO",
+                label: "Claudia's Intro Message",
+                persona: "claudia",
+                content: `Hi there! Thanks for the info about {dogNames}. Let me review everything and give you some personalized tips...`,
+                note: "Dynamic variable: {dogNames} = \"Max\" or \"Max and Bella\""
+              }
+            ],
+            loading: {
+              id: "DOG_STEP_3_LOADING",
+              text: "Dr. Claudia is preparing your tips..."
+            }
+          },
+          {
+            id: "DOG_STEP_4",
+            number: 4,
+            title: "AI-Generated Tips",
+            persona: "Claudia",
+            function: "API Call",
+            functionLine: null,
+            apiEndpoint: "POST /api/ai-response",
+            apiRequest: `{
+  "scenarioType": "dog_tips",
+  "scenarioData": {
+    "dogs": [
+      {"name": "Max", "breed": "Golden Retriever", "age": "2 years"}
+    ],
+    "dogName": "Max",
+    "dogBreed": "Golden Retriever", 
+    "dogAge": "2 years",
+    "methodsTried": "Tried treats but he ignores it",
+    "productName": "PuppyPad"
+  }
+}`,
+            aiConfig: {
+              id: "DOG_STEP_4_AI_CONFIG",
+              model: "GPT-4o",
+              temperature: 0.75,
+              maxTokens: 1000,
+              productDoc: "PuppyPad-_Reusable-Pee-Pad_-_1_.txt from R2 bucket"
+            },
+            promptRules: [
+              "ALWAYS use each dog's actual name throughout",
+              "Give BREED-SPECIFIC advice when breed is provided",
+              "Give AGE-APPROPRIATE advice based on their dog's age",
+              "If they mention what they've tried, MUST acknowledge it and suggest DIFFERENT approaches",
+              "Emphasize these are simple tips, not intensive training (pheromones do most work)",
+              "Output valid HTML (paragraphs and bullet lists)"
+            ],
+            fallback: {
+              id: "DOG_STEP_4_FALLBACK",
+              content: `Great news! Based on {dogName}'s profile ({dogBreed}, {dogAge}), here are my top recommendations:
+
+1. Scent Association - Place a small amount of {dogName}'s urine on the PuppyPad. Dogs naturally want to go where they smell their scent.
+
+2. Positive Reinforcement - Every time {dogName} even sniffs the pad, give praise and a small treat. Build positive associations!
+
+3. Consistent Placement - Keep the pad in the same spot. Dogs thrive on routine, and moving it can confuse them.
+
+4. Timing is Key - Take {dogName} to the pad right after meals, naps, and play sessions — these are peak potty times!
+
+Give these a try for 5-7 days and you should see improvement!`
+            }
+          },
+          {
+            id: "DOG_STEP_5",
+            number: 5,
+            title: "Satisfaction Check",
+            persona: "Amy",
+            function: "showSatisfactionButtons()",
+            functionLine: 2533,
+            messages: [
+              {
+                id: "DOG_STEP_5_MESSAGE",
+                label: "Amy's Question",
+                persona: "amy",
+                content: `Did Dr. Claudia's tips help? Are you happy to give these a try?`
+              }
+            ],
+            buttons: [
+              { id: "DOG_STEP_5_YES", text: "😊 Yes, I'll try these!", style: "satisfaction-btn yes", action: "→ STEP 6A (Happy ending)" },
+              { id: "DOG_STEP_5_NO", text: "😔 No, I need more help", style: "satisfaction-btn no", action: "→ STEP 6B (Refund ladder)" }
+            ]
+          },
+          {
+            id: "DOG_STEP_6A",
+            number: "6A",
+            title: "Satisfied - Flow Complete",
+            persona: "Amy",
+            isBranch: true,
+            messages: [
+              {
+                id: "DOG_STEP_6A_MESSAGE",
+                label: "Amy's Success Message",
+                persona: "amy",
+                content: `That's great to hear! 🎉 Give it a go and remember — consistency is key. You've got this!
+
+Is there anything else I can help you with?`
+              }
+            ],
+            buttons: [
+              { id: "DOG_STEP_6A_DONE", text: "No, I'm all set!", action: "Shows success modal: \"Thanks for chatting!\" / \"We're here whenever you need us. Have a great day! 🐕\"" },
+              { id: "DOG_STEP_6A_MORE", text: "Yes, something else", action: "Returns to home menu" }
+            ],
+            note: "END OF FLOW (Happy Path) - No case created"
+          },
+          {
+            id: "DOG_STEP_6B",
+            number: "6B",
+            title: "Refund Ladder",
+            persona: "Amy",
+            function: "startRefundLadder()",
+            functionLine: 2570,
+            isBranch: true,
+            isRefundLadder: true,
+            preCheck: {
+              id: "DOG_GUARANTEE_CHECK",
+              description: "90-Day Guarantee Validation",
+              apiCall: "POST /api/validate-guarantee",
+              expiredMessage: {
+                id: "DOG_GUARANTEE_EXPIRED_MESSAGE",
+                content: `I really wish I could help with a refund, but I need to be upfront with you. 💔
+
+Our 90-day money-back guarantee has expired — it's been {daysSince} days since your order was delivered.
+
+I know that's not what you wanted to hear, and I'm genuinely sorry. Is there anything else I can help you with?`,
+                buttons: ["Help with something else", "Contact support"],
+                note: "FLOW ENDS HERE if expired"
+              }
+            },
+            ladderSteps: [
+              {
+                id: "LADDER_STEP_1",
+                step: 1,
+                percentage: 20,
+                needsManager: false,
+                delay: 0,
+                message: {
+                  id: "LADDER_STEP_1_MESSAGE",
+                  content: `I understand. As a valued customer, I'd like to offer you a 20% partial refund while you keep the product and continue trying.`
+                },
+                buttons: [
+                  { id: "LADDER_STEP_1_ACCEPT", text: "Accept Offer", action: "Submits case with resolution partial_20" },
+                  { id: "LADDER_STEP_1_DECLINE", text: "No thanks", action: "→ LADDER STEP 2" }
+                ]
+              },
+              {
+                id: "LADDER_STEP_2",
+                step: 2,
+                percentage: 30,
+                needsManager: false,
+                delay: 0,
+                message: {
+                  id: "LADDER_STEP_2_MESSAGE",
+                  content: `I really want to make this right. Let me offer you a 30% refund — that's a significant amount back while you keep everything.`
+                },
+                buttons: [
+                  { id: "LADDER_STEP_2_ACCEPT", text: "Accept Offer", action: "Submits case with resolution partial_30" },
+                  { id: "LADDER_STEP_2_DECLINE", text: "No thanks", action: "→ LADDER STEP 3" }
+                ]
+              },
+              {
+                id: "LADDER_STEP_3",
+                step: 3,
+                percentage: 40,
+                needsManager: true,
+                delay: 8,
+                loading: "Checking with manager...",
+                message: {
+                  id: "LADDER_STEP_3_MESSAGE",
+                  content: `Great news! My manager has approved a 40% refund for you. That's nearly half your money back and you still get to keep the products.`
+                },
+                buttons: [
+                  { id: "LADDER_STEP_3_ACCEPT", text: "Accept Offer", action: "Submits case with resolution partial_40" },
+                  { id: "LADDER_STEP_3_DECLINE", text: "No thanks", action: "→ LADDER STEP 4" }
+                ]
+              },
+              {
+                id: "LADDER_STEP_4",
+                step: 4,
+                percentage: 50,
+                needsManager: true,
+                delay: 8,
+                loading: "Checking with manager...",
+                message: {
+                  id: "LADDER_STEP_4_MESSAGE",
+                  content: `Okay, I've just spoken with my manager again and they've approved our maximum offer: 50% refund. This is the very best we can do — half your money back, no return needed.`
+                },
+                buttons: [
+                  { id: "LADDER_STEP_4_ACCEPT", text: "Accept Offer", action: "Submits case with resolution partial_50" },
+                  { id: "LADDER_STEP_4_DECLINE", text: "No thanks", action: "→ LADDER STEP 5 (Full refund)" }
+                ]
+              },
+              {
+                id: "LADDER_STEP_5",
+                step: 5,
+                percentage: 100,
+                isFullRefund: true,
+                locationCheck: true,
+                domesticPath: {
+                  id: "LADDER_STEP_5_DOMESTIC",
+                  message: {
+                    id: "LADDER_STEP_5_DOMESTIC_MESSAGE",
+                    content: `I hear you. Let's get you a full refund.
+
+Since you're in the US, we do need you to send the product back. Here's our simple return process...`
+                  },
+                  returnNotice: {
+                    id: "LADDER_STEP_5_RETURN_NOTICE",
+                    content: `⚠️ Important: We don't provide prepaid return labels. You'll need to ship the return using a carrier of your choice (USPS, UPS, or FedEx work great).`
+                  },
+                  returnAddress: {
+                    id: "LADDER_STEP_5_RETURN_ADDRESS",
+                    content: `📍 Return Address
+─────────────────
+PuppyPad Returns
+1007 S 12th St.
+Watertown, WI 53094
+USA`
+                  },
+                  packingSlip: {
+                    id: "LADDER_STEP_5_PACKING_SLIP",
+                    content: `📝 Include a note in your package
+
+Please write the following on a piece of paper and put it inside the box:
+• Order #: {orderNumber}
+• Name: {customerName}
+• Items: {itemsList}
+• Reason: {issueReason}`
+                  },
+                  afterShip: {
+                    id: "LADDER_STEP_5_AFTER_SHIP",
+                    content: `📧 After you ship:
+
+Reply to your confirmation email with the tracking number so we can monitor the return and process your refund quickly.`
+                  },
+                  button: { id: "LADDER_STEP_5_CONFIRM_BTN", text: "I Understand — Create My Case", action: "Submits case with full and keepProduct: false" }
+                },
+                internationalPath: {
+                  id: "LADDER_STEP_5_INTERNATIONAL",
+                  message: {
+                    id: "LADDER_STEP_5_INTL_MESSAGE",
+                    content: `Because you're valued as a customer, we'll process a full refund and you can keep the product. Consider giving it to someone who might find it useful! 🙂`
+                  },
+                  action: "Immediately submits case with full and keepProduct: true"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    };
+
+    // Current edit context
+    let currentEditContext = null;
+
+    // Render the flow
+    function renderFlow(flowId) {
+      const flow = flowData[flowId];
+      if (!flow) return;
+
+      const container = document.getElementById('stepsContainer');
+      container.innerHTML = '';
+
+      flow.steps.forEach(step => {
+        container.innerHTML += renderStep(step, flow.name);
+      });
+    }
+
+    function renderStep(step, flowName) {
+      let cardClass = 'step-card';
+      if (step.isBranch) cardClass += ' branch';
+      if (step.isRefundLadder) cardClass += ' refund-ladder';
+
+      let html = `
+        <div class="${cardClass}" id="step-${step.id}">
+          <div class="step-header">
+            <div class="step-info">
+              <span class="step-number">STEP ${step.number}</span>
+              <h3 class="step-title">${step.title}</h3>
+              <span class="step-id">${step.id}</span>
+              <div class="step-meta">
+                <span class="meta-item"><strong>Persona:</strong> ${step.persona}</span>
+                ${step.function ? `<span class="meta-item"><strong>Function:</strong> ${step.function}${step.functionLine ? ` (line ${step.functionLine})` : ''}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="step-divider"></div>
+      `;
+
+      // Render messages
+      if (step.messages) {
+        step.messages.forEach(msg => {
+          html += renderMessage(msg, step.id, flowName);
+        });
+      }
+
+      // Render loading state
+      if (step.loading) {
+        html += `
+          <div class="message-block">
+            <div class="message-header">
+              <span class="message-label">⏳ Loading State <span class="message-id">${step.loading.id}</span></span>
+            </div>
+            <div class="message-content">${step.loading.text}</div>
+          </div>
+        `;
+      }
+
+      // Render form fields
+      if (step.formFields) {
+        html += `
+          <h4 style="margin: 16px 0 8px; color: var(--gray-700);">Form Fields</h4>
+          <table class="form-table">
+            <thead>
+              <tr>
+                <th>Field ID</th>
+                <th>Label</th>
+                <th>Type</th>
+                <th>Required</th>
+                <th>Placeholder</th>
+                <th>Validation</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+        step.formFields.forEach(field => {
+          html += `
+            <tr>
+              <td><span class="field-id">${field.id}</span></td>
+              <td>${field.label}</td>
+              <td>${field.type}</td>
+              <td>${field.required ? 'Yes' : 'No'}</td>
+              <td>${field.placeholder}</td>
+              <td>${field.validation}</td>
+            </tr>
+          `;
+        });
+        html += '</tbody></table>';
+      }
+
+      // Render buttons
+      if (step.buttons) {
+        html += `
+          <h4 style="margin: 16px 0 8px; color: var(--gray-700);">Buttons</h4>
+          <table class="buttons-table">
+            <thead>
+              <tr>
+                <th>Button ID</th>
+                <th>Text</th>
+                <th>Style/Class</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+        step.buttons.forEach(btn => {
+          html += `
+            <tr>
+              <td><span class="field-id">${btn.id}</span></td>
+              <td>${btn.text}</td>
+              <td>${btn.style || '-'}</td>
+              <td>${btn.action}</td>
+            </tr>
+          `;
+        });
+        html += '</tbody></table>';
+      }
+
+      // Render data stored
+      if (step.dataStored) {
+        html += `
+          <h4 style="margin: 16px 0 8px; color: var(--gray-700);">Data Stored</h4>
+          <div class="data-block">${step.dataStored}</div>
+        `;
+      }
+
+      // Render API config
+      if (step.apiEndpoint) {
+        html += `
+          <h4 style="margin: 16px 0 8px; color: var(--gray-700);">API Endpoint: ${step.apiEndpoint}</h4>
+          <div class="data-block">${step.apiRequest}</div>
+        `;
+      }
+
+      if (step.aiConfig) {
+        html += `
+          <h4 style="margin: 16px 0 8px; color: var(--gray-700);">AI Configuration <span class="step-id">${step.aiConfig.id}</span></h4>
+          <div class="api-config">
+<span class="key">Model:</span> <span class="value">${step.aiConfig.model}</span>
+<span class="key">Temperature:</span> <span class="value">${step.aiConfig.temperature}</span>
+<span class="key">Max Tokens:</span> <span class="value">${step.aiConfig.maxTokens}</span>
+<span class="key">Product Doc:</span> <span class="value">${step.aiConfig.productDoc}</span>
+          </div>
+        `;
+      }
+
+      if (step.promptRules) {
+        html += `
+          <h4 style="margin: 16px 0 8px; color: var(--gray-700);">Prompt Rules <span class="step-id">DOG_STEP_4_PROMPT_RULES</span></h4>
+          <ol style="margin-left: 20px; color: var(--gray-600); font-size: 13px;">
+            ${step.promptRules.map(rule => `<li style="margin-bottom: 4px;">${rule}</li>`).join('')}
+          </ol>
+        `;
+      }
+
+      if (step.fallback) {
+        html += renderMessage(step.fallback, step.id, flowName, 'Fallback Message (if API fails)');
+      }
+
+      // Render refund ladder
+      if (step.isRefundLadder && step.ladderSteps) {
+        html += renderRefundLadder(step, flowName);
+      }
+
+      // Render note
+      if (step.note) {
+        html += `<div class="next-action"><strong>Note:</strong> ${step.note}</div>`;
+      }
+
+      // Render next action
+      if (step.nextAction) {
+        html += `<div class="next-action"><strong>Next:</strong> ${step.nextAction}</div>`;
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderMessage(msg, stepId, flowName, customLabel = null) {
+      return `
+        <div class="message-block">
+          <div class="message-header">
+            <span class="message-label">${customLabel || msg.label} <span class="message-id">${msg.id}</span></span>
+            <button class="suggest-edit-btn" onclick="openSuggestEdit('${flowName}', '${stepId}', '${msg.id}', ${JSON.stringify(msg.content).replace(/'/g, "\\'")})"">
+              ✏️ Suggest Edit
+            </button>
+          </div>
+          <div class="message-content ${msg.persona || ''}">${msg.content}</div>
+          ${msg.note ? `<div style="font-size: 12px; color: var(--gray-500); margin-top: 8px;">${msg.note}</div>` : ''}
+        </div>
+      `;
+    }
+
+    function renderRefundLadder(step, flowName) {
+      let html = `<h4 style="margin: 24px 0 16px; color: var(--gray-700);">Refund Ladder Steps</h4>`;
+      
+      // Pre-check
+      if (step.preCheck) {
+        html += `
+          <div class="sub-step">
+            <div class="sub-step-header">
+              <span class="sub-step-title">Pre-check: ${step.preCheck.description}</span>
+              <span class="sub-step-badge badge-instant">API Check</span>
+            </div>
+            <p style="font-size: 13px; color: var(--gray-600); margin-bottom: 12px;">API Call: ${step.preCheck.apiCall}</p>
+            ${renderMessage(step.preCheck.expiredMessage, step.id, flowName, 'If Guarantee Expired')}
+          </div>
+        `;
+      }
+
+      // Ladder steps
+      html += '<div class="sub-steps">';
+      step.ladderSteps.forEach(ls => {
+        if (ls.isFullRefund) {
+          html += renderFullRefundStep(ls, flowName);
+        } else {
+          html += `
+            <div class="sub-step">
+              <div class="sub-step-header">
+                <span class="sub-step-title">Ladder Step ${ls.step}: ${ls.percentage}% Offer</span>
+                <span class="sub-step-badge ${ls.needsManager ? 'badge-manager' : 'badge-instant'}">${ls.needsManager ? `Manager Check (${ls.delay}s delay)` : 'Instant'}</span>
+              </div>
+              ${ls.loading ? `<p style="font-size: 12px; color: var(--gray-500); margin-bottom: 8px;">Loading: "${ls.loading}"</p>` : ''}
+              ${renderMessage(ls.message, step.id, flowName, "Amy's Message")}
+              <div class="offer-card-preview">
+                <div class="percentage">${ls.percentage}%</div>
+                <div class="amount">$XX.XX back to you</div>
+                <div class="description">Partial refund — keep your products</div>
+              </div>
+              <table class="buttons-table">
+                <thead><tr><th>Button ID</th><th>Text</th><th>Action</th></tr></thead>
+                <tbody>
+                  ${ls.buttons.map(btn => `<tr><td><span class="field-id">${btn.id}</span></td><td>${btn.text}</td><td>${btn.action}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        }
+      });
+      html += '</div>';
+      return html;
+    }
+
+    function renderFullRefundStep(ls, flowName) {
+      return `
+        <div class="sub-step">
+          <div class="sub-step-header">
+            <span class="sub-step-title">Ladder Step 5: Full Refund</span>
+            <span class="sub-step-badge badge-manager">Location Check</span>
+          </div>
+          <p style="font-size: 13px; color: var(--gray-600); margin-bottom: 16px;">Determines if customer is domestic (US) or international based on shipping address.</p>
+          
+          <h5 style="margin: 16px 0 8px; color: var(--gray-700);">PATH A: Domestic (US) - Return Required</h5>
+          ${renderMessage(ls.domesticPath.message, 'LADDER_STEP_5', flowName, "Amy's Message")}
+          ${renderMessage(ls.domesticPath.returnNotice, 'LADDER_STEP_5', flowName, 'Important Notice')}
+          
+          <div class="message-block">
+            <div class="message-header">
+              <span class="message-label">Return Address <span class="message-id">${ls.domesticPath.returnAddress.id}</span></span>
+            </div>
+            <div class="message-content" style="white-space: pre;">${ls.domesticPath.returnAddress.content}</div>
+          </div>
+          
+          ${renderMessage(ls.domesticPath.packingSlip, 'LADDER_STEP_5', flowName, 'Packing Slip Instructions')}
+          ${renderMessage(ls.domesticPath.afterShip, 'LADDER_STEP_5', flowName, 'After Shipping Instructions')}
+          
+          <table class="buttons-table">
+            <thead><tr><th>Button ID</th><th>Text</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td><span class="field-id">${ls.domesticPath.button.id}</span></td><td>${ls.domesticPath.button.text}</td><td>${ls.domesticPath.button.action}</td></tr>
+            </tbody>
+          </table>
+          
+          <h5 style="margin: 24px 0 8px; color: var(--gray-700);">PATH B: International - Keep Product</h5>
+          ${renderMessage(ls.internationalPath.message, 'LADDER_STEP_5', flowName, "Amy's Message")}
+          <p style="font-size: 13px; color: var(--gray-600); margin-top: 8px;"><strong>Action:</strong> ${ls.internationalPath.action}</p>
+        </div>
+      `;
+    }
+
+    // Suggest Edit functionality
+    function openSuggestEdit(flowName, stepId, elementId, currentContent) {
+      currentEditContext = { flowName, stepId, elementId, currentContent };
+      
+      const preview = document.getElementById('changeRequestPreview');
+      preview.textContent = `═══════════════════════════════════════════
+FLOW CHANGE REQUEST
+═══════════════════════════════════════════
+Flow:     ${flowName.replace(/_/g, ' ')}
+Step:     ${stepId}
+Element:  ${elementId}
+
+CURRENT COPY:
+"${currentContent.substring(0, 200)}${currentContent.length > 200 ? '...' : ''}"
+
+SUGGESTED CHANGE:
+[Your suggestion will appear here]
+
+REASON (optional):
+[Your reason will appear here]
+═══════════════════════════════════════════`;
+      
+      document.getElementById('suggestedChange').value = '';
+      document.getElementById('changeReason').value = '';
+      document.getElementById('suggestEditModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('suggestEditModal').classList.remove('active');
+      currentEditContext = null;
+    }
+
+    function copyChangeRequest() {
+      if (!currentEditContext) return;
+      
+      const suggested = document.getElementById('suggestedChange').value.trim();
+      const reason = document.getElementById('changeReason').value.trim();
+      
+      const changeRequest = `═══════════════════════════════════════════
+FLOW CHANGE REQUEST
+═══════════════════════════════════════════
+Flow:     ${currentEditContext.flowName.replace(/_/g, ' ')}
+Step:     ${currentEditContext.stepId}
+Element:  ${currentEditContext.elementId}
+
+CURRENT COPY:
+"${currentEditContext.currentContent}"
+
+SUGGESTED CHANGE:
+${suggested || '[No suggestion provided]'}
+
+REASON (optional):
+${reason || '[No reason provided]'}
+═══════════════════════════════════════════`;
+      
+      navigator.clipboard.writeText(changeRequest).then(() => {
+        showToast('Copied to clipboard!');
+        closeModal();
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy. Please try again.');
+      });
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function toggleDiagram() {
+      const container = document.getElementById('diagramContainer');
+      const btn = document.querySelector('.collapse-btn');
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        btn.textContent = 'Collapse';
+      } else {
+        container.style.display = 'none';
+        btn.textContent = 'Expand';
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      renderFlow('dog_not_using');
+      
+      document.getElementById('flowSelect').addEventListener('change', (e) => {
+        renderFlow(e.target.value);
+      });
+    });
+  </script>
+</body>
+</html>
