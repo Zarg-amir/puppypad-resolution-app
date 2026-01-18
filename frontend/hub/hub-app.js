@@ -5583,6 +5583,7 @@ End with an encouraging message about consistency and patience.`,
     const steps = this.currentSubflow.steps;
     const currentStep = steps[this.currentStepIndex];
     const persona = this.getPersonaFromStep(currentStep);
+    const personaName = persona.charAt(0).toUpperCase() + persona.slice(1);
 
     container.innerHTML = `
       <div class="flow-simulator">
@@ -5590,36 +5591,57 @@ End with an encouraging message about consistency and patience.`,
         <div class="sim-nav">
           <div class="sim-nav-header">
             <h3>Flow Steps</h3>
-            <p>Click to jump to any step</p>
+            <p>Click any step to jump</p>
           </div>
-          <div class="sim-nav-list">
+          <div class="sim-nav-list" id="simNavList">
             ${this.renderSimNavItems(steps)}
+          </div>
+          <div class="sim-nav-footer">
+            <button class="sim-nav-btn secondary" onclick="HubFlows.resetSimulator()" title="Reset">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+              Reset
+            </button>
+            <button class="sim-nav-btn primary" onclick="HubFlows.nextStep()" ${this.currentStepIndex >= steps.length - 1 ? 'disabled' : ''}>
+              ${this.currentStepIndex >= steps.length - 1 ? 'End' : 'Next'}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
           </div>
         </div>
 
-        <!-- Center: Chat Simulation -->
-        <div class="sim-chat">
-          <div class="sim-chat-header">
-            <img src="${this.avatars[persona]}" alt="${persona}" class="sim-chat-avatar">
-            <div class="sim-chat-info">
-              <h4>${persona.charAt(0).toUpperCase() + persona.slice(1)}</h4>
-              <span>${this.getPersonaTitle(persona)}</span>
+        <!-- Center: Phone Mockup -->
+        <div class="sim-phone-container">
+          <div class="sim-phone-bg"></div>
+          <div class="sim-phone">
+            <!-- Phone Header -->
+            <div class="sim-phone-header">
+              <div class="sim-phone-avatar-ring ${persona}">
+                <img src="${this.avatars[persona]}" alt="${personaName}" class="sim-phone-avatar">
+              </div>
+              <div class="sim-phone-info">
+                <h4 class="sim-phone-name">${personaName}</h4>
+                <div class="sim-phone-status">
+                  <span class="sim-phone-status-dot"></span>
+                  Online
+                </div>
+              </div>
+              <div class="sim-phone-restart">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                Start Over
+              </div>
             </div>
-            <span class="sim-chat-step-indicator">Step ${this.currentStepIndex + 1} of ${steps.length}</span>
-          </div>
-          
-          <div class="sim-chat-messages" id="simChatMessages">
-            ${this.renderSimChatContent(currentStep)}
-          </div>
-          
-          <div class="sim-chat-footer">
-            <button class="sim-reset-btn" onclick="HubFlows.resetSimulator()" title="Reset to start">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 01-9 9 9.75 9.75 0 01-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-            </button>
-            <button class="sim-continue-btn" onclick="HubFlows.nextStep()" ${this.currentStepIndex >= steps.length - 1 ? 'disabled' : ''}>
-              ${this.currentStepIndex >= steps.length - 1 ? 'End of Flow' : 'Continue'}
-              ${this.currentStepIndex < steps.length - 1 ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M5 12h14M12 5l7 7-7 7"/></svg>' : ''}
-            </button>
+            
+            <!-- Phone Chat Area -->
+            <div class="sim-phone-chat" id="simPhoneChat">
+              ${this.renderSimChatContent(currentStep)}
+            </div>
+            
+            <!-- Phone Footer -->
+            <div class="sim-phone-footer">
+              <div class="sim-phone-trouble">
+                App not working? <span>Click here to report an issue</span>
+              </div>
+              <img src="https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041" alt="PuppyPad" class="sim-phone-logo">
+            </div>
           </div>
         </div>
 
@@ -5635,6 +5657,14 @@ End with an encouraging message about consistency and patience.`,
         </div>
       </div>
     `;
+
+    // Scroll active step into view
+    setTimeout(() => {
+      const activeItem = document.querySelector('.sim-nav-item.active');
+      if (activeItem) {
+        activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
   },
 
   renderSimNavItems(steps) {
