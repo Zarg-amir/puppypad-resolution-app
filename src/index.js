@@ -22030,21 +22030,34 @@ function getFlowDocsHTML() {
 
       const OfferNode = ({ data, selected }) => {
         return React.createElement('div', {
-          style: { padding: '16px', borderRadius: '12px', background: 'white', border: selected ? '2px solid #14b8a6' : '2px solid #e5e7eb', boxShadow: selected ? '0 0 0 2px rgba(20, 184, 166, 0.2), 0 10px 15px -3px rgba(0,0,0,0.1)' : '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: '180px', cursor: 'pointer' }
+          style: { 
+            padding: '20px', 
+            borderRadius: '12px', 
+            background: 'white', 
+            border: selected ? '2px solid #14b8a6' : '2px solid #e5e7eb', 
+            boxShadow: selected ? '0 0 0 2px rgba(20, 184, 166, 0.2), 0 10px 15px -3px rgba(0,0,0,0.1)' : '0 10px 15px -3px rgba(0,0,0,0.1)', 
+            minWidth: '220px', 
+            cursor: 'pointer' 
+          }
         },
           React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#14b8a6', width: '10px', height: '10px', border: '2px solid white' } }),
-          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' } },
-            React.createElement('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: '#ccfbf1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#14b8a6' } }, React.createElement(Icons.Gift, null)),
-            React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#6b7280' } }, 'Offer Card')
+          // Header with icon
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' } },
+            React.createElement('div', { style: { width: '32px', height: '32px', borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#14b8a6' } }, React.createElement(Icons.Gift, null)),
+            React.createElement('span', { style: { fontSize: '14px', fontWeight: 500, color: '#14b8a6' } }, 'Offer Card')
           ),
-          React.createElement('p', { style: { fontSize: '20px', fontWeight: 700, color: '#0d9488', margin: 0 } }, \`\${data.percent || 20}% Refund\`),
-          React.createElement('p', { style: { fontSize: '12px', color: '#6b7280', marginTop: '4px' } }, data.label || 'Keep product'),
-          React.createElement('div', { style: { display: 'flex', gap: '8px', marginTop: '12px' } },
-            React.createElement('span', { style: { fontSize: '11px', padding: '4px 10px', background: '#d1fae5', color: '#059669', borderRadius: '4px' } }, 'Accept'),
-            React.createElement('span', { style: { fontSize: '11px', padding: '4px 10px', background: '#fee2e2', color: '#dc2626', borderRadius: '4px' } }, 'Decline')
+          // Refund percentage - large green text
+          React.createElement('p', { style: { fontSize: '28px', fontWeight: 700, color: '#10b981', margin: 0 } }, \`\${data.percent || 20}% Refund\`),
+          // Keep product label
+          React.createElement('p', { style: { fontSize: '14px', color: '#6b7280', marginTop: '6px', marginBottom: '16px' } }, data.label || 'Keep product'),
+          // Accept/Decline buttons row
+          React.createElement('div', { style: { display: 'flex', justifyContent: 'space-around', paddingTop: '12px', borderTop: '1px solid #f3f4f6' } },
+            React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#6b7280' } }, 'Accept'),
+            React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#6b7280' } }, 'Decline')
           ),
-          React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'accept', style: { background: '#22c55e', width: '10px', height: '10px', border: '2px solid white', left: '30%' } }),
-          React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'decline', style: { background: '#ef4444', width: '10px', height: '10px', border: '2px solid white', left: '70%' } })
+          // Handles positioned under Accept and Decline
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'accept', style: { background: '#22c55e', width: '12px', height: '12px', border: '2px solid white', left: '25%' } }),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'decline', style: { background: '#ef4444', width: '12px', height: '12px', border: '2px solid white', left: '75%' } })
         );
       };
 
