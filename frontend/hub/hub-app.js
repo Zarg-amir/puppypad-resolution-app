@@ -7157,18 +7157,7 @@ Respond appropriately based on their situation. Don't mention refunds or returns
     style SHOPIFY fill:#96bf48,stroke:#7a9c3a,color:#fff
     style OPENAI fill:#10a37f,stroke:#0d8a6a,color:#fff
     style D1 fill:#f38020,stroke:#c66a1a,color:#fff
-    style HUB_SUB fill:#ec4899,stroke:#db2777,color:#fff`
-    D10 -->|Decline| D15
-    D15 -->|Accept| ACCEPT
-    D15 -->|Decline| D20
-    D20 -->|Accept| ACCEPT
-    D20 -->|Decline| CANCEL
-    
-    style START fill:#FFCDD2,stroke:#c62828
-    style ACCEPT fill:#C8E6C9,stroke:#2d5a2e
-    style PAUSED fill:#C8E6C9,stroke:#2d5a2e
-    style UPDATED fill:#C8E6C9,stroke:#2d5a2e
-    style CANCEL fill:#FFCDD2,stroke:#c62828`,
+    style HUB_SUB fill:#ec4899,stroke:#db2777,color:#fff`,
           // Flow has multiple branches based on cancel reason
           hasBranches: true,
           branches: [
