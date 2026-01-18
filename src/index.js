@@ -21656,7 +21656,8 @@ function getFlowDocsHTML() {
         offer: '#14b8a6',
         case: '#f97316',
         form: '#10b981',
-        end: '#ef4444'
+        end: '#ef4444',
+        subflow: '#8b5cf6'
       };
 
       // ============================================
@@ -21670,7 +21671,22 @@ function getFlowDocsHTML() {
             icon: '❓',
             color: '#8b5cf6', 
             description: 'Customer needs assistance with an existing order',
-            subflows: ['changed_mind', 'dog_not_using', 'quality_issue', 'other_reason'] 
+            subflows: ['changed_mind', 'dog_not_using', 'quality_issue', 'other_reason'],
+            entryNodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 120 }, data: { prompt: "What's going on with your order?", options: [{ label: 'Changed my mind' }, { label: 'Dog not using it' }, { label: 'Quality issue' }, { label: 'Other reason' }] } },
+              { id: 'sub1', type: 'subflow', position: { x: 50, y: 320 }, data: { name: 'Changed My Mind', slug: 'changed_mind' } },
+              { id: 'sub2', type: 'subflow', position: { x: 300, y: 320 }, data: { name: 'Dog Not Using', slug: 'dog_not_using' } },
+              { id: 'sub3', type: 'subflow', position: { x: 550, y: 320 }, data: { name: 'Quality Issue', slug: 'quality_issue' } },
+              { id: 'sub4', type: 'subflow', position: { x: 300, y: 480 }, data: { name: 'Other Reason', slug: 'other_reason' } }
+            ],
+            entryEdges: [
+              { id: 'e1', source: 'start', target: 'opts1', animated: true },
+              { id: 'e2', source: 'opts1', target: 'sub1', sourceHandle: 'opt-0', animated: true },
+              { id: 'e3', source: 'opts1', target: 'sub2', sourceHandle: 'opt-1', animated: true },
+              { id: 'e4', source: 'opts1', target: 'sub3', sourceHandle: 'opt-2', animated: true },
+              { id: 'e5', source: 'opts1', target: 'sub4', sourceHandle: 'opt-3', animated: true }
+            ]
           },
           { 
             id: 'track_order', 
@@ -21678,7 +21694,14 @@ function getFlowDocsHTML() {
             icon: '📦',
             color: '#3b82f6', 
             description: 'Customer wants to check order status or tracking',
-            subflows: ['tracking_status'] 
+            subflows: ['tracking_status'],
+            entryNodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
+              { id: 'sub1', type: 'subflow', position: { x: 350, y: 140 }, data: { name: 'Check Tracking Status', slug: 'tracking_status' } }
+            ],
+            entryEdges: [
+              { id: 'e1', source: 'start', target: 'sub1', animated: true }
+            ]
           },
           { 
             id: 'manage_subscription', 
@@ -21686,7 +21709,20 @@ function getFlowDocsHTML() {
             icon: '🔄',
             color: '#10b981', 
             description: 'Customer wants to modify or cancel subscription',
-            subflows: ['pause_subscription', 'cancel_subscription', 'change_frequency'] 
+            subflows: ['pause_subscription', 'cancel_subscription', 'change_frequency'],
+            entryNodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 120 }, data: { prompt: 'What would you like to do?', options: [{ label: 'Pause subscription' }, { label: 'Cancel subscription' }, { label: 'Change frequency' }] } },
+              { id: 'sub1', type: 'subflow', position: { x: 100, y: 320 }, data: { name: 'Pause Subscription', slug: 'pause_subscription' } },
+              { id: 'sub2', type: 'subflow', position: { x: 350, y: 320 }, data: { name: 'Cancel Subscription', slug: 'cancel_subscription' } },
+              { id: 'sub3', type: 'subflow', position: { x: 600, y: 320 }, data: { name: 'Change Frequency', slug: 'change_frequency' } }
+            ],
+            entryEdges: [
+              { id: 'e1', source: 'start', target: 'opts1', animated: true },
+              { id: 'e2', source: 'opts1', target: 'sub1', sourceHandle: 'opt-0', animated: true },
+              { id: 'e3', source: 'opts1', target: 'sub2', sourceHandle: 'opt-1', animated: true },
+              { id: 'e4', source: 'opts1', target: 'sub3', sourceHandle: 'opt-2', animated: true }
+            ]
           }
         ],
         subflows: {
@@ -22054,7 +22090,41 @@ function getFlowDocsHTML() {
         );
       };
 
-      const nodeTypes = { start: StartNode, message: MessageNode, options: OptionsNode, condition: ConditionNode, api: ApiNode, ai: AiNode, offer: OfferNode, case: CaseNode, form: FormNode, end: EndNode };
+      // Subflow Node - Purple dashed border (links to subflow)
+      const SubflowNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: {
+            padding: '16px 20px',
+            borderRadius: '12px',
+            background: 'white',
+            border: selected ? '2px dashed #8b5cf6' : '2px dashed #c4b5fd',
+            boxShadow: selected ? '0 0 0 2px rgba(139, 92, 246, 0.2), 0 10px 15px -3px rgba(0,0,0,0.1)' : '0 4px 6px -1px rgba(0,0,0,0.05)',
+            minWidth: '220px',
+            cursor: 'pointer'
+          }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#8b5cf6', width: '10px', height: '10px', border: '2px solid white' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' } },
+            React.createElement('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6' } },
+              React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                React.createElement('path', { d: 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' }),
+                React.createElement('path', { d: 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' })
+              )
+            ),
+            React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#8b5cf6' } }, 'Subflow'),
+            React.createElement('svg', { width: 12, height: 12, viewBox: '0 0 24 24', fill: 'none', stroke: '#8b5cf6', strokeWidth: 2, style: { marginLeft: 'auto' } },
+              React.createElement('path', { d: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6' }),
+              React.createElement('polyline', { points: '15 3 21 3 21 9' }),
+              React.createElement('line', { x1: 10, y1: 14, x2: 21, y2: 3 })
+            )
+          ),
+          React.createElement('p', { style: { fontSize: '15px', fontWeight: 600, color: '#374151', margin: 0 } }, data.name || 'Go to Subflow'),
+          React.createElement('p', { style: { fontSize: '12px', color: '#8b5cf6', marginTop: '6px' } }, 'Click to view →'),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#8b5cf6', width: '10px', height: '10px', border: '2px solid white' } })
+        );
+      };
+
+      const nodeTypes = { start: StartNode, message: MessageNode, options: OptionsNode, condition: ConditionNode, api: ApiNode, ai: AiNode, offer: OfferNode, case: CaseNode, form: FormNode, end: EndNode, subflow: SubflowNode };
 
       // ============================================
       // HUB SIDEBAR COMPONENT
@@ -22132,104 +22202,46 @@ function getFlowDocsHTML() {
       // ============================================
       // LEFT PANEL - SUBFLOW NAVIGATION
       // ============================================
-      const LeftPanel = ({ parentFlow, currentSubflow, subflows, onSelectSubflow, onBackToParent }) => {
+      const LeftPanel = ({ parentFlow, currentSubflow, subflows, viewingEntry, onSelectSubflow, onSelectEntry, onBackToParent }) => {
         return React.createElement('div', { 
-          style: { 
-            width: '260px', 
-            background: 'rgba(255,255,255,0.95)', 
-            backdropFilter: 'blur(8px)',
-            borderRight: '1px solid #e5e7eb', 
-            display: 'flex', 
-            flexDirection: 'column',
-            flexShrink: 0
-          } 
+          style: { width: '260px', background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', flexShrink: 0 } 
         },
-          // Header with back button
+          // Header
           React.createElement('div', { style: { padding: '16px', borderBottom: '1px solid #e5e7eb' } },
-            React.createElement('button', {
-              onClick: onBackToParent,
-              style: {
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 12px',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '14px',
-                color: '#6b7280',
-                marginBottom: '12px'
-              }
-            }, 
-              React.createElement(Icons.ArrowLeft, null),
-              'Back to Flow'
+            React.createElement('button', { onClick: onBackToParent, style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#6b7280', marginBottom: '12px' } }, 
+              React.createElement(Icons.ArrowLeft, null), 'Back to Hub'
             ),
-            // Current flow name
-            React.createElement('div', { 
-              style: { 
-                padding: '12px', 
-                background: '#f9fafb', 
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb'
-              } 
-            },
+            React.createElement('div', { style: { padding: '12px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' } },
               React.createElement('div', { style: { fontSize: '14px', fontWeight: 600, color: '#111827' } }, parentFlow?.name),
               React.createElement('div', { style: { fontSize: '12px', color: '#6b7280', marginTop: '4px' } }, \`Viewing: \${currentSubflow?.name}\`)
             )
           ),
-          // Subflows list
+          // Entry Flow + Subflows list
           React.createElement('div', { style: { flex: 1, overflowY: 'auto', padding: '12px' } },
-            React.createElement('div', { style: { fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9ca3af', marginBottom: '12px', paddingLeft: '8px' } }, 'Sub-flows'),
+            // Entry Flow item
+            React.createElement('div', { style: { fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9ca3af', marginBottom: '8px', paddingLeft: '8px' } }, 'Entry Flow'),
+            React.createElement('div', {
+              onClick: onSelectEntry,
+              style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '8px', cursor: 'pointer', marginBottom: '16px', background: viewingEntry ? \`\${parentFlow?.color}15\` : 'transparent', border: viewingEntry ? \`1px solid \${parentFlow?.color}40\` : '1px solid transparent' }
+            },
+              React.createElement('div', { style: { width: '8px', height: '8px', borderRadius: '50%', background: viewingEntry ? parentFlow?.color : '#d1d5db' } }),
+              React.createElement('div', { style: { flex: 1 } },
+                React.createElement('div', { style: { fontSize: '13px', fontWeight: viewingEntry ? 600 : 500, color: viewingEntry ? '#111827' : '#374151' } }, 'Entry Flow'),
+                React.createElement('div', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '2px' } }, \`\${parentFlow?.entryNodes?.length || 0} nodes\`)
+              )
+            ),
+            // Subflows
+            React.createElement('div', { style: { fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9ca3af', marginBottom: '8px', paddingLeft: '8px' } }, 'Sub-flows'),
             subflows.map(subflow => 
               React.createElement('div', {
                 key: subflow.id,
                 onClick: () => onSelectSubflow(subflow),
-                style: {
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  marginBottom: '4px',
-                  background: currentSubflow?.id === subflow.id ? \`\${parentFlow?.color}15\` : 'transparent',
-                  border: currentSubflow?.id === subflow.id ? \`1px solid \${parentFlow?.color}40\` : '1px solid transparent',
-                  transition: 'all 0.15s'
-                },
-                onMouseOver: (e) => {
-                  if (currentSubflow?.id !== subflow.id) {
-                    e.currentTarget.style.background = '#f9fafb';
-                  }
-                },
-                onMouseOut: (e) => {
-                  if (currentSubflow?.id !== subflow.id) {
-                    e.currentTarget.style.background = 'transparent';
-                  }
-                }
+                style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '8px', cursor: 'pointer', marginBottom: '4px', background: !viewingEntry && currentSubflow?.id === subflow.id ? \`\${parentFlow?.color}15\` : 'transparent', border: !viewingEntry && currentSubflow?.id === subflow.id ? \`1px solid \${parentFlow?.color}40\` : '1px solid transparent' }
               },
-                React.createElement('div', { 
-                  style: { 
-                    width: '8px', 
-                    height: '8px', 
-                    borderRadius: '50%', 
-                    background: currentSubflow?.id === subflow.id ? parentFlow?.color : '#d1d5db',
-                    flexShrink: 0
-                  } 
-                }),
+                React.createElement('div', { style: { width: '8px', height: '8px', borderRadius: '50%', background: !viewingEntry && currentSubflow?.id === subflow.id ? parentFlow?.color : '#d1d5db' } }),
                 React.createElement('div', { style: { flex: 1, minWidth: 0 } },
-                  React.createElement('div', { 
-                    style: { 
-                      fontSize: '13px', 
-                      fontWeight: currentSubflow?.id === subflow.id ? 600 : 500, 
-                      color: currentSubflow?.id === subflow.id ? '#111827' : '#374151',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    } 
-                  }, subflow.name),
-                  React.createElement('div', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '2px' } }, 
-                    \`\${subflow.nodes?.length || 0} nodes\`
-                  )
+                  React.createElement('div', { style: { fontSize: '13px', fontWeight: !viewingEntry && currentSubflow?.id === subflow.id ? 600 : 500, color: !viewingEntry && currentSubflow?.id === subflow.id ? '#111827' : '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, subflow.name),
+                  React.createElement('div', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '2px' } }, \`\${subflow.nodes?.length || 0} nodes\`)
                 )
               )
             )
@@ -22240,7 +22252,7 @@ function getFlowDocsHTML() {
       // ============================================
       // FLOW CANVAS COMPONENT
       // ============================================
-      const FlowCanvas = ({ subflow, parentFlow, allSubflows, onSelectSubflow, onBackToFlows }) => {
+      const FlowCanvas = ({ subflow, parentFlow, allSubflows, viewingEntry, onSelectSubflow, onSelectEntry, onSubflowNodeClick, onBackToFlows }) => {
         const [nodes, setNodes, onNodesChange] = useNodesState(subflow.nodes || []);
         const [edges, setEdges, onEdgesChange] = useEdgesState(subflow.edges || []);
         const [selectedNode, setSelectedNode] = useState(null);
@@ -22254,7 +22266,11 @@ function getFlowDocsHTML() {
 
         const onNodeClick = useCallback((event, node) => {
           setSelectedNode(node);
-        }, []);
+          // If clicking a subflow node, navigate to that subflow
+          if (node.type === 'subflow' && node.data?.slug) {
+            onSubflowNodeClick(node.data.slug);
+          }
+        }, [onSubflowNodeClick]);
 
         const defaultEdgeOptions = {
           type: 'smoothstep',
@@ -22271,7 +22287,9 @@ function getFlowDocsHTML() {
             parentFlow: parentFlow,
             currentSubflow: subflow,
             subflows: allSubflows,
+            viewingEntry: viewingEntry,
             onSelectSubflow: onSelectSubflow,
+            onSelectEntry: onSelectEntry,
             onBackToParent: onBackToFlows
           }),
           // Main Canvas Area
@@ -22416,21 +22434,52 @@ function getFlowDocsHTML() {
       const App = () => {
         const [selectedParent, setSelectedParent] = useState(null);
         const [selectedSubflow, setSelectedSubflow] = useState(null);
+        const [viewingEntry, setViewingEntry] = useState(true); // true = parent entry flow, false = subflow
 
         const allSubflows = useMemo(() => {
           if (!selectedParent) return [];
           return (selectedParent.subflows || []).map(id => FLOW_DATA.subflows[id]).filter(Boolean);
         }, [selectedParent]);
 
-        if (selectedSubflow && selectedParent) {
+        // Create entry flow object for parent
+        const entryFlow = useMemo(() => {
+          if (!selectedParent) return null;
+          return {
+            id: 'entry',
+            name: 'Entry Flow',
+            description: 'Main entry point showing subflow options',
+            nodes: selectedParent.entryNodes || [],
+            edges: selectedParent.entryEdges || []
+          };
+        }, [selectedParent]);
+
+        if (selectedParent) {
+          const currentFlow = viewingEntry ? entryFlow : selectedSubflow;
+          if (!currentFlow) return null;
+          
           return React.createElement(FlowCanvas, {
-            subflow: selectedSubflow,
+            subflow: currentFlow,
             parentFlow: selectedParent,
             allSubflows: allSubflows,
-            onSelectSubflow: setSelectedSubflow,
+            viewingEntry: viewingEntry,
+            onSelectSubflow: (sf) => {
+              setSelectedSubflow(sf);
+              setViewingEntry(false);
+            },
+            onSelectEntry: () => {
+              setViewingEntry(true);
+            },
+            onSubflowNodeClick: (slug) => {
+              const sf = FLOW_DATA.subflows[slug];
+              if (sf) {
+                setSelectedSubflow(sf);
+                setViewingEntry(false);
+              }
+            },
             onBackToFlows: () => {
               setSelectedSubflow(null);
               setSelectedParent(null);
+              setViewingEntry(true);
             }
           });
         }
@@ -22438,9 +22487,7 @@ function getFlowDocsHTML() {
         return React.createElement(FlowSelectionPage, {
           onSelectParent: (parent) => {
             setSelectedParent(parent);
-            const subflowIds = parent.subflows || [];
-            const firstSubflow = FLOW_DATA.subflows[subflowIds[0]];
-            if (firstSubflow) setSelectedSubflow(firstSubflow);
+            setViewingEntry(true);
           }
         });
       };
