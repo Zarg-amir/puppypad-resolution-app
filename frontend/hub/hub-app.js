@@ -5731,16 +5731,24 @@ End with an encouraging message about consistency and patience.`,
 
   renderSimChatContent(step) {
     let html = '';
+    const persona = this.getPersonaFromStep(step);
 
-    // Render messages
-    if (step.messages) {
+    // Check if this is an offer step (refund ladder)
+    const isOfferStep = step.id.includes('LADDER_20') || step.id.includes('LADDER_30') || 
+                        step.id.includes('LADDER_40') || step.id.includes('LADDER_50');
+    
+    // Check if this is a thank you/success step
+    const isThankYouStep = step.isThankYou;
+
+    // Render messages first
+    if (step.messages && !isOfferStep && !isThankYouStep) {
       step.messages.forEach(msg => {
-        const persona = this.getPersonaFromLabel(msg.label);
+        const msgPersona = this.getPersonaFromLabel(msg.label);
         html += `
           <div class="sim-msg bot">
-            <img src="${this.avatars[persona]}" alt="${persona}" class="sim-msg-avatar">
+            <img src="${this.avatars[msgPersona]}" alt="${msgPersona}" class="sim-msg-avatar">
             <div class="sim-msg-content">
-              <span class="sim-msg-sender ${persona}">${persona.charAt(0).toUpperCase() + persona.slice(1)}</span>
+              <span class="sim-msg-sender ${msgPersona}">${msgPersona.charAt(0).toUpperCase() + msgPersona.slice(1)}</span>
               <div class="sim-msg-bubble">${msg.content.replace(/\n/g, '<br>')}</div>
             </div>
           </div>
@@ -5748,8 +5756,151 @@ End with an encouraging message about consistency and patience.`,
       });
     }
 
-    // Render form if present
-    if (step.fields) {
+    // OFFER CARD - For refund ladder steps
+    if (isOfferStep) {
+      const percent = step.id.includes('20') ? '20' : step.id.includes('30') ? '30' : step.id.includes('40') ? '40' : '50';
+      const amountText = `$XX.XX back to you`;
+      
+      // First show Amy's message
+      if (step.messages && step.messages[0]) {
+        html += `
+          <div class="sim-msg bot">
+            <img src="${this.avatars.amy}" alt="amy" class="sim-msg-avatar">
+            <div class="sim-msg-content">
+              <span class="sim-msg-sender amy">Amy</span>
+              <div class="sim-msg-bubble">${step.messages[0].content.replace(/\n/g, '<br>')}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Then show the offer card
+      html += `
+        <div class="sim-offer-card">
+          <div class="sim-offer-icon">💰</div>
+          <div class="sim-offer-amount">${percent}%</div>
+          <div class="sim-offer-value">${amountText}</div>
+          <div class="sim-offer-label">Partial refund — keep your products</div>
+          <div class="sim-offer-buttons">
+            <button class="sim-offer-btn accept">Accept Offer</button>
+            <button class="sim-offer-btn decline">No thanks</button>
+          </div>
+          <div class="sim-offer-note">Reviewed within 1-2 days, then 3-5 days to your account</div>
+        </div>
+      `;
+    }
+
+    // SUCCESS/THANK YOU CARD
+    if (isThankYouStep) {
+      // Show user's acceptance response first
+      const percent = step.id.includes('20') ? '20' : step.id.includes('30') ? '30' : 
+                      step.id.includes('40') ? '40' : step.id.includes('50') ? '50' : 'full';
+      
+      html += `
+        <div class="sim-user-response">
+          <div class="sim-user-bubble">I'll accept the ${percent === 'full' ? 'full' : percent + '%'} refund</div>
+        </div>
+      `;
+
+      // Show progress indicator
+      html += `
+        <div class="sim-progress">
+          <div class="sim-progress-spinner"></div>
+          <span class="sim-progress-text">Processing your refund...</span>
+        </div>
+      `;
+
+      // Show success card
+      const thankYouMsg = step.messages && step.messages[0] ? step.messages[0].content : 'Your refund has been submitted!';
+      const caseResolution = step.caseDetails?.resolution || 'refund';
+      
+      html += `
+        <div class="sim-success-card">
+          <div class="sim-success-icon">✓</div>
+          <div class="sim-success-title">Refund Approved!</div>
+          <div class="sim-success-message">${thankYouMsg.replace(/\n/g, '<br>')}</div>
+          <div class="sim-success-case-id">
+            <strong>Case ID: #PPC-XXXXX</strong>
+            Resolution: ${caseResolution}
+          </div>
+        </div>
+      `;
+    }
+
+    // FULL REFUND - Location check
+    if (step.id === 'DOG_STEP_FULL_REFUND') {
+      if (step.messages && step.messages[0]) {
+        html += `
+          <div class="sim-msg bot">
+            <img src="${this.avatars.amy}" alt="amy" class="sim-msg-avatar">
+            <div class="sim-msg-content">
+              <span class="sim-msg-sender amy">Amy</span>
+              <div class="sim-msg-bubble">${step.messages[0].content.replace(/\n/g, '<br>')}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Show decision for US vs International
+      html += `
+        <div class="sim-case-card">
+          <div class="sim-case-header">
+            <div class="sim-case-icon">🌍</div>
+            <div>
+              <div class="sim-case-title">Location Check</div>
+              <div class="sim-case-subtitle">Determines return requirement</div>
+            </div>
+          </div>
+          <div class="sim-case-details">
+            <div class="sim-case-row">
+              <span class="sim-case-label">US Customer</span>
+              <span class="sim-case-value">Return required →</span>
+            </div>
+            <div class="sim-case-row">
+              <span class="sim-case-label">International</span>
+              <span class="sim-case-value">Keep product →</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // FULL REFUND - US with return
+    if (step.id === 'DOG_STEP_FULL_US' || step.id === 'DOG_STEP_FULL_INTL') {
+      // Show messages
+      if (step.messages) {
+        step.messages.forEach(msg => {
+          html += `
+            <div class="sim-msg bot">
+              <img src="${this.avatars.amy}" alt="amy" class="sim-msg-avatar">
+              <div class="sim-msg-content">
+                <span class="sim-msg-sender amy">Amy</span>
+                <div class="sim-msg-bubble">${msg.content.replace(/\n/g, '<br>')}</div>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      // Show success card for full refund
+      const isUS = step.id === 'DOG_STEP_FULL_US';
+      html += `
+        <div class="sim-success-card">
+          <div class="sim-success-icon">✓</div>
+          <div class="sim-success-title">Full Refund ${isUS ? '+ Return' : 'Approved'}!</div>
+          <div class="sim-success-message">
+            ${isUS ? 'Your return label has been sent.<br>Refund processed upon receipt.' : 'Your full refund is being processed.<br>No return needed - keep the product!'}
+          </div>
+          <div class="sim-success-case-id">
+            <strong>Case ID: #PPC-XXXXX</strong>
+            Resolution: ${step.caseDetails?.resolution || 'full_refund'}
+          </div>
+        </div>
+      `;
+    }
+
+    // Regular form if present
+    if (step.fields && !isOfferStep && !isThankYouStep) {
       html += `<div class="sim-form">`;
       step.fields.forEach(field => {
         html += `
@@ -5765,19 +5916,14 @@ End with an encouraging message about consistency and patience.`,
       html += `</div>`;
     }
 
-    // Render buttons if present
-    if (step.buttons) {
+    // Regular buttons if present (not for offer steps which have their own buttons)
+    if (step.buttons && !isOfferStep) {
       html += `<div class="sim-buttons">`;
       step.buttons.forEach(btn => {
         const btnClass = btn.style || 'primary';
         html += `<button class="sim-btn ${btnClass}">${btn.text}</button>`;
       });
       html += `</div>`;
-    }
-
-    // If decision point, show the choices
-    if (step.isBranchPoint && step.buttons) {
-      // Already rendered above
     }
 
     return html;
