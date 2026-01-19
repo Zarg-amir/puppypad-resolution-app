@@ -891,7 +891,7 @@
             React.createElement('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' } }, React.createElement(Icons.MessageSquare, null)),
             React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#6b7280' } }, personas[data.persona] || 'Amy')
           ),
-          React.createElement('p', { style: { fontSize: '14px', color: '#374151', lineHeight: '1.5', margin: 0 } }, data.content || 'Hello! How can I help you today?'),
+          React.createElement('p', { style: { fontSize: '14px', color: '#2D3748', lineHeight: '1.5', margin: 0 } }, data.content || 'Hello! How can I help you today?'),
           React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#3b82f6', width: '10px', height: '10px', border: '2px solid white' } })
         );
       };
@@ -905,8 +905,8 @@
             React.createElement('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6' } }, React.createElement(Icons.List, null)),
             React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#6b7280' } }, 'Options')
           ),
-          React.createElement('p', { style: { fontSize: '14px', color: '#374151', marginBottom: '12px', fontWeight: 500 } }, data.prompt || 'What would you like to do?'),
-          (data.options || []).slice(0, 3).map((opt, i) => React.createElement('div', { key: i, style: { fontSize: '12px', color: '#6b7280', padding: '8px 12px', background: '#f9fafb', borderRadius: '6px', marginBottom: '6px', border: '1px solid #e5e7eb' } }, opt.label)),
+          React.createElement('p', { style: { fontSize: '14px', color: '#2D3748', marginBottom: '12px', fontWeight: 500 } }, data.prompt || 'What would you like to do?'),
+          (data.options || []).slice(0, 3).map((opt, i) => React.createElement('div', { key: i, style: { fontSize: '12px', color: '#6b7280', padding: '8px 12px', background: '#f9fafb', borderRadius: '6px', marginBottom: '6px', border: '1px solid rgba(0, 0, 0, 0.08)' } }, opt.label)),
           React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#8b5cf6', width: '10px', height: '10px', border: '2px solid white' } })
         );
       };
@@ -935,7 +935,7 @@
             React.createElement('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: '#fce7f3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ec4899' } }, React.createElement(Icons.Zap, null)),
             React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#6b7280' } }, 'API Call')
           ),
-          React.createElement('p', { style: { fontSize: '13px', color: '#374151', margin: 0 } }, `${data.service || 'Shopify'}, ${data.endpoint || 'lookup'}`),
+          React.createElement('p', { style: { fontSize: '13px', color: '#2D3748', margin: 0 } }, `${data.service || 'Shopify'}, ${data.endpoint || 'lookup'}`),
           React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#ec4899', width: '10px', height: '10px', border: '2px solid white' } })
         );
       };
@@ -949,8 +949,8 @@
             React.createElement('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' } }, React.createElement(Icons.Bot, null)),
             React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#6b7280' } }, 'AI Response')
           ),
-          React.createElement('p', { style: { fontSize: '13px', color: '#374151', margin: 0 } }, 'GPT-powered reply'),
-          React.createElement('p', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' } }, data.model || 'gpt-4o-mini'),
+          React.createElement('p', { style: { fontSize: '13px', color: '#2D3748', margin: 0 } }, 'GPT-powered reply'),
+          React.createElement('p', { style: { fontSize: '11px', color: '#718096', marginTop: '4px' } }, data.model || 'gpt-4o-mini'),
           React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#6366f1', width: '10px', height: '10px', border: '2px solid white' } })
         );
       };
@@ -984,8 +984,8 @@
             React.createElement('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f97316' } }, React.createElement(Icons.FolderOpen, null)),
             React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#6b7280' } }, 'Create Case')
           ),
-          React.createElement('p', { style: { fontSize: '13px', color: '#374151', margin: 0 } }, 'Submit to Hub'),
-          React.createElement('p', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' } }, `Type: ${data.type || 'refund'}`),
+          React.createElement('p', { style: { fontSize: '13px', color: '#2D3748', margin: 0 } }, 'Submit to Hub'),
+          React.createElement('p', { style: { fontSize: '11px', color: '#718096', marginTop: '4px' } }, `Type: ${data.type || 'refund'}`),
           React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#f97316', width: '10px', height: '10px', border: '2px solid white' } })
         );
       };
@@ -999,7 +999,7 @@
             React.createElement('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' } }, React.createElement(Icons.FileText, null)),
             React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#6b7280' } }, data.formType || 'Form')
           ),
-          React.createElement('p', { style: { fontSize: '13px', color: '#374151', margin: 0 } }, data.label || 'Collect user input'),
+          React.createElement('p', { style: { fontSize: '13px', color: '#2D3748', margin: 0 } }, data.label || 'Collect user input'),
           React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#10b981', width: '10px', height: '10px', border: '2px solid white' } })
         );
       };
@@ -1031,8 +1031,8 @@
             ),
             React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#8b5cf6' } }, 'Subflow')
           ),
-          React.createElement('p', { style: { fontSize: '15px', fontWeight: 600, color: '#374151', margin: 0 } }, data.name || 'Go to Subflow'),
-          data.nodeCount && React.createElement('p', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' } }, `${data.nodeCount} nodes`),
+          React.createElement('p', { style: { fontSize: '15px', fontWeight: 600, color: '#2D3748', margin: 0 } }, data.name || 'Go to Subflow'),
+          data.nodeCount && React.createElement('p', { style: { fontSize: '11px', color: '#718096', marginTop: '4px' } }, `${data.nodeCount} nodes`),
           React.createElement('p', { style: { fontSize: '12px', color: '#8b5cf6', marginTop: '6px' } }, 'Click to view →'),
           React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#8b5cf6', width: '10px', height: '10px', border: '2px solid white' } })
         );
@@ -1075,8 +1075,8 @@
             ),
             React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#0891b2' } }, 'Photo Upload')
           ),
-          React.createElement('p', { style: { fontSize: '13px', color: '#374151', margin: 0 } }, data.label || 'Upload evidence photos'),
-          data.description && React.createElement('p', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' } }, data.description),
+          React.createElement('p', { style: { fontSize: '13px', color: '#2D3748', margin: 0 } }, data.label || 'Upload evidence photos'),
+          data.description && React.createElement('p', { style: { fontSize: '11px', color: '#718096', marginTop: '4px' } }, data.description),
           React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#06b6d4', width: '10px', height: '10px', border: '2px solid white' } })
         );
       };
@@ -1095,8 +1095,8 @@
             ),
             React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#059669' } }, 'Text Input')
           ),
-          React.createElement('p', { style: { fontSize: '13px', color: '#374151', margin: 0 } }, data.label || 'Enter text...'),
-          data.placeholder && React.createElement('p', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '4px', fontStyle: 'italic' } }, `"${data.placeholder}"`),
+          React.createElement('p', { style: { fontSize: '13px', color: '#2D3748', margin: 0 } }, data.label || 'Enter text...'),
+          data.placeholder && React.createElement('p', { style: { fontSize: '11px', color: '#718096', marginTop: '4px', fontStyle: 'italic' } }, `"${data.placeholder}"`),
           React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#10b981', width: '10px', height: '10px', border: '2px solid white' } })
         );
       };
@@ -1205,7 +1205,7 @@
                   ),
                   React.createElement('div', { 
                     style: { 
-                      color: '#9ca3af',
+                      color: '#718096',
                       transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)',
                       transition: 'transform 0.2s'
                     } 
@@ -1222,8 +1222,8 @@
                     React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
                       React.createElement('div', { style: { width: '8px', height: '8px', borderRadius: '50%', background: viewingEntry && isSelected ? parent.color : '#d1d5db' } }),
                       React.createElement('div', null,
-                        React.createElement('div', { style: { fontSize: '13px', fontWeight: 500, color: '#374151' } }, 'Entry Flow'),
-                        React.createElement('div', { style: { fontSize: '11px', color: '#9ca3af' } }, `${parent.entryNodes?.length || 0} nodes`)
+                        React.createElement('div', { style: { fontSize: '13px', fontWeight: 500, color: '#2D3748' } }, 'Entry Flow'),
+                        React.createElement('div', { style: { fontSize: '11px', color: '#718096' } }, `${parent.entryNodes?.length || 0} nodes`)
                       )
                     )
                   ),
@@ -1238,8 +1238,8 @@
                       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
                         React.createElement('div', { style: { width: '8px', height: '8px', borderRadius: '50%', background: !viewingEntry && selectedSubflowId === subflow.id ? parent.color : '#d1d5db' } }),
                         React.createElement('div', { style: { flex: 1, minWidth: 0 } },
-                          React.createElement('div', { style: { fontSize: '13px', fontWeight: 500, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, subflow.name),
-                          React.createElement('div', { style: { fontSize: '11px', color: '#9ca3af' } }, `${subflow.nodes?.length || 0} nodes`)
+                          React.createElement('div', { style: { fontSize: '13px', fontWeight: 500, color: '#2D3748', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, subflow.name),
+                          React.createElement('div', { style: { fontSize: '11px', color: '#718096' } }, `${subflow.nodes?.length || 0} nodes`)
                         )
                       )
                     )
@@ -1272,7 +1272,7 @@
               alignItems: 'center',
               justifyContent: 'center',
               padding: '40px',
-              color: '#9ca3af'
+              color: '#718096'
             } 
           },
             React.createElement('div', { style: { width: '64px', height: '64px', margin: '0 auto 20px', background: '#f3f4f6', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
@@ -1327,7 +1327,7 @@
               }, getIcon()),
               React.createElement('div', { style: { flex: 1 } },
                 React.createElement('h3', { style: { fontSize: '15px', fontWeight: 600, margin: 0, color: '#111827' } }, getNodeTitle()),
-                React.createElement('p', { style: { fontSize: '11px', color: '#9ca3af', margin: 0, marginTop: '2px', fontFamily: 'monospace' } }, `ID: ${selectedNode.id}`)
+                React.createElement('p', { style: { fontSize: '11px', color: '#718096', margin: 0, marginTop: '2px', fontFamily: 'monospace' } }, `ID: ${selectedNode.id}`)
               )
             ),
             // Simulate Button
@@ -1392,9 +1392,9 @@
               selectedNode.data.systemPrompt && React.createElement('div', { style: { marginBottom: '16px' } },
                 React.createElement('div', { 
                   onClick: () => toggleSection('prompt'),
-                  style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }
+                  style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', border: '1px solid rgba(0, 0, 0, 0.08)' }
                 },
-                  React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#374151' } }, 'System Prompt'),
+                  React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#2D3748' } }, 'System Prompt'),
                   React.createElement('span', { style: { fontSize: '10px', color: '#6b7280' } }, expandedSections.prompt ? '▼' : '▶')
                 ),
                 expandedSections.prompt && React.createElement('div', { 
@@ -1424,7 +1424,7 @@
               // Description
               selectedNode.data.description && React.createElement('div', { style: { marginBottom: '16px' } },
                 React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'Description'),
-                React.createElement('p', { style: { fontSize: '13px', color: '#374151', margin: 0, lineHeight: '1.5' } }, selectedNode.data.description)
+                React.createElement('p', { style: { fontSize: '13px', color: '#2D3748', margin: 0, lineHeight: '1.5' } }, selectedNode.data.description)
               ),
               // Request Schema
               selectedNode.data.request && React.createElement('div', { style: { marginBottom: '16px' } },
@@ -1462,7 +1462,7 @@
               ),
               selectedNode.data.message && React.createElement('div', { style: { marginBottom: '16px' } },
                 React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'Offer Message'),
-                React.createElement('div', { style: { padding: '12px', background: '#f9fafb', borderRadius: '10px', fontSize: '13px', lineHeight: '1.6', border: '1px solid #e5e7eb' } }, selectedNode.data.message)
+                React.createElement('div', { style: { padding: '12px', background: '#f9fafb', borderRadius: '10px', fontSize: '13px', lineHeight: '1.6', border: '1px solid rgba(0, 0, 0, 0.08)' } }, selectedNode.data.message)
               ),
               React.createElement('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
                 selectedNode.data.needsManagerApproval && React.createElement('span', { style: { padding: '4px 10px', background: '#fef3c7', color: '#b45309', borderRadius: '20px', fontSize: '11px', fontWeight: 500 } }, '👔 Manager Approval'),
@@ -1479,7 +1479,7 @@
               ),
               React.createElement('div', { style: { marginBottom: '16px' } },
                 React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'Loading Message'),
-                React.createElement('div', { style: { padding: '12px', background: '#f9fafb', borderRadius: '10px', fontSize: '13px', border: '1px solid #e5e7eb' } }, selectedNode.data.message || 'Please wait...')
+                React.createElement('div', { style: { padding: '12px', background: '#f9fafb', borderRadius: '10px', fontSize: '13px', border: '1px solid rgba(0, 0, 0, 0.08)' } }, selectedNode.data.message || 'Please wait...')
               ),
               React.createElement('p', { style: { fontSize: '12px', color: '#6b7280', margin: 0, fontStyle: 'italic' } }, 'This simulates manager approval time to make the experience feel more authentic.')
             ),
@@ -1507,11 +1507,11 @@
             // Persona (for message/ai nodes)
             selectedNode.data?.persona && React.createElement('div', { style: { marginBottom: '16px' } },
               React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'Persona'),
-              React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '10px' } }, 
+              React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', border: '1px solid rgba(0, 0, 0, 0.08)', display: 'flex', alignItems: 'center', gap: '10px' } }, 
                 React.createElement('div', { style: { width: '32px', height: '32px', borderRadius: '50%', background: selectedNode.data.persona === 'claudia' ? '#fce7f3' : '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' } }, selectedNode.data.persona === 'claudia' ? '🐕' : '👩'),
                 React.createElement('div', null,
-                  React.createElement('div', { style: { fontWeight: 600, color: '#374151' } }, selectedNode.data.persona === 'amy' ? 'Amy' : selectedNode.data.persona === 'claudia' ? 'Claudia' : selectedNode.data.persona),
-                  React.createElement('div', { style: { fontSize: '11px', color: '#9ca3af' } }, selectedNode.data.persona === 'claudia' ? 'Dog Trainer' : 'Customer Support')
+                  React.createElement('div', { style: { fontWeight: 600, color: '#2D3748' } }, selectedNode.data.persona === 'amy' ? 'Amy' : selectedNode.data.persona === 'claudia' ? 'Claudia' : selectedNode.data.persona),
+                  React.createElement('div', { style: { fontSize: '11px', color: '#718096' } }, selectedNode.data.persona === 'claudia' ? 'Dog Trainer' : 'Customer Support')
                 )
               )
             ),
@@ -1519,7 +1519,7 @@
             // Message Content (for message nodes)
             selectedNode.data?.content && selectedNode.type === 'message' && React.createElement('div', { style: { marginBottom: '16px' } },
               React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'Message Content'),
-              React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', lineHeight: '1.6', border: '1px solid #e5e7eb', color: '#374151' } }, selectedNode.data.content)
+              React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', lineHeight: '1.6', border: '1px solid rgba(0, 0, 0, 0.08)', color: '#2D3748' } }, selectedNode.data.content)
             ),
 
             // Options list
@@ -1527,7 +1527,7 @@
               React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, `Options (${selectedNode.data.options.length})`),
               React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
                 selectedNode.data.options.map((opt, i) => 
-                  React.createElement('div', { key: i, style: { padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', fontSize: '13px', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '8px' } },
+                  React.createElement('div', { key: i, style: { padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', fontSize: '13px', border: '1px solid rgba(0, 0, 0, 0.08)', display: 'flex', alignItems: 'center', gap: '8px' } },
                     React.createElement('span', { style: { width: '22px', height: '22px', borderRadius: '50%', background: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, color: 'white' } }, opt.icon || (i + 1)),
                     opt.label || opt
                   )
@@ -1592,11 +1592,11 @@
             React.createElement('img', { src: persona.avatar, alt: persona.name, style: { width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginTop: '4px' } }),
             React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } },
               React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' } },
-                React.createElement('span', { style: { fontWeight: 600, color: '#374151' } }, persona.name),
-                React.createElement('span', { style: { color: '#9ca3af' } }, persona.role)
+                React.createElement('span', { style: { fontWeight: 600, color: '#2D3748' } }, persona.name),
+                React.createElement('span', { style: { color: '#718096' } }, persona.role)
               ),
-              React.createElement('div', { style: { padding: '14px 18px', background: 'white', borderRadius: '16px', borderBottomLeftRadius: '6px', border: '1px solid #e5e7eb', fontSize: '15px', lineHeight: '1.5', color: '#374151' } }, 
-                node.data?.content || 'Hello! How can I help you today?'
+              React.createElement('div', { style: { padding: '14px 18px', background: 'white', borderRadius: '16px', borderBottomLeftRadius: '6px', border: '1px solid rgba(0, 0, 0, 0.08)', fontSize: '15px', lineHeight: '1.5', color: '#2D3748' } }, 
+                node.data?.content || node.data?.prompt || node.data?.message || "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below."
               )
             )
           );
@@ -1605,30 +1605,55 @@
         // Render options buttons
         const renderOptions = () => {
           const options = node.data?.options || [];
-          return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', marginTop: '16px' } },
-            node.data?.prompt && React.createElement('p', { style: { fontSize: '14px', color: '#6b7280', marginBottom: '8px', fontWeight: 500 } }, node.data.prompt),
+          return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', marginTop: '8px' } },
             options.map((opt, i) => 
               React.createElement('button', { 
                 key: i, 
                 style: { 
+                  width: '100%',
                   display: 'flex', 
                   alignItems: 'center', 
                   gap: '12px', 
-                  padding: '16px 20px', 
+                  padding: '18px 20px', 
                   background: 'white', 
-                  border: '2px solid #e5e7eb', 
-                  borderRadius: '12px', 
+                  border: '1px solid rgba(0, 0, 0, 0.08)', 
+                  borderRadius: '16px', 
                   cursor: 'pointer',
                   textAlign: 'left',
-                  transition: 'all 0.2s',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                  transition: 'all 0.25s ease',
                   fontSize: '15px',
                   fontWeight: 500,
-                  color: '#374151'
+                  color: '#2D3748'
                 },
-                onMouseOver: (e) => { e.target.style.borderColor = '#8b5cf6'; e.target.style.background = '#faf5ff'; },
-                onMouseOut: (e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.background = 'white'; }
+                onMouseOver: (e) => { 
+                  const btn = e.currentTarget;
+                  btn.style.borderColor = '#1a365d';
+                  btn.style.background = '#E8EEF4';
+                  btn.style.transform = 'translateX(4px)';
+                  btn.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+                  const icon = btn.querySelector('.icon');
+                  if (icon) {
+                    icon.style.background = '#1a365d';
+                    icon.style.color = 'white';
+                    icon.style.transform = 'scale(1.1)';
+                  }
+                },
+                onMouseOut: (e) => { 
+                  const btn = e.currentTarget;
+                  btn.style.borderColor = 'rgba(0, 0, 0, 0.08)';
+                  btn.style.background = 'white';
+                  btn.style.transform = 'translateX(0)';
+                  btn.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                  const icon = btn.querySelector('.icon');
+                  if (icon) {
+                    icon.style.background = '#F3F4F6';
+                    icon.style.color = 'inherit';
+                    icon.style.transform = 'scale(1)';
+                  }
+                }
               },
-                opt.icon && React.createElement('span', { style: { fontSize: '20px' } }, opt.icon),
+                opt.icon && React.createElement('span', { style: { width: '40px', height: '40px', borderRadius: '12px', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', transition: 'all 0.25s ease', flexShrink: 0 }, className: 'icon' }, opt.icon),
                 opt.label || opt
               )
             )
@@ -1637,34 +1662,35 @@
 
         // Render offer card
         const renderOffer = () => {
-          return React.createElement('div', { style: { background: 'white', borderRadius: '16px', border: '2px solid #10b981', padding: '24px', textAlign: 'center', marginTop: '16px' } },
-            React.createElement('div', { style: { fontSize: '14px', color: '#059669', fontWeight: 600, marginBottom: '8px' } }, '💰 Special Offer'),
-            React.createElement('div', { style: { fontSize: '48px', fontWeight: 700, color: '#10b981', marginBottom: '8px' } }, `${node.data?.percent || 20}%`),
-            React.createElement('div', { style: { fontSize: '16px', color: '#374151', marginBottom: '4px' } }, 'Partial Refund'),
-            React.createElement('div', { style: { fontSize: '14px', color: '#6b7280', marginBottom: '20px' } }, node.data?.label || 'Keep your products'),
-            React.createElement('div', { style: { display: 'flex', gap: '12px', justifyContent: 'center' } },
-              React.createElement('button', { style: { padding: '12px 32px', background: '#10b981', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' } }, 'Accept'),
-              React.createElement('button', { style: { padding: '12px 32px', background: 'white', color: '#6b7280', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' } }, 'Decline')
-            )
+          return React.createElement('div', { style: { position: 'relative', background: 'linear-gradient(135deg, #1a365d 0%, #2c5282 100%)', borderRadius: '24px', padding: '32px 24px', textAlign: 'center', margin: '16px 0', color: 'white', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 40px rgba(26, 54, 93, 0.2)', overflow: 'hidden' } },
+            React.createElement('div', { style: { fontSize: '40px', marginBottom: '12px', position: 'relative', zIndex: 1 } }, '💰'),
+            React.createElement('div', { style: { fontFamily: 'Space Grotesk, Poppins, sans-serif', fontSize: '64px', fontWeight: 800, lineHeight: 1, marginBottom: '8px', background: 'linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.8) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', position: 'relative', zIndex: 1 } }, `${node.data?.percent || 20}%`),
+            React.createElement('div', { style: { fontSize: '18px', opacity: 0.9, marginBottom: '8px', position: 'relative', zIndex: 1 } }, node.data?.value || `$${((node.data?.percent || 20) * 10).toFixed(2)} back to you`),
+            React.createElement('div', { style: { fontSize: '15px', opacity: 0.8, marginBottom: '20px', position: 'relative', zIndex: 1 } }, node.data?.label || 'Partial refund — keep your products'),
+            React.createElement('div', { style: { display: 'flex', gap: '12px', marginTop: '24px', position: 'relative', zIndex: 1 } },
+                React.createElement('button', { style: { flex: 1, padding: '16px 24px', borderRadius: '16px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', background: 'white', color: '#1a365d', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' } }, 'Accept Offer'),
+                React.createElement('button', { style: { flex: 1, padding: '16px 24px', borderRadius: '16px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' } }, 'No thanks')
+            ),
+            React.createElement('div', { style: { fontSize: '13px', opacity: 0.7, marginTop: '16px', position: 'relative', zIndex: 1 } }, 'Reviewed within 1-2 days, then 3-5 days to your account')
           );
         };
 
         // Render form
         const renderForm = () => {
           const fields = node.data?.fields || ['email'];
-          return React.createElement('div', { style: { background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', padding: '24px', marginTop: '16px' } },
-            React.createElement('h3', { style: { fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '16px' } }, node.data?.label || 'Enter your details'),
+          return React.createElement('div', { style: { background: 'white', borderRadius: '24px', padding: '24px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', border: '1px solid rgba(0, 0, 0, 0.08)', marginTop: '8px', marginBottom: '20px' } },
+            React.createElement('h3', { style: { fontSize: '16px', fontWeight: 600, color: '#2D3748', marginBottom: '16px' } }, node.data?.label || 'Enter your details'),
             fields.map((field, i) => 
               React.createElement('div', { key: i, style: { marginBottom: '12px' } },
-                React.createElement('label', { style: { display: 'block', fontSize: '13px', fontWeight: 500, color: '#6b7280', marginBottom: '6px', textTransform: 'capitalize' } }, field.replace(/([A-Z])/g, ' $1')),
+                React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, field.replace(/([A-Z])/g, ' $1')),
                 React.createElement('input', { 
                   type: field === 'email' ? 'email' : 'text', 
                   placeholder: `Enter ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}...`,
-                  style: { width: '100%', padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }
+                  style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' }
                 })
               )
             ),
-            React.createElement('button', { style: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', marginTop: '8px' } }, 'Continue')
+            React.createElement('button', { style: { width: '100%', padding: '14px 24px', background: 'linear-gradient(135deg, #1a365d 0%, #2d3748 100%)', color: 'white', border: 'none', borderRadius: '16px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', marginTop: '8px' } }, 'Continue')
           );
         };
 
@@ -1727,7 +1753,7 @@
               node.type === 'offer' && React.createElement('div', null,
                 React.createElement('div', { style: { display: 'flex', gap: '12px', maxWidth: '85%', marginBottom: '16px' } },
                   React.createElement('img', { src: persona.avatar, alt: persona.name, style: { width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 } }),
-                  React.createElement('div', { style: { padding: '14px 18px', background: 'white', borderRadius: '16px', borderBottomLeftRadius: '6px', border: '1px solid #e5e7eb', fontSize: '15px', lineHeight: '1.5' } }, 
+                  React.createElement('div', { style: { padding: '14px 18px', background: 'white', borderRadius: '16px', borderBottomLeftRadius: '6px', border: '1px solid rgba(0, 0, 0, 0.08)', fontSize: '15px', lineHeight: '1.5' } }, 
                     node.data?.message || "I'd like to offer you a partial refund while you keep the product."
                   )
                 ),
@@ -1738,7 +1764,7 @@
 
             // Simulator Footer
             React.createElement('div', { style: { padding: '12px 16px', borderTop: '1px solid #e5e7eb', background: 'white', textAlign: 'center' } },
-              React.createElement('span', { style: { fontSize: '11px', color: '#9ca3af' } }, '🔍 Simulator Preview — This is how the node appears in the chat app')
+              React.createElement('span', { style: { fontSize: '11px', color: '#718096' } }, '🔍 Simulator Preview — This is how the node appears in the chat app')
             )
           )
         );
