@@ -22675,12 +22675,140 @@ function getFlowDocsHTML() {
       };
 
       // ============================================
+      // PARENT FLOW DETAIL PAGE (matches old app)
+      // ============================================
+      const ParentFlowDetailPage = ({ parentFlow, subflows, onBack, onSelectEntry, onSelectSubflow }) => {
+        // Subflow icons mapping
+        const subflowIcons = {
+          'changed_mind': '💭',
+          'dog_not_using': '🐕',
+          'quality_issue': '💔',
+          'other_reason': '😕',
+          'tracking_status': '📍',
+          'pause_subscription': '⏸️',
+          'cancel_subscription': '❌',
+          'change_frequency': '🔄'
+        };
+
+        // Calculate total entry steps
+        const entrySteps = parentFlow.entryNodes?.length || 0;
+        const entryEdges = parentFlow.entryEdges?.length || 0;
+
+        return React.createElement('div', { style: { display: 'flex', height: '100vh' } },
+          React.createElement(HubSidebar, null),
+          React.createElement('div', { style: { flex: 1, padding: '32px 48px', overflowY: 'auto', background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)' } },
+            React.createElement('div', { style: { maxWidth: '1100px', margin: '0 auto' } },
+              // Back button
+              React.createElement('button', {
+                onClick: onBack,
+                style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', color: '#374151', cursor: 'pointer', marginBottom: '24px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }
+              },
+                React.createElement(Icons.ArrowLeft, null),
+                'Back to Flows'
+              ),
+              // Parent flow header
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' } },
+                React.createElement('div', { style: { fontSize: '36px' } }, parentFlow.icon),
+                React.createElement('h1', { style: { fontSize: '32px', fontWeight: 700, color: '#111827', margin: 0 } }, parentFlow.name)
+              ),
+              React.createElement('p', { style: { fontSize: '16px', color: '#6b7280', marginBottom: '32px' } }, parentFlow.description),
+              // Entry Flow Steps Card (highlighted)
+              React.createElement('div', {
+                onClick: onSelectEntry,
+                style: { 
+                  padding: '20px 24px', 
+                  background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', 
+                  borderRadius: '12px', 
+                  border: '2px solid #93c5fd', 
+                  cursor: 'pointer', 
+                  marginBottom: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  transition: 'all 0.15s'
+                }
+              },
+                React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '16px' } },
+                  React.createElement('div', { style: { width: '48px', height: '48px', borderRadius: '10px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' } },
+                    React.createElement('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', stroke: '#3b82f6', strokeWidth: 2 },
+                      React.createElement('rect', { x: 3, y: 3, width: 18, height: 18, rx: 2 }),
+                      React.createElement('path', { d: 'M3 9h18M9 21V9' })
+                    )
+                  ),
+                  React.createElement('div', null,
+                    React.createElement('h3', { style: { fontSize: '18px', fontWeight: 600, color: '#1e40af', margin: 0, marginBottom: '4px' } }, 'Entry Flow Steps'),
+                    React.createElement('p', { style: { fontSize: '14px', color: '#3b82f6', margin: 0 } }, 
+                      \`Order lookup → Options selection → Route to subflow\`
+                    ),
+                    React.createElement('p', { style: { fontSize: '13px', color: '#64748b', margin: 0, marginTop: '6px' } }, \`\${entrySteps} steps\`)
+                  )
+                ),
+                React.createElement('div', { style: { width: '36px', height: '36px', borderRadius: '8px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' } },
+                  React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                    React.createElement('path', { d: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6' }),
+                    React.createElement('polyline', { points: '15 3 21 3 21 9' }),
+                    React.createElement('line', { x1: 10, y1: 14, x2: 21, y2: 3 })
+                  )
+                )
+              ),
+              // SUB-FLOWS Section
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' } },
+                React.createElement('div', { style: { height: '1px', flex: 1, background: '#e2e8f0' } }),
+                React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' } }, \`SUB-FLOWS (\${subflows.length})\`),
+                React.createElement('div', { style: { height: '1px', flex: 1, background: '#e2e8f0' } })
+              ),
+              // Subflow Cards Grid
+              React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' } },
+                subflows.map(subflow => 
+                  React.createElement('div', {
+                    key: subflow.id,
+                    onClick: () => onSelectSubflow(subflow),
+                    style: { 
+                      padding: '20px', 
+                      background: 'white', 
+                      borderRadius: '12px', 
+                      border: '1px solid #e5e7eb', 
+                      cursor: 'pointer', 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'all 0.15s',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                    },
+                    onMouseOver: (e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = '#d1d5db'; },
+                    onMouseOut: (e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#e5e7eb'; }
+                  },
+                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '14px' } },
+                      React.createElement('div', { style: { width: '44px', height: '44px', borderRadius: '10px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' } },
+                        subflowIcons[subflow.id] || '📋'
+                      ),
+                      React.createElement('div', null,
+                        React.createElement('h4', { style: { fontSize: '15px', fontWeight: 600, color: '#1f2937', margin: 0, marginBottom: '4px' } }, subflow.name),
+                        React.createElement('p', { style: { fontSize: '13px', color: '#6b7280', margin: 0, lineHeight: '1.4' } }, subflow.description),
+                        React.createElement('p', { style: { fontSize: '12px', color: '#94a3b8', margin: 0, marginTop: '6px' } }, 
+                          \`\${subflow.nodes?.length || 0} nodes · \${subflow.edges?.length || 0} connections\`
+                        )
+                      )
+                    ),
+                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', color: '#9ca3af' } },
+                      React.createElement('span', { style: { fontSize: '18px' } }, '→')
+                    )
+                  )
+                )
+              )
+            )
+          )
+        );
+      };
+
+      // ============================================
       // MAIN APP
       // ============================================
       const App = () => {
         const [selectedParent, setSelectedParent] = useState(null);
         const [selectedSubflow, setSelectedSubflow] = useState(null);
-        const [viewingEntry, setViewingEntry] = useState(true); // true = parent entry flow, false = subflow
+        const [viewingEntry, setViewingEntry] = useState(false);
+        const [viewingCanvas, setViewingCanvas] = useState(false); // New: whether we're in canvas view
 
         const allSubflows = useMemo(() => {
           if (!selectedParent) return [];
@@ -22699,7 +22827,8 @@ function getFlowDocsHTML() {
           };
         }, [selectedParent]);
 
-        if (selectedParent) {
+        // View 3: Canvas view (entry or subflow)
+        if (selectedParent && viewingCanvas) {
           const currentFlow = viewingEntry ? entryFlow : selectedSubflow;
           if (!currentFlow) return null;
           
@@ -22723,17 +22852,35 @@ function getFlowDocsHTML() {
               }
             },
             onBackToFlows: () => {
-              setSelectedSubflow(null);
-              setSelectedParent(null);
-              setViewingEntry(true);
+              setViewingCanvas(false); // Go back to parent detail page
             }
           });
         }
 
+        // View 2: Parent Flow Detail Page
+        if (selectedParent) {
+          return React.createElement(ParentFlowDetailPage, {
+            parentFlow: selectedParent,
+            subflows: allSubflows,
+            onBack: () => {
+              setSelectedParent(null);
+            },
+            onSelectEntry: () => {
+              setViewingEntry(true);
+              setViewingCanvas(true);
+            },
+            onSelectSubflow: (sf) => {
+              setSelectedSubflow(sf);
+              setViewingEntry(false);
+              setViewingCanvas(true);
+            }
+          });
+        }
+
+        // View 1: Flow Selection Page
         return React.createElement(FlowSelectionPage, {
           onSelectParent: (parent) => {
             setSelectedParent(parent);
-            setViewingEntry(true);
           }
         });
       };
