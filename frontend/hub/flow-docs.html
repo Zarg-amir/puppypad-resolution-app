@@ -1316,39 +1316,118 @@
       };
 
       // ============================================
-      // FLOW SELECTION PAGE (with Hub Sidebar)
+      // FLOW SELECTION PAGE (matches old app exactly)
       // ============================================
       const FlowSelectionPage = ({ onSelectParent }) => {
+        // Subflow tags with icons
+        const getSubflowTags = (flow) => {
+          const tagIcons = {
+            'changed_mind': '💭 Changed',
+            'dog_not_using': '🐕 Dog',
+            'quality_issue': '💔 Damaged',
+            'other_reason': '😕 Other',
+            'tracking_status': '📍 Track',
+            'pause_subscription': '⏸️ Pause',
+            'cancel_subscription': '❌ Cancel',
+            'change_frequency': '🔄 Change'
+          };
+          return flow.subflows.map(id => tagIcons[id] || id);
+        };
+
+        // Flow icons (package style like old app)
+        const flowIcons = {
+          'help_with_order': '📦',
+          'track_order': '🚚',
+          'manage_subscription': '🔄'
+        };
+
+        // Flow descriptions (matching old app)
+        const flowDescriptions = {
+          'help_with_order': 'Complete flow for order issues including refunds, returns, and complaints',
+          'track_order': 'Help customers track their order status and shipping updates',
+          'manage_subscription': 'Help customers manage their subscription, billing, and delivery preferences'
+        };
+
         return React.createElement('div', { style: { display: 'flex', height: '100vh' } },
           React.createElement(HubSidebar, null),
-          React.createElement('div', { style: { flex: 1, padding: '32px', overflowY: 'auto', background: '#f8fafc' } },
-            React.createElement('div', { style: { maxWidth: '1000px', margin: '0 auto' } },
-              React.createElement('div', { style: { marginBottom: '32px' } },
-                React.createElement('h1', { style: { fontSize: '28px', fontWeight: 700, marginBottom: '8px', color: '#111827' } }, 'Flow Documentation'),
-                React.createElement('p', { style: { color: '#6b7280', fontSize: '16px' } }, 'Explore the customer resolution flows and their logic')
+          React.createElement('div', { style: { flex: 1, padding: '40px 48px', overflowY: 'auto', background: '#f8fafc' } },
+            React.createElement('div', { style: { maxWidth: '900px', margin: '0 auto' } },
+              // Header with gear icon
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' } },
+                React.createElement('svg', { width: 28, height: 28, viewBox: '0 0 24 24', fill: 'none', stroke: '#374151', strokeWidth: 2 },
+                  React.createElement('circle', { cx: 12, cy: 12, r: 3 }),
+                  React.createElement('path', { d: 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z' })
+                ),
+                React.createElement('h1', { style: { fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 } }, 'Flow Settings')
               ),
-              React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' } },
-                FLOW_DATA.parentFlows.map(flow => 
-                  React.createElement('div', {
+              React.createElement('p', { style: { color: '#6b7280', fontSize: '15px', marginBottom: '32px' } }, 'Configure what customers see and experience in each flow'),
+              // Flow cards (vertical list like old app)
+              React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '16px' } },
+                FLOW_DATA.parentFlows.map(flow => {
+                  const tags = getSubflowTags(flow);
+                  const visibleTags = tags.slice(0, 4);
+                  const moreCount = tags.length - 4;
+                  
+                  return React.createElement('div', {
                     key: flow.id,
                     onClick: () => onSelectParent(flow),
-                    style: { padding: '24px', background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', cursor: 'pointer', transition: 'all 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
-                    onMouseOver: (e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; e.currentTarget.style.borderColor = flow.color; },
-                    onMouseOut: (e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; e.currentTarget.style.borderColor = '#e5e7eb'; }
+                    style: { 
+                      padding: '20px 24px', 
+                      background: 'white', 
+                      borderRadius: '12px', 
+                      border: '1px solid #e5e7eb', 
+                      cursor: 'pointer', 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'all 0.15s',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                    },
+                    onMouseOver: (e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = '#d1d5db'; },
+                    onMouseOut: (e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#e5e7eb'; }
                   },
-                    React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', gap: '16px' } },
-                      React.createElement('div', { style: { width: '48px', height: '48px', borderRadius: '12px', background: flow.color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' } }, flow.icon),
-                      React.createElement('div', { style: { flex: 1 } },
-                        React.createElement('h3', { style: { fontSize: '18px', fontWeight: 600, marginBottom: '6px', color: '#111827' } }, flow.name),
-                        React.createElement('p', { style: { fontSize: '14px', color: '#6b7280', lineHeight: '1.5' } }, flow.description)
+                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '18px' } },
+                      // Icon in rounded square
+                      React.createElement('div', { style: { width: '56px', height: '56px', borderRadius: '12px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' } }, 
+                        flowIcons[flow.id] || flow.icon
+                      ),
+                      React.createElement('div', null,
+                        React.createElement('h3', { style: { fontSize: '17px', fontWeight: 600, color: '#111827', margin: 0, marginBottom: '6px' } }, flow.name),
+                        React.createElement('p', { style: { fontSize: '14px', color: '#6b7280', margin: 0, marginBottom: '10px', lineHeight: '1.4' } }, 
+                          flowDescriptions[flow.id] || flow.description
+                        ),
+                        // Subflow tags
+                        flow.subflows.length > 0 && React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' } },
+                          visibleTags.map((tag, i) => 
+                            React.createElement('span', { 
+                              key: i, 
+                              style: { 
+                                padding: '4px 10px', 
+                                background: '#f3f4f6', 
+                                borderRadius: '6px', 
+                                fontSize: '12px', 
+                                color: '#4b5563',
+                                fontWeight: 500
+                              } 
+                            }, tag)
+                          ),
+                          moreCount > 0 && React.createElement('span', { 
+                            style: { 
+                              padding: '4px 10px', 
+                              background: '#f3f4f6', 
+                              borderRadius: '6px', 
+                              fontSize: '12px', 
+                              color: '#9ca3af',
+                              fontWeight: 500
+                            } 
+                          }, `+${moreCount} more`)
+                        )
                       )
                     ),
-                    React.createElement('div', { style: { marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-                      React.createElement('span', { style: { fontSize: '14px', color: '#9ca3af' } }, `${flow.subflows.length} sub-flow${flow.subflows.length !== 1 ? 's' : ''}`),
-                      React.createElement('span', { style: { color: flow.color, fontSize: '20px', fontWeight: 600 } }, '→')
-                    )
-                  )
-                )
+                    // Arrow
+                    React.createElement('div', { style: { color: '#9ca3af', fontSize: '20px', marginLeft: '16px' } }, '›')
+                  );
+                })
               )
             )
           )
