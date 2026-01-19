@@ -223,7 +223,7 @@
         )
       };
 
-      // Node colors
+      // Node colors - expanded for new node types
       const nodeColors = {
         start: '#22c55e',
         message: '#3b82f6',
@@ -235,50 +235,98 @@
         case: '#f97316',
         form: '#10b981',
         end: '#ef4444',
-        subflow: '#8b5cf6'
+        subflow: '#8b5cf6',
+        timeCheck: '#0ea5e9',
+        guaranteeCheck: '#8b5cf6',
+        managerDelay: '#f97316',
+        evidence: '#06b6d4',
+        tracking: '#0284c7',
+        input: '#10b981',
+        delay: '#f59e0b'
       };
 
       // ============================================
-      // FLOW DATA
+      // COMPREHENSIVE FLOW DATA - All 3 Parent Flows + 11 Intent Subflows
       // ============================================
       const FLOW_DATA = {
         parentFlows: [
           { 
             id: 'help_with_order', 
             name: 'Help With My Order', 
-            icon: '📦',
+            icon: '💬',
             color: '#8b5cf6', 
-            description: 'Customer needs assistance with an existing order',
-            subflows: ['changed_mind', 'dog_not_using', 'quality_issue', 'other_reason'],
+            description: 'Customer needs assistance with an existing order - refunds, returns, issues',
+            subflows: ['dog_not_using', 'changed_mind', 'not_met_expectations', 'ordered_mistake', 'missing_item', 'wrong_item', 'damaged', 'charged_unexpectedly', 'not_received', 'quality_difference', 'other_reason'],
             entryNodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
-              { id: 'opts1', type: 'options', position: { x: 350, y: 120 }, data: { prompt: "What's going on with your order?", options: [{ label: 'Changed my mind' }, { label: 'Dog not using it' }, { label: 'Quality issue' }, { label: 'Other reason' }] } },
-              { id: 'sub1', type: 'subflow', position: { x: 50, y: 320 }, data: { name: 'Changed My Mind', slug: 'changed_mind' } },
-              { id: 'sub2', type: 'subflow', position: { x: 300, y: 320 }, data: { name: 'Dog Not Using', slug: 'dog_not_using' } },
-              { id: 'sub3', type: 'subflow', position: { x: 550, y: 320 }, data: { name: 'Quality Issue', slug: 'quality_issue' } },
-              { id: 'sub4', type: 'subflow', position: { x: 300, y: 480 }, data: { name: 'Other Reason', slug: 'other_reason' } }
+              { id: 'start', type: 'start', position: { x: 500, y: 0 }, data: { label: 'Customer clicks Help With Order' } },
+              { id: 'msg1', type: 'message', position: { x: 450, y: 120 }, data: { persona: 'amy', content: "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below." } },
+              { id: 'form1', type: 'form', position: { x: 450, y: 320 }, data: { formType: 'Customer Lookup', label: 'Email or Order Number', fields: ['email', 'orderNumber'] } },
+              { id: 'api1', type: 'api', position: { x: 450, y: 480 }, data: { service: 'Shopify', endpoint: '/api/lookup', description: 'Find customer orders by email or order number', request: '{ email, orderNumber }', response: '{ orders[], customer }' } },
+              { id: 'cond1', type: 'condition', position: { x: 450, y: 640 }, data: { variable: 'orders.length', operator: '>', value: '0', yesLabel: 'Found', noLabel: 'Not Found' } },
+              { id: 'itemSelect', type: 'form', position: { x: 250, y: 820 }, data: { formType: 'Item Selection', label: 'Which items need help?', description: 'Customer selects affected items from their order' } },
+              { id: 'deepSearch', type: 'form', position: { x: 650, y: 820 }, data: { formType: 'Deep Search', label: 'More details needed', fields: ['firstName', 'lastName', 'address'] } },
+              { id: 'opts1', type: 'options', position: { x: 250, y: 1000 }, data: { prompt: "Got it! What's going on with your order?", options: [
+                { label: "My dog isn't using it", icon: '🐕' },
+                { label: 'I changed my mind', icon: '💭' },
+                { label: "It didn't meet expectations", icon: '😕' },
+                { label: 'Ordered by mistake', icon: '🔄' },
+                { label: 'Something was missing', icon: '📦' },
+                { label: 'Wrong item received', icon: '🔀' },
+                { label: 'Order arrived damaged', icon: '💔' },
+                { label: 'Charged unexpectedly', icon: '💳' },
+                { label: "Haven't received order", icon: '🚚' },
+                { label: 'Quality difference', icon: '🔍' },
+                { label: 'Other reason', icon: '❓' }
+              ] } },
+              { id: 'sub1', type: 'subflow', position: { x: -200, y: 1250 }, data: { name: 'Dog Not Using', slug: 'dog_not_using', nodeCount: 12 } },
+              { id: 'sub2', type: 'subflow', position: { x: 50, y: 1250 }, data: { name: 'Changed Mind', slug: 'changed_mind', nodeCount: 15 } },
+              { id: 'sub3', type: 'subflow', position: { x: 300, y: 1250 }, data: { name: 'Not Met Expectations', slug: 'not_met_expectations', nodeCount: 10 } },
+              { id: 'sub4', type: 'subflow', position: { x: 550, y: 1250 }, data: { name: 'Ordered Mistake', slug: 'ordered_mistake', nodeCount: 8 } },
+              { id: 'sub5', type: 'subflow', position: { x: 800, y: 1250 }, data: { name: 'Missing Item', slug: 'missing_item', nodeCount: 9 } },
+              { id: 'sub6', type: 'subflow', position: { x: -200, y: 1450 }, data: { name: 'Wrong Item', slug: 'wrong_item', nodeCount: 10 } },
+              { id: 'sub7', type: 'subflow', position: { x: 50, y: 1450 }, data: { name: 'Damaged', slug: 'damaged', nodeCount: 11 } },
+              { id: 'sub8', type: 'subflow', position: { x: 300, y: 1450 }, data: { name: 'Charged Unexpectedly', slug: 'charged_unexpectedly', nodeCount: 7 } },
+              { id: 'sub9', type: 'subflow', position: { x: 550, y: 1450 }, data: { name: 'Not Received', slug: 'not_received', nodeCount: 14 } },
+              { id: 'sub10', type: 'subflow', position: { x: 800, y: 1450 }, data: { name: 'Quality Difference', slug: 'quality_difference', nodeCount: 8 } },
+              { id: 'sub11', type: 'subflow', position: { x: 300, y: 1650 }, data: { name: 'Other Reason', slug: 'other_reason', nodeCount: 6 } }
             ],
             entryEdges: [
-              { id: 'e1', source: 'start', target: 'opts1', animated: true },
-              { id: 'e2', source: 'opts1', target: 'sub1', sourceHandle: 'opt-0', animated: true },
-              { id: 'e3', source: 'opts1', target: 'sub2', sourceHandle: 'opt-1', animated: true },
-              { id: 'e4', source: 'opts1', target: 'sub3', sourceHandle: 'opt-2', animated: true },
-              { id: 'e5', source: 'opts1', target: 'sub4', sourceHandle: 'opt-3', animated: true }
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'form1', animated: true },
+              { id: 'e3', source: 'form1', target: 'api1', animated: true },
+              { id: 'e4', source: 'api1', target: 'cond1', animated: true },
+              { id: 'e5', source: 'cond1', target: 'itemSelect', sourceHandle: 'yes', label: 'Orders found', animated: true },
+              { id: 'e6', source: 'cond1', target: 'deepSearch', sourceHandle: 'no', label: 'Not found', animated: true },
+              { id: 'e7', source: 'itemSelect', target: 'opts1', animated: true },
+              { id: 'e8', source: 'deepSearch', target: 'api1', label: 'Retry search', animated: true },
+              { id: 'e9', source: 'opts1', target: 'sub1', label: 'Dog not using', animated: true },
+              { id: 'e10', source: 'opts1', target: 'sub2', label: 'Changed mind', animated: true },
+              { id: 'e11', source: 'opts1', target: 'sub3', label: 'Not met expectations', animated: true },
+              { id: 'e12', source: 'opts1', target: 'sub4', label: 'Ordered mistake', animated: true },
+              { id: 'e13', source: 'opts1', target: 'sub5', label: 'Missing item', animated: true },
+              { id: 'e14', source: 'opts1', target: 'sub6', label: 'Wrong item', animated: true },
+              { id: 'e15', source: 'opts1', target: 'sub7', label: 'Damaged', animated: true },
+              { id: 'e16', source: 'opts1', target: 'sub8', label: 'Charged', animated: true },
+              { id: 'e17', source: 'opts1', target: 'sub9', label: 'Not received', animated: true },
+              { id: 'e18', source: 'opts1', target: 'sub10', label: 'Quality', animated: true },
+              { id: 'e19', source: 'opts1', target: 'sub11', label: 'Other', animated: true }
             ]
           },
           { 
             id: 'track_order', 
             name: 'Track My Order', 
-            icon: '🚚',
+            icon: '📦',
             color: '#3b82f6', 
-            description: 'Customer wants to check order status or tracking',
-            subflows: ['tracking_status'],
+            description: 'Customer wants to check order status and tracking information',
+            subflows: ['tracking_flow'],
             entryNodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
-              { id: 'sub1', type: 'subflow', position: { x: 350, y: 140 }, data: { name: 'Check Tracking Status', slug: 'tracking_status' } }
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Customer clicks Track Order' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "Hi! I'm Amy. Let me help you track your order — just enter your details below and I'll pull it right up. 📦" } },
+              { id: 'sub1', type: 'subflow', position: { x: 350, y: 330 }, data: { name: 'Order Tracking Flow', slug: 'tracking_flow', nodeCount: 10 } }
             ],
             entryEdges: [
-              { id: 'e1', source: 'start', target: 'sub1', animated: true }
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'sub1', animated: true }
             ]
           },
           { 
@@ -286,183 +334,447 @@
             name: 'Manage My Subscription', 
             icon: '🔄',
             color: '#10b981', 
-            description: 'Customer wants to modify or cancel subscription',
+            description: 'Customer wants to pause, cancel, or modify their subscription',
             subflows: ['pause_subscription', 'cancel_subscription', 'change_frequency'],
             entryNodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
-              { id: 'opts1', type: 'options', position: { x: 350, y: 120 }, data: { prompt: 'What would you like to do?', options: [{ label: 'Pause subscription' }, { label: 'Cancel subscription' }, { label: 'Change frequency' }] } },
-              { id: 'sub1', type: 'subflow', position: { x: 100, y: 320 }, data: { name: 'Pause Subscription', slug: 'pause_subscription' } },
-              { id: 'sub2', type: 'subflow', position: { x: 350, y: 320 }, data: { name: 'Cancel Subscription', slug: 'cancel_subscription' } },
-              { id: 'sub3', type: 'subflow', position: { x: 600, y: 320 }, data: { name: 'Change Frequency', slug: 'change_frequency' } }
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Customer clicks Manage Subscription' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "Hi! I'm Amy. I'll help you manage your subscription — just enter your details below to get started. 🔄" } },
+              { id: 'form1', type: 'form', position: { x: 350, y: 330 }, data: { formType: 'Customer Lookup', label: 'Find Your Subscription' } },
+              { id: 'api1', type: 'api', position: { x: 350, y: 490 }, data: { service: 'Shopify', endpoint: '/api/subscriptions', description: 'Find active subscriptions', request: '{ email }', response: '{ subscriptions[] }' } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 670 }, data: { prompt: 'What would you like to do with your subscription?', options: [{ label: 'Pause subscription', icon: '⏸️' }, { label: 'Cancel subscription', icon: '❌' }, { label: 'Change frequency', icon: '📅' }] } },
+              { id: 'sub1', type: 'subflow', position: { x: 100, y: 900 }, data: { name: 'Pause Subscription', slug: 'pause_subscription', nodeCount: 6 } },
+              { id: 'sub2', type: 'subflow', position: { x: 350, y: 900 }, data: { name: 'Cancel Subscription', slug: 'cancel_subscription', nodeCount: 12 } },
+              { id: 'sub3', type: 'subflow', position: { x: 600, y: 900 }, data: { name: 'Change Frequency', slug: 'change_frequency', nodeCount: 7 } }
             ],
             entryEdges: [
-              { id: 'e1', source: 'start', target: 'opts1', animated: true },
-              { id: 'e2', source: 'opts1', target: 'sub1', sourceHandle: 'opt-0', animated: true },
-              { id: 'e3', source: 'opts1', target: 'sub2', sourceHandle: 'opt-1', animated: true },
-              { id: 'e4', source: 'opts1', target: 'sub3', sourceHandle: 'opt-2', animated: true }
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'form1', animated: true },
+              { id: 'e3', source: 'form1', target: 'api1', animated: true },
+              { id: 'e4', source: 'api1', target: 'opts1', animated: true },
+              { id: 'e5', source: 'opts1', target: 'sub1', sourceHandle: 'opt-0', label: 'Pause', animated: true },
+              { id: 'e6', source: 'opts1', target: 'sub2', sourceHandle: 'opt-1', label: 'Cancel', animated: true },
+              { id: 'e7', source: 'opts1', target: 'sub3', sourceHandle: 'opt-2', label: 'Change', animated: true }
             ]
           }
         ],
         subflows: {
+          // DOG NOT USING - Claudia AI Tips Flow
+          dog_not_using: {
+            id: 'dog_not_using',
+            parentId: 'help_with_order',
+            name: 'Dog Not Using Product',
+            description: 'Customer reports their dog is not using the PuppyPad - handled by trainer Claudia with personalized tips',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Dog Not Using Flow' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I understand — the main reason you purchased this was to solve your problem, and we want to make sure it works for you! 🐕 Let me get some details about your pup so we can help." } },
+              { id: 'form1', type: 'form', position: { x: 350, y: 350 }, data: { formType: 'Dog Info Form', label: 'Tell us about your dog', fields: ['dogName', 'dogBreed', 'dogAge', 'methodsTried'] } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 530 }, data: { persona: 'amy', content: "Thanks! Let me connect you with our dog trainer, Claudia. She has some great tips specifically for your pup!" } },
+              { id: 'ai1', type: 'ai', position: { x: 350, y: 730 }, data: { 
+                persona: 'claudia', 
+                model: 'gpt-4o',
+                temperature: 0.75,
+                maxTokens: 1000,
+                scenarioType: 'dog_tips',
+                systemPrompt: "You are Claudia, a compassionate dog trainer who specializes in dog behavior. The PuppyPad is infused with pheromones that naturally attract dogs. Give breed-specific and age-appropriate advice. ALWAYS use the dog's actual name throughout.",
+                userPromptTemplate: "Dog: {{dogName}} ({{dogBreed}}, {{dogAge}}). What they've tried: {{methodsTried}}. Write warm HTML response with personalized tips."
+              } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 950 }, data: { prompt: 'Did the tips help?', options: [{ label: "Yes, I'll try them!", icon: '✨' }, { label: 'Still having issues', icon: '😔' }] } },
+              { id: 'msg3', type: 'message', position: { x: 100, y: 1150 }, data: { persona: 'claudia', content: "That's great to hear! 🎉 Give it a go and remember — consistency is key. You've got this!" } },
+              { id: 'end1', type: 'end', position: { x: 100, y: 1330 }, data: { title: 'Tips Accepted!', showSurvey: true } },
+              { id: 'api1', type: 'api', position: { x: 600, y: 1150 }, data: { service: 'Shopify', endpoint: '/api/guarantee/check', description: 'Check 90-day guarantee status' } },
+              { id: 'cond1', type: 'condition', position: { x: 600, y: 1330 }, data: { variable: 'guaranteeActive', operator: '===', value: 'true', yesLabel: 'Active', noLabel: 'Expired' } },
+              { id: 'offer1', type: 'offer', position: { x: 450, y: 1530 }, data: { percent: 30, label: 'Keep product & try tips', needsManagerApproval: false } },
+              { id: 'msg4', type: 'message', position: { x: 750, y: 1530 }, data: { persona: 'amy', content: "I understand the 90-day guarantee has expired, but I still want to help. Let me create a case for our team to review." } },
+              { id: 'case1', type: 'case', position: { x: 450, y: 1730 }, data: { type: 'refund', subtype: 'dog_not_using', priority: 'normal' } },
+              { id: 'end2', type: 'end', position: { x: 550, y: 1930 }, data: { title: 'Case Created', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'form1', animated: true },
+              { id: 'e3', source: 'form1', target: 'msg2', animated: true },
+              { id: 'e4', source: 'msg2', target: 'ai1', animated: true },
+              { id: 'e5', source: 'ai1', target: 'opts1', animated: true },
+              { id: 'e6', source: 'opts1', target: 'msg3', sourceHandle: 'opt-0', label: 'Tips helped', animated: true },
+              { id: 'e7', source: 'opts1', target: 'api1', sourceHandle: 'opt-1', label: 'Still issues', animated: true },
+              { id: 'e8', source: 'msg3', target: 'end1', animated: true },
+              { id: 'e9', source: 'api1', target: 'cond1', animated: true },
+              { id: 'e10', source: 'cond1', target: 'offer1', sourceHandle: 'yes', label: 'Within 90 days', animated: true },
+              { id: 'e11', source: 'cond1', target: 'msg4', sourceHandle: 'no', label: 'Expired', animated: true },
+              { id: 'e12', source: 'offer1', target: 'case1', animated: true },
+              { id: 'e13', source: 'msg4', target: 'case1', animated: true },
+              { id: 'e14', source: 'case1', target: 'end2', animated: true }
+            ]
+          },
+
+          // CHANGED MIND - AI Persuasion + Refund Ladder
           changed_mind: {
             id: 'changed_mind',
             parentId: 'help_with_order',
             name: 'Changed My Mind',
-            description: 'Customer wants a refund because they changed their mind',
+            description: 'Customer wants a refund - AI persuasion followed by 20%→30%→40%→50% refund ladder',
             nodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
-              { id: 'msg1', type: 'message', position: { x: 350, y: 120 }, data: { persona: 'amy', content: "I understand, and I appreciate you being upfront about it. Let me see what options we have for you!" } },
-              { id: 'api1', type: 'api', position: { x: 350, y: 280 }, data: { service: 'Shopify', endpoint: 'checkGuarantee' } },
-              { id: 'cond1', type: 'condition', position: { x: 350, y: 420 }, data: { variable: 'guaranteeStatus', operator: 'equals', value: 'active' } },
-              { id: 'offer1', type: 'offer', position: { x: 150, y: 580 }, data: { percent: 20, label: 'Keep product' } },
-              { id: 'offer2', type: 'offer', position: { x: 150, y: 740 }, data: { percent: 30, label: 'Keep product' } },
-              { id: 'offer3', type: 'offer', position: { x: 150, y: 900 }, data: { percent: 40, label: 'Keep product' } },
-              { id: 'case1', type: 'case', position: { x: 150, y: 1060 }, data: { type: 'refund', priority: 'normal' } },
-              { id: 'msg2', type: 'message', position: { x: 550, y: 580 }, data: { persona: 'amy', content: "I'm sorry, but our 90-day guarantee has expired for this order. However, I can still help!" } },
-              { id: 'end1', type: 'end', position: { x: 350, y: 1200 }, data: { title: 'Thank You!', showSurvey: true } }
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Changed Mind Flow' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I understand, and I appreciate you being upfront about it. Can you tell me a bit more about why you changed your mind? I'd love to help if I can!" } },
+              { id: 'input1', type: 'form', position: { x: 350, y: 350 }, data: { formType: 'Text Input', label: 'Tell us more...', placeholder: 'What made you change your mind?' } },
+              { id: 'ai1', type: 'ai', position: { x: 350, y: 530 }, data: { 
+                persona: 'amy', 
+                model: 'gpt-4o-mini',
+                temperature: 0.7,
+                maxTokens: 800,
+                scenarioType: 'changed_mind',
+                systemPrompt: "You are Amy, a warm customer support specialist. Identify WHY they changed their mind (pet loss, dog trained, impulse buy, too many, found elsewhere, moving, timing, financial, misunderstood, vague). Respond appropriately to each reason. Be warm but don't mention refunds.",
+                userPromptTemplate: "Customer: {{customerName}}. Their message: {{customerMessage}}. Products ordered: {{orderItems}}"
+              } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 750 }, data: { prompt: 'Does this help? Would you like to keep your order?', options: [{ label: "Yes, I'll keep it!", icon: '✨' }, { label: "No, I'd like a refund", icon: '💰' }] } },
+              { id: 'end1', type: 'end', position: { x: 100, y: 950 }, data: { title: 'Kept Order!', showSurvey: true } },
+              { id: 'api1', type: 'api', position: { x: 600, y: 950 }, data: { service: 'Shopify', endpoint: '/api/guarantee/check', description: 'Validate 90-day guarantee' } },
+              { id: 'cond1', type: 'condition', position: { x: 600, y: 1130 }, data: { variable: 'guaranteeActive', operator: '===', value: 'true', yesLabel: '✓ Active', noLabel: '✗ Expired' } },
+              { id: 'offer1', type: 'offer', position: { x: 400, y: 1350 }, data: { percent: 20, label: 'Keep product', message: "As a valued customer, I'd like to offer you a 20% partial refund while you keep the product.", needsManagerApproval: false } },
+              { id: 'offer2', type: 'offer', position: { x: 400, y: 1570 }, data: { percent: 30, label: 'Keep product', message: "I really want to make this right. Let me offer you a 30% refund.", needsManagerApproval: false } },
+              { id: 'delay1', type: 'delay', position: { x: 400, y: 1790 }, data: { duration: 8000, message: 'Checking with manager...', description: '8 second delay to simulate manager approval' } },
+              { id: 'offer3', type: 'offer', position: { x: 400, y: 1990 }, data: { percent: 40, label: 'Keep product', message: "Great news! My manager has approved a 40% refund for you.", needsManagerApproval: true } },
+              { id: 'delay2', type: 'delay', position: { x: 400, y: 2210 }, data: { duration: 8000, message: 'Final check with manager...', description: '8 second delay' } },
+              { id: 'offer4', type: 'offer', position: { x: 400, y: 2410 }, data: { percent: 50, label: 'Keep product', message: "Maximum offer: 50% refund. This is the very best we can do.", needsManagerApproval: true, isFinal: true } },
+              { id: 'case1', type: 'case', position: { x: 150, y: 2610 }, data: { type: 'refund', subtype: 'partial_accept', priority: 'normal' } },
+              { id: 'case2', type: 'case', position: { x: 650, y: 2610 }, data: { type: 'refund', subtype: 'full_refund', priority: 'normal' } },
+              { id: 'msg2', type: 'message', position: { x: 800, y: 1350 }, data: { persona: 'amy', content: "I'm sorry, but our 90-day guarantee has expired for this order. However, I've created a case for our team to review your situation." } },
+              { id: 'case3', type: 'case', position: { x: 800, y: 1550 }, data: { type: 'refund', subtype: 'expired_review', priority: 'low' } },
+              { id: 'end2', type: 'end', position: { x: 400, y: 2810 }, data: { title: 'Refund Processed', showSurvey: true } },
+              { id: 'end3', type: 'end', position: { x: 800, y: 1750 }, data: { title: 'Case Created', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'input1', animated: true },
+              { id: 'e3', source: 'input1', target: 'ai1', animated: true },
+              { id: 'e4', source: 'ai1', target: 'opts1', animated: true },
+              { id: 'e5', source: 'opts1', target: 'end1', sourceHandle: 'opt-0', label: 'Keep order', animated: true },
+              { id: 'e6', source: 'opts1', target: 'api1', sourceHandle: 'opt-1', label: 'Want refund', animated: true },
+              { id: 'e7', source: 'api1', target: 'cond1', animated: true },
+              { id: 'e8', source: 'cond1', target: 'offer1', sourceHandle: 'yes', label: 'Within 90 days', animated: true },
+              { id: 'e9', source: 'cond1', target: 'msg2', sourceHandle: 'no', label: 'Expired', animated: true },
+              { id: 'e10', source: 'offer1', target: 'case1', sourceHandle: 'accept', label: 'Accept 20%', animated: true },
+              { id: 'e11', source: 'offer1', target: 'offer2', sourceHandle: 'decline', label: 'Decline', animated: true },
+              { id: 'e12', source: 'offer2', target: 'case1', sourceHandle: 'accept', label: 'Accept 30%', animated: true },
+              { id: 'e13', source: 'offer2', target: 'delay1', sourceHandle: 'decline', label: 'Decline', animated: true },
+              { id: 'e14', source: 'delay1', target: 'offer3', animated: true },
+              { id: 'e15', source: 'offer3', target: 'case1', sourceHandle: 'accept', label: 'Accept 40%', animated: true },
+              { id: 'e16', source: 'offer3', target: 'delay2', sourceHandle: 'decline', label: 'Decline', animated: true },
+              { id: 'e17', source: 'delay2', target: 'offer4', animated: true },
+              { id: 'e18', source: 'offer4', target: 'case1', sourceHandle: 'accept', label: 'Accept 50%', animated: true },
+              { id: 'e19', source: 'offer4', target: 'case2', sourceHandle: 'decline', label: 'Full refund', animated: true },
+              { id: 'e20', source: 'case1', target: 'end2', animated: true },
+              { id: 'e21', source: 'case2', target: 'end2', animated: true },
+              { id: 'e22', source: 'msg2', target: 'case3', animated: true },
+              { id: 'e23', source: 'case3', target: 'end3', animated: true }
+            ]
+          },
+
+          // NOT MET EXPECTATIONS - Similar to Changed Mind
+          not_met_expectations: {
+            id: 'not_met_expectations',
+            parentId: 'help_with_order',
+            name: 'Not Met Expectations',
+            description: 'Customer disappointed with product - AI response then refund ladder',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Not Met Expectations' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I'm really sorry to hear that 😔 We always want our products to exceed expectations. Could you share what specifically didn't meet your expectations?" } },
+              { id: 'input1', type: 'form', position: { x: 350, y: 350 }, data: { formType: 'Text Input', label: 'What disappointed you?' } },
+              { id: 'ai1', type: 'ai', position: { x: 350, y: 530 }, data: { persona: 'amy', model: 'gpt-4o-mini', scenarioType: 'changed_mind', systemPrompt: 'Respond to customer disappointment with empathy and product benefits' } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 730 }, data: { prompt: 'Does this help at all?', options: [{ label: "Yes, I'll give it another try" }, { label: "No, I'd like a refund" }] } },
+              { id: 'end1', type: 'end', position: { x: 100, y: 930 }, data: { title: 'Giving it another try!', showSurvey: true } },
+              { id: 'subflow1', type: 'subflow', position: { x: 600, y: 930 }, data: { name: 'Refund Ladder', slug: 'refund_ladder_internal', description: 'Continue to 20%→30%→40%→50% ladder' } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'input1', animated: true },
+              { id: 'e3', source: 'input1', target: 'ai1', animated: true },
+              { id: 'e4', source: 'ai1', target: 'opts1', animated: true },
+              { id: 'e5', source: 'opts1', target: 'end1', sourceHandle: 'opt-0', animated: true },
+              { id: 'e6', source: 'opts1', target: 'subflow1', sourceHandle: 'opt-1', animated: true }
+            ]
+          },
+
+          // ORDERED BY MISTAKE
+          ordered_mistake: {
+            id: 'ordered_mistake',
+            parentId: 'help_with_order',
+            name: 'Ordered by Mistake',
+            description: 'Customer accidentally ordered - can change or cancel',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Ordered by Mistake' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "No worries! Would you like to change your order to something else, or would you prefer a refund?" } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 350 }, data: { prompt: 'What would you like to do?', options: [{ label: 'Change my order', icon: '🔄' }, { label: 'I want a refund', icon: '💰' }] } },
+              { id: 'msg2', type: 'message', position: { x: 100, y: 550 }, data: { persona: 'amy', content: "Great! Let me help you modify your order. What would you like to change it to?" } },
+              { id: 'case1', type: 'case', position: { x: 100, y: 750 }, data: { type: 'order_change', priority: 'normal' } },
+              { id: 'end1', type: 'end', position: { x: 100, y: 950 }, data: { title: 'Order Change Requested', showSurvey: true } },
+              { id: 'subflow1', type: 'subflow', position: { x: 600, y: 550 }, data: { name: 'Refund Ladder', slug: 'changed_mind', description: 'Go through refund ladder' } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'opts1', animated: true },
+              { id: 'e3', source: 'opts1', target: 'msg2', sourceHandle: 'opt-0', label: 'Change order', animated: true },
+              { id: 'e4', source: 'opts1', target: 'subflow1', sourceHandle: 'opt-1', label: 'Want refund', animated: true },
+              { id: 'e5', source: 'msg2', target: 'case1', animated: true },
+              { id: 'e6', source: 'case1', target: 'end1', animated: true }
+            ]
+          },
+
+          // MISSING ITEM
+          missing_item: {
+            id: 'missing_item',
+            parentId: 'help_with_order',
+            name: 'Missing Item',
+            description: 'Something was missing from the order - evidence upload then reship offer',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Missing Item Flow' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "Oh no, I'm so sorry to hear that! 😔 Let me help you get this sorted out. Which item(s) were missing from your order?" } },
+              { id: 'form1', type: 'form', position: { x: 350, y: 350 }, data: { formType: 'Item Selection', label: 'Select missing items' } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 530 }, data: { persona: 'amy', content: "Got it. Could you upload a photo of what you received? This helps us investigate what happened." } },
+              { id: 'evidence1', type: 'form', position: { x: 350, y: 730 }, data: { formType: 'Photo Upload', label: 'Upload photo of package/items received', acceptTypes: 'image/*' } },
+              { id: 'msg3', type: 'message', position: { x: 350, y: 930 }, data: { persona: 'amy', content: "Thank you! I've noted everything down. To make things right, we'd love to reship the missing items to you... and as an apology for the trouble, we'll include an extra item on us!" } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 1150 }, data: { prompt: 'Would you like us to go ahead with this?', options: [{ label: 'Yes, send my missing items', icon: '📦' }, { label: "No, I'd like a different solution", icon: '🔄' }] } },
+              { id: 'case1', type: 'case', position: { x: 100, y: 1370 }, data: { type: 'reship', subtype: 'missing_item', priority: 'high', includeBonus: true } },
+              { id: 'end1', type: 'end', position: { x: 100, y: 1570 }, data: { title: 'Reship Ordered!', showSurvey: true } },
+              { id: 'msg4', type: 'message', position: { x: 600, y: 1370 }, data: { persona: 'amy', content: "No problem! We can provide a refund for the missing items instead. Our team will calculate the refund based on what was missing." } },
+              { id: 'case2', type: 'case', position: { x: 600, y: 1570 }, data: { type: 'refund', subtype: 'missing_item_refund', priority: 'normal' } },
+              { id: 'end2', type: 'end', position: { x: 600, y: 1770 }, data: { title: 'Refund Case Created', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'form1', animated: true },
+              { id: 'e3', source: 'form1', target: 'msg2', animated: true },
+              { id: 'e4', source: 'msg2', target: 'evidence1', animated: true },
+              { id: 'e5', source: 'evidence1', target: 'msg3', animated: true },
+              { id: 'e6', source: 'msg3', target: 'opts1', animated: true },
+              { id: 'e7', source: 'opts1', target: 'case1', sourceHandle: 'opt-0', label: 'Reship', animated: true },
+              { id: 'e8', source: 'opts1', target: 'msg4', sourceHandle: 'opt-1', label: 'Different solution', animated: true },
+              { id: 'e9', source: 'case1', target: 'end1', animated: true },
+              { id: 'e10', source: 'msg4', target: 'case2', animated: true },
+              { id: 'e11', source: 'case2', target: 'end2', animated: true }
+            ]
+          },
+
+          // WRONG ITEM
+          wrong_item: {
+            id: 'wrong_item',
+            parentId: 'help_with_order',
+            name: 'Wrong Item Received',
+            description: 'Customer received wrong item - evidence upload then exchange/refund',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Wrong Item Flow' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I'm so sorry about that mix-up! 😔 Could you tell me what you received versus what you ordered?" } },
+              { id: 'form1', type: 'form', position: { x: 350, y: 350 }, data: { formType: 'Text Input', label: 'Describe what you received' } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 530 }, data: { persona: 'amy', content: "Got it. Please upload a photo of what you received so we can verify and fix this quickly." } },
+              { id: 'evidence1', type: 'form', position: { x: 350, y: 730 }, data: { formType: 'Photo Upload', label: 'Upload photo of received item' } },
+              { id: 'msg3', type: 'message', position: { x: 350, y: 930 }, data: { persona: 'amy', content: "Thank you! We'll ship out the correct item right away. You can keep the wrong item — no need to return it!" } },
+              { id: 'case1', type: 'case', position: { x: 350, y: 1130 }, data: { type: 'reship', subtype: 'wrong_item', priority: 'high', keepWrongItem: true } },
+              { id: 'end1', type: 'end', position: { x: 350, y: 1330 }, data: { title: 'Correct Item Shipping!', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'form1', animated: true },
+              { id: 'e3', source: 'form1', target: 'msg2', animated: true },
+              { id: 'e4', source: 'msg2', target: 'evidence1', animated: true },
+              { id: 'e5', source: 'evidence1', target: 'msg3', animated: true },
+              { id: 'e6', source: 'msg3', target: 'case1', animated: true },
+              { id: 'e7', source: 'case1', target: 'end1', animated: true }
+            ]
+          },
+
+          // DAMAGED
+          damaged: {
+            id: 'damaged',
+            parentId: 'help_with_order',
+            name: 'Order Arrived Damaged',
+            description: 'Package or product arrived damaged - evidence required',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Damaged Order Flow' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "Oh no, I'm so sorry your order arrived damaged! 💔 That's definitely not the experience we want for you. Can you upload some photos of the damage?" } },
+              { id: 'evidence1', type: 'form', position: { x: 350, y: 370 }, data: { formType: 'Photo Upload', label: 'Upload photos of damage', description: 'Photos of package and/or product damage', multiple: true } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 570 }, data: { persona: 'amy', content: "Thank you for those photos. I've documented everything. Would you like us to send a replacement, or would you prefer a refund?" } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 790 }, data: { prompt: 'How would you like us to resolve this?', options: [{ label: 'Send a replacement', icon: '📦' }, { label: 'Process a refund', icon: '💰' }] } },
+              { id: 'case1', type: 'case', position: { x: 100, y: 1010 }, data: { type: 'reship', subtype: 'damaged', priority: 'high' } },
+              { id: 'case2', type: 'case', position: { x: 600, y: 1010 }, data: { type: 'refund', subtype: 'damaged', priority: 'high' } },
+              { id: 'end1', type: 'end', position: { x: 350, y: 1210 }, data: { title: 'Case Created', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'evidence1', animated: true },
+              { id: 'e3', source: 'evidence1', target: 'msg2', animated: true },
+              { id: 'e4', source: 'msg2', target: 'opts1', animated: true },
+              { id: 'e5', source: 'opts1', target: 'case1', sourceHandle: 'opt-0', label: 'Replacement', animated: true },
+              { id: 'e6', source: 'opts1', target: 'case2', sourceHandle: 'opt-1', label: 'Refund', animated: true },
+              { id: 'e7', source: 'case1', target: 'end1', animated: true },
+              { id: 'e8', source: 'case2', target: 'end1', animated: true }
+            ]
+          },
+
+          // CHARGED UNEXPECTEDLY
+          charged_unexpectedly: {
+            id: 'charged_unexpectedly',
+            parentId: 'help_with_order',
+            name: 'Charged Unexpectedly',
+            description: 'Customer was charged when they didn\'t expect it',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Unexpected Charge Flow' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I understand how frustrating an unexpected charge can be! Let me look into this for you. Can you tell me more about the charge?" } },
+              { id: 'form1', type: 'form', position: { x: 350, y: 370 }, data: { formType: 'Text Input', label: 'Describe the unexpected charge', fields: ['chargeAmount', 'chargeDate', 'description'] } },
+              { id: 'api1', type: 'api', position: { x: 350, y: 570 }, data: { service: 'Shopify', endpoint: '/api/orders/recent-charges', description: 'Look up recent charges for customer' } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 770 }, data: { persona: 'amy', content: "I've found the charge and created a case for our billing team to review. They'll investigate and get back to you within 1-2 business days." } },
+              { id: 'case1', type: 'case', position: { x: 350, y: 970 }, data: { type: 'billing', subtype: 'unexpected_charge', priority: 'high' } },
+              { id: 'end1', type: 'end', position: { x: 350, y: 1170 }, data: { title: 'Billing Review Requested', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'form1', animated: true },
+              { id: 'e3', source: 'form1', target: 'api1', animated: true },
+              { id: 'e4', source: 'api1', target: 'msg2', animated: true },
+              { id: 'e5', source: 'msg2', target: 'case1', animated: true },
+              { id: 'e6', source: 'case1', target: 'end1', animated: true }
+            ]
+          },
+
+          // NOT RECEIVED - With Shipping Ladder
+          not_received: {
+            id: 'not_received',
+            parentId: 'help_with_order',
+            name: 'Haven\'t Received Order',
+            description: 'Order not received - check tracking then shipping ladder (refund + reship)',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Not Received Flow' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "Let me check the tracking status for your order..." } },
+              { id: 'api1', type: 'api', position: { x: 350, y: 330 }, data: { service: 'ParcelPanel', endpoint: '/api/tracking', description: 'Get real-time tracking status' } },
+              { id: 'cond1', type: 'condition', position: { x: 350, y: 510 }, data: { variable: 'trackingStatus', operator: '===', value: 'delivered', yesLabel: 'Delivered', noLabel: 'In Transit' } },
+              { id: 'msg2', type: 'message', position: { x: 100, y: 730 }, data: { persona: 'amy', content: "I can see this order has been delivered! 📦 Since you have the products, would you like to keep them and I'll give you a 20% refund for all this confusion?" } },
+              { id: 'msg3', type: 'message', position: { x: 600, y: 730 }, data: { persona: 'amy', content: "I see this order hasn't been delivered yet! 📦 Here's what I can do: I'll give you a 20% refund for all this confusion, and you can keep the order when it arrives." } },
+              { id: 'offer1', type: 'offer', position: { x: 350, y: 950 }, data: { percent: 20, label: 'Keep product + reship', message: "20% refund PLUS we'll reship your order free of charge!" } },
+              { id: 'offer2', type: 'offer', position: { x: 350, y: 1170 }, data: { percent: 30, label: 'Keep product + reship', message: "30% refund AND a free reship." } },
+              { id: 'delay1', type: 'delay', position: { x: 350, y: 1390 }, data: { duration: 8000, message: 'Checking with manager...' } },
+              { id: 'offer3', type: 'offer', position: { x: 350, y: 1590 }, data: { percent: 40, label: 'Keep product + reship', message: "Manager approved: 40% refund PLUS a free reship!", needsManagerApproval: true } },
+              { id: 'delay2', type: 'delay', position: { x: 350, y: 1810 }, data: { duration: 8000, message: 'Final manager check...' } },
+              { id: 'offer4', type: 'offer', position: { x: 350, y: 2010 }, data: { percent: 50, label: 'Maximum offer + reship', message: "Maximum offer: 50% refund PLUS a free reship!", needsManagerApproval: true, isFinal: true } },
+              { id: 'case1', type: 'case', position: { x: 100, y: 2210 }, data: { type: 'shipping', subtype: 'partial_refund_reship', priority: 'normal' } },
+              { id: 'case2', type: 'case', position: { x: 600, y: 2210 }, data: { type: 'refund', subtype: 'full_refund', priority: 'normal' } },
+              { id: 'end1', type: 'end', position: { x: 350, y: 2410 }, data: { title: 'Resolution Complete', showSurvey: true } }
             ],
             edges: [
               { id: 'e1', source: 'start', target: 'msg1', animated: true },
               { id: 'e2', source: 'msg1', target: 'api1', animated: true },
               { id: 'e3', source: 'api1', target: 'cond1', animated: true },
-              { id: 'e4', source: 'cond1', target: 'offer1', sourceHandle: 'yes', label: 'Within 90 days', animated: true },
-              { id: 'e5', source: 'cond1', target: 'msg2', sourceHandle: 'no', label: 'Expired', animated: true },
-              { id: 'e6', source: 'offer1', target: 'offer2', sourceHandle: 'decline', label: 'Decline', animated: true },
-              { id: 'e7', source: 'offer1', target: 'case1', sourceHandle: 'accept', label: 'Accept', animated: true },
-              { id: 'e8', source: 'offer2', target: 'offer3', sourceHandle: 'decline', label: 'Decline', animated: true },
-              { id: 'e9', source: 'offer2', target: 'case1', sourceHandle: 'accept', label: 'Accept', animated: true },
-              { id: 'e10', source: 'offer3', target: 'case1', sourceHandle: 'decline', label: 'Decline', animated: true },
-              { id: 'e11', source: 'offer3', target: 'case1', sourceHandle: 'accept', label: 'Accept', animated: true },
-              { id: 'e12', source: 'case1', target: 'end1', animated: true },
-              { id: 'e13', source: 'msg2', target: 'end1', animated: true }
+              { id: 'e4', source: 'cond1', target: 'msg2', sourceHandle: 'yes', label: 'Delivered', animated: true },
+              { id: 'e5', source: 'cond1', target: 'msg3', sourceHandle: 'no', label: 'Not delivered', animated: true },
+              { id: 'e6', source: 'msg2', target: 'offer1', animated: true },
+              { id: 'e7', source: 'msg3', target: 'offer1', animated: true },
+              { id: 'e8', source: 'offer1', target: 'case1', sourceHandle: 'accept', label: 'Accept', animated: true },
+              { id: 'e9', source: 'offer1', target: 'offer2', sourceHandle: 'decline', label: 'Decline', animated: true },
+              { id: 'e10', source: 'offer2', target: 'case1', sourceHandle: 'accept', animated: true },
+              { id: 'e11', source: 'offer2', target: 'delay1', sourceHandle: 'decline', animated: true },
+              { id: 'e12', source: 'delay1', target: 'offer3', animated: true },
+              { id: 'e13', source: 'offer3', target: 'case1', sourceHandle: 'accept', animated: true },
+              { id: 'e14', source: 'offer3', target: 'delay2', sourceHandle: 'decline', animated: true },
+              { id: 'e15', source: 'delay2', target: 'offer4', animated: true },
+              { id: 'e16', source: 'offer4', target: 'case1', sourceHandle: 'accept', animated: true },
+              { id: 'e17', source: 'offer4', target: 'case2', sourceHandle: 'decline', label: 'Full refund', animated: true },
+              { id: 'e18', source: 'case1', target: 'end1', animated: true },
+              { id: 'e19', source: 'case2', target: 'end1', animated: true }
             ]
           },
-          dog_not_using: {
-            id: 'dog_not_using',
+
+          // QUALITY DIFFERENCE
+          quality_difference: {
+            id: 'quality_difference',
             parentId: 'help_with_order',
-            name: 'Dog Not Using Product',
-            description: 'Customer reports their dog is not using the PuppyPad',
+            name: 'Quality Difference',
+            description: 'Customer notices quality or material differences from previous orders',
             nodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
-              { id: 'msg1', type: 'message', position: { x: 350, y: 120 }, data: { persona: 'amy', content: "I'm sorry to hear that! Our trainer Claudia has some tips that might help." } },
-              { id: 'ai1', type: 'ai', position: { x: 350, y: 280 }, data: { persona: 'claudia', prompt: 'Generate training tips', model: 'gpt-4o-mini' } },
-              { id: 'opts1', type: 'options', position: { x: 350, y: 440 }, data: { prompt: 'Did the tips help?', options: [{ label: 'Yes, thanks!' }, { label: 'Still having issues' }] } },
-              { id: 'end1', type: 'end', position: { x: 150, y: 620 }, data: { title: 'Great!', showSurvey: true } },
-              { id: 'offer1', type: 'offer', position: { x: 550, y: 620 }, data: { percent: 30, label: 'Keep product' } },
-              { id: 'case1', type: 'case', position: { x: 550, y: 780 }, data: { type: 'refund' } },
-              { id: 'end2', type: 'end', position: { x: 550, y: 920 }, data: { title: 'Case Created', showSurvey: true } }
-            ],
-            edges: [
-              { id: 'e1', source: 'start', target: 'msg1', animated: true },
-              { id: 'e2', source: 'msg1', target: 'ai1', animated: true },
-              { id: 'e3', source: 'ai1', target: 'opts1', animated: true },
-              { id: 'e4', source: 'opts1', target: 'end1', sourceHandle: 'opt-0', animated: true },
-              { id: 'e5', source: 'opts1', target: 'offer1', sourceHandle: 'opt-1', animated: true },
-              { id: 'e6', source: 'offer1', target: 'case1', animated: true },
-              { id: 'e7', source: 'case1', target: 'end2', animated: true }
-            ]
-          },
-          quality_issue: {
-            id: 'quality_issue',
-            parentId: 'help_with_order',
-            name: 'Quality / Material Issue',
-            description: 'Customer notices quality or material differences',
-            nodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
-              { id: 'msg1', type: 'message', position: { x: 350, y: 120 }, data: { persona: 'amy', content: "I'm so sorry about that! Can you upload some photos so we can take a look?" } },
-              { id: 'upload1', type: 'form', position: { x: 350, y: 280 }, data: { formType: 'Photo Upload', label: 'Upload Photos' } },
-              { id: 'case1', type: 'case', position: { x: 350, y: 440 }, data: { type: 'quality', priority: 'high' } },
-              { id: 'msg2', type: 'message', position: { x: 350, y: 600 }, data: { persona: 'amy', content: "Thanks for those photos. I've created a priority case for our quality team to review." } },
-              { id: 'end1', type: 'end', position: { x: 350, y: 760 }, data: { title: 'Case Submitted', showSurvey: true } }
-            ],
-            edges: [
-              { id: 'e1', source: 'start', target: 'msg1', animated: true },
-              { id: 'e2', source: 'msg1', target: 'upload1', animated: true },
-              { id: 'e3', source: 'upload1', target: 'case1', animated: true },
-              { id: 'e4', source: 'case1', target: 'msg2', animated: true },
-              { id: 'e5', source: 'msg2', target: 'end1', animated: true }
-            ]
-          },
-          other_reason: {
-            id: 'other_reason',
-            parentId: 'help_with_order',
-            name: 'Other Reason',
-            description: 'Customer has a different issue not covered by other options',
-            nodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
-              { id: 'msg1', type: 'message', position: { x: 350, y: 120 }, data: { persona: 'amy', content: "I'd love to help! Can you tell me more about what's going on?" } },
-              { id: 'form1', type: 'form', position: { x: 350, y: 280 }, data: { formType: 'Form', label: 'Describe Issue' } },
-              { id: 'ai1', type: 'ai', position: { x: 350, y: 440 }, data: { persona: 'amy', prompt: 'Analyze issue and provide response', model: 'gpt-4o' } },
-              { id: 'end1', type: 'end', position: { x: 350, y: 600 }, data: { title: 'Thanks!', showSurvey: true } }
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Quality Difference Flow' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I'm sorry to hear you noticed a difference! We take quality very seriously. Can you tell me what seems different?" } },
+              { id: 'form1', type: 'form', position: { x: 350, y: 370 }, data: { formType: 'Text Input', label: 'Describe the quality difference' } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 570 }, data: { persona: 'amy', content: "Thank you for that feedback. Could you upload some photos so our quality team can take a look?" } },
+              { id: 'evidence1', type: 'form', position: { x: 350, y: 790 }, data: { formType: 'Photo Upload', label: 'Upload comparison photos' } },
+              { id: 'case1', type: 'case', position: { x: 350, y: 990 }, data: { type: 'quality', subtype: 'quality_difference', priority: 'high' } },
+              { id: 'msg3', type: 'message', position: { x: 350, y: 1190 }, data: { persona: 'amy', content: "Thanks for those photos. I've created a priority case for our quality team to review. They'll get back to you within 1-2 business days." } },
+              { id: 'end1', type: 'end', position: { x: 350, y: 1390 }, data: { title: 'Quality Review Requested', showSurvey: true } }
             ],
             edges: [
               { id: 'e1', source: 'start', target: 'msg1', animated: true },
               { id: 'e2', source: 'msg1', target: 'form1', animated: true },
-              { id: 'e3', source: 'form1', target: 'ai1', animated: true },
-              { id: 'e4', source: 'ai1', target: 'end1', animated: true }
+              { id: 'e3', source: 'form1', target: 'msg2', animated: true },
+              { id: 'e4', source: 'msg2', target: 'evidence1', animated: true },
+              { id: 'e5', source: 'evidence1', target: 'case1', animated: true },
+              { id: 'e6', source: 'case1', target: 'msg3', animated: true },
+              { id: 'e7', source: 'msg3', target: 'end1', animated: true }
             ]
           },
-          tracking_status: {
-            id: 'tracking_status',
-            parentId: 'track_order',
-            name: 'Check Tracking Status',
-            description: 'Customer wants to see where their order is',
+
+          // OTHER REASON
+          other_reason: {
+            id: 'other_reason',
+            parentId: 'help_with_order',
+            name: 'Other Reason',
+            description: 'Customer has a different issue - free text then refund ladder',
             nodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
-              { id: 'form1', type: 'form', position: { x: 350, y: 120 }, data: { formType: 'Form', label: 'Find Your Order' } },
-              { id: 'api1', type: 'api', position: { x: 350, y: 280 }, data: { service: 'Shopify', endpoint: 'lookupOrder' } },
-              { id: 'api2', type: 'api', position: { x: 350, y: 440 }, data: { service: 'ParcelPanel', endpoint: 'getTracking' } },
-              { id: 'msg1', type: 'message', position: { x: 350, y: 600 }, data: { persona: 'amy', content: "Here's your tracking info! Your package is {{trackingStatus}}." } },
-              { id: 'end1', type: 'end', position: { x: 350, y: 760 }, data: { title: 'All done!', showSurvey: true } }
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Other Reason Flow' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "No problem — tell me what's going on and I'll do my best to help:" } },
+              { id: 'input1', type: 'form', position: { x: 350, y: 350 }, data: { formType: 'Text Input', label: 'Describe your issue...', placeholder: 'Tell us what happened' } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 550 }, data: { persona: 'amy', content: "Thank you for explaining. Let me see what options I have for you." } },
+              { id: 'subflow1', type: 'subflow', position: { x: 350, y: 750 }, data: { name: 'Refund Ladder', slug: 'changed_mind', description: '20% → 30% → 40% → 50% ladder' } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'input1', animated: true },
+              { id: 'e3', source: 'input1', target: 'msg2', animated: true },
+              { id: 'e4', source: 'msg2', target: 'subflow1', animated: true }
+            ]
+          },
+
+          // TRACKING FLOW
+          tracking_flow: {
+            id: 'tracking_flow',
+            parentId: 'track_order',
+            name: 'Order Tracking Flow',
+            description: 'Customer lookup → Shopify API → ParcelPanel tracking → Display status',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Tracking Flow' } },
+              { id: 'form1', type: 'form', position: { x: 350, y: 170 }, data: { formType: 'Customer Lookup', label: 'Find Your Order', fields: ['email', 'orderNumber'] } },
+              { id: 'api1', type: 'api', position: { x: 350, y: 370 }, data: { service: 'Shopify', endpoint: '/api/lookup', description: 'Find customer orders', request: '{ email, orderNumber }', response: '{ orders[], fulfillments[] }' } },
+              { id: 'cond1', type: 'condition', position: { x: 350, y: 570 }, data: { variable: 'orders.length', operator: '>', value: '0', yesLabel: 'Found', noLabel: 'Not Found' } },
+              { id: 'api2', type: 'api', position: { x: 150, y: 790 }, data: { service: 'ParcelPanel', endpoint: '/api/tracking/{trackingNumber}', description: 'Get real-time tracking from carriers', request: '{ trackingNumber }', response: '{ status, location, estimatedDelivery, events[] }' } },
+              { id: 'msg1', type: 'message', position: { x: 150, y: 1010 }, data: { persona: 'amy', content: "Here's your tracking information! Your package is currently {{trackingStatus}} and the estimated delivery is {{estimatedDelivery}}." } },
+              { id: 'opts1', type: 'options', position: { x: 150, y: 1230 }, data: { prompt: 'Is there anything else I can help with?', options: [{ label: 'No, thanks!', icon: '👍' }, { label: 'I have an issue', icon: '⚠️' }] } },
+              { id: 'end1', type: 'end', position: { x: -50, y: 1450 }, data: { title: 'Tracking Complete!', showSurvey: true } },
+              { id: 'subflow1', type: 'subflow', position: { x: 350, y: 1450 }, data: { name: 'Not Received Flow', slug: 'not_received', description: 'Handle delivery issues' } },
+              { id: 'msg2', type: 'message', position: { x: 550, y: 790 }, data: { persona: 'amy', content: "I couldn't find an order with those details. Let's try searching with more information." } },
+              { id: 'form2', type: 'form', position: { x: 550, y: 1010 }, data: { formType: 'Deep Search', label: 'Additional Details', fields: ['firstName', 'lastName', 'address'] } }
             ],
             edges: [
               { id: 'e1', source: 'start', target: 'form1', animated: true },
               { id: 'e2', source: 'form1', target: 'api1', animated: true },
-              { id: 'e3', source: 'api1', target: 'api2', animated: true },
-              { id: 'e4', source: 'api2', target: 'msg1', animated: true },
-              { id: 'e5', source: 'msg1', target: 'end1', animated: true }
+              { id: 'e3', source: 'api1', target: 'cond1', animated: true },
+              { id: 'e4', source: 'cond1', target: 'api2', sourceHandle: 'yes', label: 'Order found', animated: true },
+              { id: 'e5', source: 'cond1', target: 'msg2', sourceHandle: 'no', label: 'Not found', animated: true },
+              { id: 'e6', source: 'api2', target: 'msg1', animated: true },
+              { id: 'e7', source: 'msg1', target: 'opts1', animated: true },
+              { id: 'e8', source: 'opts1', target: 'end1', sourceHandle: 'opt-0', label: 'All done', animated: true },
+              { id: 'e9', source: 'opts1', target: 'subflow1', sourceHandle: 'opt-1', label: 'Has issue', animated: true },
+              { id: 'e10', source: 'msg2', target: 'form2', animated: true },
+              { id: 'e11', source: 'form2', target: 'api1', label: 'Retry', animated: true }
             ]
           },
-          cancel_subscription: {
-            id: 'cancel_subscription',
-            parentId: 'manage_subscription',
-            name: 'Cancel Subscription',
-            description: 'Customer wants to cancel their subscription',
-            nodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
-              { id: 'msg1', type: 'message', position: { x: 350, y: 120 }, data: { persona: 'amy', content: "I'm sorry to see you go! Before we cancel, may I ask why?" } },
-              { id: 'opts1', type: 'options', position: { x: 350, y: 280 }, data: { prompt: 'Reason for canceling?', options: [{ label: 'Too expensive' }, { label: 'Dog passed away' }, { label: 'Moving' }, { label: 'Other' }] } },
-              { id: 'offer1', type: 'offer', position: { x: 50, y: 480 }, data: { percent: 20, label: '20% off next 3 months' } },
-              { id: 'case1', type: 'case', position: { x: 250, y: 480 }, data: { type: 'subscription', priority: 'high', note: 'Pet loss - handle sensitively' } },
-              { id: 'msg2', type: 'message', position: { x: 450, y: 480 }, data: { persona: 'amy', content: "No problem! I'll process your cancellation." } },
-              { id: 'api1', type: 'api', position: { x: 650, y: 480 }, data: { service: 'Shopify', endpoint: 'cancelSubscription' } },
-              { id: 'end1', type: 'end', position: { x: 350, y: 680 }, data: { title: 'Subscription Updated', showSurvey: true } }
-            ],
-            edges: [
-              { id: 'e1', source: 'start', target: 'msg1', animated: true },
-              { id: 'e2', source: 'msg1', target: 'opts1', animated: true },
-              { id: 'e3', source: 'opts1', target: 'offer1', sourceHandle: 'opt-0', label: 'Too expensive', animated: true },
-              { id: 'e4', source: 'opts1', target: 'case1', sourceHandle: 'opt-1', label: 'Pet loss', animated: true },
-              { id: 'e5', source: 'opts1', target: 'msg2', sourceHandle: 'opt-2', label: 'Moving', animated: true },
-              { id: 'e6', source: 'opts1', target: 'api1', sourceHandle: 'opt-3', label: 'Other', animated: true },
-              { id: 'e7', source: 'offer1', target: 'end1', animated: true },
-              { id: 'e8', source: 'case1', target: 'end1', animated: true },
-              { id: 'e9', source: 'msg2', target: 'end1', animated: true },
-              { id: 'e10', source: 'api1', target: 'end1', animated: true }
-            ]
-          },
+
+          // SUBSCRIPTION FLOWS
           pause_subscription: {
             id: 'pause_subscription',
             parentId: 'manage_subscription',
             name: 'Pause Subscription',
-            description: 'Customer wants to temporarily pause deliveries',
+            description: 'Customer wants to temporarily pause deliveries - duration selection then API call',
             nodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
-              { id: 'msg1', type: 'message', position: { x: 350, y: 120 }, data: { persona: 'amy', content: "No problem! How long would you like to pause?" } },
-              { id: 'opts1', type: 'options', position: { x: 350, y: 280 }, data: { prompt: 'Pause duration', options: [{ label: '1 month' }, { label: '2 months' }, { label: '3 months' }] } },
-              { id: 'api1', type: 'api', position: { x: 350, y: 480 }, data: { service: 'Shopify', endpoint: 'pauseSubscription' } },
-              { id: 'msg2', type: 'message', position: { x: 350, y: 640 }, data: { persona: 'amy', content: "Done! Your subscription is paused. We'll resume on {{resumeDate}}." } },
-              { id: 'end1', type: 'end', position: { x: 350, y: 800 }, data: { title: 'Paused!', showSurvey: true } }
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Pause Subscription' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 170 }, data: { persona: 'amy', content: "No problem! How long would you like to pause your subscription?" } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 370 }, data: { prompt: 'Select pause duration', options: [{ label: '1 month', icon: '📅' }, { label: '2 months', icon: '📅' }, { label: '3 months', icon: '📅' }] } },
+              { id: 'api1', type: 'api', position: { x: 350, y: 590 }, data: { service: 'Shopify', endpoint: '/api/subscriptions/pause', description: 'Pause subscription for selected duration', request: '{ subscriptionId, pauseDuration }', response: '{ success, resumeDate }' } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 790 }, data: { persona: 'amy', content: "Done! Your subscription is now paused. We'll automatically resume on {{resumeDate}}. You'll get a reminder email before then!" } },
+              { id: 'end1', type: 'end', position: { x: 350, y: 990 }, data: { title: 'Subscription Paused!', showSurvey: true } }
             ],
             edges: [
               { id: 'e1', source: 'start', target: 'msg1', animated: true },
@@ -472,25 +784,62 @@
               { id: 'e5', source: 'msg2', target: 'end1', animated: true }
             ]
           },
+
+          cancel_subscription: {
+            id: 'cancel_subscription',
+            parentId: 'manage_subscription',
+            name: 'Cancel Subscription',
+            description: 'Customer wants to cancel - reason selection with special handling + retention offers',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Cancel Subscription' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 170 }, data: { persona: 'amy', content: "I'm sorry to see you go! Before we cancel, may I ask why you're looking to cancel?" } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 390 }, data: { prompt: 'Reason for canceling?', options: [{ label: 'Too expensive', icon: '💰' }, { label: 'Dog passed away', icon: '🌈' }, { label: 'Moving', icon: '🏠' }, { label: 'Dog no longer needs it', icon: '🐕' }, { label: 'Other reason', icon: '❓' }] } },
+              { id: 'offer1', type: 'offer', position: { x: 50, y: 650 }, data: { percent: 20, label: '20% off next 3 months', message: "I understand budget can be tight. What if I offer you 20% off your next 3 shipments?", forFuture: true } },
+              { id: 'case1', type: 'case', position: { x: 250, y: 650 }, data: { type: 'subscription', subtype: 'pet_loss', priority: 'high', note: 'Pet loss - handle with sensitivity and compassion' } },
+              { id: 'msg2', type: 'message', position: { x: 450, y: 650 }, data: { persona: 'amy', content: "Good luck with your move! I'll process your cancellation right away." } },
+              { id: 'msg3', type: 'message', position: { x: 650, y: 650 }, data: { persona: 'amy', content: "That's great that your pup is doing well! I'll cancel your subscription, but feel free to come back if you ever need us again." } },
+              { id: 'input1', type: 'form', position: { x: 850, y: 650 }, data: { formType: 'Text Input', label: 'Tell us more...' } },
+              { id: 'api1', type: 'api', position: { x: 450, y: 890 }, data: { service: 'Shopify', endpoint: '/api/subscriptions/cancel', description: 'Cancel subscription', request: '{ subscriptionId, reason }', response: '{ success }' } },
+              { id: 'end1', type: 'end', position: { x: 350, y: 1110 }, data: { title: 'Subscription Updated', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'opts1', animated: true },
+              { id: 'e3', source: 'opts1', target: 'offer1', label: 'Too expensive', animated: true },
+              { id: 'e4', source: 'opts1', target: 'case1', label: 'Pet loss', animated: true },
+              { id: 'e5', source: 'opts1', target: 'msg2', label: 'Moving', animated: true },
+              { id: 'e6', source: 'opts1', target: 'msg3', label: 'No longer needs', animated: true },
+              { id: 'e7', source: 'opts1', target: 'input1', label: 'Other', animated: true },
+              { id: 'e8', source: 'offer1', target: 'api1', animated: true },
+              { id: 'e9', source: 'case1', target: 'end1', animated: true },
+              { id: 'e10', source: 'msg2', target: 'api1', animated: true },
+              { id: 'e11', source: 'msg3', target: 'api1', animated: true },
+              { id: 'e12', source: 'input1', target: 'api1', animated: true },
+              { id: 'e13', source: 'api1', target: 'end1', animated: true }
+            ]
+          },
+
           change_frequency: {
             id: 'change_frequency',
             parentId: 'manage_subscription',
             name: 'Change Delivery Frequency',
-            description: 'Customer wants to adjust how often they receive deliveries',
+            description: 'Customer wants to adjust delivery frequency',
             nodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } },
-              { id: 'api1', type: 'api', position: { x: 350, y: 120 }, data: { service: 'Shopify', endpoint: 'getSubscription' } },
-              { id: 'msg1', type: 'message', position: { x: 350, y: 280 }, data: { persona: 'amy', content: "Your current frequency is {{currentFrequency}}. What would you like to change it to?" } },
-              { id: 'opts1', type: 'options', position: { x: 350, y: 440 }, data: { prompt: 'New frequency', options: [{ label: 'Every 2 weeks' }, { label: 'Every month' }, { label: 'Every 6 weeks' }, { label: 'Every 2 months' }] } },
-              { id: 'api2', type: 'api', position: { x: 350, y: 640 }, data: { service: 'Shopify', endpoint: 'updateFrequency' } },
-              { id: 'end1', type: 'end', position: { x: 350, y: 800 }, data: { title: 'Updated!', showSurvey: true } }
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Change Frequency' } },
+              { id: 'api1', type: 'api', position: { x: 350, y: 170 }, data: { service: 'Shopify', endpoint: '/api/subscriptions/current', description: 'Get current subscription details', response: '{ currentFrequency, nextDelivery }' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 370 }, data: { persona: 'amy', content: "Your current delivery frequency is {{currentFrequency}}. What would you like to change it to?" } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 590 }, data: { prompt: 'Select new frequency', options: [{ label: 'Every 2 weeks', icon: '📅' }, { label: 'Every month', icon: '📅' }, { label: 'Every 6 weeks', icon: '📅' }, { label: 'Every 2 months', icon: '📅' }] } },
+              { id: 'api2', type: 'api', position: { x: 350, y: 830 }, data: { service: 'Shopify', endpoint: '/api/subscriptions/update-frequency', description: 'Update subscription frequency', request: '{ subscriptionId, newFrequency }', response: '{ success, nextDelivery }' } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 1030 }, data: { persona: 'amy', content: "Perfect! I've updated your delivery frequency. Your next delivery will be on {{nextDelivery}}." } },
+              { id: 'end1', type: 'end', position: { x: 350, y: 1230 }, data: { title: 'Frequency Updated!', showSurvey: true } }
             ],
             edges: [
               { id: 'e1', source: 'start', target: 'api1', animated: true },
               { id: 'e2', source: 'api1', target: 'msg1', animated: true },
               { id: 'e3', source: 'msg1', target: 'opts1', animated: true },
               { id: 'e4', source: 'opts1', target: 'api2', animated: true },
-              { id: 'e5', source: 'api2', target: 'end1', animated: true }
+              { id: 'e5', source: 'api2', target: 'msg2', animated: true },
+              { id: 'e6', source: 'msg2', target: 'end1', animated: true }
             ]
           }
         }
@@ -683,12 +1032,91 @@
             React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#8b5cf6' } }, 'Subflow')
           ),
           React.createElement('p', { style: { fontSize: '15px', fontWeight: 600, color: '#374151', margin: 0 } }, data.name || 'Go to Subflow'),
+          data.nodeCount && React.createElement('p', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' } }, `${data.nodeCount} nodes`),
           React.createElement('p', { style: { fontSize: '12px', color: '#8b5cf6', marginTop: '6px' } }, 'Click to view →'),
           React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#8b5cf6', width: '10px', height: '10px', border: '2px solid white' } })
         );
       };
 
-      const nodeTypes = { start: StartNode, message: MessageNode, options: OptionsNode, condition: ConditionNode, api: ApiNode, ai: AiNode, offer: OfferNode, case: CaseNode, form: FormNode, end: EndNode, subflow: SubflowNode };
+      // Delay Node - Manager approval delay simulation
+      const DelayNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: { padding: '16px', borderRadius: '12px', background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', border: selected ? '2px solid #f59e0b' : '2px solid #fcd34d', boxShadow: selected ? '0 0 0 2px rgba(245, 158, 11, 0.2), 0 10px 15px -3px rgba(0,0,0,0.1)' : '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: '200px', cursor: 'pointer' }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#f59e0b', width: '10px', height: '10px', border: '2px solid white' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' } },
+            React.createElement('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#78350f' } },
+              React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                React.createElement('circle', { cx: 12, cy: 12, r: 10 }),
+                React.createElement('polyline', { points: '12 6 12 12 16 14' })
+              )
+            ),
+            React.createElement('span', { style: { fontSize: '13px', fontWeight: 600, color: '#78350f' } }, 'Manager Delay')
+          ),
+          React.createElement('p', { style: { fontSize: '13px', color: '#92400e', margin: 0, fontWeight: 500 } }, data.message || 'Checking with manager...'),
+          React.createElement('p', { style: { fontSize: '11px', color: '#b45309', marginTop: '6px', fontFamily: 'monospace' } }, `⏱️ ${(data.duration || 8000) / 1000}s delay`),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#f59e0b', width: '10px', height: '10px', border: '2px solid white' } })
+        );
+      };
+
+      // Evidence/Photo Upload Node
+      const EvidenceNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: { padding: '16px', borderRadius: '12px', background: 'white', border: selected ? '2px solid #06b6d4' : '2px solid #e5e7eb', boxShadow: selected ? '0 0 0 2px rgba(6, 182, 212, 0.2), 0 10px 15px -3px rgba(0,0,0,0.1)' : '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: '200px', cursor: 'pointer' }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#06b6d4', width: '10px', height: '10px', border: '2px solid white' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' } },
+            React.createElement('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: '#cffafe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#06b6d4' } },
+              React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                React.createElement('rect', { x: 3, y: 3, width: 18, height: 18, rx: 2 }),
+                React.createElement('circle', { cx: 8.5, cy: 8.5, r: 1.5 }),
+                React.createElement('polyline', { points: '21 15 16 10 5 21' })
+              )
+            ),
+            React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#0891b2' } }, 'Photo Upload')
+          ),
+          React.createElement('p', { style: { fontSize: '13px', color: '#374151', margin: 0 } }, data.label || 'Upload evidence photos'),
+          data.description && React.createElement('p', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '4px' } }, data.description),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#06b6d4', width: '10px', height: '10px', border: '2px solid white' } })
+        );
+      };
+
+      // Input Node - Text input collection
+      const InputNode = ({ data, selected }) => {
+        return React.createElement('div', {
+          style: { padding: '16px', borderRadius: '12px', background: 'white', border: selected ? '2px solid #10b981' : '2px solid #e5e7eb', boxShadow: selected ? '0 0 0 2px rgba(16, 185, 129, 0.2), 0 10px 15px -3px rgba(0,0,0,0.1)' : '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: '200px', cursor: 'pointer' }
+        },
+          React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#10b981', width: '10px', height: '10px', border: '2px solid white' } }),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' } },
+            React.createElement('div', { style: { width: '28px', height: '28px', borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' } },
+              React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+                React.createElement('path', { d: 'M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z' })
+              )
+            ),
+            React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#059669' } }, 'Text Input')
+          ),
+          React.createElement('p', { style: { fontSize: '13px', color: '#374151', margin: 0 } }, data.label || 'Enter text...'),
+          data.placeholder && React.createElement('p', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '4px', fontStyle: 'italic' } }, `"${data.placeholder}"`),
+          React.createElement(Handle, { type: 'source', position: Position.Bottom, style: { background: '#10b981', width: '10px', height: '10px', border: '2px solid white' } })
+        );
+      };
+
+      const nodeTypes = { 
+        start: StartNode, 
+        message: MessageNode, 
+        options: OptionsNode, 
+        condition: ConditionNode, 
+        api: ApiNode, 
+        ai: AiNode, 
+        offer: OfferNode, 
+        case: CaseNode, 
+        form: FormNode, 
+        end: EndNode, 
+        subflow: SubflowNode,
+        delay: DelayNode,
+        evidence: EvidenceNode,
+        input: InputNode
+      };
 
       // ============================================
       // LEFT PANEL - FLOW NAVIGATION WITH CARDS
@@ -824,13 +1252,19 @@
       };
 
       // ============================================
-      // RIGHT PANEL - NODE PROPERTIES
+      // RIGHT PANEL - NODE PROPERTIES (Enhanced)
       // ============================================
-      const NodePropertiesPanel = ({ selectedNode }) => {
+      const NodePropertiesPanel = ({ selectedNode, onSimulate }) => {
+        const [expandedSections, setExpandedSections] = useState({ prompt: false, request: false, response: false });
+        
+        const toggleSection = (section) => {
+          setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+        };
+
         if (!selectedNode) {
           return React.createElement('div', { 
             style: { 
-              width: '320px', 
+              width: '360px', 
               background: 'white',
               borderLeft: '1px solid #e5e7eb',
               display: 'flex',
@@ -850,14 +1284,34 @@
         }
 
         const getIcon = () => {
-          const iconMap = { message: Icons.MessageSquare, options: Icons.List, condition: Icons.GitBranch, api: Icons.Zap, ai: Icons.Bot, offer: Icons.Gift, case: Icons.FolderOpen, form: Icons.FileText, end: Icons.Flag, start: Icons.Play };
+          const iconMap = { message: Icons.MessageSquare, options: Icons.List, condition: Icons.GitBranch, api: Icons.Zap, ai: Icons.Bot, offer: Icons.Gift, case: Icons.FolderOpen, form: Icons.FileText, end: Icons.Flag, start: Icons.Play, delay: Icons.Play, evidence: Icons.FileText, input: Icons.FileText };
           const IconComp = iconMap[selectedNode.type] || Icons.Play;
           return React.createElement(IconComp);
         };
 
+        const getNodeTitle = () => {
+          const titles = {
+            ai: 'AI Response (OpenAI)',
+            api: 'API Integration',
+            offer: 'Refund Offer',
+            delay: 'Manager Delay',
+            evidence: 'Photo Upload',
+            input: 'Text Input',
+            form: 'Form Input',
+            case: 'Case Creation',
+            condition: 'Condition Check',
+            options: 'User Options',
+            message: 'Bot Message',
+            start: 'Flow Start',
+            end: 'Flow End',
+            subflow: 'Subflow Link'
+          };
+          return titles[selectedNode.type] || (selectedNode.type + ' Node');
+        };
+
         return React.createElement('div', { 
           style: { 
-            width: '320px', 
+            width: '360px', 
             background: 'white',
             borderLeft: '1px solid #e5e7eb',
             display: 'flex',
@@ -871,82 +1325,420 @@
               React.createElement('div', { 
                 style: { width: '40px', height: '40px', borderRadius: '10px', background: (nodeColors[selectedNode.type] || '#94a3b8') + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', color: nodeColors[selectedNode.type] || '#94a3b8' } 
               }, getIcon()),
-              React.createElement('div', null,
-                React.createElement('h3', { style: { fontSize: '16px', fontWeight: 600, margin: 0, textTransform: 'capitalize', color: '#111827' } }, 
-                  selectedNode.type === 'ai' ? 'AI Response' : selectedNode.type + ' Node'
-                ),
-                React.createElement('p', { style: { fontSize: '12px', color: '#9ca3af', margin: 0, marginTop: '2px' } }, `ID: ${selectedNode.id}`)
+              React.createElement('div', { style: { flex: 1 } },
+                React.createElement('h3', { style: { fontSize: '15px', fontWeight: 600, margin: 0, color: '#111827' } }, getNodeTitle()),
+                React.createElement('p', { style: { fontSize: '11px', color: '#9ca3af', margin: 0, marginTop: '2px', fontFamily: 'monospace' } }, `ID: ${selectedNode.id}`)
               )
+            ),
+            // Simulate Button
+            (selectedNode.type === 'message' || selectedNode.type === 'options' || selectedNode.type === 'offer' || selectedNode.type === 'form') &&
+            React.createElement('button', {
+              onClick: () => onSimulate && onSimulate(selectedNode),
+              style: { 
+                marginTop: '12px', 
+                width: '100%', 
+                padding: '10px 16px', 
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '8px', 
+                fontSize: '13px', 
+                fontWeight: 600, 
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }
+            }, 
+              React.createElement(Icons.Eye, null),
+              'View in Simulator'
             )
           ),
+
           // Content
-          React.createElement('div', { style: { flex: 1, padding: '20px', overflowY: 'auto' } },
+          React.createElement('div', { style: { flex: 1, padding: '16px', overflowY: 'auto' } },
             // Node Type Badge
             React.createElement('div', { style: { marginBottom: '16px' } },
               React.createElement('span', { 
-                style: { display: 'inline-block', padding: '4px 10px', background: (nodeColors[selectedNode.type] || '#94a3b8') + '15', color: nodeColors[selectedNode.type] || '#94a3b8', borderRadius: '6px', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' } 
+                style: { display: 'inline-block', padding: '4px 10px', background: (nodeColors[selectedNode.type] || '#94a3b8') + '15', color: nodeColors[selectedNode.type] || '#94a3b8', borderRadius: '6px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' } 
               }, selectedNode.type)
             ),
-            // Persona
-            selectedNode.data?.persona && React.createElement('div', { style: { marginBottom: '16px' } },
-              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Persona'),
-              React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', border: '1px solid #e5e7eb' } }, 
-                selectedNode.data.persona === 'amy' ? 'Amy (Support)' : selectedNode.data.persona === 'claudia' ? 'Claudia (Trainer)' : selectedNode.data.persona
+
+            // === AI NODE DETAILS ===
+            selectedNode.type === 'ai' && React.createElement('div', null,
+              // Model Info
+              React.createElement('div', { style: { marginBottom: '16px', padding: '12px', background: '#eef2ff', borderRadius: '10px', border: '1px solid #c7d2fe' } },
+                React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' } },
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { fontSize: '10px', color: '#6366f1', fontWeight: 600, textTransform: 'uppercase' } }, 'Model'),
+                    React.createElement('div', { style: { fontSize: '13px', fontWeight: 600, color: '#4338ca' } }, selectedNode.data.model || 'gpt-4o-mini')
+                  ),
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { fontSize: '10px', color: '#6366f1', fontWeight: 600, textTransform: 'uppercase' } }, 'Temperature'),
+                    React.createElement('div', { style: { fontSize: '13px', fontWeight: 600, color: '#4338ca' } }, selectedNode.data.temperature || '0.7')
+                  ),
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { fontSize: '10px', color: '#6366f1', fontWeight: 600, textTransform: 'uppercase' } }, 'Max Tokens'),
+                    React.createElement('div', { style: { fontSize: '13px', fontWeight: 600, color: '#4338ca' } }, selectedNode.data.maxTokens || '800')
+                  ),
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { fontSize: '10px', color: '#6366f1', fontWeight: 600, textTransform: 'uppercase' } }, 'Scenario'),
+                    React.createElement('div', { style: { fontSize: '13px', fontWeight: 600, color: '#4338ca' } }, selectedNode.data.scenarioType || 'custom')
+                  )
+                )
+              ),
+              // System Prompt
+              selectedNode.data.systemPrompt && React.createElement('div', { style: { marginBottom: '16px' } },
+                React.createElement('div', { 
+                  onClick: () => toggleSection('prompt'),
+                  style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }
+                },
+                  React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#374151' } }, 'System Prompt'),
+                  React.createElement('span', { style: { fontSize: '10px', color: '#6b7280' } }, expandedSections.prompt ? '▼' : '▶')
+                ),
+                expandedSections.prompt && React.createElement('div', { 
+                  style: { marginTop: '8px', padding: '12px', background: '#1e1b4b', borderRadius: '8px', maxHeight: '200px', overflowY: 'auto' }
+                },
+                  React.createElement('pre', { style: { fontSize: '11px', color: '#c7d2fe', whiteSpace: 'pre-wrap', margin: 0, fontFamily: 'monospace', lineHeight: '1.5' } }, selectedNode.data.systemPrompt)
+                )
+              ),
+              // User Prompt Template
+              selectedNode.data.userPromptTemplate && React.createElement('div', { style: { marginBottom: '16px' } },
+                React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'User Prompt Template'),
+                React.createElement('div', { style: { padding: '10px 12px', background: '#fdf4ff', borderRadius: '8px', border: '1px solid #e9d5ff' } },
+                  React.createElement('code', { style: { fontSize: '11px', color: '#7e22ce', whiteSpace: 'pre-wrap' } }, selectedNode.data.userPromptTemplate)
+                )
               )
             ),
-            // Message Content
-            selectedNode.data?.content && React.createElement('div', { style: { marginBottom: '16px' } },
-              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Message'),
+
+            // === API NODE DETAILS ===
+            selectedNode.type === 'api' && React.createElement('div', null,
+              // Service & Endpoint
+              React.createElement('div', { style: { marginBottom: '16px', padding: '12px', background: '#fdf4ff', borderRadius: '10px', border: '1px solid #f5d0fe' } },
+                React.createElement('div', { style: { fontSize: '10px', color: '#a855f7', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' } }, 'Service'),
+                React.createElement('div', { style: { fontSize: '16px', fontWeight: 700, color: '#7e22ce', marginBottom: '12px' } }, selectedNode.data.service),
+                React.createElement('div', { style: { fontSize: '10px', color: '#a855f7', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' } }, 'Endpoint'),
+                React.createElement('code', { style: { display: 'block', fontSize: '12px', color: '#581c87', background: '#fae8ff', padding: '8px 10px', borderRadius: '6px', fontFamily: 'monospace' } }, selectedNode.data.endpoint)
+              ),
+              // Description
+              selectedNode.data.description && React.createElement('div', { style: { marginBottom: '16px' } },
+                React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'Description'),
+                React.createElement('p', { style: { fontSize: '13px', color: '#374151', margin: 0, lineHeight: '1.5' } }, selectedNode.data.description)
+              ),
+              // Request Schema
+              selectedNode.data.request && React.createElement('div', { style: { marginBottom: '16px' } },
+                React.createElement('div', { 
+                  onClick: () => toggleSection('request'),
+                  style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '10px 12px', background: '#ecfdf5', borderRadius: '8px', border: '1px solid #a7f3d0' }
+                },
+                  React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#059669' } }, 'Request Schema'),
+                  React.createElement('span', { style: { fontSize: '10px', color: '#6b7280' } }, expandedSections.request ? '▼' : '▶')
+                ),
+                expandedSections.request && React.createElement('pre', { 
+                  style: { marginTop: '8px', padding: '12px', background: '#064e3b', borderRadius: '8px', fontSize: '11px', color: '#6ee7b7', fontFamily: 'monospace', whiteSpace: 'pre-wrap', margin: 0 }
+                }, selectedNode.data.request)
+              ),
+              // Response Schema
+              selectedNode.data.response && React.createElement('div', { style: { marginBottom: '16px' } },
+                React.createElement('div', { 
+                  onClick: () => toggleSection('response'),
+                  style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '10px 12px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }
+                },
+                  React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#2563eb' } }, 'Response Schema'),
+                  React.createElement('span', { style: { fontSize: '10px', color: '#6b7280' } }, expandedSections.response ? '▼' : '▶')
+                ),
+                expandedSections.response && React.createElement('pre', { 
+                  style: { marginTop: '8px', padding: '12px', background: '#1e3a8a', borderRadius: '8px', fontSize: '11px', color: '#93c5fd', fontFamily: 'monospace', whiteSpace: 'pre-wrap', margin: 0 }
+                }, selectedNode.data.response)
+              )
+            ),
+
+            // === OFFER NODE DETAILS ===
+            selectedNode.type === 'offer' && React.createElement('div', null,
+              React.createElement('div', { style: { padding: '20px', background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)', borderRadius: '12px', textAlign: 'center', marginBottom: '16px' } },
+                React.createElement('div', { style: { fontSize: '40px', fontWeight: 700, color: '#059669' } }, `${selectedNode.data.percent}%`),
+                React.createElement('div', { style: { fontSize: '14px', color: '#047857', marginTop: '4px', fontWeight: 500 } }, selectedNode.data.label || 'Partial Refund')
+              ),
+              selectedNode.data.message && React.createElement('div', { style: { marginBottom: '16px' } },
+                React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'Offer Message'),
+                React.createElement('div', { style: { padding: '12px', background: '#f9fafb', borderRadius: '10px', fontSize: '13px', lineHeight: '1.6', border: '1px solid #e5e7eb' } }, selectedNode.data.message)
+              ),
+              React.createElement('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+                selectedNode.data.needsManagerApproval && React.createElement('span', { style: { padding: '4px 10px', background: '#fef3c7', color: '#b45309', borderRadius: '20px', fontSize: '11px', fontWeight: 500 } }, '👔 Manager Approval'),
+                selectedNode.data.isFinal && React.createElement('span', { style: { padding: '4px 10px', background: '#fee2e2', color: '#dc2626', borderRadius: '20px', fontSize: '11px', fontWeight: 500 } }, '🏁 Final Offer'),
+                selectedNode.data.forFuture && React.createElement('span', { style: { padding: '4px 10px', background: '#dbeafe', color: '#2563eb', borderRadius: '20px', fontSize: '11px', fontWeight: 500 } }, '📅 Future Discount')
+              )
+            ),
+
+            // === DELAY NODE DETAILS ===
+            selectedNode.type === 'delay' && React.createElement('div', null,
+              React.createElement('div', { style: { padding: '20px', background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', borderRadius: '12px', textAlign: 'center', marginBottom: '16px' } },
+                React.createElement('div', { style: { fontSize: '32px', fontWeight: 700, color: '#92400e' } }, `${(selectedNode.data.duration || 8000) / 1000}s`),
+                React.createElement('div', { style: { fontSize: '14px', color: '#b45309', marginTop: '4px', fontWeight: 500 } }, 'Delay Duration')
+              ),
+              React.createElement('div', { style: { marginBottom: '16px' } },
+                React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'Loading Message'),
+                React.createElement('div', { style: { padding: '12px', background: '#f9fafb', borderRadius: '10px', fontSize: '13px', border: '1px solid #e5e7eb' } }, selectedNode.data.message || 'Please wait...')
+              ),
+              React.createElement('p', { style: { fontSize: '12px', color: '#6b7280', margin: 0, fontStyle: 'italic' } }, 'This simulates manager approval time to make the experience feel more authentic.')
+            ),
+
+            // === CONDITION NODE DETAILS ===
+            selectedNode.type === 'condition' && React.createElement('div', null,
+              React.createElement('div', { style: { padding: '14px', background: '#fffbeb', borderRadius: '10px', border: '1px solid #fde68a', marginBottom: '16px' } },
+                React.createElement('div', { style: { fontSize: '10px', color: '#b45309', fontWeight: 600, textTransform: 'uppercase', marginBottom: '8px' } }, 'Condition Logic'),
+                React.createElement('code', { style: { display: 'block', fontSize: '13px', color: '#78350f', fontFamily: 'monospace', background: '#fef3c7', padding: '10px', borderRadius: '6px' } }, 
+                  `if (${selectedNode.data.variable} ${selectedNode.data.operator || '==='} "${selectedNode.data.value || ''}")`
+                )
+              ),
+              React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' } },
+                React.createElement('div', { style: { padding: '10px', background: '#dcfce7', borderRadius: '8px', textAlign: 'center' } },
+                  React.createElement('div', { style: { fontSize: '10px', color: '#16a34a', fontWeight: 600 } }, 'YES BRANCH'),
+                  React.createElement('div', { style: { fontSize: '12px', color: '#15803d', fontWeight: 500, marginTop: '4px' } }, selectedNode.data.yesLabel || 'True')
+                ),
+                React.createElement('div', { style: { padding: '10px', background: '#fee2e2', borderRadius: '8px', textAlign: 'center' } },
+                  React.createElement('div', { style: { fontSize: '10px', color: '#dc2626', fontWeight: 600 } }, 'NO BRANCH'),
+                  React.createElement('div', { style: { fontSize: '12px', color: '#b91c1c', fontWeight: 500, marginTop: '4px' } }, selectedNode.data.noLabel || 'False')
+                )
+              )
+            ),
+
+            // Persona (for message/ai nodes)
+            selectedNode.data?.persona && React.createElement('div', { style: { marginBottom: '16px' } },
+              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'Persona'),
+              React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '10px' } }, 
+                React.createElement('div', { style: { width: '32px', height: '32px', borderRadius: '50%', background: selectedNode.data.persona === 'claudia' ? '#fce7f3' : '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' } }, selectedNode.data.persona === 'claudia' ? '🐕' : '👩'),
+                React.createElement('div', null,
+                  React.createElement('div', { style: { fontWeight: 600, color: '#374151' } }, selectedNode.data.persona === 'amy' ? 'Amy' : selectedNode.data.persona === 'claudia' ? 'Claudia' : selectedNode.data.persona),
+                  React.createElement('div', { style: { fontSize: '11px', color: '#9ca3af' } }, selectedNode.data.persona === 'claudia' ? 'Dog Trainer' : 'Customer Support')
+                )
+              )
+            ),
+
+            // Message Content (for message nodes)
+            selectedNode.data?.content && selectedNode.type === 'message' && React.createElement('div', { style: { marginBottom: '16px' } },
+              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'Message Content'),
               React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', lineHeight: '1.6', border: '1px solid #e5e7eb', color: '#374151' } }, selectedNode.data.content)
             ),
-            // API Integration
-            selectedNode.data?.service && React.createElement('div', { style: { marginBottom: '16px' } },
-              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Integration'),
-              React.createElement('div', { style: { padding: '12px 14px', background: '#fdf4ff', borderRadius: '10px', fontSize: '14px', border: '1px solid #f5d0fe' } }, 
-                React.createElement('div', { style: { fontWeight: 600, color: '#a855f7', marginBottom: '4px' } }, selectedNode.data.service),
-                React.createElement('code', { style: { fontSize: '12px', color: '#7e22ce', background: '#fae8ff', padding: '2px 6px', borderRadius: '4px' } }, selectedNode.data.endpoint)
-              )
-            ),
-            // Refund Offer
-            selectedNode.data?.percent && React.createElement('div', { style: { marginBottom: '16px' } },
-              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Offer Details'),
-              React.createElement('div', { style: { padding: '16px', background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)', borderRadius: '12px', textAlign: 'center' } },
-                React.createElement('div', { style: { fontSize: '32px', fontWeight: 700, color: '#059669' } }, `${selectedNode.data.percent}%`),
-                React.createElement('div', { style: { fontSize: '13px', color: '#047857', marginTop: '4px' } }, selectedNode.data.label || 'Refund')
-              )
-            ),
-            // Options
+
+            // Options list
             selectedNode.data?.options && React.createElement('div', { style: { marginBottom: '16px' } },
-              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, `Options (${selectedNode.data.options.length})`),
+              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, `Options (${selectedNode.data.options.length})`),
               React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
                 selectedNode.data.options.map((opt, i) => 
                   React.createElement('div', { key: i, style: { padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', fontSize: '13px', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '8px' } },
-                    React.createElement('span', { style: { width: '20px', height: '20px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, color: '#6b7280' } }, i + 1),
+                    React.createElement('span', { style: { width: '22px', height: '22px', borderRadius: '50%', background: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, color: 'white' } }, opt.icon || (i + 1)),
                     opt.label || opt
                   )
                 )
               )
             ),
-            // Condition
-            selectedNode.data?.variable && React.createElement('div', { style: { marginBottom: '16px' } },
-              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Condition Logic'),
-              React.createElement('div', { style: { padding: '12px 14px', background: '#fffbeb', borderRadius: '10px', border: '1px solid #fde68a', fontFamily: 'monospace', fontSize: '13px' } },
-                React.createElement('code', null, `if (${selectedNode.data.variable} ${selectedNode.data.operator || '==='} "${selectedNode.data.value || ''}")`)
-              )
-            ),
-            // Case
-            selectedNode.data?.type && selectedNode.type === 'case' && React.createElement('div', { style: { marginBottom: '16px' } },
-              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Case Details'),
+
+            // Case Details
+            selectedNode.type === 'case' && React.createElement('div', { style: { marginBottom: '16px' } },
+              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'Case Details'),
               React.createElement('div', { style: { padding: '12px 14px', background: '#fff7ed', borderRadius: '10px', border: '1px solid #fed7aa' } },
-                React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '8px' } },
-                  React.createElement('span', { style: { fontSize: '12px', color: '#6b7280' } }, 'Type'),
-                  React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#ea580c', textTransform: 'capitalize' } }, selectedNode.data.type)
+                React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' } },
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { fontSize: '10px', color: '#ea580c', fontWeight: 600, textTransform: 'uppercase' } }, 'Type'),
+                    React.createElement('div', { style: { fontSize: '13px', fontWeight: 600, color: '#c2410c', textTransform: 'capitalize' } }, selectedNode.data.type || 'general')
+                  ),
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { fontSize: '10px', color: '#ea580c', fontWeight: 600, textTransform: 'uppercase' } }, 'Priority'),
+                    React.createElement('div', { style: { fontSize: '13px', fontWeight: 600, color: selectedNode.data.priority === 'high' ? '#dc2626' : '#374151', textTransform: 'capitalize' } }, selectedNode.data.priority || 'normal')
+                  )
                 ),
-                React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between' } },
-                  React.createElement('span', { style: { fontSize: '12px', color: '#6b7280' } }, 'Priority'),
-                  React.createElement('span', { style: { fontSize: '12px', fontWeight: 500, color: '#374151', textTransform: 'capitalize' } }, selectedNode.data.priority || 'Normal')
+                selectedNode.data.subtype && React.createElement('div', { style: { marginTop: '8px' } },
+                  React.createElement('div', { style: { fontSize: '10px', color: '#ea580c', fontWeight: 600, textTransform: 'uppercase' } }, 'Subtype'),
+                  React.createElement('code', { style: { fontSize: '12px', color: '#9a3412', background: '#ffedd5', padding: '2px 6px', borderRadius: '4px' } }, selectedNode.data.subtype)
+                ),
+                selectedNode.data.note && React.createElement('div', { style: { marginTop: '8px', padding: '8px', background: '#fef3c7', borderRadius: '6px', fontSize: '12px', color: '#92400e' } },
+                  '⚠️ ' + selectedNode.data.note
                 )
               )
+            ),
+
+            // Form Fields
+            selectedNode.type === 'form' && selectedNode.data?.fields && React.createElement('div', { style: { marginBottom: '16px' } },
+              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase' } }, 'Form Fields'),
+              React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } },
+                selectedNode.data.fields.map((field, i) => 
+                  React.createElement('span', { key: i, style: { padding: '4px 10px', background: '#ecfdf5', color: '#059669', borderRadius: '20px', fontSize: '12px', fontWeight: 500 } }, field)
+                )
+              )
+            )
+          )
+        );
+      };
+
+      // ============================================
+      // CHAT SIMULATOR COMPONENT
+      // Renders nodes exactly as they appear in the actual chat app
+      // ============================================
+      const ChatSimulator = ({ node, onClose }) => {
+        if (!node) return null;
+
+        const personas = {
+          amy: { name: 'Amy', role: 'Customer Support', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face', color: '#3b82f6' },
+          claudia: { name: 'Claudia', role: 'Dog Trainer', avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face', color: '#ec4899' },
+          sarah: { name: 'Sarah', role: 'Customer Experience', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face', color: '#8b5cf6' }
+        };
+        const persona = personas[node.data?.persona] || personas.amy;
+
+        // Render message bubble
+        const renderMessage = () => {
+          return React.createElement('div', { style: { display: 'flex', gap: '12px', maxWidth: '85%' } },
+            React.createElement('img', { src: persona.avatar, alt: persona.name, style: { width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginTop: '4px' } }),
+            React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } },
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' } },
+                React.createElement('span', { style: { fontWeight: 600, color: '#374151' } }, persona.name),
+                React.createElement('span', { style: { color: '#9ca3af' } }, persona.role)
+              ),
+              React.createElement('div', { style: { padding: '14px 18px', background: 'white', borderRadius: '16px', borderBottomLeftRadius: '6px', border: '1px solid #e5e7eb', fontSize: '15px', lineHeight: '1.5', color: '#374151' } }, 
+                node.data?.content || 'Hello! How can I help you today?'
+              )
+            )
+          );
+        };
+
+        // Render options buttons
+        const renderOptions = () => {
+          const options = node.data?.options || [];
+          return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', marginTop: '16px' } },
+            node.data?.prompt && React.createElement('p', { style: { fontSize: '14px', color: '#6b7280', marginBottom: '8px', fontWeight: 500 } }, node.data.prompt),
+            options.map((opt, i) => 
+              React.createElement('button', { 
+                key: i, 
+                style: { 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px', 
+                  padding: '16px 20px', 
+                  background: 'white', 
+                  border: '2px solid #e5e7eb', 
+                  borderRadius: '12px', 
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                  fontSize: '15px',
+                  fontWeight: 500,
+                  color: '#374151'
+                },
+                onMouseOver: (e) => { e.target.style.borderColor = '#8b5cf6'; e.target.style.background = '#faf5ff'; },
+                onMouseOut: (e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.background = 'white'; }
+              },
+                opt.icon && React.createElement('span', { style: { fontSize: '20px' } }, opt.icon),
+                opt.label || opt
+              )
+            )
+          );
+        };
+
+        // Render offer card
+        const renderOffer = () => {
+          return React.createElement('div', { style: { background: 'white', borderRadius: '16px', border: '2px solid #10b981', padding: '24px', textAlign: 'center', marginTop: '16px' } },
+            React.createElement('div', { style: { fontSize: '14px', color: '#059669', fontWeight: 600, marginBottom: '8px' } }, '💰 Special Offer'),
+            React.createElement('div', { style: { fontSize: '48px', fontWeight: 700, color: '#10b981', marginBottom: '8px' } }, `${node.data?.percent || 20}%`),
+            React.createElement('div', { style: { fontSize: '16px', color: '#374151', marginBottom: '4px' } }, 'Partial Refund'),
+            React.createElement('div', { style: { fontSize: '14px', color: '#6b7280', marginBottom: '20px' } }, node.data?.label || 'Keep your products'),
+            React.createElement('div', { style: { display: 'flex', gap: '12px', justifyContent: 'center' } },
+              React.createElement('button', { style: { padding: '12px 32px', background: '#10b981', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' } }, 'Accept'),
+              React.createElement('button', { style: { padding: '12px 32px', background: 'white', color: '#6b7280', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' } }, 'Decline')
+            )
+          );
+        };
+
+        // Render form
+        const renderForm = () => {
+          const fields = node.data?.fields || ['email'];
+          return React.createElement('div', { style: { background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', padding: '24px', marginTop: '16px' } },
+            React.createElement('h3', { style: { fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '16px' } }, node.data?.label || 'Enter your details'),
+            fields.map((field, i) => 
+              React.createElement('div', { key: i, style: { marginBottom: '12px' } },
+                React.createElement('label', { style: { display: 'block', fontSize: '13px', fontWeight: 500, color: '#6b7280', marginBottom: '6px', textTransform: 'capitalize' } }, field.replace(/([A-Z])/g, ' $1')),
+                React.createElement('input', { 
+                  type: field === 'email' ? 'email' : 'text', 
+                  placeholder: `Enter ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}...`,
+                  style: { width: '100%', padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none' }
+                })
+              )
+            ),
+            React.createElement('button', { style: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', marginTop: '8px' } }, 'Continue')
+          );
+        };
+
+        return React.createElement('div', { 
+          style: { 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            background: 'rgba(0,0,0,0.5)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)'
+          },
+          onClick: onClose
+        },
+          React.createElement('div', { 
+            style: { 
+              width: '420px', 
+              maxHeight: '80vh',
+              background: '#f8fafc', 
+              borderRadius: '24px', 
+              overflow: 'hidden',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+            },
+            onClick: e => e.stopPropagation()
+          },
+            // Simulator Header
+            React.createElement('div', { style: { background: 'white', padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
+                React.createElement('div', { style: { position: 'relative' } },
+                  React.createElement('img', { src: persona.avatar, alt: persona.name, style: { width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' } }),
+                  React.createElement('div', { style: { position: 'absolute', bottom: '2px', right: '2px', width: '10px', height: '10px', borderRadius: '50%', background: '#22c55e', border: '2px solid white' } })
+                ),
+                React.createElement('div', null,
+                  React.createElement('h1', { style: { fontSize: '16px', fontWeight: 600, margin: 0, color: '#111827' } }, persona.name),
+                  React.createElement('div', { style: { fontSize: '12px', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '4px' } },
+                    React.createElement('span', { style: { width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' } }),
+                    'Online'
+                  )
+                )
+              ),
+              React.createElement('button', { 
+                onClick: onClose,
+                style: { width: '32px', height: '32px', borderRadius: '50%', background: '#f3f4f6', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#6b7280' }
+              }, '×')
+            ),
+
+            // Chat Preview Area
+            React.createElement('div', { style: { padding: '20px', minHeight: '300px', maxHeight: '60vh', overflowY: 'auto' } },
+              // Render based on node type
+              (node.type === 'message' || node.type === 'ai') && renderMessage(),
+              node.type === 'options' && React.createElement('div', null, 
+                node.data?.prompt && renderMessage(),
+                renderOptions()
+              ),
+              node.type === 'offer' && React.createElement('div', null,
+                React.createElement('div', { style: { display: 'flex', gap: '12px', maxWidth: '85%', marginBottom: '16px' } },
+                  React.createElement('img', { src: persona.avatar, alt: persona.name, style: { width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 } }),
+                  React.createElement('div', { style: { padding: '14px 18px', background: 'white', borderRadius: '16px', borderBottomLeftRadius: '6px', border: '1px solid #e5e7eb', fontSize: '15px', lineHeight: '1.5' } }, 
+                    node.data?.message || "I'd like to offer you a partial refund while you keep the product."
+                  )
+                ),
+                renderOffer()
+              ),
+              node.type === 'form' && renderForm()
+            ),
+
+            // Simulator Footer
+            React.createElement('div', { style: { padding: '12px 16px', borderTop: '1px solid #e5e7eb', background: 'white', textAlign: 'center' } },
+              React.createElement('span', { style: { fontSize: '11px', color: '#9ca3af' } }, '🔍 Simulator Preview — This is how the node appears in the chat app')
             )
           )
         );
@@ -960,6 +1752,7 @@
         const [selectedSubflow, setSelectedSubflow] = useState(null);
         const [viewingEntry, setViewingEntry] = useState(true);
         const [selectedNode, setSelectedNode] = useState(null);
+        const [simulatorNode, setSimulatorNode] = useState(null);
 
         // Get current flow data
         const currentFlow = viewingEntry 
@@ -1004,6 +1797,14 @@
           }
         }, []);
 
+        const handleSimulate = useCallback((node) => {
+          setSimulatorNode(node);
+        }, []);
+
+        const handleCloseSimulator = useCallback(() => {
+          setSimulatorNode(null);
+        }, []);
+
         const defaultEdgeOptions = {
           type: 'smoothstep',
           animated: true,
@@ -1035,7 +1836,9 @@
               nodeTypes: nodeTypes,
               defaultEdgeOptions: defaultEdgeOptions,
               fitView: true,
-              fitViewOptions: { padding: 0.2 }
+              fitViewOptions: { padding: 0.3 },
+              minZoom: 0.1,
+              maxZoom: 2
             },
               React.createElement(Background, { variant: 'dots', gap: 20, size: 1, color: '#e2e8f0' }),
               React.createElement(Controls, null),
@@ -1047,7 +1850,16 @@
           ),
           
           // Right Panel - Node Properties
-          React.createElement(NodePropertiesPanel, { selectedNode: selectedNode })
+          React.createElement(NodePropertiesPanel, { 
+            selectedNode: selectedNode,
+            onSimulate: handleSimulate
+          }),
+
+          // Chat Simulator Modal
+          simulatorNode && React.createElement(ChatSimulator, {
+            node: simulatorNode,
+            onClose: handleCloseSimulator
+          })
         );
       };
 
