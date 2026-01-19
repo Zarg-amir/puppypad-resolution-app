@@ -10894,7 +10894,7 @@ function getResolutionHubHTML() {
 
         <div class="nav-section">
           <div class="nav-section-title">Resources</div>
-          <a href="/hub/flows" class="nav-item" data-page="flows">
+          <a href="/hub/flow-docs" class="nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path></svg>
             Flow Docs
           </a>
@@ -11547,9 +11547,9 @@ function getResolutionHubHTML() {
           HubNavigation.goto('analytics');
         }
       } else if (path === '/hub/flows' || path === '/hub/flows/') {
-        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
-          HubNavigation.goto('flows');
-        }
+        // Redirect to new React Flow docs page
+        window.location.href = '/hub/flow-docs';
+        return;
       } else if (path === '/hub/sop' || path === '/hub/sop/') {
         if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
           HubNavigation.goto('sop');
