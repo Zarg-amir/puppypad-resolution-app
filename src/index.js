@@ -1141,9 +1141,9 @@ export default {
         return await serveHubAsset('flow-docs-react', corsHeaders);
       }
 
-      // Serve Flow Docs within main hub (same as hub page, client-side routing handles it)
+      // Serve Flow Docs standalone page with React Flow canvas (has matching sidebar)
       if (pathname === '/hub/flow-docs' || pathname === '/hub/flow-docs/') {
-        return await serveResolutionHub(env, corsHeaders);
+        return await serveFlowDocsPage(corsHeaders);
       }
 
       // Serve Hub CSS (must come before /hub/* catch-all)
