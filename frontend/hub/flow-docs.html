@@ -1762,14 +1762,118 @@
         const [nodes, setNodes, onNodesChange] = useNodesState(currentFlow?.nodes || []);
         const [edges, setEdges, onEdgesChange] = useEdgesState(currentFlow?.edges || []);
 
-        // Update nodes when flow changes
+        // API base URL (same pattern as hub-app.js)
+        const getApiBase = () => {
+          const hostname = window.location.hostname;
+          if (hostname.includes('pages.dev') || hostname.includes('pages.cloudflare.com')) {
+            return 'https://puppypad-resolution-worker.gulfam.workers.dev';
+          }
+          return '';
+        };
+
+        const API_BASE = getApiBase();
+
+        // Load saved positions from API
+        const loadSavedPositions = async (flowId, defaultNodes) => {
+          try {
+            const token = localStorage.getItem('hub_token') || '';
+            const response = await fetch(`${API_BASE}/hub/api/flow-positions/${flowId}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            const data = await response.json();
+            
+            if (data.success && data.positions) {
+              return defaultNodes.map(node => {
+                const savedPos = data.positions[node.id];
+                if (savedPos) {
+                  return { ...node, position: savedPos };
+                }
+                return node;
+              });
+            }
+          } catch (e) {
+            console.warn('Failed to load saved positions:', e);
+          }
+          return defaultNodes;
+        };
+
+        // Save positions to API
+        const savePositions = async (flowId, nodes) => {
+          try {
+            const positions = {};
+            nodes.forEach(node => {
+              if (node.position) {
+                positions[node.id] = node.position;
+              }
+            });
+
+            const user = JSON.parse(localStorage.getItem('hub_user') || '{}');
+            const token = localStorage.getItem('hub_token') || '';
+            
+            await fetch(`${API_BASE}/hub/api/flow-positions/${flowId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ 
+                positions,
+                user: user.email || user.name || 'unknown'
+              })
+            });
+          } catch (e) {
+            console.warn('Failed to save positions:', e);
+          }
+        };
+
+        // Reset layout (clear saved positions)
+        const resetLayout = useCallback(async () => {
+          if (currentFlow?.id) {
+            try {
+              const token = localStorage.getItem('hub_token') || '';
+              await fetch(`${API_BASE}/hub/api/flow-positions/${currentFlow.id}`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              });
+              
+              // Reload nodes with original positions
+              const originalNodes = viewingEntry 
+                ? selectedParent.entryNodes 
+                : selectedSubflow?.nodes || [];
+              setNodes(originalNodes);
+            } catch (e) {
+              console.error('Failed to reset layout:', e);
+            }
+          }
+        }, [currentFlow?.id, viewingEntry, selectedParent, selectedSubflow]);
+
+        // Update nodes when flow changes - load saved positions if available
         useEffect(() => {
           if (currentFlow) {
-            setNodes(currentFlow.nodes || []);
-            setEdges(currentFlow.edges || []);
-            setSelectedNode(null);
+            const loadFlow = async () => {
+              const originalNodes = currentFlow.nodes || [];
+              const nodesWithSavedPositions = await loadSavedPositions(currentFlow.id, originalNodes);
+              setNodes(nodesWithSavedPositions);
+              setEdges(currentFlow.edges || []);
+              setSelectedNode(null);
+            };
+            loadFlow();
           }
         }, [currentFlow?.id, viewingEntry, selectedSubflow?.id]);
+
+        // Save positions when nodes are dragged (debounced)
+        useEffect(() => {
+          if (currentFlow?.id && nodes.length > 0) {
+            const timeoutId = setTimeout(() => {
+              savePositions(currentFlow.id, nodes);
+            }, 500); // Debounce saves by 500ms
+            return () => clearTimeout(timeoutId);
+          }
+        }, [nodes, currentFlow?.id]);
 
         const handleSelectParent = (parent) => {
           setSelectedParent(parent);
@@ -1835,6 +1939,7 @@
               onNodeClick: onNodeClick,
               nodeTypes: nodeTypes,
               defaultEdgeOptions: defaultEdgeOptions,
+              nodesDraggable: true,
               fitView: true,
               fitViewOptions: { padding: 0.3 },
               minZoom: 0.1,
@@ -1842,6 +1947,29 @@
             },
               React.createElement(Background, { variant: 'dots', gap: 20, size: 1, color: '#e2e8f0' }),
               React.createElement(Controls, null),
+              React.createElement('div', {
+                style: {
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  zIndex: 5
+                }
+              },
+                React.createElement('button', {
+                  onClick: resetLayout,
+                  style: {
+                    padding: '8px 16px',
+                    background: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }
+                }, 'Reset Layout')
+              ),
               React.createElement(MiniMap, { 
                 nodeColor: (n) => nodeColors[n.type] || '#94a3b8',
                 maskColor: 'rgba(255,255,255,0.8)'

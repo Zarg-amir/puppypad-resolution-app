@@ -1342,6 +1342,27 @@ export default {
         return await handleHubSavedViewUse(viewId, env, corsHeaders);
       }
 
+      // ============================================
+      // HUB API - FLOW POSITIONS
+      // ============================================
+      // Get flow positions
+      if (pathname.startsWith('/hub/api/flow-positions/') && request.method === 'GET') {
+        const flowId = pathname.split('/hub/api/flow-positions/')[1];
+        return await handleFlowPositionsGet(flowId, env, corsHeaders);
+      }
+
+      // Save flow positions
+      if (pathname.startsWith('/hub/api/flow-positions/') && request.method === 'PUT') {
+        const flowId = pathname.split('/hub/api/flow-positions/')[1];
+        return await handleFlowPositionsSave(flowId, request, env, corsHeaders);
+      }
+
+      // Reset flow positions
+      if (pathname.startsWith('/hub/api/flow-positions/') && request.method === 'DELETE') {
+        const flowId = pathname.split('/hub/api/flow-positions/')[1];
+        return await handleFlowPositionsReset(flowId, env, corsHeaders);
+      }
+
       // Render email template with case data
       if (pathname.match(/\/hub\/api\/email-templates\/\d+\/render$/) && request.method === 'POST') {
         const templateId = pathname.split('/hub/api/email-templates/')[1].replace('/render', '');
@@ -9697,6 +9718,78 @@ async function handleHubSavedViewUse(viewId, env, corsHeaders) {
   } catch (error) {
     console.error('Hub saved view use error:', error);
     return Response.json({ error: 'Failed to track usage' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// HUB API - FLOW POSITIONS
+// ============================================
+
+async function handleFlowPositionsGet(flowId, env, corsHeaders) {
+  try {
+    if (!env.ANALYTICS_DB) {
+      return jsonResponse({ positions: null }, corsHeaders);
+    }
+
+    const result = await env.ANALYTICS_DB.prepare(`
+      SELECT positions FROM flow_positions WHERE flow_id = ?
+    `).bind(flowId).first();
+
+    if (result && result.positions) {
+      return jsonResponse({ 
+        success: true, 
+        positions: JSON.parse(result.positions) 
+      }, corsHeaders);
+    }
+
+    return jsonResponse({ success: true, positions: null }, corsHeaders);
+  } catch (e) {
+    console.error('Failed to get flow positions:', e);
+    return errorResponse('Failed to load positions', corsHeaders, 500);
+  }
+}
+
+async function handleFlowPositionsSave(flowId, request, env, corsHeaders) {
+  try {
+    if (!env.ANALYTICS_DB) {
+      return errorResponse('Database not available', corsHeaders, 503);
+    }
+
+    const data = await request.json();
+    const positions = data.positions || {};
+    const user = data.user || 'unknown';
+
+    // Upsert: insert or update
+    await env.ANALYTICS_DB.prepare(`
+      INSERT INTO flow_positions (flow_id, positions, updated_by, updated_at)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(flow_id) DO UPDATE SET
+        positions = excluded.positions,
+        updated_by = excluded.updated_by,
+        updated_at = datetime('now')
+    `).bind(flowId, JSON.stringify(positions), user).run();
+
+    return jsonResponse({ success: true }, corsHeaders);
+  } catch (e) {
+    console.error('Failed to save flow positions:', e);
+    return errorResponse('Failed to save positions', corsHeaders, 500);
+  }
+}
+
+async function handleFlowPositionsReset(flowId, env, corsHeaders) {
+  try {
+    if (!env.ANALYTICS_DB) {
+      return errorResponse('Database not available', corsHeaders, 503);
+    }
+
+    await env.ANALYTICS_DB.prepare(`
+      DELETE FROM flow_positions WHERE flow_id = ?
+    `).bind(flowId).run();
+
+    return jsonResponse({ success: true }, corsHeaders);
+  } catch (e) {
+    console.error('Failed to reset flow positions:', e);
+    return errorResponse('Failed to reset positions', corsHeaders, 500);
   }
 }
 
