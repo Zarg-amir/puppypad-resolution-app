@@ -3345,7 +3345,6 @@ const HubNavigation = {
       'analytics': 'analyticsView',
       'audit': 'auditView',
       'users': 'usersView',
-      'flows': 'flowsView',
       'sop': 'sopView',
       'email-templates': 'emailTemplatesView',
       'case-detail': 'caseDetailView'
@@ -3386,8 +3385,6 @@ const HubNavigation = {
       HubEnhancedAuditLog.show();
     } else if (page === 'users') {
       HubUsers.show();
-    } else if (page === 'flows') {
-      HubFlows.show();
     } else if (page === 'sop') {
       HubSOP.load();
     } else if (page === 'email-templates') {
@@ -3452,8 +3449,6 @@ const HubNavigation = {
       path = '/hub/audit';
     } else if (page === 'users') {
       path = '/hub/users';
-    } else if (page === 'flows') {
-      path = '/hub/flows';
     } else if (page === 'sop') {
       path = '/hub/sop';
     } else if (page === 'email-templates') {
@@ -4635,50 +4630,6 @@ const HubDuplicates = {
     return div.innerHTML;
   }
 };
-
-// ============================================
-// FLOW DOCUMENTATION PAGE - React Loader
-// Uses React Flow for interactive documentation
-// ============================================
-const HubFlows = {
-  reactRoot: null,
-
-  show() {
-    const container = document.getElementById('flowsContent');
-    if (!container) {
-      console.error('HubFlows: flowsContent container not found');
-      return;
-    }
-
-    // Wait for FlowDocsReact to be available
-    if (typeof window.FlowDocsReact === 'undefined') {
-      container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
-      setTimeout(() => this.show(), 200);
-      return;
-    }
-
-    // Mount React app
-    try {
-      if (this.reactRoot) {
-        window.FlowDocsReact.unmount(this.reactRoot);
-      }
-      this.reactRoot = window.FlowDocsReact.mount(container);
-    } catch (e) {
-      console.error('HubFlows: Failed to mount React app', e);
-      container.innerHTML = '<div class="empty-state"><p>Failed to load Flow Documentation</p></div>';
-    }
-  },
-
-  cleanup() {
-    if (this.reactRoot) {
-      window.FlowDocsReact.unmount(this.reactRoot);
-      this.reactRoot = null;
-    }
-  }
-};
-
-// Note: Old vanilla JS HubFlows (1000+ lines) replaced with React-based implementation
-// See flow-docs-react.js for the full React Flow implementation
 
 const HubSOP = {
   sops: [],
