@@ -1141,9 +1141,9 @@ export default {
         return await serveHubAsset('flow-docs-react', corsHeaders);
       }
 
-      // Serve Flow Docs within main hub (React Flow canvas integrated with hub sidebar)
+      // Serve Flow Docs as standalone page (3-panel layout: left nav, canvas, right properties)
       if (pathname === '/hub/flow-docs' || pathname === '/hub/flow-docs/') {
-        return await serveResolutionHub(env, corsHeaders);
+        return await serveFlowDocsPage(corsHeaders);
       }
 
       // Serve Hub CSS (must come before /hub/* catch-all)
@@ -21358,271 +21358,6 @@ function getFlowDocsHTML() {
       height: 100vh;
     }
     
-    /* Hub Sidebar Styles - Matching main hub */
-    .sidebar {
-      width: 240px;
-      background: #0f172a;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-      height: 100vh;
-    }
-
-    .sidebar-header {
-      padding: 20px 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .sidebar-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .sidebar-logo img {
-      height: 24px;
-      filter: brightness(0) invert(1);
-    }
-
-    .sidebar-logo span {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    .sidebar-nav {
-      flex: 1;
-      padding: 16px 0;
-      overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-    }
-
-    .sidebar-nav::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .sidebar-nav::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .sidebar-nav::-webkit-scrollbar-thumb {
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
-      border-radius: 10px;
-    }
-
-    .nav-section {
-      margin-bottom: 24px;
-    }
-
-    .nav-section-title {
-      padding: 8px 16px;
-      margin-bottom: 8px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #64748b;
-    }
-
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 16px;
-      color: #94a3b8;
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      width: 100%;
-      border: none;
-      background: none;
-    }
-
-    .nav-item:hover {
-      background: #1e293b;
-      color: #e2e8f0;
-    }
-
-    .nav-item.active {
-      background: #1a365d;
-      color: white;
-    }
-
-    .nav-item svg {
-      width: 18px;
-      height: 18px;
-      flex-shrink: 0;
-      opacity: 0.7;
-    }
-
-    .nav-item.active svg {
-      opacity: 1;
-    }
-
-    .nav-item .badge {
-      margin-left: auto;
-      background: #2c5282;
-      color: white;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 10px;
-      min-width: 20px;
-      text-align: center;
-    }
-
-    .nav-item.active .badge {
-      background: rgba(255,255,255,0.2);
-      color: white;
-    }
-
-    .nav-item .badge.urgent {
-      background: #ef4444;
-      color: white;
-    }
-
-    .sidebar-progress {
-      padding: 16px;
-      border-top: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.03);
-    }
-
-    .progress-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-
-    .progress-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: #94a3b8;
-    }
-
-    .progress-stats {
-      font-size: 14px;
-      font-weight: 700;
-      color: white;
-    }
-
-    .progress-bar-container {
-      margin-bottom: 10px;
-    }
-
-    .progress-bar-track {
-      height: 6px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-
-    .progress-bar-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
-      border-radius: 3px;
-      transition: width 0.3s ease;
-    }
-
-    .progress-labels {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-    }
-
-    .progress-label-pending,
-    .progress-label-completed {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      color: #94a3b8;
-    }
-
-    .progress-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-    }
-
-    .progress-dot.pending {
-      background: #f59e0b;
-    }
-
-    .progress-dot.completed {
-      background: #10b981;
-    }
-
-    .sidebar-footer {
-      padding: 16px;
-      border-top: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .user-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: #2c5282;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      font-size: 14px;
-      color: white;
-      flex-shrink: 0;
-    }
-
-    .user-details {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .user-name {
-      font-size: 14px;
-      font-weight: 600;
-      color: white;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .user-role {
-      font-size: 12px;
-      color: #94a3b8;
-    }
-
-    .logout-btn {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 8px 12px;
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 6px;
-      background: none;
-      color: #94a3b8;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .logout-btn:hover {
-      background: #1e293b;
-      color: white;
-      border-color: rgba(255,255,255,0.25);
-    }
-    
     /* React Flow handle styling */
     .react-flow__handle {
       width: 10px !important;
@@ -21678,6 +21413,37 @@ function getFlowDocsHTML() {
     
     .react-flow__controls-button:hover {
       background: #f9fafb;
+    }
+
+    /* Flow card styles */
+    .flow-card {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 8px;
+    }
+    
+    .flow-card:hover {
+      border-color: #c7d2fe;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+      transform: translateY(-1px);
+    }
+    
+    .flow-card.active {
+      border-color: #818cf8;
+      background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    }
+    
+    .flow-card.parent {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    }
+    
+    .flow-card.parent:hover {
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
     }
   </style>
 </head>
@@ -21759,61 +21525,20 @@ function getFlowDocsHTML() {
           React.createElement('line', { x1: 19, y1: 12, x2: 5, y2: 12 }),
           React.createElement('polyline', { points: '12 19 5 12 12 5' })
         ),
-        ChevronRight: () => React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+        ChevronRight: () => React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
           React.createElement('polyline', { points: '9 18 15 12 9 6' })
         ),
-        Home: () => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
-          React.createElement('path', { d: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' }),
-          React.createElement('polyline', { points: '9 22 9 12 15 12 15 22' })
-        ),
-        Inbox: () => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
-          React.createElement('polyline', { points: '22 12 16 12 14 15 10 15 8 12 2 12' }),
-          React.createElement('path', { d: 'M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z' })
-        ),
-        Package: () => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
-          React.createElement('line', { x1: 16.5, y1: 9.4, x2: 7.5, y2: 4.21 }),
-          React.createElement('path', { d: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z' }),
-          React.createElement('polyline', { points: '3.27 6.96 12 12.01 20.73 6.96' }),
-          React.createElement('line', { x1: 12, y1: 22.08, x2: 12, y2: 12 })
-        ),
-        DollarSign: () => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
-          React.createElement('line', { x1: 12, y1: 1, x2: 12, y2: 23 }),
-          React.createElement('path', { d: 'M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' })
-        ),
-        RotateCcw: () => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
-          React.createElement('polyline', { points: '1 4 1 10 7 10' }),
-          React.createElement('path', { d: 'M3.51 15a9 9 0 1 0 2.13-9.36L1 10' })
-        ),
-        RefreshCw: () => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
-          React.createElement('polyline', { points: '23 4 23 10 17 10' }),
-          React.createElement('polyline', { points: '1 20 1 14 7 14' }),
-          React.createElement('path', { d: 'M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15' })
-        ),
-        Users: () => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
-          React.createElement('path', { d: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2' }),
-          React.createElement('circle', { cx: 9, cy: 7, r: 4 }),
-          React.createElement('path', { d: 'M23 21v-2a4 4 0 0 0-3-3.87' }),
-          React.createElement('path', { d: 'M16 3.13a4 4 0 0 1 0 7.75' })
-        ),
-        BarChart: () => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
-          React.createElement('line', { x1: 12, y1: 20, x2: 12, y2: 10 }),
-          React.createElement('line', { x1: 18, y1: 20, x2: 18, y2: 4 }),
-          React.createElement('line', { x1: 6, y1: 20, x2: 6, y2: 16 })
-        ),
-        Layout: () => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
-          React.createElement('rect', { x: 3, y: 3, width: 18, height: 18, rx: 2, ry: 2 }),
-          React.createElement('line', { x1: 3, y1: 9, x2: 21, y2: 9 }),
-          React.createElement('line', { x1: 9, y1: 21, x2: 9, y2: 9 })
-        ),
-        FileQuestion: () => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
-          React.createElement('path', { d: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' }),
-          React.createElement('polyline', { points: '14 2 14 8 20 8' }),
-          React.createElement('path', { d: 'M10 13a2 2 0 1 1 2 2' }),
-          React.createElement('circle', { cx: 12, cy: 19, r: 0.5 })
+        ChevronDown: () => React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+          React.createElement('polyline', { points: '6 9 12 15 18 9' })
         ),
         Eye: () => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
           React.createElement('path', { d: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' }),
           React.createElement('circle', { cx: 12, cy: 12, r: 3 })
+        ),
+        Layers: () => React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+          React.createElement('polygon', { points: '12 2 2 7 12 12 22 7 12 2' }),
+          React.createElement('polyline', { points: '2 17 12 22 22 17' }),
+          React.createElement('polyline', { points: '2 12 12 17 22 12' })
         )
       };
 
@@ -21840,7 +21565,7 @@ function getFlowDocsHTML() {
           { 
             id: 'help_with_order', 
             name: 'Help With My Order', 
-            icon: '❓',
+            icon: '📦',
             color: '#8b5cf6', 
             description: 'Customer needs assistance with an existing order',
             subflows: ['changed_mind', 'dog_not_using', 'quality_issue', 'other_reason'],
@@ -21863,7 +21588,7 @@ function getFlowDocsHTML() {
           { 
             id: 'track_order', 
             name: 'Track My Order', 
-            icon: '📦',
+            icon: '🚚',
             color: '#3b82f6', 
             description: 'Customer wants to check order status or tracking',
             subflows: ['tracking_status'],
@@ -22202,32 +21927,19 @@ function getFlowDocsHTML() {
 
       const OfferNode = ({ data, selected }) => {
         return React.createElement('div', {
-          style: { 
-            padding: '20px', 
-            borderRadius: '12px', 
-            background: 'white', 
-            border: selected ? '2px solid #14b8a6' : '2px solid #e5e7eb', 
-            boxShadow: selected ? '0 0 0 2px rgba(20, 184, 166, 0.2), 0 10px 15px -3px rgba(0,0,0,0.1)' : '0 10px 15px -3px rgba(0,0,0,0.1)', 
-            minWidth: '220px', 
-            cursor: 'pointer' 
-          }
+          style: { padding: '20px', borderRadius: '12px', background: 'white', border: selected ? '2px solid #14b8a6' : '2px solid #e5e7eb', boxShadow: selected ? '0 0 0 2px rgba(20, 184, 166, 0.2), 0 10px 15px -3px rgba(0,0,0,0.1)' : '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: '220px', cursor: 'pointer' }
         },
           React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#14b8a6', width: '10px', height: '10px', border: '2px solid white' } }),
-          // Header with icon
           React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' } },
             React.createElement('div', { style: { width: '32px', height: '32px', borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#14b8a6' } }, React.createElement(Icons.Gift, null)),
             React.createElement('span', { style: { fontSize: '14px', fontWeight: 500, color: '#14b8a6' } }, 'Offer Card')
           ),
-          // Refund percentage - large green text
           React.createElement('p', { style: { fontSize: '28px', fontWeight: 700, color: '#10b981', margin: 0 } }, \`\${data.percent || 20}% Refund\`),
-          // Keep product label
           React.createElement('p', { style: { fontSize: '14px', color: '#6b7280', marginTop: '6px', marginBottom: '16px' } }, data.label || 'Keep product'),
-          // Accept/Decline buttons row
           React.createElement('div', { style: { display: 'flex', justifyContent: 'space-around', paddingTop: '12px', borderTop: '1px solid #f3f4f6' } },
             React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#6b7280' } }, 'Accept'),
             React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#6b7280' } }, 'Decline')
           ),
-          // Handles positioned under Accept and Decline
           React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'accept', style: { background: '#22c55e', width: '12px', height: '12px', border: '2px solid white', left: '25%' } }),
           React.createElement(Handle, { type: 'source', position: Position.Bottom, id: 'decline', style: { background: '#ef4444', width: '12px', height: '12px', border: '2px solid white', left: '75%' } })
         );
@@ -22264,15 +21976,7 @@ function getFlowDocsHTML() {
 
       const EndNode = ({ data, selected }) => {
         return React.createElement('div', {
-          style: { 
-            padding: '16px 20px', 
-            borderRadius: '12px', 
-            background: '#ef4444', 
-            border: selected ? '2px solid #dc2626' : '2px solid #ef4444', 
-            boxShadow: selected ? '0 0 0 3px rgba(239, 68, 68, 0.3), 0 10px 15px -3px rgba(0,0,0,0.15)' : '0 10px 15px -3px rgba(0,0,0,0.1)', 
-            minWidth: '180px', 
-            cursor: 'pointer' 
-          }
+          style: { padding: '16px 20px', borderRadius: '12px', background: '#ef4444', border: selected ? '2px solid #dc2626' : '2px solid #ef4444', boxShadow: selected ? '0 0 0 3px rgba(239, 68, 68, 0.3), 0 10px 15px -3px rgba(0,0,0,0.15)' : '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: '180px', cursor: 'pointer' }
         },
           React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#fca5a5', width: '10px', height: '10px', border: '2px solid white' } }),
           React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' } },
@@ -22283,18 +21987,9 @@ function getFlowDocsHTML() {
         );
       };
 
-      // Subflow Node - Purple dashed border (links to subflow)
       const SubflowNode = ({ data, selected }) => {
         return React.createElement('div', {
-          style: {
-            padding: '16px 20px',
-            borderRadius: '12px',
-            background: 'white',
-            border: selected ? '2px dashed #8b5cf6' : '2px dashed #c4b5fd',
-            boxShadow: selected ? '0 0 0 2px rgba(139, 92, 246, 0.2), 0 10px 15px -3px rgba(0,0,0,0.1)' : '0 4px 6px -1px rgba(0,0,0,0.05)',
-            minWidth: '220px',
-            cursor: 'pointer'
-          }
+          style: { padding: '16px 20px', borderRadius: '12px', background: 'white', border: selected ? '2px dashed #8b5cf6' : '2px dashed #c4b5fd', boxShadow: selected ? '0 0 0 2px rgba(139, 92, 246, 0.2), 0 10px 15px -3px rgba(0,0,0,0.1)' : '0 4px 6px -1px rgba(0,0,0,0.05)', minWidth: '220px', cursor: 'pointer' }
         },
           React.createElement(Handle, { type: 'target', position: Position.Top, style: { background: '#8b5cf6', width: '10px', height: '10px', border: '2px solid white' } }),
           React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' } },
@@ -22304,12 +21999,7 @@ function getFlowDocsHTML() {
                 React.createElement('path', { d: 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' })
               )
             ),
-            React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#8b5cf6' } }, 'Subflow'),
-            React.createElement('svg', { width: 12, height: 12, viewBox: '0 0 24 24', fill: 'none', stroke: '#8b5cf6', strokeWidth: 2, style: { marginLeft: 'auto' } },
-              React.createElement('path', { d: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6' }),
-              React.createElement('polyline', { points: '15 3 21 3 21 9' }),
-              React.createElement('line', { x1: 10, y1: 14, x2: 21, y2: 3 })
-            )
+            React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: '#8b5cf6' } }, 'Subflow')
           ),
           React.createElement('p', { style: { fontSize: '15px', fontWeight: 600, color: '#374151', margin: 0 } }, data.name || 'Go to Subflow'),
           React.createElement('p', { style: { fontSize: '12px', color: '#8b5cf6', marginTop: '6px' } }, 'Click to view →'),
@@ -22320,249 +22010,260 @@ function getFlowDocsHTML() {
       const nodeTypes = { start: StartNode, message: MessageNode, options: OptionsNode, condition: ConditionNode, api: ApiNode, ai: AiNode, offer: OfferNode, case: CaseNode, form: FormNode, end: EndNode, subflow: SubflowNode };
 
       // ============================================
-      // HUB SIDEBAR COMPONENT - Matching main hub
+      // LEFT PANEL - FLOW NAVIGATION WITH CARDS
       // ============================================
-      const HubSidebar = () => {
-        // SVG icon helpers for sidebar
-        const DashboardIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' })
-        );
-        const ClipboardIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' })
-        );
-        const BoxIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4' })
-        );
-        const CardIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' })
-        );
-        const ReturnIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z' })
-        );
-        const SubscriptionIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' })
-        );
-        const ManualIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' })
-        );
-        const SessionsIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z' })
-        );
-        const EventLogIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' })
-        );
-        const IssuesIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' })
-        );
-        const DuplicatesIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z' })
-        );
-        const PerformanceIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' })
-        );
-        const FlowDocsIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z' })
-        );
-        const SOPIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' })
-        );
-        const EmailIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 18, height: 18 },
-          React.createElement('path', { strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2, d: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' })
-        );
-        const LogoutIcon = () => React.createElement('svg', { fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24', width: 16, height: 16, strokeWidth: 2 },
-          React.createElement('path', { d: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4' }),
-          React.createElement('polyline', { points: '16,17 21,12 16,7' }),
-          React.createElement('line', { x1: 21, y1: 12, x2: 9, y2: 12 })
-        );
+      const FlowNavigationPanel = ({ 
+        parentFlows, 
+        subflows, 
+        selectedParentId, 
+        selectedSubflowId, 
+        viewingEntry,
+        onSelectParent,
+        onSelectSubflow,
+        onSelectEntry 
+      }) => {
+        const [expandedParents, setExpandedParents] = useState({ [selectedParentId]: true });
 
-        return React.createElement('aside', { className: 'sidebar' },
-          // Sidebar Header with Logo
-          React.createElement('div', { className: 'sidebar-header' },
-            React.createElement('div', { className: 'sidebar-logo' },
-              React.createElement('img', { src: 'https://cdn.shopify.com/s/files/1/0433/0510/7612/files/navyblue-logo.svg?v=1754231041', alt: 'PuppyPad' }),
-              React.createElement('span', null, 'Resolution Hub')
-            )
+        const toggleParent = (parentId) => {
+          setExpandedParents(prev => ({ ...prev, [parentId]: !prev[parentId] }));
+        };
+
+        const selectedParent = parentFlows.find(p => p.id === selectedParentId);
+
+        return React.createElement('div', { 
+          style: { 
+            width: '300px', 
+            background: '#f8fafc', 
+            borderRight: '1px solid #e5e7eb', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            flexShrink: 0,
+            height: '100vh'
+          } 
+        },
+          // Header with Back to Hub
+          React.createElement('div', { style: { padding: '16px 20px', borderBottom: '1px solid #e5e7eb', background: 'white' } },
+            React.createElement('a', { 
+              href: '/hub', 
+              style: { 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                color: '#6366f1', 
+                textDecoration: 'none', 
+                fontSize: '14px', 
+                fontWeight: 500,
+                marginBottom: '16px'
+              } 
+            }, 
+              React.createElement(Icons.ArrowLeft, null), 
+              'Back to Hub'
+            ),
+            React.createElement('h1', { style: { fontSize: '18px', fontWeight: 700, color: '#111827', margin: 0 } }, 'Flow Documentation'),
+            React.createElement('p', { style: { fontSize: '13px', color: '#6b7280', marginTop: '4px' } }, 'Select a flow to view')
           ),
 
-          // Navigation
-          React.createElement('nav', { className: 'sidebar-nav' },
-            // Overview Section
-            React.createElement('div', { className: 'nav-section' },
-              React.createElement('div', { className: 'nav-section-title' }, 'Overview'),
-              React.createElement('a', { href: '/hub', className: 'nav-item' },
-                React.createElement(DashboardIcon, null),
-                'Dashboard'
-              )
-            ),
+          // Flow list
+          React.createElement('div', { style: { flex: 1, overflowY: 'auto', padding: '16px' } },
+            parentFlows.map(parent => {
+              const isExpanded = expandedParents[parent.id];
+              const isSelected = selectedParentId === parent.id;
+              const parentSubflows = parent.subflows.map(id => subflows[id]).filter(Boolean);
 
-            // Cases Section
-            React.createElement('div', { className: 'nav-section' },
-              React.createElement('div', { className: 'nav-section-title' }, 'Cases'),
-              React.createElement('a', { href: '/hub/cases', className: 'nav-item' },
-                React.createElement(ClipboardIcon, null),
-                'All Cases',
-                React.createElement('span', { className: 'badge' }, '0')
-              ),
-              React.createElement('a', { href: '/hub/cases/shipping', className: 'nav-item' },
-                React.createElement(BoxIcon, null),
-                'Shipping',
-                React.createElement('span', { className: 'badge' }, '0')
-              ),
-              React.createElement('a', { href: '/hub/cases/refund', className: 'nav-item' },
-                React.createElement(CardIcon, null),
-                'Refunds',
-                React.createElement('span', { className: 'badge' }, '0')
-              ),
-              React.createElement('a', { href: '/hub/cases/return', className: 'nav-item' },
-                React.createElement(ReturnIcon, null),
-                'Returns',
-                React.createElement('span', { className: 'badge' }, '0')
-              ),
-              React.createElement('a', { href: '/hub/cases/subscription', className: 'nav-item' },
-                React.createElement(SubscriptionIcon, null),
-                'Subscriptions',
-                React.createElement('span', { className: 'badge' }, '0')
-              ),
-              React.createElement('a', { href: '/hub/cases/manual', className: 'nav-item' },
-                React.createElement(ManualIcon, null),
-                'Manual Review',
-                React.createElement('span', { className: 'badge' }, '0')
-              )
-            ),
+              return React.createElement('div', { key: parent.id, style: { marginBottom: '12px' } },
+                // Parent Flow Card
+                React.createElement('div', {
+                  className: \`flow-card parent \${isSelected ? 'active' : ''}\`,
+                  onClick: () => {
+                    toggleParent(parent.id);
+                    if (!isExpanded) {
+                      onSelectParent(parent);
+                      onSelectEntry();
+                    }
+                  },
+                  style: { 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '12px',
+                    background: isSelected ? \`linear-gradient(135deg, \${parent.color}10 0%, \${parent.color}05 100%)\` : undefined,
+                    borderColor: isSelected ? parent.color : undefined
+                  }
+                },
+                  React.createElement('div', { style: { fontSize: '24px' } }, parent.icon),
+                  React.createElement('div', { style: { flex: 1, minWidth: 0 } },
+                    React.createElement('div', { style: { fontSize: '14px', fontWeight: 600, color: '#111827' } }, parent.name),
+                    React.createElement('div', { style: { fontSize: '12px', color: '#6b7280', marginTop: '2px' } }, \`\${parentSubflows.length + 1} flows\`)
+                  ),
+                  React.createElement('div', { 
+                    style: { 
+                      color: '#9ca3af',
+                      transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)',
+                      transition: 'transform 0.2s'
+                    } 
+                  }, React.createElement(Icons.ChevronDown, null))
+                ),
 
-            // Activity Section
-            React.createElement('div', { className: 'nav-section' },
-              React.createElement('div', { className: 'nav-section-title' }, 'Activity'),
-              React.createElement('a', { href: '/hub/sessions', className: 'nav-item' },
-                React.createElement(SessionsIcon, null),
-                'Sessions'
-              ),
-              React.createElement('a', { href: '/hub/events', className: 'nav-item' },
-                React.createElement(EventLogIcon, null),
-                'Event Log'
-              ),
-              React.createElement('a', { href: '/hub/issues', className: 'nav-item' },
-                React.createElement(IssuesIcon, null),
-                'Issue Reports',
-                React.createElement('span', { className: 'badge' }, '0')
-              ),
-              React.createElement('a', { href: '/hub/duplicates', className: 'nav-item' },
-                React.createElement(DuplicatesIcon, null),
-                'Duplicates',
-                React.createElement('span', { className: 'badge' }, '0')
-              )
-            ),
+                // Subflows (when expanded)
+                isExpanded && React.createElement('div', { style: { marginLeft: '16px', marginTop: '8px' } },
+                  // Entry Flow
+                  React.createElement('div', {
+                    className: \`flow-card \${viewingEntry && isSelected ? 'active' : ''}\`,
+                    onClick: () => { onSelectParent(parent); onSelectEntry(); }
+                  },
+                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
+                      React.createElement('div', { style: { width: '8px', height: '8px', borderRadius: '50%', background: viewingEntry && isSelected ? parent.color : '#d1d5db' } }),
+                      React.createElement('div', null,
+                        React.createElement('div', { style: { fontSize: '13px', fontWeight: 500, color: '#374151' } }, 'Entry Flow'),
+                        React.createElement('div', { style: { fontSize: '11px', color: '#9ca3af' } }, \`\${parent.entryNodes?.length || 0} nodes\`)
+                      )
+                    )
+                  ),
 
-            // Analytics Section
-            React.createElement('div', { className: 'nav-section' },
-              React.createElement('div', { className: 'nav-section-title' }, 'Analytics'),
-              React.createElement('a', { href: '/hub/analytics', className: 'nav-item' },
-                React.createElement(PerformanceIcon, null),
-                'Performance'
-              )
-            ),
-
-            // Resources Section
-            React.createElement('div', { className: 'nav-section' },
-              React.createElement('div', { className: 'nav-section-title' }, 'Resources'),
-              React.createElement('a', { href: '/hub/flow-docs', className: 'nav-item active' },
-                React.createElement(FlowDocsIcon, null),
-                'Flow Docs'
-              ),
-              React.createElement('a', { href: '/hub/sop', className: 'nav-item' },
-                React.createElement(SOPIcon, null),
-                'SOP Links'
-              ),
-              React.createElement('a', { href: '/hub/email-templates', className: 'nav-item' },
-                React.createElement(EmailIcon, null),
-                'Email Templates'
-              )
-            )
-          ),
-
-          // Progress Section
-          React.createElement('div', { className: 'sidebar-progress' },
-            React.createElement('div', { className: 'progress-header' },
-              React.createElement('span', { className: 'progress-title' }, 'Case Progress'),
-              React.createElement('span', { className: 'progress-stats' }, '0/0')
-            ),
-            React.createElement('div', { className: 'progress-bar-container' },
-              React.createElement('div', { className: 'progress-bar-track' },
-                React.createElement('div', { className: 'progress-bar-fill', style: { width: '0%' } })
-              )
-            ),
-            React.createElement('div', { className: 'progress-labels' },
-              React.createElement('span', { className: 'progress-label-pending' },
-                React.createElement('span', { className: 'progress-dot pending' }),
-                '0 to-do'
-              ),
-              React.createElement('span', { className: 'progress-label-completed' },
-                React.createElement('span', { className: 'progress-dot completed' }),
-                '0 done'
-              )
-            )
-          ),
-
-          // Sidebar Footer
-          React.createElement('div', { className: 'sidebar-footer' },
-            React.createElement('div', { className: 'user-info' },
-              React.createElement('div', { className: 'user-avatar' }, 'A'),
-              React.createElement('div', { className: 'user-details' },
-                React.createElement('div', { className: 'user-name' }, 'Admin'),
-                React.createElement('div', { className: 'user-role' }, 'Administrator')
-              )
-            ),
-            React.createElement('button', { className: 'logout-btn', onClick: () => window.location.href = '/hub' },
-              React.createElement(LogoutIcon, null),
-              'Logout'
-            )
+                  // Subflows
+                  parentSubflows.map(subflow => 
+                    React.createElement('div', {
+                      key: subflow.id,
+                      className: \`flow-card \${!viewingEntry && selectedSubflowId === subflow.id ? 'active' : ''}\`,
+                      onClick: () => { onSelectParent(parent); onSelectSubflow(subflow); }
+                    },
+                      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
+                        React.createElement('div', { style: { width: '8px', height: '8px', borderRadius: '50%', background: !viewingEntry && selectedSubflowId === subflow.id ? parent.color : '#d1d5db' } }),
+                        React.createElement('div', { style: { flex: 1, minWidth: 0 } },
+                          React.createElement('div', { style: { fontSize: '13px', fontWeight: 500, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, subflow.name),
+                          React.createElement('div', { style: { fontSize: '11px', color: '#9ca3af' } }, \`\${subflow.nodes?.length || 0} nodes\`)
+                        )
+                      )
+                    )
+                  )
+                )
+              );
+            })
           )
         );
       };
 
       // ============================================
-      // LEFT PANEL - SUBFLOW NAVIGATION
+      // RIGHT PANEL - NODE PROPERTIES
       // ============================================
-      const LeftPanel = ({ parentFlow, currentSubflow, subflows, viewingEntry, onSelectSubflow, onSelectEntry, onBackToParent }) => {
+      const NodePropertiesPanel = ({ selectedNode }) => {
+        if (!selectedNode) {
+          return React.createElement('div', { 
+            style: { 
+              width: '320px', 
+              background: 'white',
+              borderLeft: '1px solid #e5e7eb',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '40px',
+              color: '#9ca3af'
+            } 
+          },
+            React.createElement('div', { style: { width: '64px', height: '64px', margin: '0 auto 20px', background: '#f3f4f6', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+              React.createElement(Icons.Eye, null)
+            ),
+            React.createElement('p', { style: { fontWeight: 600, marginBottom: '6px', color: '#6b7280', fontSize: '15px' } }, 'Select a node'),
+            React.createElement('p', { style: { fontSize: '13px', textAlign: 'center', lineHeight: '1.5' } }, 'Click on any node in the canvas to view its properties and details')
+          );
+        }
+
+        const getIcon = () => {
+          const iconMap = { message: Icons.MessageSquare, options: Icons.List, condition: Icons.GitBranch, api: Icons.Zap, ai: Icons.Bot, offer: Icons.Gift, case: Icons.FolderOpen, form: Icons.FileText, end: Icons.Flag, start: Icons.Play };
+          const IconComp = iconMap[selectedNode.type] || Icons.Play;
+          return React.createElement(IconComp);
+        };
+
         return React.createElement('div', { 
-          style: { width: '260px', background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', flexShrink: 0 } 
+          style: { 
+            width: '320px', 
+            background: 'white',
+            borderLeft: '1px solid #e5e7eb',
+            display: 'flex',
+            flexDirection: 'column',
+            flexShrink: 0
+          } 
         },
           // Header
-          React.createElement('div', { style: { padding: '16px', borderBottom: '1px solid #e5e7eb' } },
-            React.createElement('button', { onClick: onBackToParent, style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#6b7280', marginBottom: '12px' } }, 
-              React.createElement(Icons.ArrowLeft, null), 'Back to Hub'
-            ),
-            React.createElement('div', { style: { padding: '12px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' } },
-              React.createElement('div', { style: { fontSize: '14px', fontWeight: 600, color: '#111827' } }, parentFlow?.name),
-              React.createElement('div', { style: { fontSize: '12px', color: '#6b7280', marginTop: '4px' } }, \`Viewing: \${currentSubflow?.name}\`)
+          React.createElement('div', { style: { padding: '20px', borderBottom: '1px solid #f3f4f6' } },
+            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
+              React.createElement('div', { 
+                style: { width: '40px', height: '40px', borderRadius: '10px', background: (nodeColors[selectedNode.type] || '#94a3b8') + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', color: nodeColors[selectedNode.type] || '#94a3b8' } 
+              }, getIcon()),
+              React.createElement('div', null,
+                React.createElement('h3', { style: { fontSize: '16px', fontWeight: 600, margin: 0, textTransform: 'capitalize', color: '#111827' } }, 
+                  selectedNode.type === 'ai' ? 'AI Response' : selectedNode.type + ' Node'
+                ),
+                React.createElement('p', { style: { fontSize: '12px', color: '#9ca3af', margin: 0, marginTop: '2px' } }, \`ID: \${selectedNode.id}\`)
+              )
             )
           ),
-          // Entry Flow + Subflows list
-          React.createElement('div', { style: { flex: 1, overflowY: 'auto', padding: '12px' } },
-            // Entry Flow item
-            React.createElement('div', { style: { fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9ca3af', marginBottom: '8px', paddingLeft: '8px' } }, 'Entry Flow'),
-            React.createElement('div', {
-              onClick: onSelectEntry,
-              style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '8px', cursor: 'pointer', marginBottom: '16px', background: viewingEntry ? \`\${parentFlow?.color}15\` : 'transparent', border: viewingEntry ? \`1px solid \${parentFlow?.color}40\` : '1px solid transparent' }
-            },
-              React.createElement('div', { style: { width: '8px', height: '8px', borderRadius: '50%', background: viewingEntry ? parentFlow?.color : '#d1d5db' } }),
-              React.createElement('div', { style: { flex: 1 } },
-                React.createElement('div', { style: { fontSize: '13px', fontWeight: viewingEntry ? 600 : 500, color: viewingEntry ? '#111827' : '#374151' } }, 'Entry Flow'),
-                React.createElement('div', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '2px' } }, \`\${parentFlow?.entryNodes?.length || 0} nodes\`)
+          // Content
+          React.createElement('div', { style: { flex: 1, padding: '20px', overflowY: 'auto' } },
+            // Node Type Badge
+            React.createElement('div', { style: { marginBottom: '16px' } },
+              React.createElement('span', { 
+                style: { display: 'inline-block', padding: '4px 10px', background: (nodeColors[selectedNode.type] || '#94a3b8') + '15', color: nodeColors[selectedNode.type] || '#94a3b8', borderRadius: '6px', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' } 
+              }, selectedNode.type)
+            ),
+            // Persona
+            selectedNode.data?.persona && React.createElement('div', { style: { marginBottom: '16px' } },
+              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Persona'),
+              React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', border: '1px solid #e5e7eb' } }, 
+                selectedNode.data.persona === 'amy' ? 'Amy (Support)' : selectedNode.data.persona === 'claudia' ? 'Claudia (Trainer)' : selectedNode.data.persona
               )
             ),
-            // Subflows
-            React.createElement('div', { style: { fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9ca3af', marginBottom: '8px', paddingLeft: '8px' } }, 'Sub-flows'),
-            subflows.map(subflow => 
-              React.createElement('div', {
-                key: subflow.id,
-                onClick: () => onSelectSubflow(subflow),
-                style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '8px', cursor: 'pointer', marginBottom: '4px', background: !viewingEntry && currentSubflow?.id === subflow.id ? \`\${parentFlow?.color}15\` : 'transparent', border: !viewingEntry && currentSubflow?.id === subflow.id ? \`1px solid \${parentFlow?.color}40\` : '1px solid transparent' }
-              },
-                React.createElement('div', { style: { width: '8px', height: '8px', borderRadius: '50%', background: !viewingEntry && currentSubflow?.id === subflow.id ? parentFlow?.color : '#d1d5db' } }),
-                React.createElement('div', { style: { flex: 1, minWidth: 0 } },
-                  React.createElement('div', { style: { fontSize: '13px', fontWeight: !viewingEntry && currentSubflow?.id === subflow.id ? 600 : 500, color: !viewingEntry && currentSubflow?.id === subflow.id ? '#111827' : '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, subflow.name),
-                  React.createElement('div', { style: { fontSize: '11px', color: '#9ca3af', marginTop: '2px' } }, \`\${subflow.nodes?.length || 0} nodes\`)
+            // Message Content
+            selectedNode.data?.content && React.createElement('div', { style: { marginBottom: '16px' } },
+              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Message'),
+              React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', lineHeight: '1.6', border: '1px solid #e5e7eb', color: '#374151' } }, selectedNode.data.content)
+            ),
+            // API Integration
+            selectedNode.data?.service && React.createElement('div', { style: { marginBottom: '16px' } },
+              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Integration'),
+              React.createElement('div', { style: { padding: '12px 14px', background: '#fdf4ff', borderRadius: '10px', fontSize: '14px', border: '1px solid #f5d0fe' } }, 
+                React.createElement('div', { style: { fontWeight: 600, color: '#a855f7', marginBottom: '4px' } }, selectedNode.data.service),
+                React.createElement('code', { style: { fontSize: '12px', color: '#7e22ce', background: '#fae8ff', padding: '2px 6px', borderRadius: '4px' } }, selectedNode.data.endpoint)
+              )
+            ),
+            // Refund Offer
+            selectedNode.data?.percent && React.createElement('div', { style: { marginBottom: '16px' } },
+              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Offer Details'),
+              React.createElement('div', { style: { padding: '16px', background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)', borderRadius: '12px', textAlign: 'center' } },
+                React.createElement('div', { style: { fontSize: '32px', fontWeight: 700, color: '#059669' } }, \`\${selectedNode.data.percent}%\`),
+                React.createElement('div', { style: { fontSize: '13px', color: '#047857', marginTop: '4px' } }, selectedNode.data.label || 'Refund')
+              )
+            ),
+            // Options
+            selectedNode.data?.options && React.createElement('div', { style: { marginBottom: '16px' } },
+              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, \`Options (\${selectedNode.data.options.length})\`),
+              React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
+                selectedNode.data.options.map((opt, i) => 
+                  React.createElement('div', { key: i, style: { padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', fontSize: '13px', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '8px' } },
+                    React.createElement('span', { style: { width: '20px', height: '20px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, color: '#6b7280' } }, i + 1),
+                    opt.label || opt
+                  )
+                )
+              )
+            ),
+            // Condition
+            selectedNode.data?.variable && React.createElement('div', { style: { marginBottom: '16px' } },
+              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Condition Logic'),
+              React.createElement('div', { style: { padding: '12px 14px', background: '#fffbeb', borderRadius: '10px', border: '1px solid #fde68a', fontFamily: 'monospace', fontSize: '13px' } },
+                React.createElement('code', null, \`if (\${selectedNode.data.variable} \${selectedNode.data.operator || '==='} "\${selectedNode.data.value || ''}")\`)
+              )
+            ),
+            // Case
+            selectedNode.data?.type && selectedNode.type === 'case' && React.createElement('div', { style: { marginBottom: '16px' } },
+              React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Case Details'),
+              React.createElement('div', { style: { padding: '12px 14px', background: '#fff7ed', borderRadius: '10px', border: '1px solid #fed7aa' } },
+                React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '8px' } },
+                  React.createElement('span', { style: { fontSize: '12px', color: '#6b7280' } }, 'Type'),
+                  React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#ea580c', textTransform: 'capitalize' } }, selectedNode.data.type)
+                ),
+                React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between' } },
+                  React.createElement('span', { style: { fontSize: '12px', color: '#6b7280' } }, 'Priority'),
+                  React.createElement('span', { style: { fontSize: '12px', fontWeight: 500, color: '#374151', textTransform: 'capitalize' } }, selectedNode.data.priority || 'Normal')
                 )
               )
             )
@@ -22571,153 +22272,56 @@ function getFlowDocsHTML() {
       };
 
       // ============================================
-      // SIMULATOR MODAL COMPONENT
+      // MAIN APP COMPONENT
       // ============================================
-      const SimulatorModal = ({ node, onClose }) => {
-        if (!node) return null;
-        
-        const getNodeContent = () => {
-          switch (node.type) {
-            case 'message':
-              return { type: 'message', persona: node.data?.persona || 'amy', content: node.data?.content || '' };
-            case 'options':
-              return { type: 'options', prompt: node.data?.prompt || '', options: node.data?.options || [] };
-            case 'offer':
-              return { type: 'offer', percent: node.data?.percent || 20, label: node.data?.label || 'Keep product' };
-            case 'form':
-              return { type: 'form', formType: node.data?.formType || 'address' };
-            default:
-              return { type: 'info', message: \`\${node.type} step\` };
-          }
-        };
-        
-        const content = getNodeContent();
-        
-        return React.createElement('div', {
-          style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-          onClick: onClose
-        },
-          React.createElement('div', {
-            style: { width: '380px', maxHeight: '90vh', background: 'linear-gradient(180deg, #fef7f0 0%, #fdf2f8 50%, #f5f3ff 100%)', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' },
-            onClick: (e) => e.stopPropagation()
-          },
-            // Chat Header
-            React.createElement('div', { style: { padding: '16px 20px', background: 'white', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
-              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
-                // Amy Avatar with gradient ring
-                React.createElement('div', { style: { width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
-                  React.createElement('div', { style: { width: '100%', height: '100%', borderRadius: '50%', background: '#fecdd3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' } }, '👩')
-                ),
-                React.createElement('div', null,
-                  React.createElement('div', { style: { fontWeight: 600, fontSize: '16px', color: '#1f2937' } }, 'Amy'),
-                  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#10b981' } },
-                    React.createElement('div', { style: { width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' } }),
-                    'Online'
-                  )
-                )
-              ),
-              React.createElement('button', {
-                onClick: onClose,
-                style: { padding: '8px 16px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '20px', fontSize: '13px', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }
-              }, 
-                React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
-                  React.createElement('path', { d: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' }),
-                  React.createElement('path', { d: 'M3 3v5h5' })
-                ),
-                'Start Over'
-              )
-            ),
-            // Chat Body
-            React.createElement('div', { style: { padding: '20px', minHeight: '400px', maxHeight: '500px', overflowY: 'auto' } },
-              // Amy Message
-              content.type === 'message' && React.createElement('div', { style: { marginBottom: '16px' } },
-                React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', gap: '10px' } },
-                  React.createElement('div', { style: { width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)', padding: '2px', flexShrink: 0 } },
-                    React.createElement('div', { style: { width: '100%', height: '100%', borderRadius: '50%', background: '#fecdd3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' } }, '👩')
-                  ),
-                  React.createElement('div', null,
-                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' } },
-                      React.createElement('span', { style: { fontWeight: 600, fontSize: '14px', color: '#1f2937' } }, content.persona === 'amy' ? 'Amy' : 'Claudia'),
-                      React.createElement('span', { style: { fontSize: '12px', color: '#9ca3af' } }, 'Customer Support')
-                    ),
-                    React.createElement('div', { style: { background: 'white', padding: '14px 16px', borderRadius: '16px', borderTopLeftRadius: '4px', fontSize: '14px', lineHeight: '1.6', color: '#374151', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' } }, content.content)
-                  )
-                )
-              ),
-              // Options
-              content.type === 'options' && React.createElement('div', null,
-                React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '20px' } },
-                  React.createElement('div', { style: { width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)', padding: '2px', flexShrink: 0 } },
-                    React.createElement('div', { style: { width: '100%', height: '100%', borderRadius: '50%', background: '#fecdd3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' } }, '👩')
-                  ),
-                  React.createElement('div', null,
-                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' } },
-                      React.createElement('span', { style: { fontWeight: 600, fontSize: '14px', color: '#1f2937' } }, 'Amy'),
-                      React.createElement('span', { style: { fontSize: '12px', color: '#9ca3af' } }, 'Customer Support')
-                    ),
-                    React.createElement('div', { style: { background: 'white', padding: '14px 16px', borderRadius: '16px', borderTopLeftRadius: '4px', fontSize: '14px', lineHeight: '1.6', color: '#374151', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' } }, content.prompt)
-                  )
-                ),
-                React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px' } },
-                  (content.options || []).map((opt, i) =>
-                    React.createElement('button', {
-                      key: i,
-                      style: { width: '100%', padding: '14px 18px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '14px', color: '#374151', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }
-                    }, opt.label || opt)
-                  )
-                )
-              ),
-              // Offer Card
-              content.type === 'offer' && React.createElement('div', { style: { background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' } },
-                React.createElement('div', { style: { textAlign: 'center', marginBottom: '16px' } },
-                  React.createElement('div', { style: { width: '56px', height: '56px', margin: '0 auto 12px', borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
-                    React.createElement(Icons.Gift, { style: { color: '#10b981', width: 28, height: 28 } })
-                  ),
-                  React.createElement('p', { style: { fontSize: '28px', fontWeight: 700, color: '#10b981', margin: 0 } }, \`\${content.percent}% Refund\`),
-                  React.createElement('p', { style: { fontSize: '14px', color: '#6b7280', marginTop: '4px' } }, content.label)
-                ),
-                React.createElement('div', { style: { display: 'flex', gap: '12px' } },
-                  React.createElement('button', { style: { flex: 1, padding: '12px', background: '#10b981', border: 'none', borderRadius: '10px', color: 'white', fontWeight: 600, fontSize: '14px', cursor: 'pointer' } }, 'Accept'),
-                  React.createElement('button', { style: { flex: 1, padding: '12px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', color: '#6b7280', fontWeight: 500, fontSize: '14px', cursor: 'pointer' } }, 'Decline')
-                )
-              )
-            ),
-            // Footer
-            React.createElement('div', { style: { padding: '12px 20px', background: 'white', borderTop: '1px solid #f3f4f6', textAlign: 'center' } },
-              React.createElement('p', { style: { fontSize: '12px', color: '#9ca3af', margin: 0 } }, 
-                'App not working? ',
-                React.createElement('span', { style: { color: '#3b82f6', textDecoration: 'underline', cursor: 'pointer' } }, 'Click here to report an issue')
-              ),
-              React.createElement('div', { style: { marginTop: '8px', fontSize: '14px', fontWeight: 700, color: '#cbd5e1', letterSpacing: '2px' } }, 'PUPPYPAD')
-            )
-          )
-        );
-      };
-
-      // ============================================
-      // FLOW CANVAS COMPONENT
-      // ============================================
-      const FlowCanvas = ({ subflow, parentFlow, allSubflows, viewingEntry, onSelectSubflow, onSelectEntry, onSubflowNodeClick, onBackToFlows }) => {
-        const [nodes, setNodes, onNodesChange] = useNodesState(subflow.nodes || []);
-        const [edges, setEdges, onEdgesChange] = useEdgesState(subflow.edges || []);
+      const FlowDocsApp = () => {
+        const [selectedParent, setSelectedParent] = useState(FLOW_DATA.parentFlows[0]);
+        const [selectedSubflow, setSelectedSubflow] = useState(null);
+        const [viewingEntry, setViewingEntry] = useState(true);
         const [selectedNode, setSelectedNode] = useState(null);
-        const [showSimulator, setShowSimulator] = useState(false);
 
-        // Update nodes when subflow changes
+        // Get current flow data
+        const currentFlow = viewingEntry 
+          ? { id: 'entry', name: 'Entry Flow', nodes: selectedParent.entryNodes, edges: selectedParent.entryEdges }
+          : selectedSubflow;
+
+        const [nodes, setNodes, onNodesChange] = useNodesState(currentFlow?.nodes || []);
+        const [edges, setEdges, onEdgesChange] = useEdgesState(currentFlow?.edges || []);
+
+        // Update nodes when flow changes
         useEffect(() => {
-          setNodes(subflow.nodes || []);
-          setEdges(subflow.edges || []);
-          setSelectedNode(null);
-          setShowSimulator(false);
-        }, [subflow.id]);
+          if (currentFlow) {
+            setNodes(currentFlow.nodes || []);
+            setEdges(currentFlow.edges || []);
+            setSelectedNode(null);
+          }
+        }, [currentFlow?.id, viewingEntry, selectedSubflow?.id]);
+
+        const handleSelectParent = (parent) => {
+          setSelectedParent(parent);
+        };
+
+        const handleSelectSubflow = (subflow) => {
+          setSelectedSubflow(subflow);
+          setViewingEntry(false);
+        };
+
+        const handleSelectEntry = () => {
+          setSelectedSubflow(null);
+          setViewingEntry(true);
+        };
 
         const onNodeClick = useCallback((event, node) => {
           setSelectedNode(node);
           // If clicking a subflow node, navigate to that subflow
           if (node.type === 'subflow' && node.data?.slug) {
-            onSubflowNodeClick(node.data.slug);
+            const subflow = FLOW_DATA.subflows[node.data.slug];
+            if (subflow) {
+              setSelectedSubflow(subflow);
+              setViewingEntry(false);
+            }
           }
-        }, [onSubflowNodeClick]);
+        }, []);
 
         const defaultEdgeOptions = {
           type: 'smoothstep',
@@ -22727,545 +22331,48 @@ function getFlowDocsHTML() {
         };
 
         return React.createElement('div', { style: { display: 'flex', height: '100vh' } },
-          // Hub Sidebar
-          React.createElement(HubSidebar, null),
-          // Left Panel - Subflow Navigation
-          React.createElement(LeftPanel, {
-            parentFlow: parentFlow,
-            currentSubflow: subflow,
-            subflows: allSubflows,
+          // Left Panel - Flow Navigation
+          React.createElement(FlowNavigationPanel, {
+            parentFlows: FLOW_DATA.parentFlows,
+            subflows: FLOW_DATA.subflows,
+            selectedParentId: selectedParent?.id,
+            selectedSubflowId: selectedSubflow?.id,
             viewingEntry: viewingEntry,
-            onSelectSubflow: onSelectSubflow,
-            onSelectEntry: onSelectEntry,
-            onBackToParent: onBackToFlows
+            onSelectParent: handleSelectParent,
+            onSelectSubflow: handleSelectSubflow,
+            onSelectEntry: handleSelectEntry
           }),
-          // Main Canvas Area
-          React.createElement('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', background: 'linear-gradient(135deg, #fef7f0 0%, #fdf2f8 25%, #f5f3ff 50%, #eff6ff 75%, #f0fdf4 100%)' } },
-            // Canvas
-            React.createElement('div', { style: { flex: 1 } },
-              React.createElement(ReactFlowComponent, {
-                nodes: nodes,
-                edges: edges,
-                onNodesChange: onNodesChange,
-                onEdgesChange: onEdgesChange,
-                onNodeClick: onNodeClick,
-                nodeTypes: nodeTypes,
-                defaultEdgeOptions: defaultEdgeOptions,
-                fitView: true,
-                fitViewOptions: { padding: 0.2 }
-              },
-                React.createElement(Background, { variant: 'dots', gap: 20, size: 1, color: '#e2e8f0' }),
-                React.createElement(Controls, null),
-                React.createElement(MiniMap, { 
-                  nodeColor: (n) => nodeColors[n.type] || '#94a3b8',
-                  maskColor: 'rgba(255,255,255,0.8)'
-                })
-              )
-            )
-          ),
-          // Right Panel - Properties
-          React.createElement('div', { 
-            style: { 
-              width: '320px', 
-              background: 'rgba(255,255,255,0.98)',
-              backdropFilter: 'blur(8px)',
-              borderLeft: '1px solid #e5e7eb',
-              display: 'flex',
-              flexDirection: 'column',
-              flexShrink: 0
-            } 
-          },
-            selectedNode ? 
-              React.createElement('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } },
-                // Header
-                React.createElement('div', { style: { padding: '20px', borderBottom: '1px solid #f3f4f6' } },
-                  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
-                    React.createElement('div', { 
-                      style: { width: '40px', height: '40px', borderRadius: '10px', background: (nodeColors[selectedNode.type] || '#94a3b8') + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', color: nodeColors[selectedNode.type] || '#94a3b8' } 
-                    }, 
-                      selectedNode.type === 'message' ? React.createElement(Icons.MessageSquare, null) :
-                      selectedNode.type === 'options' ? React.createElement(Icons.List, null) :
-                      selectedNode.type === 'condition' ? React.createElement(Icons.GitBranch, null) :
-                      selectedNode.type === 'api' ? React.createElement(Icons.Zap, null) :
-                      selectedNode.type === 'ai' ? React.createElement(Icons.Bot, null) :
-                      selectedNode.type === 'offer' ? React.createElement(Icons.Gift, null) :
-                      selectedNode.type === 'case' ? React.createElement(Icons.FolderOpen, null) :
-                      selectedNode.type === 'form' ? React.createElement(Icons.FileText, null) :
-                      selectedNode.type === 'end' ? React.createElement(Icons.Flag, null) :
-                      React.createElement(Icons.Play, null)
-                    ),
-                    React.createElement('div', null,
-                      React.createElement('h3', { style: { fontSize: '16px', fontWeight: 600, margin: 0, textTransform: 'capitalize', color: '#111827' } }, 
-                        selectedNode.type === 'ai' ? 'AI Response' : selectedNode.type + ' Node'
-                      ),
-                      React.createElement('p', { style: { fontSize: '12px', color: '#9ca3af', margin: 0, marginTop: '2px' } }, \`ID: \${selectedNode.id}\`)
-                    )
-                  )
-                ),
-                // Content
-                React.createElement('div', { style: { flex: 1, padding: '20px', overflowY: 'auto' } },
-                  // Node Type Badge
-                  React.createElement('div', { style: { marginBottom: '16px' } },
-                    React.createElement('span', { 
-                      style: { display: 'inline-block', padding: '4px 10px', background: (nodeColors[selectedNode.type] || '#94a3b8') + '15', color: nodeColors[selectedNode.type] || '#94a3b8', borderRadius: '6px', fontSize: '12px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' } 
-                    }, selectedNode.type)
-                  ),
-                  // Persona
-                  selectedNode.data?.persona && React.createElement('div', { style: { marginBottom: '16px' } },
-                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Persona'),
-                    React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', border: '1px solid #e5e7eb' } }, 
-                      selectedNode.data.persona === 'amy' ? 'Amy (Support)' : selectedNode.data.persona === 'claudia' ? 'Claudia (Trainer)' : selectedNode.data.persona
-                    )
-                  ),
-                  // Message Content
-                  selectedNode.data?.content && React.createElement('div', { style: { marginBottom: '16px' } },
-                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Message'),
-                    React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', lineHeight: '1.6', border: '1px solid #e5e7eb', color: '#374151' } }, selectedNode.data.content)
-                  ),
-                  // Options Prompt
-                  selectedNode.data?.prompt && React.createElement('div', { style: { marginBottom: '16px' } },
-                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Prompt'),
-                    React.createElement('div', { style: { padding: '12px 14px', background: '#f9fafb', borderRadius: '10px', fontSize: '14px', lineHeight: '1.6', border: '1px solid #e5e7eb' } }, selectedNode.data.prompt)
-                  ),
-                  // Options List
-                  selectedNode.data?.options && React.createElement('div', { style: { marginBottom: '16px' } },
-                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, \`Options (\${selectedNode.data.options.length})\`),
-                    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
-                      selectedNode.data.options.map((opt, i) => 
-                        React.createElement('div', { key: i, style: { padding: '10px 12px', background: '#f9fafb', borderRadius: '8px', fontSize: '13px', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '8px' } },
-                          React.createElement('span', { style: { width: '20px', height: '20px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600, color: '#6b7280' } }, i + 1),
-                          opt.label || opt
-                        )
-                      )
-                    )
-                  ),
-                  // API Integration
-                  selectedNode.data?.service && React.createElement('div', { style: { marginBottom: '16px' } },
-                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Integration'),
-                    React.createElement('div', { style: { padding: '12px 14px', background: '#fdf4ff', borderRadius: '10px', fontSize: '14px', border: '1px solid #f5d0fe' } }, 
-                      React.createElement('div', { style: { fontWeight: 600, color: '#a855f7', marginBottom: '4px' } }, selectedNode.data.service),
-                      React.createElement('code', { style: { fontSize: '12px', color: '#7e22ce', background: '#fae8ff', padding: '2px 6px', borderRadius: '4px' } }, selectedNode.data.endpoint)
-                    )
-                  ),
-                  // Refund Offer
-                  selectedNode.data?.percent && React.createElement('div', { style: { marginBottom: '16px' } },
-                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Offer Details'),
-                    React.createElement('div', { style: { padding: '16px', background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)', borderRadius: '12px', textAlign: 'center' } },
-                      React.createElement('div', { style: { fontSize: '32px', fontWeight: 700, color: '#059669' } }, \`\${selectedNode.data.percent}%\`),
-                      React.createElement('div', { style: { fontSize: '13px', color: '#047857', marginTop: '4px' } }, selectedNode.data.label || 'Refund')
-                    )
-                  ),
-                  // AI Model
-                  selectedNode.data?.model && React.createElement('div', { style: { marginBottom: '16px' } },
-                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'AI Configuration'),
-                    React.createElement('div', { style: { padding: '12px 14px', background: '#eef2ff', borderRadius: '10px', border: '1px solid #c7d2fe' } },
-                      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '8px' } },
-                        React.createElement('span', { style: { fontSize: '12px', color: '#6b7280' } }, 'Model'),
-                        React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#4f46e5' } }, selectedNode.data.model)
-                      ),
-                      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between' } },
-                        React.createElement('span', { style: { fontSize: '12px', color: '#6b7280' } }, 'Provider'),
-                        React.createElement('span', { style: { fontSize: '12px', fontWeight: 500, color: '#374151' } }, 'OpenAI')
-                      )
-                    )
-                  ),
-                  // Case Type
-                  selectedNode.data?.type && selectedNode.type === 'case' && React.createElement('div', { style: { marginBottom: '16px' } },
-                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Case Details'),
-                    React.createElement('div', { style: { padding: '12px 14px', background: '#fff7ed', borderRadius: '10px', border: '1px solid #fed7aa' } },
-                      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '8px' } },
-                        React.createElement('span', { style: { fontSize: '12px', color: '#6b7280' } }, 'Type'),
-                        React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#ea580c', textTransform: 'capitalize' } }, selectedNode.data.type)
-                      ),
-                      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between' } },
-                        React.createElement('span', { style: { fontSize: '12px', color: '#6b7280' } }, 'Priority'),
-                        React.createElement('span', { style: { fontSize: '12px', fontWeight: 500, color: '#374151', textTransform: 'capitalize' } }, selectedNode.data.priority || 'Normal')
-                      )
-                    )
-                  ),
-                  // Condition
-                  selectedNode.data?.variable && React.createElement('div', { style: { marginBottom: '16px' } },
-                    React.createElement('label', { style: { fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' } }, 'Condition Logic'),
-                    React.createElement('div', { style: { padding: '12px 14px', background: '#fffbeb', borderRadius: '10px', border: '1px solid #fde68a', fontFamily: 'monospace', fontSize: '13px' } },
-                      React.createElement('code', null, \`if (\${selectedNode.data.variable} \${selectedNode.data.operator || '==='} "\${selectedNode.data.value || ''}")\`)
-                    )
-                  )
-                ),
-                // Simulate Button
-                (selectedNode.type === 'message' || selectedNode.type === 'options' || selectedNode.type === 'offer') && 
-                React.createElement('div', { style: { padding: '16px 20px', borderTop: '1px solid #f3f4f6' } },
-                  React.createElement('button', {
-                    onClick: () => setShowSimulator(true),
-                    style: { 
-                      width: '100%', 
-                      padding: '14px 20px', 
-                      background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', 
-                      border: 'none', 
-                      borderRadius: '12px', 
-                      color: 'white', 
-                      fontSize: '14px', 
-                      fontWeight: 600, 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '10px',
-                      boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
-                      transition: 'all 0.2s'
-                    }
-                  },
-                    React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
-                      React.createElement('polygon', { points: '5 3 19 12 5 21 5 3' })
-                    ),
-                    'Simulate This Step'
-                  )
-                )
-              )
-            : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af', padding: '40px' } },
-                React.createElement('div', { style: { width: '64px', height: '64px', margin: '0 auto 20px', background: '#f3f4f6', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
-                  React.createElement(Icons.Eye, null)
-                ),
-                React.createElement('p', { style: { fontWeight: 600, marginBottom: '6px', color: '#6b7280', fontSize: '15px' } }, 'Select a node'),
-                React.createElement('p', { style: { fontSize: '13px', textAlign: 'center', lineHeight: '1.5' } }, 'Click on any node in the canvas to view its properties and details')
-              )
-          ),
-          // Simulator Modal
-          showSimulator && React.createElement(SimulatorModal, { node: selectedNode, onClose: () => setShowSimulator(false) })
-        );
-      };
-
-      // ============================================
-      // FLOW SELECTION PAGE (matches old app exactly)
-      // ============================================
-      const FlowSelectionPage = ({ onSelectParent }) => {
-        // Subflow tags with icons
-        const getSubflowTags = (flow) => {
-          const tagIcons = {
-            'changed_mind': '💭 Changed',
-            'dog_not_using': '🐕 Dog',
-            'quality_issue': '💔 Damaged',
-            'other_reason': '😕 Other',
-            'tracking_status': '📍 Track',
-            'pause_subscription': '⏸️ Pause',
-            'cancel_subscription': '❌ Cancel',
-            'change_frequency': '🔄 Change'
-          };
-          return flow.subflows.map(id => tagIcons[id] || id);
-        };
-
-        // Flow icons (package style like old app)
-        const flowIcons = {
-          'help_with_order': '📦',
-          'track_order': '🚚',
-          'manage_subscription': '🔄'
-        };
-
-        // Flow descriptions (matching old app)
-        const flowDescriptions = {
-          'help_with_order': 'Complete flow for order issues including refunds, returns, and complaints',
-          'track_order': 'Help customers track their order status and shipping updates',
-          'manage_subscription': 'Help customers manage their subscription, billing, and delivery preferences'
-        };
-
-        return React.createElement('div', { style: { display: 'flex', height: '100vh' } },
-          React.createElement(HubSidebar, null),
-          React.createElement('div', { style: { flex: 1, padding: '40px 48px', overflowY: 'auto', background: '#f8fafc' } },
-            React.createElement('div', { style: { maxWidth: '900px', margin: '0 auto' } },
-              // Header with gear icon
-              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' } },
-                React.createElement('svg', { width: 28, height: 28, viewBox: '0 0 24 24', fill: 'none', stroke: '#374151', strokeWidth: 2 },
-                  React.createElement('circle', { cx: 12, cy: 12, r: 3 }),
-                  React.createElement('path', { d: 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z' })
-                ),
-                React.createElement('h1', { style: { fontSize: '28px', fontWeight: 700, color: '#111827', margin: 0 } }, 'Flow Settings')
-              ),
-              React.createElement('p', { style: { color: '#6b7280', fontSize: '15px', marginBottom: '32px' } }, 'Configure what customers see and experience in each flow'),
-              // Flow cards (vertical list like old app)
-              React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '16px' } },
-                FLOW_DATA.parentFlows.map(flow => {
-                  const tags = getSubflowTags(flow);
-                  const visibleTags = tags.slice(0, 4);
-                  const moreCount = tags.length - 4;
-                  
-                  return React.createElement('div', {
-                    key: flow.id,
-                    onClick: () => onSelectParent(flow),
-                    style: { 
-                      padding: '20px 24px', 
-                      background: 'white', 
-                      borderRadius: '12px', 
-                      border: '1px solid #e5e7eb', 
-                      cursor: 'pointer', 
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      transition: 'all 0.15s',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-                    },
-                    onMouseOver: (e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = '#d1d5db'; },
-                    onMouseOut: (e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#e5e7eb'; }
-                  },
-                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '18px' } },
-                      // Icon in rounded square
-                      React.createElement('div', { style: { width: '56px', height: '56px', borderRadius: '12px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' } }, 
-                        flowIcons[flow.id] || flow.icon
-                      ),
-                      React.createElement('div', null,
-                        React.createElement('h3', { style: { fontSize: '17px', fontWeight: 600, color: '#111827', margin: 0, marginBottom: '6px' } }, flow.name),
-                        React.createElement('p', { style: { fontSize: '14px', color: '#6b7280', margin: 0, marginBottom: '10px', lineHeight: '1.4' } }, 
-                          flowDescriptions[flow.id] || flow.description
-                        ),
-                        // Subflow tags
-                        flow.subflows.length > 0 && React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' } },
-                          visibleTags.map((tag, i) => 
-                            React.createElement('span', { 
-                              key: i, 
-                              style: { 
-                                padding: '4px 10px', 
-                                background: '#f3f4f6', 
-                                borderRadius: '6px', 
-                                fontSize: '12px', 
-                                color: '#4b5563',
-                                fontWeight: 500
-                              } 
-                            }, tag)
-                          ),
-                          moreCount > 0 && React.createElement('span', { 
-                            style: { 
-                              padding: '4px 10px', 
-                              background: '#f3f4f6', 
-                              borderRadius: '6px', 
-                              fontSize: '12px', 
-                              color: '#9ca3af',
-                              fontWeight: 500
-                            } 
-                          }, \`+\${moreCount} more\`)
-                        )
-                      )
-                    ),
-                    // Arrow
-                    React.createElement('div', { style: { color: '#9ca3af', fontSize: '20px', marginLeft: '16px' } }, '›')
-                  );
-                })
-              )
-            )
-          )
-        );
-      };
-
-      // ============================================
-      // PARENT FLOW DETAIL PAGE (matches old app)
-      // ============================================
-      const ParentFlowDetailPage = ({ parentFlow, subflows, onBack, onSelectEntry, onSelectSubflow }) => {
-        // Subflow icons mapping
-        const subflowIcons = {
-          'changed_mind': '💭',
-          'dog_not_using': '🐕',
-          'quality_issue': '💔',
-          'other_reason': '😕',
-          'tracking_status': '📍',
-          'pause_subscription': '⏸️',
-          'cancel_subscription': '❌',
-          'change_frequency': '🔄'
-        };
-
-        // Calculate total entry steps
-        const entrySteps = parentFlow.entryNodes?.length || 0;
-        const entryEdges = parentFlow.entryEdges?.length || 0;
-
-        return React.createElement('div', { style: { display: 'flex', height: '100vh' } },
-          React.createElement(HubSidebar, null),
-          React.createElement('div', { style: { flex: 1, padding: '32px 48px', overflowY: 'auto', background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)' } },
-            React.createElement('div', { style: { maxWidth: '1100px', margin: '0 auto' } },
-              // Back button
-              React.createElement('button', {
-                onClick: onBack,
-                style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', color: '#374151', cursor: 'pointer', marginBottom: '24px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }
-              },
-                React.createElement(Icons.ArrowLeft, null),
-                'Back to Flows'
-              ),
-              // Parent flow header
-              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' } },
-                React.createElement('div', { style: { fontSize: '36px' } }, parentFlow.icon),
-                React.createElement('h1', { style: { fontSize: '32px', fontWeight: 700, color: '#111827', margin: 0 } }, parentFlow.name)
-              ),
-              React.createElement('p', { style: { fontSize: '16px', color: '#6b7280', marginBottom: '32px' } }, parentFlow.description),
-              // Entry Flow Steps Card (highlighted)
-              React.createElement('div', {
-                onClick: onSelectEntry,
-                style: { 
-                  padding: '20px 24px', 
-                  background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', 
-                  borderRadius: '12px', 
-                  border: '2px solid #93c5fd', 
-                  cursor: 'pointer', 
-                  marginBottom: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  transition: 'all 0.15s'
-                }
-              },
-                React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '16px' } },
-                  React.createElement('div', { style: { width: '48px', height: '48px', borderRadius: '10px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' } },
-                    React.createElement('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', stroke: '#3b82f6', strokeWidth: 2 },
-                      React.createElement('rect', { x: 3, y: 3, width: 18, height: 18, rx: 2 }),
-                      React.createElement('path', { d: 'M3 9h18M9 21V9' })
-                    )
-                  ),
-                  React.createElement('div', null,
-                    React.createElement('h3', { style: { fontSize: '18px', fontWeight: 600, color: '#1e40af', margin: 0, marginBottom: '4px' } }, 'Entry Flow Steps'),
-                    React.createElement('p', { style: { fontSize: '14px', color: '#3b82f6', margin: 0 } }, 
-                      \`Order lookup → Options selection → Route to subflow\`
-                    ),
-                    React.createElement('p', { style: { fontSize: '13px', color: '#64748b', margin: 0, marginTop: '6px' } }, \`\${entrySteps} steps\`)
-                  )
-                ),
-                React.createElement('div', { style: { width: '36px', height: '36px', borderRadius: '8px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' } },
-                  React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
-                    React.createElement('path', { d: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6' }),
-                    React.createElement('polyline', { points: '15 3 21 3 21 9' }),
-                    React.createElement('line', { x1: 10, y1: 14, x2: 21, y2: 3 })
-                  )
-                )
-              ),
-              // SUB-FLOWS Section
-              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' } },
-                React.createElement('div', { style: { height: '1px', flex: 1, background: '#e2e8f0' } }),
-                React.createElement('span', { style: { fontSize: '12px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' } }, \`SUB-FLOWS (\${subflows.length})\`),
-                React.createElement('div', { style: { height: '1px', flex: 1, background: '#e2e8f0' } })
-              ),
-              // Subflow Cards Grid
-              React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' } },
-                subflows.map(subflow => 
-                  React.createElement('div', {
-                    key: subflow.id,
-                    onClick: () => onSelectSubflow(subflow),
-                    style: { 
-                      padding: '20px', 
-                      background: 'white', 
-                      borderRadius: '12px', 
-                      border: '1px solid #e5e7eb', 
-                      cursor: 'pointer', 
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      transition: 'all 0.15s',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-                    },
-                    onMouseOver: (e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = '#d1d5db'; },
-                    onMouseOut: (e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#e5e7eb'; }
-                  },
-                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '14px' } },
-                      React.createElement('div', { style: { width: '44px', height: '44px', borderRadius: '10px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' } },
-                        subflowIcons[subflow.id] || '📋'
-                      ),
-                      React.createElement('div', null,
-                        React.createElement('h4', { style: { fontSize: '15px', fontWeight: 600, color: '#1f2937', margin: 0, marginBottom: '4px' } }, subflow.name),
-                        React.createElement('p', { style: { fontSize: '13px', color: '#6b7280', margin: 0, lineHeight: '1.4' } }, subflow.description),
-                        React.createElement('p', { style: { fontSize: '12px', color: '#94a3b8', margin: 0, marginTop: '6px' } }, 
-                          \`\${subflow.nodes?.length || 0} nodes · \${subflow.edges?.length || 0} connections\`
-                        )
-                      )
-                    ),
-                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', color: '#9ca3af' } },
-                      React.createElement('span', { style: { fontSize: '18px' } }, '→')
-                    )
-                  )
-                )
-              )
-            )
-          )
-        );
-      };
-
-      // ============================================
-      // MAIN APP
-      // ============================================
-      const App = () => {
-        const [selectedParent, setSelectedParent] = useState(null);
-        const [selectedSubflow, setSelectedSubflow] = useState(null);
-        const [viewingEntry, setViewingEntry] = useState(false);
-        const [viewingCanvas, setViewingCanvas] = useState(false); // New: whether we're in canvas view
-
-        const allSubflows = useMemo(() => {
-          if (!selectedParent) return [];
-          return (selectedParent.subflows || []).map(id => FLOW_DATA.subflows[id]).filter(Boolean);
-        }, [selectedParent]);
-
-        // Create entry flow object for parent
-        const entryFlow = useMemo(() => {
-          if (!selectedParent) return null;
-          return {
-            id: 'entry',
-            name: 'Entry Flow',
-            description: 'Main entry point showing subflow options',
-            nodes: selectedParent.entryNodes || [],
-            edges: selectedParent.entryEdges || []
-          };
-        }, [selectedParent]);
-
-        // View 3: Canvas view (entry or subflow)
-        if (selectedParent && viewingCanvas) {
-          const currentFlow = viewingEntry ? entryFlow : selectedSubflow;
-          if (!currentFlow) return null;
           
-          return React.createElement(FlowCanvas, {
-            subflow: currentFlow,
-            parentFlow: selectedParent,
-            allSubflows: allSubflows,
-            viewingEntry: viewingEntry,
-            onSelectSubflow: (sf) => {
-              setSelectedSubflow(sf);
-              setViewingEntry(false);
+          // Center - React Flow Canvas
+          React.createElement('div', { style: { flex: 1, background: 'linear-gradient(135deg, #fef7f0 0%, #fdf2f8 25%, #f5f3ff 50%, #eff6ff 75%, #f0fdf4 100%)' } },
+            React.createElement(ReactFlowComponent, {
+              nodes: nodes,
+              edges: edges,
+              onNodesChange: onNodesChange,
+              onEdgesChange: onEdgesChange,
+              onNodeClick: onNodeClick,
+              nodeTypes: nodeTypes,
+              defaultEdgeOptions: defaultEdgeOptions,
+              fitView: true,
+              fitViewOptions: { padding: 0.2 }
             },
-            onSelectEntry: () => {
-              setViewingEntry(true);
-            },
-            onSubflowNodeClick: (slug) => {
-              const sf = FLOW_DATA.subflows[slug];
-              if (sf) {
-                setSelectedSubflow(sf);
-                setViewingEntry(false);
-              }
-            },
-            onBackToFlows: () => {
-              setViewingCanvas(false); // Go back to parent detail page
-            }
-          });
-        }
-
-        // View 2: Parent Flow Detail Page
-        if (selectedParent) {
-          return React.createElement(ParentFlowDetailPage, {
-            parentFlow: selectedParent,
-            subflows: allSubflows,
-            onBack: () => {
-              setSelectedParent(null);
-            },
-            onSelectEntry: () => {
-              setViewingEntry(true);
-              setViewingCanvas(true);
-            },
-            onSelectSubflow: (sf) => {
-              setSelectedSubflow(sf);
-              setViewingEntry(false);
-              setViewingCanvas(true);
-            }
-          });
-        }
-
-        // View 1: Flow Selection Page
-        return React.createElement(FlowSelectionPage, {
-          onSelectParent: (parent) => {
-            setSelectedParent(parent);
-          }
-        });
+              React.createElement(Background, { variant: 'dots', gap: 20, size: 1, color: '#e2e8f0' }),
+              React.createElement(Controls, null),
+              React.createElement(MiniMap, { 
+                nodeColor: (n) => nodeColors[n.type] || '#94a3b8',
+                maskColor: 'rgba(255,255,255,0.8)'
+              })
+            )
+          ),
+          
+          // Right Panel - Node Properties
+          React.createElement(NodePropertiesPanel, { selectedNode: selectedNode })
+        );
       };
 
+      // Mount the app
       const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(React.createElement(App));
+      root.render(React.createElement(FlowDocsApp));
     })();
   </script>
 </body>
