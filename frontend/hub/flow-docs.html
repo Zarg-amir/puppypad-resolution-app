@@ -291,7 +291,7 @@
               { id: 'sub5', type: 'subflow', position: { x: 800, y: 1250 }, data: { name: 'Missing Item', slug: 'missing_item', nodeCount: 9 } },
               { id: 'sub6', type: 'subflow', position: { x: -200, y: 1450 }, data: { name: 'Wrong Item', slug: 'wrong_item', nodeCount: 10 } },
               { id: 'sub7', type: 'subflow', position: { x: 50, y: 1450 }, data: { name: 'Damaged', slug: 'damaged', nodeCount: 11 } },
-              { id: 'sub8', type: 'subflow', position: { x: 300, y: 1450 }, data: { name: 'Charged Unexpectedly', slug: 'charged_unexpectedly', nodeCount: 7 } },
+              { id: 'sub8', type: 'subflow', position: { x: 300, y: 1450 }, data: { name: 'Charged Unexpectedly', slug: 'charged_unexpectedly', nodeCount: 22 } },
               { id: 'sub9', type: 'subflow', position: { x: 550, y: 1450 }, data: { name: 'Not Received', slug: 'not_received', nodeCount: 14 } },
               { id: 'sub10', type: 'subflow', position: { x: 800, y: 1450 }, data: { name: 'Quality Difference', slug: 'quality_difference', nodeCount: 8 } },
               { id: 'sub11', type: 'subflow', position: { x: 300, y: 1650 }, data: { name: 'Other Reason', slug: 'other_reason', nodeCount: 6 } }
@@ -328,7 +328,7 @@
             entryNodes: [
               { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Customer clicks Track Order' } },
               { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "Hi! I'm Amy. Let me help you track your order — just enter your details below and I'll pull it right up. 📦" } },
-              { id: 'sub1', type: 'subflow', position: { x: 350, y: 330 }, data: { name: 'Order Tracking Flow', slug: 'tracking_flow', nodeCount: 10 } }
+              { id: 'sub1', type: 'subflow', position: { x: 350, y: 330 }, data: { name: 'Order Tracking Flow', slug: 'tracking_flow', nodeCount: 45 } }
             ],
             entryEdges: [
               { id: 'e1', source: 'start', target: 'msg1', animated: true },
@@ -615,28 +615,90 @@
             ]
           },
 
-          // CHARGED UNEXPECTEDLY
+          // CHARGED UNEXPECTEDLY - Full Branching
           charged_unexpectedly: {
             id: 'charged_unexpectedly',
             parentId: 'help_with_order',
             name: 'Charged Unexpectedly',
-            description: 'Customer was charged when they didn\'t expect it',
+            description: 'Customer was charged when they didn\'t expect it - full branching with delivery status checks',
             nodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Unexpected Charge Flow' } },
-              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I understand how frustrating an unexpected charge can be! Let me look into this for you. Can you tell me more about the charge?" } },
-              { id: 'form1', type: 'form', position: { x: 350, y: 370 }, data: { formType: 'Text Input', label: 'Describe the unexpected charge', fields: ['chargeAmount', 'chargeDate', 'description'] } },
-              { id: 'api1', type: 'api', position: { x: 350, y: 570 }, data: { service: 'Shopify', endpoint: '/api/orders/recent-charges', description: 'Look up recent charges for customer' } },
-              { id: 'msg2', type: 'message', position: { x: 350, y: 770 }, data: { persona: 'amy', content: "I've found the charge and created a case for our billing team to review. They'll investigate and get back to you within 1-2 business days." } },
-              { id: 'case1', type: 'case', position: { x: 350, y: 970 }, data: { type: 'billing', subtype: 'unexpected_charge', priority: 'high' } },
-              { id: 'end1', type: 'end', position: { x: 350, y: 1170 }, data: { title: 'Billing Review Requested', showSurvey: true } }
+              { id: 'start', type: 'start', position: { x: 500, y: 0 }, data: { label: 'Unexpected Charge Flow' } },
+              { id: 'msg1', type: 'message', position: { x: 500, y: 120 }, data: { persona: 'amy', content: "I completely understand — unexpected charges can be confusing! 💳<br><br>This can happen for a few reasons: sometimes a family member places an order as a gift, it could be a subscription renewal you forgot about, or perhaps an order from a while back that slipped your mind.<br><br>Either way, I'm here to help sort this out for you! Let me pull up your order details." } },
+              { id: 'api1', type: 'api', position: { x: 500, y: 300 }, data: { service: 'Shopify', endpoint: '/api/orders/recent-charges', description: 'Look up recent charges for customer', request: '{ email }', response: '{ orders[] }' } },
+              { id: 'msg2', type: 'message', position: { x: 500, y: 480 }, data: { persona: 'amy', content: "Here's what I found:<br><br><strong>Order:</strong> {{orderNumber}}<br><strong>Date:</strong> {{orderDate}}<br><strong>Total Charged:</strong> {{totalPrice}}<br><br><strong>Items:</strong><br>{{itemsList}}<br><br>Is this the charge you're referring to?" } },
+              { id: 'opts1', type: 'options', position: { x: 500, y: 680 }, data: { prompt: 'Is this the charge?', options: [{ label: "Yes, this is it", icon: '✅' }, { label: "No, I don't recognize this", icon: '❌' }] } },
+              
+              // Confirmed branch
+              { id: 'msg3', type: 'message', position: { x: 300, y: 880 }, data: { persona: 'amy', content: "Got it! So you see the order, but you're saying you didn't place it yourself?<br><br>No worries — like I mentioned, this could be a family member, a gift, or maybe even an accidental order. Let me check a few things..." } },
+              { id: 'api2', type: 'api', position: { x: 300, y: 1060 }, data: { service: 'ParcelPanel', endpoint: '/api/tracking', description: 'Check delivery status', request: '{ orderNumber }', response: '{ tracking, status }' } },
+              { id: 'cond1', type: 'condition', position: { x: 300, y: 1240 }, data: { variable: 'tracking.status', operator: 'includes', value: 'delivered', yesLabel: 'Delivered', noLabel: 'Not Delivered' } },
+              
+              // Delivered branch
+              { id: 'msg4', type: 'message', position: { x: 100, y: 1420 }, data: { persona: 'amy', content: "I can see this order has been <strong>delivered</strong>! 📦<br><br>Here's what I can do: since you have the products, would you like to keep them and I'll give you a <strong>20% refund ({{refundAmount20}})</strong> for all this confusion?<br><br>That way you get some money back and can still enjoy the products!" } },
+              { id: 'offer1_delivered', type: 'offer', position: { x: 100, y: 1620 }, data: { percent: 20, label: 'Keep products + 20% refund', message: "20% refund for confusion - keep the products" } },
+              { id: 'opts_delivered', type: 'options', position: { x: 100, y: 1820 }, data: { prompt: 'What would you like to do?', options: [{ label: "Accept 20% refund", icon: '✅' }, { label: "I'd like a higher refund", icon: '💰' }] } },
+              { id: 'case_partial_20_delivered', type: 'case', position: { x: -100, y: 2020 }, data: { type: 'refund', subtype: 'partial_20', priority: 'normal' } },
+              { id: 'subflow_refund_ladder_delivered', type: 'subflow', position: { x: 100, y: 2020 }, data: { name: 'Order Refund Ladder', slug: 'order_refund_ladder', nodeCount: 10, startStep: 1 } },
+              
+              // Not Delivered branch
+              { id: 'msg5', type: 'message', position: { x: 500, y: 1420 }, data: { persona: 'amy', content: "I see this order hasn't been delivered yet! 📦<br><br>Here's what I can do: I'll give you a <strong>20% refund ({{refundAmount20}})</strong> for all this confusion, and you can keep the order when it arrives. What do you think?" } },
+              { id: 'offer1_not_delivered', type: 'offer', position: { x: 500, y: 1620 }, data: { percent: 20, label: 'Keep order when arrives + 20% refund', message: "20% refund for confusion - keep order when it arrives" } },
+              { id: 'opts_not_delivered', type: 'options', position: { x: 500, y: 1820 }, data: { prompt: 'What would you like to do?', options: [{ label: "Accept 20% refund", icon: '✅' }, { label: "I'd like a higher refund", icon: '💰' }] } },
+              { id: 'case_partial_20_not_delivered', type: 'case', position: { x: 300, y: 2020 }, data: { type: 'refund', subtype: 'partial_20', priority: 'normal' } },
+              { id: 'subflow_refund_ladder_not_delivered', type: 'subflow', position: { x: 500, y: 2020 }, data: { name: 'Order Refund Ladder', slug: 'order_refund_ladder', nodeCount: 10, startStep: 1 } },
+              
+              // Not Recognized branch
+              { id: 'msg6', type: 'message', position: { x: 700, y: 880 }, data: { persona: 'amy', content: "I understand — it can be confusing when you don't recognize a charge! 🤔<br><br>Here's the thing: our system doesn't store payment details or allow manual charges, so this order was definitely placed through our website. It could be:<br><br>• A family member or friend ordered for you as a surprise 🎁<br>• You might have ordered a while back and forgot<br>• Someone in your household made a purchase<br><br>But don't worry — I'm here to help either way! Let me tell you about what's actually in this order..." } },
+              { id: 'api3', type: 'api', position: { x: 700, y: 1060 }, data: { service: 'AI', endpoint: '/api/ai-response', description: 'Generate product benefits pitch', request: '{ scenarioType: "product_benefits_pitch", products, productSkus }', response: '{ messages[] }' } },
+              { id: 'msg7', type: 'message', position: { x: 700, y: 1240 }, data: { persona: 'amy', content: "{{aiGeneratedProductPitch}}" } },
+              { id: 'opts_not_recognized', type: 'options', position: { x: 700, y: 1420 }, data: { prompt: 'What would you like to do?', options: [{ label: "I'll keep the order", icon: '✅' }, { label: "I still want a refund", icon: '💰' }] } },
+              { id: 'end_keep_order', type: 'end', position: { x: 500, y: 1620 }, data: { title: 'Order Kept', showSurvey: true } },
+              { id: 'subflow_refund_ladder_not_recognized', type: 'subflow', position: { x: 900, y: 1620 }, data: { name: 'Order Refund Ladder', slug: 'order_refund_ladder', nodeCount: 10 } },
+              
+              // End nodes
+              { id: 'end_partial_refund', type: 'end', position: { x: -100, y: 2220 }, data: { title: 'Partial Refund Processed', showSurvey: true } },
+              { id: 'end_refund_ladder', type: 'end', position: { x: 100, y: 2220 }, data: { title: 'Refund Processed', showSurvey: true } },
+              { id: 'end_partial_not_delivered', type: 'end', position: { x: 300, y: 2220 }, data: { title: 'Partial Refund Processed', showSurvey: true } },
+              { id: 'end_refund_ladder_not_delivered', type: 'end', position: { x: 500, y: 2220 }, data: { title: 'Refund Processed', showSurvey: true } },
+              { id: 'end_refund_not_recognized', type: 'end', position: { x: 900, y: 1820 }, data: { title: 'Refund Processed', showSurvey: true } }
             ],
             edges: [
               { id: 'e1', source: 'start', target: 'msg1', animated: true },
-              { id: 'e2', source: 'msg1', target: 'form1', animated: true },
-              { id: 'e3', source: 'form1', target: 'api1', animated: true },
-              { id: 'e4', source: 'api1', target: 'msg2', animated: true },
-              { id: 'e5', source: 'msg2', target: 'case1', animated: true },
-              { id: 'e6', source: 'case1', target: 'end1', animated: true }
+              { id: 'e2', source: 'msg1', target: 'api1', animated: true },
+              { id: 'e3', source: 'api1', target: 'msg2', animated: true },
+              { id: 'e4', source: 'msg2', target: 'opts1', animated: true },
+              { id: 'e5', source: 'opts1', target: 'msg3', sourceHandle: 'opt-0', label: 'Yes, this is it', animated: true },
+              { id: 'e6', source: 'opts1', target: 'msg6', sourceHandle: 'opt-1', label: "No, don't recognize", animated: true },
+              
+              // Confirmed branch
+              { id: 'e7', source: 'msg3', target: 'api2', animated: true },
+              { id: 'e8', source: 'api2', target: 'cond1', animated: true },
+              { id: 'e9', source: 'cond1', target: 'msg4', sourceHandle: 'yes', label: 'Delivered', animated: true },
+              { id: 'e10', source: 'cond1', target: 'msg5', sourceHandle: 'no', label: 'Not delivered', animated: true },
+              
+              // Delivered branch
+              { id: 'e11', source: 'msg4', target: 'offer1_delivered', animated: true },
+              { id: 'e12', source: 'offer1_delivered', target: 'opts_delivered', animated: true },
+              { id: 'e13', source: 'opts_delivered', target: 'case_partial_20_delivered', sourceHandle: 'opt-0', label: 'Accept 20%', animated: true },
+              { id: 'e14', source: 'opts_delivered', target: 'subflow_refund_ladder_delivered', sourceHandle: 'opt-1', label: 'Higher refund', animated: true },
+              { id: 'e15', source: 'case_partial_20_delivered', target: 'end_partial_refund', animated: true },
+              { id: 'e16', source: 'subflow_refund_ladder_delivered', target: 'end_refund_ladder', animated: true },
+              
+              // Not Delivered branch
+              { id: 'e17', source: 'msg5', target: 'offer1_not_delivered', animated: true },
+              { id: 'e18', source: 'offer1_not_delivered', target: 'opts_not_delivered', animated: true },
+              { id: 'e19', source: 'opts_not_delivered', target: 'case_partial_20_not_delivered', sourceHandle: 'opt-0', label: 'Accept 20%', animated: true },
+              { id: 'e20', source: 'opts_not_delivered', target: 'subflow_refund_ladder_not_delivered', sourceHandle: 'opt-1', label: 'Higher refund', animated: true },
+              { id: 'e21', source: 'case_partial_20_not_delivered', target: 'end_partial_not_delivered', animated: true },
+              { id: 'e22', source: 'subflow_refund_ladder_not_delivered', target: 'end_refund_ladder_not_delivered', animated: true },
+              
+              // Not Recognized branch
+              { id: 'e23', source: 'msg6', target: 'api3', animated: true },
+              { id: 'e24', source: 'api3', target: 'msg7', animated: true },
+              { id: 'e25', source: 'msg7', target: 'opts_not_recognized', animated: true },
+              { id: 'e26', source: 'opts_not_recognized', target: 'end_keep_order', sourceHandle: 'opt-0', label: 'Keep order', animated: true },
+              { id: 'e27', source: 'opts_not_recognized', target: 'subflow_refund_ladder_not_recognized', sourceHandle: 'opt-1', label: 'Refund', animated: true },
+              { id: 'e28', source: 'subflow_refund_ladder_not_recognized', target: 'end_refund_not_recognized', animated: true }
             ]
           },
 
@@ -739,32 +801,168 @@
             id: 'tracking_flow',
             parentId: 'track_order',
             name: 'Order Tracking Flow',
-            description: 'Customer lookup → Shopify API → ParcelPanel tracking → Display status',
+            description: 'Customer lookup → Shopify API → ParcelPanel tracking → Status-based conditionals with time windows',
             nodes: [
-              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Tracking Flow' } },
-              { id: 'form1', type: 'form', position: { x: 350, y: 170 }, data: { formType: 'Customer Lookup', label: 'Find Your Order', fields: ['email', 'orderNumber'] } },
-              { id: 'api1', type: 'api', position: { x: 350, y: 370 }, data: { service: 'Shopify', endpoint: '/api/lookup', description: 'Find customer orders', request: '{ email, orderNumber }', response: '{ orders[], fulfillments[] }' } },
-              { id: 'cond1', type: 'condition', position: { x: 350, y: 570 }, data: { variable: 'orders.length', operator: '>', value: '0', yesLabel: 'Found', noLabel: 'Not Found' } },
-              { id: 'api2', type: 'api', position: { x: 150, y: 790 }, data: { service: 'ParcelPanel', endpoint: '/api/tracking/{trackingNumber}', description: 'Get real-time tracking from carriers', request: '{ trackingNumber }', response: '{ status, location, estimatedDelivery, events[] }' } },
-              { id: 'msg1', type: 'message', position: { x: 150, y: 1010 }, data: { persona: 'amy', content: "Here's your tracking information! Your package is currently {{trackingStatus}} and the estimated delivery is {{estimatedDelivery}}." } },
-              { id: 'opts1', type: 'options', position: { x: 150, y: 1230 }, data: { prompt: 'Is there anything else I can help with?', options: [{ label: 'No, thanks!', icon: '👍' }, { label: 'I have an issue', icon: '⚠️' }] } },
-              { id: 'end1', type: 'end', position: { x: -50, y: 1450 }, data: { title: 'Tracking Complete!', showSurvey: true } },
-              { id: 'subflow1', type: 'subflow', position: { x: 350, y: 1450 }, data: { name: 'Not Received Flow', slug: 'not_received', description: 'Handle delivery issues' } },
-              { id: 'msg2', type: 'message', position: { x: 550, y: 790 }, data: { persona: 'amy', content: "I couldn't find an order with those details. Let's try searching with more information." } },
-              { id: 'form2', type: 'form', position: { x: 550, y: 1010 }, data: { formType: 'Deep Search', label: 'Additional Details', fields: ['firstName', 'lastName', 'address'] } }
+              { id: 'start', type: 'start', position: { x: 500, y: 0 }, data: { label: 'Tracking Flow' } },
+              { id: 'form1', type: 'form', position: { x: 500, y: 120 }, data: { formType: 'Customer Lookup', label: 'Find Your Order', fields: ['email', 'orderNumber'] } },
+              { id: 'api1', type: 'api', position: { x: 500, y: 300 }, data: { service: 'Shopify', endpoint: '/api/lookup', description: 'Find customer orders', request: '{ email, orderNumber }', response: '{ orders[], fulfillments[] }' } },
+              { id: 'cond1', type: 'condition', position: { x: 500, y: 480 }, data: { variable: 'orders.length', operator: '>', value: '0', yesLabel: 'Found', noLabel: 'Not Found' } },
+              { id: 'api2', type: 'api', position: { x: 300, y: 680 }, data: { service: 'ParcelPanel', endpoint: '/api/tracking', description: 'Get real-time tracking from carriers', request: '{ trackingNumber }', response: '{ status, daysInTransit, isInternational, location, estimatedDelivery, events[] }' } },
+              { id: 'cond2', type: 'condition', position: { x: 300, y: 860 }, data: { variable: 'tracking.status', operator: '===', value: 'delivered', yesLabel: 'Delivered', noLabel: 'Other Status' } },
+              { id: 'cond3', type: 'condition', position: { x: 100, y: 1040 }, data: { variable: 'tracking.status', operator: '===', value: 'in_transit', yesLabel: 'In Transit', noLabel: 'Other' } },
+              { id: 'cond4', type: 'condition', position: { x: 100, y: 1220 }, data: { variable: 'tracking.daysInTransit', operator: '>=', value: '15', yesLabel: '15+ days', noLabel: '<15 days' } },
+              { id: 'cond5', type: 'condition', position: { x: -100, y: 1400 }, data: { variable: 'tracking.daysInTransit', operator: '>=', value: '6', yesLabel: '6-14 days', noLabel: '0-5 days' } },
+              { id: 'cond6', type: 'condition', position: { x: 100, y: 1040 }, data: { variable: 'tracking.status', operator: '===', value: 'out_for_delivery', yesLabel: 'Out for Delivery', noLabel: 'Other' } },
+              { id: 'cond7', type: 'condition', position: { x: 100, y: 1040 }, data: { variable: 'tracking.status', operator: '===', value: 'pending', yesLabel: 'Pending', noLabel: 'Other' } },
+              { id: 'cond8', type: 'condition', position: { x: 100, y: 1040 }, data: { variable: 'tracking.status', operator: '===', value: 'failed_attempt', yesLabel: 'Failed Attempt', noLabel: 'Other' } },
+              { id: 'cond9', type: 'condition', position: { x: 100, y: 1040 }, data: { variable: 'tracking.status', operator: 'includes', value: 'pickup', yesLabel: 'Pickup', noLabel: 'Other' } },
+              { id: 'cond10', type: 'condition', position: { x: 100, y: 1040 }, data: { variable: 'tracking.status', operator: '===', value: 'exception', yesLabel: 'Exception', noLabel: 'Other' } },
+              
+              // Delivered branch
+              { id: 'msg_delivered', type: 'message', position: { x: 100, y: 1220 }, data: { persona: 'amy', content: "According to tracking, your order was delivered on <strong>{{deliveryDate}}</strong>.<br><br>Before we investigate, could you please double-check these common locations?<br><br>• <strong>Neighbors</strong> - Sometimes packages are left next door<br>• <strong>Family/household members</strong> - Someone may have brought it inside<br>• <strong>Safe spots</strong> - Behind pillars, under mats, in bushes<br>• <strong>Front desk/mailroom</strong> - If you live in an apartment or building<br>• <strong>Garage or side door</strong> - Carriers sometimes leave packages there" } },
+              { id: 'opts_delivered', type: 'options', position: { x: 100, y: 1440 }, data: { prompt: 'What would you like to do?', options: [{ label: "I've checked all these places", icon: '🔍' }, { label: "Give me time to check", icon: '⏰' }, { label: "I found it!", icon: '✅' }] } },
+              { id: 'subflow_delivered_not_received', type: 'subflow', position: { x: -100, y: 1660 }, data: { name: 'Delivered Not Received', slug: 'delivered_not_received', nodeCount: 8 } },
+              { id: 'end_delivered_found', type: 'end', position: { x: 300, y: 1660 }, data: { title: 'Package Found!', showSurvey: true } },
+              
+              // In Transit - 15+ days (Extended Transit)
+              { id: 'subflow_extended_transit', type: 'subflow', position: { x: -300, y: 1580 }, data: { name: 'Extended Transit', slug: 'extended_transit', nodeCount: 12 } },
+              
+              // In Transit - 6-14 days (Sarah Voice Note)
+              { id: 'msg_sarah_voice', type: 'message', position: { x: -500, y: 1580 }, data: { persona: 'sarah', content: "Your package has been in transit for {{daysInTransit}} days now. Our CX lead Sarah has a quick update for you..." } },
+              { id: 'audio1', type: 'form', position: { x: -500, y: 1760 }, data: { formType: 'Audio Player', label: 'Sarah Voice Note', description: 'Waveform audio player with Sarah reassurance message' } },
+              { id: 'opts_sarah', type: 'options', position: { x: -500, y: 1940 }, data: { prompt: 'How can I help?', options: [{ label: "I'll wait a bit longer", icon: '⏳' }, { label: "I have a concern", icon: '⚠️' }] } },
+              { id: 'subflow_extended_from_voice', type: 'subflow', position: { x: -700, y: 2120 }, data: { name: 'Extended Transit', slug: 'extended_transit', nodeCount: 12 } },
+              
+              // In Transit - 0-5 days (Normal)
+              { id: 'cond_international', type: 'condition', position: { x: -500, y: 1580 }, data: { variable: 'tracking.isInternational', operator: '===', value: 'true', yesLabel: 'International', noLabel: 'Domestic' } },
+              { id: 'msg_in_transit_normal', type: 'message', position: { x: -700, y: 1760 }, data: { persona: 'amy', content: "Your order is currently <strong>in transit</strong> and has been shipping for {{daysInTransit}} day(s). Delivery typically takes 5-10 business days. Expected delivery: <strong>{{estimatedDelivery}}</strong><br><br>It's still within the normal delivery window — your package is on its way!" } },
+              { id: 'msg_in_transit_intl', type: 'message', position: { x: -300, y: 1760 }, data: { persona: 'amy', content: "Your order is currently <strong>in transit</strong> and has been shipping for {{daysInTransit}} day(s). Since this is shipping from our international warehouse, it can sometimes take an additional 5 business days. Expected delivery: <strong>{{estimatedDelivery}}</strong><br><br>It's still within the normal delivery window — your package is on its way!" } },
+              { id: 'opts_in_transit', type: 'options', position: { x: -500, y: 1940 }, data: { prompt: 'What would you like to do?', options: [{ label: "Okay, I'll wait", icon: '⏳' }, { label: "I have a concern", icon: '⚠️' }] } },
+              { id: 'subflow_extended_from_normal', type: 'subflow', position: { x: -700, y: 2120 }, data: { name: 'Extended Transit', slug: 'extended_transit', nodeCount: 12 } },
+              
+              // Out for Delivery
+              { id: 'msg_out_for_delivery', type: 'message', position: { x: 500, y: 1220 }, data: { persona: 'amy', content: "Great news! Your package is <strong>out for delivery today</strong>. It should arrive within the next few hours. Expected delivery: <strong>{{estimatedDelivery}}</strong>" } },
+              { id: 'msg_out_intl', type: 'message', position: { x: 500, y: 1400 }, data: { persona: 'amy', content: "Your order is shipping from our international warehouse, which can sometimes take a bit longer but it's on its way to you!" } },
+              { id: 'opts_out_delivery', type: 'options', position: { x: 500, y: 1580 }, data: { prompt: 'What would you like to do?', options: [{ label: "Perfect, I'll wait", icon: '✅' }, { label: "It's been out for delivery for days", icon: '⚠️' }] } },
+              { id: 'case_stuck_out_delivery', type: 'case', position: { x: 700, y: 1760 }, data: { type: 'shipping', subtype: 'stuck_out_for_delivery', priority: 'high' } },
+              
+              // Pending
+              { id: 'msg_pending', type: 'message', position: { x: 900, y: 1220 }, data: { persona: 'amy', content: "Your order is currently being prepared for shipment. The carrier has received the shipping information but hasn't picked up the package yet.<br><br>This typically happens within 1-2 business days of placing your order." } },
+              { id: 'cond_pending_days', type: 'condition', position: { x: 900, y: 1400 }, data: { variable: 'tracking.daysInTransit', operator: '>', value: '3', yesLabel: '>3 days', noLabel: '≤3 days' } },
+              { id: 'msg_pending_long', type: 'message', position: { x: 1100, y: 1580 }, data: { persona: 'amy', content: "However, I notice it's been a few days. Would you like me to look into this for you?" } },
+              { id: 'opts_pending_long', type: 'options', position: { x: 1100, y: 1760 }, data: { prompt: 'What would you like to do?', options: [{ label: "Yes, please investigate", icon: '🔍' }, { label: "I'll wait a bit longer", icon: '⏳' }] } },
+              { id: 'case_pending_investigate', type: 'case', position: { x: 1300, y: 1940 }, data: { type: 'shipping', subtype: 'pending_too_long', priority: 'normal' } },
+              { id: 'opts_pending_normal', type: 'options', position: { x: 700, y: 1580 }, data: { prompt: 'What would you like to do?', options: [{ label: "Got it, I'll wait", icon: '✅' }, { label: "I need to cancel instead", icon: '❌' }] } },
+              { id: 'case_pending_cancel', type: 'case', position: { x: 900, y: 1760 }, data: { type: 'refund', subtype: 'order_cancellation', priority: 'normal' } },
+              
+              // Failed Attempt
+              { id: 'msg_failed_attempt', type: 'message', position: { x: 1300, y: 1220 }, data: { persona: 'amy', content: "The carrier attempted to deliver your package but was unsuccessful. This could be due to:<br><br>• No one available to sign<br>• Address access issues<br>• Weather conditions<br><br>They'll typically try again within 1-2 business days." } },
+              { id: 'opts_failed_attempt', type: 'options', position: { x: 1300, y: 1400 }, data: { prompt: 'What would you like to do?', options: [{ label: "I'll be home next time", icon: '🏠' }, { label: "I need to change my address", icon: '📍' }, { label: "They've tried multiple times", icon: '⚠️' }] } },
+              { id: 'subflow_failed_address', type: 'subflow', position: { x: 1500, y: 1580 }, data: { name: 'Failed Attempt - Address Change', slug: 'failed_attempt_address', nodeCount: 6 } },
+              { id: 'subflow_multiple_failed', type: 'subflow', position: { x: 1700, y: 1580 }, data: { name: 'Multiple Failed Attempts', slug: 'multiple_failed_attempts', nodeCount: 8 } },
+              
+              // Pickup
+              { id: 'msg_pickup', type: 'message', position: { x: 1500, y: 1220 }, data: { persona: 'amy', content: "Good news! Your package has arrived and is ready for you." } },
+              { id: 'api_pickup_parse', type: 'api', position: { x: 1500, y: 1400 }, data: { service: 'AI', endpoint: '/api/parse-pickup-location', description: 'Parse pickup location from tracking data using AI', request: '{ tracking, checkpoints, shippingAddress }', response: '{ pickupLocationName, displayCarrier, lastMileTrackingNumber }' } },
+              { id: 'msg_pickup_location', type: 'message', position: { x: 1500, y: 1580 }, data: { persona: 'amy', content: "Your package is ready for pickup at:<br><br><strong>{{pickupLocationName}}</strong><br><br>Please bring a valid ID when you go to pick it up." } },
+              { id: 'opts_pickup', type: 'options', position: { x: 1500, y: 1760 }, data: { prompt: 'What would you like to do?', options: [{ label: "Thanks, I'll pick it up", icon: '✅' }, { label: "Package not at pickup location", icon: '❌' }] } },
+              { id: 'subflow_pickup_not_there', type: 'subflow', position: { x: 1700, y: 1940 }, data: { name: 'Pickup Not There', slug: 'pickup_not_there', nodeCount: 10 } },
+              
+              // Exception
+              { id: 'msg_exception', type: 'message', position: { x: 1700, y: 1220 }, data: { persona: 'amy', content: "I see there's an issue with your package delivery. Let me help you figure out what's going on." } },
+              { id: 'opts_exception', type: 'options', position: { x: 1700, y: 1400 }, data: { prompt: 'What would you like to do?', options: [{ label: "Investigate and reship", icon: '🔍' }, { label: "I'd prefer a refund", icon: '💰' }] } },
+              { id: 'subflow_exception_investigate', type: 'subflow', position: { x: 1900, y: 1580 }, data: { name: 'Exception Investigation', slug: 'exception_investigation', nodeCount: 6 } },
+              
+              // Not Found branch
+              { id: 'msg_not_found', type: 'message', position: { x: 700, y: 680 }, data: { persona: 'amy', content: "I couldn't find an order with those details. Let's try searching with more information." } },
+              { id: 'form2', type: 'form', position: { x: 700, y: 860 }, data: { formType: 'Deep Search', label: 'Additional Details', fields: ['firstName', 'lastName', 'address1', 'country'] } },
+              
+              // End nodes
+              { id: 'end_tracking_complete', type: 'end', position: { x: -500, y: 2300 }, data: { title: 'Tracking Complete!', showSurvey: true } },
+              { id: 'end_waiting', type: 'end', position: { x: -300, y: 2300 }, data: { title: 'Thanks for your patience!', showSurvey: true } }
             ],
             edges: [
               { id: 'e1', source: 'start', target: 'form1', animated: true },
               { id: 'e2', source: 'form1', target: 'api1', animated: true },
               { id: 'e3', source: 'api1', target: 'cond1', animated: true },
               { id: 'e4', source: 'cond1', target: 'api2', sourceHandle: 'yes', label: 'Order found', animated: true },
-              { id: 'e5', source: 'cond1', target: 'msg2', sourceHandle: 'no', label: 'Not found', animated: true },
-              { id: 'e6', source: 'api2', target: 'msg1', animated: true },
-              { id: 'e7', source: 'msg1', target: 'opts1', animated: true },
-              { id: 'e8', source: 'opts1', target: 'end1', sourceHandle: 'opt-0', label: 'All done', animated: true },
-              { id: 'e9', source: 'opts1', target: 'subflow1', sourceHandle: 'opt-1', label: 'Has issue', animated: true },
-              { id: 'e10', source: 'msg2', target: 'form2', animated: true },
-              { id: 'e11', source: 'form2', target: 'api1', label: 'Retry', animated: true }
+              { id: 'e5', source: 'cond1', target: 'msg_not_found', sourceHandle: 'no', label: 'Not found', animated: true },
+              { id: 'e6', source: 'msg_not_found', target: 'form2', animated: true },
+              { id: 'e7', source: 'form2', target: 'api1', label: 'Retry search', animated: true },
+              
+              // Status routing
+              { id: 'e8', source: 'api2', target: 'cond2', animated: true },
+              { id: 'e9', source: 'cond2', target: 'msg_delivered', sourceHandle: 'yes', label: 'Delivered', animated: true },
+              { id: 'e10', source: 'cond2', target: 'cond3', sourceHandle: 'no', label: 'Other status', animated: true },
+              
+              // Delivered branch
+              { id: 'e11', source: 'msg_delivered', target: 'opts_delivered', animated: true },
+              { id: 'e12', source: 'opts_delivered', target: 'subflow_delivered_not_received', sourceHandle: 'opt-0', label: 'Checked all places', animated: true },
+              { id: 'e13', source: 'opts_delivered', target: 'end_waiting', sourceHandle: 'opt-1', label: 'Give me time', animated: true },
+              { id: 'e14', source: 'opts_delivered', target: 'end_delivered_found', sourceHandle: 'opt-2', label: 'Found it', animated: true },
+              
+              // In Transit branch
+              { id: 'e15', source: 'cond3', target: 'cond4', sourceHandle: 'yes', label: 'In Transit', animated: true },
+              { id: 'e16', source: 'cond4', target: 'subflow_extended_transit', sourceHandle: 'yes', label: '15+ days', animated: true },
+              { id: 'e17', source: 'cond4', target: 'cond5', sourceHandle: 'no', label: '<15 days', animated: true },
+              { id: 'e18', source: 'cond5', target: 'msg_sarah_voice', sourceHandle: 'yes', label: '6-14 days', animated: true },
+              { id: 'e19', source: 'cond5', target: 'cond_international', sourceHandle: 'no', label: '0-5 days', animated: true },
+              { id: 'e20', source: 'msg_sarah_voice', target: 'audio1', animated: true },
+              { id: 'e21', source: 'audio1', target: 'opts_sarah', animated: true },
+              { id: 'e22', source: 'opts_sarah', target: 'end_waiting', sourceHandle: 'opt-0', label: 'Wait longer', animated: true },
+              { id: 'e23', source: 'opts_sarah', target: 'subflow_extended_from_voice', sourceHandle: 'opt-1', label: 'Have concern', animated: true },
+              { id: 'e24', source: 'cond_international', target: 'msg_in_transit_intl', sourceHandle: 'yes', label: 'International', animated: true },
+              { id: 'e25', source: 'cond_international', target: 'msg_in_transit_normal', sourceHandle: 'no', label: 'Domestic', animated: true },
+              { id: 'e26', source: 'msg_in_transit_normal', target: 'opts_in_transit', animated: true },
+              { id: 'e27', source: 'msg_in_transit_intl', target: 'opts_in_transit', animated: true },
+              { id: 'e28', source: 'opts_in_transit', target: 'end_waiting', sourceHandle: 'opt-0', label: 'Wait', animated: true },
+              { id: 'e29', source: 'opts_in_transit', target: 'subflow_extended_from_normal', sourceHandle: 'opt-1', label: 'Have concern', animated: true },
+              
+              // Out for Delivery branch
+              { id: 'e30', source: 'cond3', target: 'cond6', sourceHandle: 'no', label: 'Check other statuses', animated: true },
+              { id: 'e31', source: 'cond6', target: 'msg_out_for_delivery', sourceHandle: 'yes', label: 'Out for Delivery', animated: true },
+              { id: 'e32', source: 'msg_out_for_delivery', target: 'cond_international', animated: true },
+              { id: 'e33', source: 'cond_international', target: 'msg_out_intl', sourceHandle: 'yes', label: 'International', animated: true },
+              { id: 'e34', source: 'msg_out_intl', target: 'opts_out_delivery', animated: true },
+              { id: 'e35', source: 'msg_out_for_delivery', target: 'opts_out_delivery', animated: true },
+              { id: 'e36', source: 'opts_out_delivery', target: 'end_waiting', sourceHandle: 'opt-0', label: 'Wait', animated: true },
+              { id: 'e37', source: 'opts_out_delivery', target: 'case_stuck_out_delivery', sourceHandle: 'opt-1', label: 'Stuck for days', animated: true },
+              
+              // Pending branch
+              { id: 'e38', source: 'cond6', target: 'cond7', sourceHandle: 'no', label: 'Check pending', animated: true },
+              { id: 'e39', source: 'cond7', target: 'msg_pending', sourceHandle: 'yes', label: 'Pending', animated: true },
+              { id: 'e40', source: 'msg_pending', target: 'cond_pending_days', animated: true },
+              { id: 'e41', source: 'cond_pending_days', target: 'msg_pending_long', sourceHandle: 'yes', label: '>3 days', animated: true },
+              { id: 'e42', source: 'cond_pending_days', target: 'opts_pending_normal', sourceHandle: 'no', label: '≤3 days', animated: true },
+              { id: 'e43', source: 'msg_pending_long', target: 'opts_pending_long', animated: true },
+              { id: 'e44', source: 'opts_pending_long', target: 'case_pending_investigate', sourceHandle: 'opt-0', label: 'Investigate', animated: true },
+              { id: 'e45', source: 'opts_pending_long', target: 'end_waiting', sourceHandle: 'opt-1', label: 'Wait', animated: true },
+              { id: 'e46', source: 'opts_pending_normal', target: 'end_waiting', sourceHandle: 'opt-0', label: 'Wait', animated: true },
+              { id: 'e47', source: 'opts_pending_normal', target: 'case_pending_cancel', sourceHandle: 'opt-1', label: 'Cancel', animated: true },
+              
+              // Failed Attempt branch
+              { id: 'e48', source: 'cond7', target: 'cond8', sourceHandle: 'no', label: 'Check failed', animated: true },
+              { id: 'e49', source: 'cond8', target: 'msg_failed_attempt', sourceHandle: 'yes', label: 'Failed Attempt', animated: true },
+              { id: 'e50', source: 'msg_failed_attempt', target: 'opts_failed_attempt', animated: true },
+              { id: 'e51', source: 'opts_failed_attempt', target: 'end_waiting', sourceHandle: 'opt-0', label: 'Wait', animated: true },
+              { id: 'e52', source: 'opts_failed_attempt', target: 'subflow_failed_address', sourceHandle: 'opt-1', label: 'Change address', animated: true },
+              { id: 'e53', source: 'opts_failed_attempt', target: 'subflow_multiple_failed', sourceHandle: 'opt-2', label: 'Multiple attempts', animated: true },
+              
+              // Pickup branch
+              { id: 'e54', source: 'cond8', target: 'cond9', sourceHandle: 'no', label: 'Check pickup', animated: true },
+              { id: 'e55', source: 'cond9', target: 'msg_pickup', sourceHandle: 'yes', label: 'Pickup', animated: true },
+              { id: 'e56', source: 'msg_pickup', target: 'api_pickup_parse', animated: true },
+              { id: 'e57', source: 'api_pickup_parse', target: 'msg_pickup_location', animated: true },
+              { id: 'e58', source: 'msg_pickup_location', target: 'opts_pickup', animated: true },
+              { id: 'e59', source: 'opts_pickup', target: 'end_waiting', sourceHandle: 'opt-0', label: 'Pick it up', animated: true },
+              { id: 'e60', source: 'opts_pickup', target: 'subflow_pickup_not_there', sourceHandle: 'opt-1', label: 'Not there', animated: true },
+              
+              // Exception branch
+              { id: 'e61', source: 'cond9', target: 'cond10', sourceHandle: 'no', label: 'Check exception', animated: true },
+              { id: 'e62', source: 'cond10', target: 'msg_exception', sourceHandle: 'yes', label: 'Exception', animated: true },
+              { id: 'e63', source: 'msg_exception', target: 'opts_exception', animated: true },
+              { id: 'e64', source: 'opts_exception', target: 'subflow_exception_investigate', sourceHandle: 'opt-0', label: 'Investigate', animated: true },
+              { id: 'e65', source: 'opts_exception', target: 'subflow_extended_transit', sourceHandle: 'opt-1', label: 'Refund', animated: true }
             ]
           },
 
@@ -846,6 +1044,342 @@
               { id: 'e4', source: 'opts1', target: 'api2', animated: true },
               { id: 'e5', source: 'api2', target: 'msg2', animated: true },
               { id: 'e6', source: 'msg2', target: 'end1', animated: true }
+            ]
+          },
+
+          // ============================================
+          // DETAILED TRACKING SUBFLOWS
+          // ============================================
+          
+          extended_transit: {
+            id: 'extended_transit',
+            parentId: 'track_order',
+            name: 'Extended Transit (15+ Days)',
+            description: 'Package in transit for 15+ days - offer reship or refund with explanation',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Extended Transit Flow' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I see your package has been in transit for <strong>{{daysInTransit}} days</strong> — that's definitely longer than expected, and I completely understand your frustration." } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 330 }, data: { persona: 'amy', content: "There could be a few reasons why this has happened:<br><br><strong>1. International warehouse shipping:</strong> Due to high demand, your order may have shipped from one of our international warehouses instead of a local one. We try to keep all our warehouses stocked, but sometimes items go out of stock locally.<br><br><strong>2. Address issues:</strong> Sometimes there are problems with the delivery address — a missing apartment number, incorrect postcode, or the carrier couldn't access the location.<br><br><strong>3. Customs or carrier delays:</strong> Packages can get held up in customs processing or experience unexpected carrier delays along the route." } },
+              { id: 'msg3', type: 'message', position: { x: 350, y: 550 }, data: { persona: 'amy', content: "Whatever the reason, {{daysInTransit}} days is too long and we want to make this right for you.<br><br>Here's the thing — we don't charge you for shipping, so if we reship your order, we'll likely lose money on both the shipping costs and the product itself. But your satisfaction matters more to us, and we want to make sure you receive your order." } },
+              { id: 'msg4', type: 'message', position: { x: 350, y: 750 }, data: { persona: 'amy', content: "So here's what I can offer you:" } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 950 }, data: { prompt: 'How would you like to proceed?', options: [{ label: "Reship my order (free)", icon: '📦' }, { label: "I'd prefer a refund", icon: '💰' }] } },
+              { id: 'subflow_reship', type: 'subflow', position: { x: 150, y: 1170 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'subflow_refund_ladder', type: 'subflow', position: { x: 550, y: 1170 }, data: { name: 'Shipping Refund Ladder', slug: 'shipping_refund_ladder', nodeCount: 10 } },
+              { id: 'end1', type: 'end', position: { x: 350, y: 1370 }, data: { title: 'Resolution Complete', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'msg2', animated: true },
+              { id: 'e3', source: 'msg2', target: 'msg3', animated: true },
+              { id: 'e4', source: 'msg3', target: 'msg4', animated: true },
+              { id: 'e5', source: 'msg4', target: 'opts1', animated: true },
+              { id: 'e6', source: 'opts1', target: 'subflow_reship', sourceHandle: 'opt-0', label: 'Reship', animated: true },
+              { id: 'e7', source: 'opts1', target: 'subflow_refund_ladder', sourceHandle: 'opt-1', label: 'Refund', animated: true },
+              { id: 'e8', source: 'subflow_reship', target: 'end1', animated: true },
+              { id: 'e9', source: 'subflow_refund_ladder', target: 'end1', animated: true }
+            ]
+          },
+
+          delivered_not_received: {
+            id: 'delivered_not_received',
+            parentId: 'track_order',
+            name: 'Delivered But Not Received',
+            description: 'Customer says package was marked delivered but they didn\'t receive it',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Delivered Not Received' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I understand this is frustrating. Let me create a case for our team to investigate with the carrier." } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 330 }, data: { persona: 'amy', content: "We'll contact the carrier and review:<br>• Security camera footage from delivery day<br>• Scan records to see when package arrived<br>• Staff logs and handover records<br>• The carrier will file a police report as part of their missing package process" } },
+              { id: 'msg3', type: 'message', position: { x: 350, y: 510 }, data: { persona: 'amy', content: "Your local police may reach out to you for a statement since you're the intended recipient. This helps if they need to pull CCTV footage or follow up. We want to make this right, so while that's happening, we can reship your order. Would you like us to proceed?" } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 730 }, data: { prompt: 'What would you like to do?', options: [{ label: "Yes, please investigate and reship", icon: '✅' }, { label: "Actually, let me check again first", icon: '🔍' }] } },
+              { id: 'subflow_investigation_reship', type: 'subflow', position: { x: 150, y: 950 }, data: { name: 'Investigation + Reship', slug: 'investigation_reship', nodeCount: 6 } },
+              { id: 'msg4', type: 'message', position: { x: 550, y: 950 }, data: { persona: 'amy', content: "No worries at all! Sometimes packages show up in unexpected places. Take your time to have another look and just come back if you still need help." } },
+              { id: 'end1', type: 'end', position: { x: 150, y: 1150 }, data: { title: 'Case Created', showSurvey: true } },
+              { id: 'end2', type: 'end', position: { x: 550, y: 1150 }, data: { title: 'Customer Checking', showSurvey: false } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'msg2', animated: true },
+              { id: 'e3', source: 'msg2', target: 'msg3', animated: true },
+              { id: 'e4', source: 'msg3', target: 'opts1', animated: true },
+              { id: 'e5', source: 'opts1', target: 'subflow_investigation_reship', sourceHandle: 'opt-0', label: 'Investigate & reship', animated: true },
+              { id: 'e6', source: 'opts1', target: 'msg4', sourceHandle: 'opt-1', label: 'Check again', animated: true },
+              { id: 'e7', source: 'subflow_investigation_reship', target: 'end1', animated: true },
+              { id: 'e8', source: 'msg4', target: 'end2', animated: true }
+            ]
+          },
+
+          failed_attempt_address: {
+            id: 'failed_attempt_address',
+            parentId: 'track_order',
+            name: 'Failed Attempt - Address Change',
+            description: 'Customer needs to change delivery address after failed attempt',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Address Change Flow' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "Since your package is already with {{carrierName}}, you'll need to contact them directly to update the delivery address or arrange a pickup." } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 330 }, data: { persona: 'amy', content: "<strong>{{carrierName}} Contact Information:</strong><br><br>📞 Phone: <strong>{{carrierPhone}}</strong><br>🔗 Track Package: <a href=\"{{carrierUrl}}\" target=\"_blank\">Click here to track on {{carrierName}}</a><br>📦 Tracking #: <strong>{{trackingNumber}}</strong>" } },
+              { id: 'msg3', type: 'message', position: { x: 350, y: 510 }, data: { persona: 'amy', content: "When you call, they can help you:<br>• Update the delivery address<br>• Schedule a redelivery<br>• Arrange a pickup at a local facility" } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 690 }, data: { prompt: 'What would you like to do?', options: [{ label: "Thanks, I'll contact them", icon: '📞' }, { label: "I'd rather get a reship", icon: '📦' }] } },
+              { id: 'end1', type: 'end', position: { x: 150, y: 890 }, data: { title: 'Contacting Carrier', showSurvey: false } },
+              { id: 'subflow_reship', type: 'subflow', position: { x: 550, y: 890 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end2', type: 'end', position: { x: 550, y: 1090 }, data: { title: 'Reship Created', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'msg2', animated: true },
+              { id: 'e3', source: 'msg2', target: 'msg3', animated: true },
+              { id: 'e4', source: 'msg3', target: 'opts1', animated: true },
+              { id: 'e5', source: 'opts1', target: 'end1', sourceHandle: 'opt-0', label: 'Contact carrier', animated: true },
+              { id: 'e6', source: 'opts1', target: 'subflow_reship', sourceHandle: 'opt-1', label: 'Reship', animated: true },
+              { id: 'e7', source: 'subflow_reship', target: 'end2', animated: true }
+            ]
+          },
+
+          multiple_failed_attempts: {
+            id: 'multiple_failed_attempts',
+            parentId: 'track_order',
+            name: 'Multiple Failed Delivery Attempts',
+            description: 'Carrier has tried multiple times to deliver - offer solutions',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Multiple Failed Attempts' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I'm really sorry you're dealing with this — multiple failed attempts is frustrating. Let me help you figure out the best solution." } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 330 }, data: { persona: 'amy', content: "Is your address correct, or do you need to update it?" } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 510 }, data: { prompt: 'What would you like to do?', options: [{ label: "My address is correct", icon: '✅' }, { label: "I need to update my address", icon: '📍' }] } },
+              { id: 'msg3', type: 'message', position: { x: 150, y: 730 }, data: { persona: 'amy', content: "Got it. Since {{carrierName}} has been unable to deliver, here are your options:<br><br><strong>Option 1: Contact {{carrierName}}</strong><br>📞 Call {{carrierPhone}} to schedule a specific delivery time or arrange pickup.<br>🔗 <a href=\"{{carrierUrl}}\" target=\"_blank\">Track your package on {{carrierName}}</a><br><br><strong>Option 2: We reship to a different address</strong><br>If you have an alternate address (work, neighbor, etc.) that might work better." } },
+              { id: 'opts2', type: 'options', position: { x: 150, y: 950 }, data: { prompt: 'What would you like to do?', options: [{ label: "I'll contact the carrier", icon: '📞' }, { label: "Reship to different address", icon: '📦' }, { label: "I want a refund instead", icon: '💰' }] } },
+              { id: 'end1', type: 'end', position: { x: -50, y: 1170 }, data: { title: 'Contacting Carrier', showSurvey: false } },
+              { id: 'subflow_reship', type: 'subflow', position: { x: 150, y: 1170 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'subflow_refund_ladder', type: 'subflow', position: { x: 350, y: 1170 }, data: { name: 'Shipping Refund Ladder', slug: 'shipping_refund_ladder', nodeCount: 10 } },
+              { id: 'subflow_address_change', type: 'subflow', position: { x: 550, y: 730 }, data: { name: 'Failed Attempt - Address Change', slug: 'failed_attempt_address', nodeCount: 6 } },
+              { id: 'end2', type: 'end', position: { x: 150, y: 1370 }, data: { title: 'Reship Created', showSurvey: true } },
+              { id: 'end3', type: 'end', position: { x: 350, y: 1370 }, data: { title: 'Refund Processed', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'msg2', animated: true },
+              { id: 'e3', source: 'msg2', target: 'opts1', animated: true },
+              { id: 'e4', source: 'opts1', target: 'msg3', sourceHandle: 'opt-0', label: 'Address correct', animated: true },
+              { id: 'e5', source: 'opts1', target: 'subflow_address_change', sourceHandle: 'opt-1', label: 'Update address', animated: true },
+              { id: 'e6', source: 'msg3', target: 'opts2', animated: true },
+              { id: 'e7', source: 'opts2', target: 'end1', sourceHandle: 'opt-0', label: 'Contact carrier', animated: true },
+              { id: 'e8', source: 'opts2', target: 'subflow_reship', sourceHandle: 'opt-1', label: 'Reship', animated: true },
+              { id: 'e9', source: 'opts2', target: 'subflow_refund_ladder', sourceHandle: 'opt-2', label: 'Refund', animated: true },
+              { id: 'e10', source: 'subflow_reship', target: 'end2', animated: true },
+              { id: 'e11', source: 'subflow_refund_ladder', target: 'end3', animated: true }
+            ]
+          },
+
+          pickup_not_there: {
+            id: 'pickup_not_there',
+            parentId: 'track_order',
+            name: 'Pickup Location - Package Not There',
+            description: 'Customer went to pickup location but package wasn\'t there - investigation flow',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Pickup Not There' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "Just to make sure we're on the same page, the tracking shows your package should be at:<br><br><strong>{{pickupLocationName}}</strong><br><br>Is this where you went?" } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 330 }, data: { prompt: 'Did you go to the correct location?', options: [{ label: "Yes, that's where I went", icon: '✅' }, { label: "No, I went somewhere else", icon: '❌' }] } },
+              { id: 'msg2', type: 'message', position: { x: 150, y: 510 }, data: { persona: 'amy', content: "Got it! Your package is actually at <strong>{{pickupLocationName}}</strong>. Please try picking it up from there and let me know if you still have issues." } },
+              { id: 'opts2', type: 'options', position: { x: 150, y: 690 }, data: { prompt: 'What would you like to do?', options: [{ label: "Thanks, I'll go there", icon: '✅' }, { label: "I still need help", icon: '⚠️' }] } },
+              { id: 'end1', type: 'end', position: { x: -50, y: 870 }, data: { title: 'Customer Going to Location', showSurvey: false } },
+              { id: 'msg3', type: 'message', position: { x: 550, y: 510 }, data: { persona: 'amy', content: "I'm sorry to hear that. Could you share a few details about your pickup attempt? This will help us investigate." } },
+              { id: 'form1', type: 'form', position: { x: 550, y: 690 }, data: { formType: 'Pickup Attempt Form', label: 'Pickup Details', fields: ['pickupDate', 'pickupLocation', 'pickupNotes'] } },
+              { id: 'msg4', type: 'message', position: { x: 550, y: 870 }, data: { persona: 'amy', content: "Thanks for those details. This is quite rare so we'll need to open a formal investigation. Just so you know, PuppyPad and {{carrierName}} are two separate companies. Our responsibility is to pack your order and hand it off to them safely, which we did. But we always go above and beyond to help when things go wrong on their end." } },
+              { id: 'msg5', type: 'message', position: { x: 550, y: 1050 }, data: { persona: 'amy', content: "Here's how the investigation works:<br><br>• We'll contact {{carrierName}} and {{pickupLocation}} directly<br>• They'll review the security camera footage from that day<br>• They'll pull scan records to see when your package arrived and if anyone collected it<br>• Staff logs and handover records will be checked<br>• {{carrierName}} will file a police report as part of their missing package process" } },
+              { id: 'msg6', type: 'message', position: { x: 550, y: 1230 }, data: { persona: 'amy', content: "Your local police may reach out to you for a statement since you're the intended recipient. This helps if they need to pull CCTV footage or follow up with {{pickupLocation}}. We want to make this right, so while that's happening, we can reship your order. Would you like us to proceed?" } },
+              { id: 'opts3', type: 'options', position: { x: 550, y: 1410 }, data: { prompt: 'What would you like to do?', options: [{ label: "Yes, please investigate and reship", icon: '✅' }, { label: "Actually, let me check again first", icon: '🔍' }] } },
+              { id: 'subflow_investigation_reship', type: 'subflow', position: { x: 350, y: 1590 }, data: { name: 'Investigation + Reship', slug: 'investigation_reship', nodeCount: 6 } },
+              { id: 'msg7', type: 'message', position: { x: 750, y: 1590 }, data: { persona: 'amy', content: "No worries at all! Sometimes packages show up in unexpected places. Take your time to have another look and just come back if you still need help." } },
+              { id: 'end2', type: 'end', position: { x: 350, y: 1790 }, data: { title: 'Investigation Case Created', showSurvey: true } },
+              { id: 'end3', type: 'end', position: { x: 750, y: 1790 }, data: { title: 'Customer Checking Again', showSurvey: false } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'opts1', animated: true },
+              { id: 'e3', source: 'opts1', target: 'msg2', sourceHandle: 'opt-1', label: 'Wrong location', animated: true },
+              { id: 'e4', source: 'opts1', target: 'msg3', sourceHandle: 'opt-0', label: 'Correct location', animated: true },
+              { id: 'e5', source: 'msg2', target: 'opts2', animated: true },
+              { id: 'e6', source: 'opts2', target: 'end1', sourceHandle: 'opt-0', label: 'Go there', animated: true },
+              { id: 'e7', source: 'opts2', target: 'msg3', sourceHandle: 'opt-1', label: 'Still need help', animated: true },
+              { id: 'e8', source: 'msg3', target: 'form1', animated: true },
+              { id: 'e9', source: 'form1', target: 'msg4', animated: true },
+              { id: 'e10', source: 'msg4', target: 'msg5', animated: true },
+              { id: 'e11', source: 'msg5', target: 'msg6', animated: true },
+              { id: 'e12', source: 'msg6', target: 'opts3', animated: true },
+              { id: 'e13', source: 'opts3', target: 'subflow_investigation_reship', sourceHandle: 'opt-0', label: 'Investigate & reship', animated: true },
+              { id: 'e14', source: 'opts3', target: 'msg7', sourceHandle: 'opt-1', label: 'Check again', animated: true },
+              { id: 'e15', source: 'subflow_investigation_reship', target: 'end2', animated: true },
+              { id: 'e16', source: 'msg7', target: 'end3', animated: true }
+            ]
+          },
+
+          exception_investigation: {
+            id: 'exception_investigation',
+            parentId: 'track_order',
+            name: 'Exception/Expired Tracking Investigation',
+            description: 'Tracking shows exception or expired status - investigate and resolve',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Exception Investigation' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I see there's an issue with your package delivery. Let me help you figure out what's going on." } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 330 }, data: { persona: 'amy', content: "I'll create a case for our team to investigate with the carrier. They'll check what happened and get back to you within 1-2 business days." } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 510 }, data: { prompt: 'What would you like to do?', options: [{ label: "Investigate and reship", icon: '🔍' }, { label: "I'd prefer a refund", icon: '💰' }] } },
+              { id: 'case1', type: 'case', position: { x: 150, y: 690 }, data: { type: 'shipping', subtype: 'exception_investigation', priority: 'normal' } },
+              { id: 'subflow_reship', type: 'subflow', position: { x: 150, y: 870 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'subflow_refund_ladder', type: 'subflow', position: { x: 550, y: 690 }, data: { name: 'Shipping Refund Ladder', slug: 'shipping_refund_ladder', nodeCount: 10 } },
+              { id: 'end1', type: 'end', position: { x: 150, y: 1070 }, data: { title: 'Case Created & Reship', showSurvey: true } },
+              { id: 'end2', type: 'end', position: { x: 550, y: 870 }, data: { title: 'Refund Processed', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'msg2', animated: true },
+              { id: 'e3', source: 'msg2', target: 'opts1', animated: true },
+              { id: 'e4', source: 'opts1', target: 'case1', sourceHandle: 'opt-0', label: 'Investigate & reship', animated: true },
+              { id: 'e5', source: 'opts1', target: 'subflow_refund_ladder', sourceHandle: 'opt-1', label: 'Refund', animated: true },
+              { id: 'e6', source: 'case1', target: 'subflow_reship', animated: true },
+              { id: 'e7', source: 'subflow_reship', target: 'end1', animated: true },
+              { id: 'e8', source: 'subflow_refund_ladder', target: 'end2', animated: true }
+            ]
+          },
+
+          reship_flow: {
+            id: 'reship_flow',
+            parentId: 'track_order',
+            name: 'Reship Flow',
+            description: 'Create free reship with address confirmation',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Reship Flow' } },
+              { id: 'cond1', type: 'condition', position: { x: 350, y: 150 }, data: { variable: 'address.address1', operator: 'exists', value: 'true', yesLabel: 'Has address', noLabel: 'No address' } },
+              { id: 'msg1', type: 'message', position: { x: 150, y: 330 }, data: { persona: 'amy', content: "I'll create a free reship for you! First, let me confirm your shipping address:<br><br><div class=\"address-display\">{{formattedAddress}}</div>" } },
+              { id: 'msg2', type: 'message', position: { x: 550, y: 330 }, data: { persona: 'amy', content: "I'll create a free reship for you! Please provide your shipping address:" } },
+              { id: 'msg3', type: 'message', position: { x: 150, y: 510 }, data: { persona: 'amy', content: "Is this address correct, or would you like to update it?" } },
+              { id: 'opts1', type: 'options', position: { x: 150, y: 690 }, data: { prompt: 'Is the address correct?', options: [{ label: "This address is correct", icon: '✅' }, { label: "I need to update it", icon: '✏️' }] } },
+              { id: 'form1', type: 'form', position: { x: 550, y: 510 }, data: { formType: 'Address Form', label: 'Shipping Address', fields: ['address1', 'address2', 'city', 'province', 'zip', 'country'] } },
+              { id: 'form2', type: 'form', position: { x: 350, y: 870 }, data: { formType: 'Address Form', label: 'Update Address', fields: ['address1', 'address2', 'city', 'province', 'zip', 'country'] } },
+              { id: 'api1', type: 'api', position: { x: 150, y: 870 }, data: { service: 'Shopify', endpoint: '/api/reship', description: 'Create reshipment with confirmed address', request: '{ orderId, address }', response: '{ reshipmentId, trackingNumber }' } },
+              { id: 'msg4', type: 'message', position: { x: 150, y: 1050 }, data: { persona: 'amy', content: "Perfect! I've created a free reship for you. You'll receive tracking information via email once it ships." } },
+              { id: 'end1', type: 'end', position: { x: 150, y: 1230 }, data: { title: 'Reship Created!', showSurvey: true } },
+              { id: 'api2', type: 'api', position: { x: 550, y: 690 }, data: { service: 'Shopify', endpoint: '/api/reship', description: 'Create reshipment with new address', request: '{ orderId, address }', response: '{ reshipmentId, trackingNumber }' } },
+              { id: 'api3', type: 'api', position: { x: 350, y: 1050 }, data: { service: 'Shopify', endpoint: '/api/reship', description: 'Create reshipment with updated address', request: '{ orderId, address }', response: '{ reshipmentId, trackingNumber }' } },
+              { id: 'end2', type: 'end', position: { x: 550, y: 870 }, data: { title: 'Reship Created!', showSurvey: true } },
+              { id: 'end3', type: 'end', position: { x: 350, y: 1230 }, data: { title: 'Reship Created!', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'cond1', animated: true },
+              { id: 'e2', source: 'cond1', target: 'msg1', sourceHandle: 'yes', label: 'Has address', animated: true },
+              { id: 'e3', source: 'cond1', target: 'msg2', sourceHandle: 'no', label: 'No address', animated: true },
+              { id: 'e4', source: 'msg1', target: 'msg3', animated: true },
+              { id: 'e5', source: 'msg3', target: 'opts1', animated: true },
+              { id: 'e6', source: 'opts1', target: 'api1', sourceHandle: 'opt-0', label: 'Correct', animated: true },
+              { id: 'e7', source: 'opts1', target: 'form2', sourceHandle: 'opt-1', label: 'Update', animated: true },
+              { id: 'e8', source: 'msg2', target: 'form1', animated: true },
+              { id: 'e9', source: 'form1', target: 'api2', animated: true },
+              { id: 'e10', source: 'form2', target: 'api3', animated: true },
+              { id: 'e11', source: 'api1', target: 'msg4', animated: true },
+              { id: 'e12', source: 'api2', target: 'msg4', animated: true },
+              { id: 'e13', source: 'api3', target: 'msg4', animated: true },
+              { id: 'e14', source: 'msg4', target: 'end1', animated: true },
+              { id: 'e15', source: 'msg4', target: 'end2', animated: true },
+              { id: 'e16', source: 'msg4', target: 'end3', animated: true }
+            ]
+          },
+
+          investigation_reship: {
+            id: 'investigation_reship',
+            parentId: 'track_order',
+            name: 'Investigation + Reship',
+            description: 'Open investigation case and reship order simultaneously',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Investigation + Reship' } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "Okay, I'll get that started for you. Our team will open the investigation with the carrier and we'll reship your order in the meantime." } },
+              { id: 'case1', type: 'case', position: { x: 350, y: 330 }, data: { type: 'shipping', subtype: 'pickup_investigation', priority: 'high', note: 'Package not at pickup location - investigation opened' } },
+              { id: 'subflow_reship', type: 'subflow', position: { x: 350, y: 510 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 690 }, data: { persona: 'amy', content: "I've created both the investigation case and your reshipment. You'll receive tracking for the new shipment via email, and we'll keep you updated on the investigation." } },
+              { id: 'end1', type: 'end', position: { x: 350, y: 870 }, data: { title: 'Investigation & Reship Complete', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'msg1', animated: true },
+              { id: 'e2', source: 'msg1', target: 'case1', animated: true },
+              { id: 'e3', source: 'case1', target: 'subflow_reship', animated: true },
+              { id: 'e4', source: 'subflow_reship', target: 'msg2', animated: true },
+              { id: 'e5', source: 'msg2', target: 'end1', animated: true }
+            ]
+          },
+
+          shipping_refund_ladder: {
+            id: 'shipping_refund_ladder',
+            parentId: 'track_order',
+            name: 'Shipping Refund Ladder',
+            description: 'Progressive refund offers for shipping issues (20% → 30% → 40% → 50% → full)',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 500, y: 0 }, data: { label: 'Shipping Refund Ladder' } },
+              { id: 'offer1', type: 'offer', position: { x: 500, y: 150 }, data: { percent: 20, label: 'Keep product & reship', message: "I'd love to make this right for you. How about a <strong>20% refund PLUS we'll reship your order</strong> free of charge? That way you get some money back AND your products!", needsManagerApproval: false } },
+              { id: 'offer2', type: 'offer', position: { x: 500, y: 350 }, data: { percent: 30, label: 'Keep product & reship', message: "I really want to help you here. Let me offer you a <strong>30% refund AND a free reship</strong>. You'll get a good chunk of money back plus we'll send out a new shipment right away.", needsManagerApproval: false } },
+              { id: 'delay1', type: 'delay', position: { x: 500, y: 550 }, data: { duration: 8000, message: 'Checking with manager...' } },
+              { id: 'offer3', type: 'offer', position: { x: 500, y: 750 }, data: { percent: 40, label: 'Keep product & reship', message: "Great news! My manager has approved a <strong>40% refund PLUS a free reship</strong> for you. This is a significant discount and we really want to make sure you're happy.", needsManagerApproval: true } },
+              { id: 'delay2', type: 'delay', position: { x: 500, y: 950 }, data: { duration: 8000, message: 'Final manager check...' } },
+              { id: 'offer4', type: 'offer', position: { x: 500, y: 1150 }, data: { percent: 50, label: 'Maximum offer + reship', message: "Okay, I've just spoken with my manager again and they've approved our <strong>maximum offer: 50% refund PLUS a free reship</strong>. This is the very best we can do — you'll get half your money back and still receive your products.", needsManagerApproval: true, isFinal: true } },
+              { id: 'case_full_refund', type: 'case', position: { x: 500, y: 1350 }, data: { type: 'refund', subtype: 'full_refund', priority: 'normal' } },
+              { id: 'case_partial_refund', type: 'case', position: { x: 300, y: 1550 }, data: { type: 'refund', subtype: 'partial_refund_reship', priority: 'normal' } },
+              { id: 'subflow_reship', type: 'subflow', position: { x: 300, y: 1750 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end1', type: 'end', position: { x: 500, y: 1950 }, data: { title: 'Full Refund Processed', showSurvey: true } },
+              { id: 'end2', type: 'end', position: { x: 300, y: 1950 }, data: { title: 'Partial Refund + Reship', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'offer1', animated: true },
+              { id: 'e2', source: 'offer1', target: 'offer2', sourceHandle: 'decline', label: 'Decline 20%', animated: true },
+              { id: 'e3', source: 'offer1', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 20%', animated: true },
+              { id: 'e4', source: 'offer2', target: 'delay1', sourceHandle: 'decline', label: 'Decline 30%', animated: true },
+              { id: 'e5', source: 'offer2', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 30%', animated: true },
+              { id: 'e6', source: 'delay1', target: 'offer3', animated: true },
+              { id: 'e7', source: 'offer3', target: 'delay2', sourceHandle: 'decline', label: 'Decline 40%', animated: true },
+              { id: 'e8', source: 'offer3', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 40%', animated: true },
+              { id: 'e9', source: 'delay2', target: 'offer4', animated: true },
+              { id: 'e10', source: 'offer4', target: 'case_full_refund', sourceHandle: 'decline', label: 'Decline 50%', animated: true },
+              { id: 'e11', source: 'offer4', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 50%', animated: true },
+              { id: 'e12', source: 'case_full_refund', target: 'end1', animated: true },
+              { id: 'e13', source: 'case_partial_refund', target: 'subflow_reship', animated: true },
+              { id: 'e14', source: 'subflow_reship', target: 'end2', animated: true }
+            ]
+          },
+
+          order_refund_ladder: {
+            id: 'order_refund_ladder',
+            parentId: 'help_with_order',
+            name: 'Order Refund Ladder',
+            description: 'Progressive refund offers for order issues with 90-day guarantee check (20% → 30% → 40% → 50% → full)',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 500, y: 0 }, data: { label: 'Order Refund Ladder' } },
+              { id: 'cond_guarantee', type: 'condition', position: { x: 500, y: 120 }, data: { variable: 'guarantee.eligible', operator: '===', value: 'true', yesLabel: 'Within 90 days', noLabel: 'Expired' } },
+              { id: 'msg_guarantee_expired', type: 'message', position: { x: 700, y: 300 }, data: { persona: 'amy', content: "I really wish I could help with a refund, but I need to be upfront with you. 💔<br><br>The 90-day guarantee period has expired for this order. However, I still want to help. Let me create a case for our team to review." } },
+              { id: 'case_guarantee_expired', type: 'case', position: { x: 700, y: 480 }, data: { type: 'refund', subtype: 'guarantee_expired', priority: 'normal' } },
+              { id: 'end_guarantee_expired', type: 'end', position: { x: 700, y: 660 }, data: { title: 'Case Created for Review', showSurvey: true } },
+              { id: 'offer1', type: 'offer', position: { x: 300, y: 300 }, data: { percent: 20, label: 'Keep product & continue trying', message: "I understand. As a valued customer, I'd like to offer you a <strong>20% partial refund</strong> while you keep the product and continue trying.", needsManagerApproval: false } },
+              { id: 'offer2', type: 'offer', position: { x: 300, y: 480 }, data: { percent: 30, label: 'Keep product', message: "I really want to make this right. Let me offer you a <strong>30% refund</strong> — that's a significant amount back while you keep everything.", needsManagerApproval: false } },
+              { id: 'delay1', type: 'delay', position: { x: 300, y: 660 }, data: { duration: 8000, message: 'Checking with manager...' } },
+              { id: 'offer3', type: 'offer', position: { x: 300, y: 840 }, data: { percent: 40, label: 'Keep product', message: "Great news! My manager has approved a <strong>40% refund</strong> for you. That's nearly half your money back and you still get to keep the products.", needsManagerApproval: true } },
+              { id: 'delay2', type: 'delay', position: { x: 300, y: 1020 }, data: { duration: 8000, message: 'Final manager check...' } },
+              { id: 'offer4', type: 'offer', position: { x: 300, y: 1200 }, data: { percent: 50, label: 'Maximum offer', message: "Okay, I've just spoken with my manager again and they've approved our <strong>maximum offer: 50% refund</strong>. This is the very best we can do — half your money back, no return needed.", needsManagerApproval: true, isFinal: true } },
+              { id: 'case_full_refund', type: 'case', position: { x: 300, y: 1380 }, data: { type: 'refund', subtype: 'full_refund', priority: 'normal' } },
+              { id: 'case_partial_refund', type: 'case', position: { x: 100, y: 1560 }, data: { type: 'refund', subtype: 'partial_refund', priority: 'normal' } },
+              { id: 'end_full_refund', type: 'end', position: { x: 300, y: 1560 }, data: { title: 'Full Refund Processed', showSurvey: true } },
+              { id: 'end_partial_refund', type: 'end', position: { x: 100, y: 1740 }, data: { title: 'Partial Refund Processed', showSurvey: true } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'cond_guarantee', animated: true },
+              { id: 'e2', source: 'cond_guarantee', target: 'offer1', sourceHandle: 'yes', label: 'Within 90 days', animated: true },
+              { id: 'e3', source: 'cond_guarantee', target: 'msg_guarantee_expired', sourceHandle: 'no', label: 'Expired', animated: true },
+              { id: 'e4', source: 'msg_guarantee_expired', target: 'case_guarantee_expired', animated: true },
+              { id: 'e5', source: 'case_guarantee_expired', target: 'end_guarantee_expired', animated: true },
+              { id: 'e6', source: 'offer1', target: 'offer2', sourceHandle: 'decline', label: 'Decline 20%', animated: true },
+              { id: 'e7', source: 'offer1', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 20%', animated: true },
+              { id: 'e8', source: 'offer2', target: 'delay1', sourceHandle: 'decline', label: 'Decline 30%', animated: true },
+              { id: 'e9', source: 'offer2', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 30%', animated: true },
+              { id: 'e10', source: 'delay1', target: 'offer3', animated: true },
+              { id: 'e11', source: 'offer3', target: 'delay2', sourceHandle: 'decline', label: 'Decline 40%', animated: true },
+              { id: 'e12', source: 'offer3', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 40%', animated: true },
+              { id: 'e13', source: 'delay2', target: 'offer4', animated: true },
+              { id: 'e14', source: 'offer4', target: 'case_full_refund', sourceHandle: 'decline', label: 'Decline 50%', animated: true },
+              { id: 'e15', source: 'offer4', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 50%', animated: true },
+              { id: 'e16', source: 'case_full_refund', target: 'end_full_refund', animated: true },
+              { id: 'e17', source: 'case_partial_refund', target: 'end_partial_refund', animated: true }
             ]
           }
         }
@@ -1922,6 +2456,162 @@
             );
           }
           
+          // Pickup Attempt Form - matches submitPickupAttempt() in app.js
+          if (formType === 'Pickup Attempt Form') {
+            const fields = node.data?.fields || ['pickupDate', 'pickupLocation', 'pickupNotes'];
+            return React.createElement('div', { style: { background: 'white', borderRadius: '24px', padding: '24px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', border: '1px solid rgba(0, 0, 0, 0.08)', marginTop: '8px', marginBottom: '20px' } },
+              fields.map((field, i) => {
+                const isDate = field === 'pickupDate';
+                const isTextarea = field === 'pickupNotes';
+                const getLabel = (f) => {
+                  if (f === 'pickupDate') return 'When did you try to pick it up?';
+                  if (f === 'pickupLocation') return 'What location did you go to?';
+                  if (f === 'pickupNotes') return 'What did they tell you? (optional)';
+                  return f.replace(/([A-Z])/g, ' $1').trim();
+                };
+                const getPlaceholder = (f) => {
+                  if (f === 'pickupLocation') return 'e.g., USPS on Main Street, UPS Store downtown';
+                  if (f === 'pickupNotes') return 'e.g., They said they couldn\'t find it, no record of the package, etc.';
+                  return '';
+                };
+                return React.createElement('div', { key: i, style: { marginBottom: '20px' } },
+                  React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, getLabel(field)),
+                  isDate 
+                    ? React.createElement('input', { 
+                        type: 'date', 
+                        max: new Date().toISOString().split('T')[0],
+                        style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' }
+                      })
+                    : isTextarea
+                    ? React.createElement('textarea', { 
+                        rows: 2,
+                        placeholder: getPlaceholder(field),
+                        style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease', resize: 'vertical', minHeight: '60px' }
+                      })
+                    : React.createElement('input', { 
+                        type: 'text', 
+                        placeholder: getPlaceholder(field),
+                        style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' }
+                      })
+                );
+              }),
+              React.createElement('button', { style: { width: '100%', padding: '18px 20px', background: 'linear-gradient(135deg, #1a365d 0%, #2d3748 100%)', color: 'white', border: 'none', borderRadius: '16px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 14px rgba(26, 54, 93, 0.4)' } }, 'Submit')
+            );
+          }
+
+          // Address Form - matches showAddressForm() in app.js with country-specific fields
+          if (formType === 'Address Form') {
+            const fields = node.data?.fields || ['country', 'address1', 'address2', 'city', 'province', 'zip'];
+            return React.createElement('div', { style: { background: 'white', borderRadius: '24px', padding: '24px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', border: '1px solid rgba(0, 0, 0, 0.08)', marginTop: '8px', marginBottom: '20px' } },
+              React.createElement('div', { style: { marginBottom: '20px' } },
+                React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, 'Country *'),
+                React.createElement('select', { 
+                  style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease', cursor: 'pointer' },
+                  defaultValue: 'United States'
+                },
+                  React.createElement('option', { value: 'United States' }, 'United States'),
+                  React.createElement('option', { value: 'Canada' }, 'Canada'),
+                  React.createElement('option', { value: 'United Kingdom' }, 'United Kingdom'),
+                  React.createElement('option', { value: 'Australia' }, 'Australia')
+                )
+              ),
+              React.createElement('div', { style: { marginBottom: '20px' } },
+                React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, 'Street Address *'),
+                React.createElement('input', { 
+                  type: 'text', 
+                  placeholder: '123 Main St',
+                  style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' }
+                })
+              ),
+              React.createElement('div', { style: { marginBottom: '20px' } },
+                React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, 'Apt/Suite/Unit'),
+                React.createElement('input', { 
+                  type: 'text', 
+                  placeholder: 'Apt 4B',
+                  style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' }
+                })
+              ),
+              React.createElement('div', { style: { marginBottom: '20px' } },
+                React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, 'City *'),
+                React.createElement('input', { 
+                  type: 'text', 
+                  placeholder: 'City',
+                  style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' }
+                })
+              ),
+              React.createElement('div', { style: { marginBottom: '20px' } },
+                React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, 'State *'),
+                React.createElement('select', { 
+                  style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease', cursor: 'pointer' },
+                  defaultValue: 'CA'
+                },
+                  React.createElement('option', { value: 'CA' }, 'California'),
+                  React.createElement('option', { value: 'NY' }, 'New York'),
+                  React.createElement('option', { value: 'TX' }, 'Texas')
+                )
+              ),
+              React.createElement('div', { style: { marginBottom: '20px' } },
+                React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, 'ZIP Code *'),
+                React.createElement('input', { 
+                  type: 'text', 
+                  placeholder: '12345',
+                  style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' }
+                })
+              ),
+              React.createElement('button', { style: { width: '100%', padding: '18px 20px', background: 'linear-gradient(135deg, #1a365d 0%, #2d3748 100%)', color: 'white', border: 'none', borderRadius: '16px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 14px rgba(26, 54, 93, 0.4)' } }, 'Confirm & Reship')
+            );
+          }
+
+          // Audio Player - matches showSarahVoiceNote() in app.js
+          if (formType === 'Audio Player') {
+            return React.createElement('div', { style: { background: 'white', borderRadius: '24px', padding: '24px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', border: '1px solid rgba(0, 0, 0, 0.08)', marginTop: '8px', marginBottom: '20px' } },
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' } },
+                React.createElement('img', { 
+                  src: personas.sarah.avatar, 
+                  alt: 'Sarah', 
+                  style: { width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' } 
+                }),
+                React.createElement('div', null,
+                  React.createElement('div', { style: { fontSize: '15px', fontWeight: 600, color: '#2D3748' } }, 'Sarah'),
+                  React.createElement('div', { style: { fontSize: '12px', color: '#718096' } }, 'Customer Experience Lead')
+                )
+              ),
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#F9FAFB', borderRadius: '12px' } },
+                React.createElement('button', { 
+                  style: { 
+                    width: '48px', 
+                    height: '48px', 
+                    borderRadius: '50%', 
+                    background: '#1a365d', 
+                    border: 'none', 
+                    color: 'white', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    cursor: 'pointer',
+                    flexShrink: 0
+                  } 
+                }, '▶'),
+                React.createElement('div', { style: { flex: 1, height: '40px', background: '#E5E7EB', borderRadius: '8px', position: 'relative', overflow: 'hidden' } },
+                  React.createElement('div', { style: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '100%', padding: '0 8px', gap: '2px' } },
+                    Array.from({ length: 40 }, (_, i) => 
+                      React.createElement('div', { 
+                        key: i, 
+                        style: { 
+                          width: '3px', 
+                          height: `${20 + Math.random() * 60}%`, 
+                          background: '#9CA3AF', 
+                          borderRadius: '2px' 
+                        } 
+                      })
+                    )
+                  )
+                ),
+                React.createElement('div', { style: { fontSize: '12px', color: '#718096', minWidth: '40px', textAlign: 'right' } }, '0:00')
+              )
+            );
+          }
+
           // Regular form - render input fields based on fields array
           const fields = node.data?.fields || ['email'];
           return React.createElement('div', { style: { background: 'white', borderRadius: '24px', padding: '24px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', border: '1px solid rgba(0, 0, 0, 0.08)', marginTop: '8px', marginBottom: '20px' } },
