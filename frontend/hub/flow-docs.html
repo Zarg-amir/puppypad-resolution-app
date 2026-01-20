@@ -98,33 +98,39 @@
 
     /* Flow card styles */
     .flow-card {
-      background: white;
-      border-radius: 12px;
-      border: 1px solid #e5e7eb;
-      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 14px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      padding: 16px 18px;
       cursor: pointer;
-      transition: all 0.2s ease;
-      margin-bottom: 8px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
     
     .flow-card:hover {
-      border-color: #c7d2fe;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
-      transform: translateY(-1px);
+      border-color: rgba(26, 54, 93, 0.15);
+      box-shadow: 0 4px 16px rgba(26, 54, 93, 0.08);
+      transform: translateY(-2px);
+      background: rgba(255, 255, 255, 1);
     }
     
     .flow-card.active {
-      border-color: #818cf8;
-      background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+      border-color: #1a365d;
+      background: linear-gradient(135deg, rgba(26, 54, 93, 0.08) 0%, rgba(26, 54, 93, 0.04) 100%);
+      box-shadow: 0 4px 16px rgba(26, 54, 93, 0.12);
     }
     
     .flow-card.parent {
-      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
     
     .flow-card.parent:hover {
-      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      background: rgba(255, 255, 255, 0.95);
     }
   </style>
 </head>
@@ -220,6 +226,19 @@
           React.createElement('polygon', { points: '12 2 2 7 12 12 22 7 12 2' }),
           React.createElement('polyline', { points: '2 17 12 22 22 17' }),
           React.createElement('polyline', { points: '2 12 12 17 22 12' })
+        ),
+        Chat: () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+          React.createElement('path', { d: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' })
+        ),
+        Package: () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+          React.createElement('path', { d: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z' }),
+          React.createElement('polyline', { points: '3.27 6.96 12 12.01 20.73 6.96' }),
+          React.createElement('line', { x1: 12, y1: 22.08, x2: 12, y2: 12 })
+        ),
+        Refresh: () => React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+          React.createElement('polyline', { points: '23 4 23 10 17 10' }),
+          React.createElement('polyline', { points: '1 20 1 14 7 14' }),
+          React.createElement('path', { d: 'M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15' })
         )
       };
 
@@ -259,29 +278,21 @@
           { 
             id: 'help_with_order', 
             name: 'Help With My Order', 
-            icon: '💬',
+            icon: React.createElement(Icons.Chat, { width: 22, height: 22 }),
             color: '#8b5cf6', 
             description: 'Customer needs assistance with an existing order - refunds, returns, issues',
-            subflows: ['dog_not_using', 'changed_mind', 'not_met_expectations', 'ordered_mistake', 'missing_item', 'wrong_item', 'damaged', 'charged_unexpectedly', 'not_received', 'quality_difference', 'other_reason', 'change_order'],
+            subflows: ['dog_not_using', 'changed_mind', 'not_met_expectations', 'ordered_mistake', 'missing_item', 'wrong_item', 'damaged', 'charged_unexpectedly', 'not_received', 'quality_difference', 'other_reason', 'change_order', 'existing_case_check', 'unfulfilled_order_handling'],
             entryNodes: [
               { id: 'start', type: 'start', position: { x: 500, y: 0 }, data: { label: 'Customer clicks Help With Order' } },
               { id: 'msg1', type: 'message', position: { x: 450, y: 120 }, data: { persona: 'amy', content: "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below. 🙂" } },
-              { id: 'form1', type: 'form', position: { x: 450, y: 320 }, data: { formType: 'Customer Lookup', label: 'Email or Order Number', fields: ['email', 'orderNumber'] } },
+              { id: 'form1', type: 'form', position: { x: 450, y: 300 }, data: { formType: 'Customer Lookup', label: 'Email or Order Number', fields: ['email', 'orderNumber'] } },
               { id: 'api1', type: 'api', position: { x: 450, y: 480 }, data: { service: 'Shopify', endpoint: '/api/lookup', description: 'Find customer orders by email or order number', request: '{ email, orderNumber }', response: '{ orders[], customer }' } },
-              { id: 'cond1', type: 'condition', position: { x: 450, y: 640 }, data: { variable: 'orders.length', operator: '>', value: '0', yesLabel: 'Found', noLabel: 'Not Found' } },
-              { id: 'api_check_case', type: 'api', position: { x: 250, y: 820 }, data: { service: 'Backend', endpoint: '/api/check-case', description: 'Check for existing open case (deduplication)', request: '{ orderNumber, email }', response: '{ existingCase: boolean, caseId?, caseUrl? }' } },
-              { id: 'cond_existing_case', type: 'condition', position: { x: 250, y: 1000 }, data: { variable: 'existingCase.existingCase', operator: '===', value: 'true', yesLabel: 'Case exists', noLabel: 'No case' } },
-              { id: 'msg_existing_case', type: 'message', position: { x: 50, y: 1180 }, data: { persona: 'amy', content: "I see you already have an open case for this order! You can view it in the Resolution Hub: <a href=\"{{caseUrl}}\" target=\"_blank\">View Case {{caseId}}</a><br><br>Is there something else I can help you with?" } },
-              { id: 'cond_can_modify', type: 'condition', position: { x: 250, y: 1180 }, data: { variable: 'selectedOrder.canModify', operator: '===', value: 'true', yesLabel: 'Unfulfilled (<10h)', noLabel: 'Fulfilled or >10h' } },
-              { id: 'itemSelect', type: 'form', position: { x: 250, y: 1360 }, data: { formType: 'Item Selection', label: 'Which items need help?', description: 'Customer selects affected items from their order' } },
-              { id: 'deepSearch', type: 'form', position: { x: 650, y: 820 }, data: { formType: 'Deep Search', label: 'More details needed', fields: ['firstName', 'lastName', 'address1', 'country'] } },
-              { id: 'msg_unfulfilled', type: 'message', position: { x: 50, y: 1360 }, data: { persona: 'amy', content: "Great news! Your order hasn't shipped yet, so I can still make changes. Would you like to change or cancel your order?" } },
-              { id: 'opts_unfulfilled', type: 'options', position: { x: 50, y: 1540 }, data: { prompt: 'What would you like to do?', options: [{ label: "Change my order", icon: '🔄' }, { label: "Cancel my order", icon: '❌' }, { label: "Actually, keep it as is", icon: '✅' }] } },
-              { id: 'subflow_change_order', type: 'subflow', position: { x: -150, y: 1720 }, data: { name: 'Change Order', slug: 'change_order', nodeCount: 8 } },
-              { id: 'msg_cancel_reason', type: 'message', position: { x: 150, y: 1720 }, data: { persona: 'amy', content: "I'll help you cancel. Can you tell me why you'd like to cancel?" } },
-              { id: 'opts_cancel_intent', type: 'options', position: { x: 150, y: 1900 }, data: { prompt: 'Why would you like to cancel?', options: [{ label: "My dog isn't using it", icon: '🐕' }, { label: 'I changed my mind', icon: '💭' }, { label: "It didn't meet expectations", icon: '😕' }, { label: 'Ordered by mistake', icon: '🔄' }, { label: 'Other reason', icon: '❓' }] } },
-              { id: 'end_keep_order', type: 'end', position: { x: 250, y: 1720 }, data: { title: 'Order Kept', showSurvey: false } },
-              { id: 'opts1', type: 'options', position: { x: 250, y: 1540 }, data: { prompt: "Got it! What's going on with your order?", options: [
+              { id: 'cond1', type: 'condition', position: { x: 450, y: 660 }, data: { variable: 'orders.length', operator: '>', value: '0', yesLabel: 'Found', noLabel: 'Not Found' } },
+              { id: 'subflow_existing_case', type: 'subflow', position: { x: 250, y: 840 }, data: { name: 'Existing Case Check', slug: 'existing_case_check', nodeCount: 5 } },
+              { id: 'subflow_unfulfilled', type: 'subflow', position: { x: 250, y: 1020 }, data: { name: 'Unfulfilled Order Handling', slug: 'unfulfilled_order_handling', nodeCount: 8 } },
+              { id: 'itemSelect', type: 'form', position: { x: 250, y: 1200 }, data: { formType: 'Item Selection', label: 'Which items need help?', description: 'Customer selects affected items from their order' } },
+              { id: 'deepSearch', type: 'form', position: { x: 650, y: 840 }, data: { formType: 'Deep Search', label: 'More details needed', fields: ['firstName', 'lastName', 'address1', 'country'] } },
+              { id: 'opts1', type: 'options', position: { x: 250, y: 1380 }, data: { prompt: "Got it! What's going on with your order?", options: [
                 { label: "My dog isn't using it", icon: '🐕' },
                 { label: 'I changed my mind', icon: '💭' },
                 { label: "It didn't meet expectations", icon: '😕' },
@@ -294,55 +305,40 @@
                 { label: 'Quality difference', icon: '🔍' },
                 { label: 'Other reason', icon: '❓' }
               ] } },
-              { id: 'sub1', type: 'subflow', position: { x: -200, y: 1250 }, data: { name: 'Dog Not Using', slug: 'dog_not_using', nodeCount: 12 } },
-              { id: 'sub2', type: 'subflow', position: { x: 50, y: 1250 }, data: { name: 'Changed Mind', slug: 'changed_mind', nodeCount: 15 } },
-              { id: 'sub3', type: 'subflow', position: { x: 300, y: 1250 }, data: { name: 'Not Met Expectations', slug: 'not_met_expectations', nodeCount: 10 } },
-              { id: 'sub4', type: 'subflow', position: { x: 550, y: 1250 }, data: { name: 'Ordered Mistake', slug: 'ordered_mistake', nodeCount: 8 } },
-              { id: 'sub5', type: 'subflow', position: { x: 800, y: 1250 }, data: { name: 'Missing Item', slug: 'missing_item', nodeCount: 9 } },
-              { id: 'sub6', type: 'subflow', position: { x: -200, y: 1450 }, data: { name: 'Wrong Item', slug: 'wrong_item', nodeCount: 10 } },
-              { id: 'sub7', type: 'subflow', position: { x: 50, y: 1450 }, data: { name: 'Damaged', slug: 'damaged', nodeCount: 11 } },
-              { id: 'sub8', type: 'subflow', position: { x: 300, y: 1450 }, data: { name: 'Charged Unexpectedly', slug: 'charged_unexpectedly', nodeCount: 22 } },
-              { id: 'sub9', type: 'subflow', position: { x: 550, y: 1450 }, data: { name: 'Not Received', slug: 'not_received', nodeCount: 14 } },
-              { id: 'sub10', type: 'subflow', position: { x: 800, y: 1450 }, data: { name: 'Quality Difference', slug: 'quality_difference', nodeCount: 8 } },
-              { id: 'sub11', type: 'subflow', position: { x: 300, y: 1650 }, data: { name: 'Other Reason', slug: 'other_reason', nodeCount: 6 } },
-              { id: 'sub12', type: 'subflow', position: { x: -150, y: 1900 }, data: { name: 'Change Order', slug: 'change_order', nodeCount: 8 } }
+              { id: 'sub1', type: 'subflow', position: { x: -200, y: 1580 }, data: { name: 'Dog Not Using', slug: 'dog_not_using', nodeCount: 12 } },
+              { id: 'sub2', type: 'subflow', position: { x: 50, y: 1580 }, data: { name: 'Changed Mind', slug: 'changed_mind', nodeCount: 15 } },
+              { id: 'sub3', type: 'subflow', position: { x: 300, y: 1580 }, data: { name: 'Not Met Expectations', slug: 'not_met_expectations', nodeCount: 10 } },
+              { id: 'sub4', type: 'subflow', position: { x: 550, y: 1580 }, data: { name: 'Ordered Mistake', slug: 'ordered_mistake', nodeCount: 8 } },
+              { id: 'sub5', type: 'subflow', position: { x: 800, y: 1580 }, data: { name: 'Missing Item', slug: 'missing_item', nodeCount: 9 } },
+              { id: 'sub6', type: 'subflow', position: { x: -200, y: 1780 }, data: { name: 'Wrong Item', slug: 'wrong_item', nodeCount: 10 } },
+              { id: 'sub7', type: 'subflow', position: { x: 50, y: 1780 }, data: { name: 'Damaged', slug: 'damaged', nodeCount: 11 } },
+              { id: 'sub8', type: 'subflow', position: { x: 300, y: 1780 }, data: { name: 'Charged Unexpectedly', slug: 'charged_unexpectedly', nodeCount: 22 } },
+              { id: 'sub9', type: 'subflow', position: { x: 550, y: 1780 }, data: { name: 'Not Received', slug: 'not_received', nodeCount: 14 } },
+              { id: 'sub10', type: 'subflow', position: { x: 800, y: 1780 }, data: { name: 'Quality Difference', slug: 'quality_difference', nodeCount: 8 } },
+              { id: 'sub11', type: 'subflow', position: { x: 300, y: 1980 }, data: { name: 'Other Reason', slug: 'other_reason', nodeCount: 6 } }
             ],
             entryEdges: [
               { id: 'e1', source: 'start', target: 'msg1', animated: true },
               { id: 'e2', source: 'msg1', target: 'form1', animated: true },
               { id: 'e3', source: 'form1', target: 'api1', animated: true },
               { id: 'e4', source: 'api1', target: 'cond1', animated: true },
-              { id: 'e5', source: 'cond1', target: 'api_check_case', sourceHandle: 'yes', label: 'Orders found', animated: true },
+              { id: 'e5', source: 'cond1', target: 'subflow_existing_case', sourceHandle: 'yes', label: 'Orders found', animated: true },
               { id: 'e6', source: 'cond1', target: 'deepSearch', sourceHandle: 'no', label: 'Not found', animated: true },
-              { id: 'e7', source: 'api_check_case', target: 'cond_existing_case', animated: true },
-              { id: 'e8', source: 'cond_existing_case', target: 'msg_existing_case', sourceHandle: 'yes', label: 'Case exists', animated: true },
-              { id: 'e9', source: 'cond_existing_case', target: 'cond_can_modify', sourceHandle: 'no', label: 'No case', animated: true },
-              { id: 'e10', source: 'cond_can_modify', target: 'msg_unfulfilled', sourceHandle: 'yes', label: 'Unfulfilled (<10h)', animated: true },
-              { id: 'e11', source: 'cond_can_modify', target: 'itemSelect', sourceHandle: 'no', label: 'Fulfilled or >10h', animated: true },
-              { id: 'e12', source: 'msg_unfulfilled', target: 'opts_unfulfilled', animated: true },
-              { id: 'e13', source: 'opts_unfulfilled', target: 'subflow_change_order', sourceHandle: 'opt-0', label: 'Change order', animated: true },
-              { id: 'e14', source: 'opts_unfulfilled', target: 'msg_cancel_reason', sourceHandle: 'opt-1', label: 'Cancel order', animated: true },
-              { id: 'e15', source: 'opts_unfulfilled', target: 'end_keep_order', sourceHandle: 'opt-2', label: 'Keep it', animated: true },
-              { id: 'e16', source: 'msg_cancel_reason', target: 'opts_cancel_intent', animated: true },
-              { id: 'e17', source: 'opts_cancel_intent', target: 'sub1', sourceHandle: 'opt-0', label: 'Dog not using', animated: true },
-              { id: 'e18', source: 'opts_cancel_intent', target: 'sub2', sourceHandle: 'opt-1', label: 'Changed mind', animated: true },
-              { id: 'e19', source: 'opts_cancel_intent', target: 'sub3', sourceHandle: 'opt-2', label: 'Not met expectations', animated: true },
-              { id: 'e20', source: 'opts_cancel_intent', target: 'sub4', sourceHandle: 'opt-3', label: 'Ordered mistake', animated: true },
-              { id: 'e21', source: 'opts_cancel_intent', target: 'sub11', sourceHandle: 'opt-4', label: 'Other reason', animated: true },
-              { id: 'e22', source: 'itemSelect', target: 'opts1', animated: true },
-              { id: 'e23', source: 'deepSearch', target: 'api1', label: 'Retry search', animated: true },
-              { id: 'e24', source: 'subflow_change_order', target: 'sub12', animated: true },
-              { id: 'e25', source: 'opts1', target: 'sub1', label: 'Dog not using', animated: true },
-              { id: 'e26', source: 'opts1', target: 'sub2', label: 'Changed mind', animated: true },
-              { id: 'e27', source: 'opts1', target: 'sub3', label: 'Not met expectations', animated: true },
-              { id: 'e28', source: 'opts1', target: 'sub4', label: 'Ordered mistake', animated: true },
-              { id: 'e29', source: 'opts1', target: 'sub5', label: 'Missing item', animated: true },
-              { id: 'e30', source: 'opts1', target: 'sub6', label: 'Wrong item', animated: true },
-              { id: 'e31', source: 'opts1', target: 'sub7', label: 'Damaged', animated: true },
-              { id: 'e32', source: 'opts1', target: 'sub8', label: 'Charged', animated: true },
-              { id: 'e33', source: 'opts1', target: 'sub9', label: 'Not received', animated: true },
-              { id: 'e34', source: 'opts1', target: 'sub10', label: 'Quality', animated: true },
-              { id: 'e35', source: 'opts1', target: 'sub11', label: 'Other', animated: true }
+              { id: 'e7', source: 'subflow_existing_case', target: 'subflow_unfulfilled', label: 'No existing case', animated: true },
+              { id: 'e8', source: 'subflow_unfulfilled', target: 'itemSelect', label: 'Fulfilled or >10h', animated: true },
+              { id: 'e9', source: 'itemSelect', target: 'opts1', animated: true },
+              { id: 'e10', source: 'deepSearch', target: 'api1', label: 'Retry search', animated: true },
+              { id: 'e11', source: 'opts1', target: 'sub1', label: 'Dog not using', animated: true },
+              { id: 'e12', source: 'opts1', target: 'sub2', label: 'Changed mind', animated: true },
+              { id: 'e13', source: 'opts1', target: 'sub3', label: 'Not met expectations', animated: true },
+              { id: 'e14', source: 'opts1', target: 'sub4', label: 'Ordered mistake', animated: true },
+              { id: 'e15', source: 'opts1', target: 'sub5', label: 'Missing item', animated: true },
+              { id: 'e16', source: 'opts1', target: 'sub6', label: 'Wrong item', animated: true },
+              { id: 'e17', source: 'opts1', target: 'sub7', label: 'Damaged', animated: true },
+              { id: 'e18', source: 'opts1', target: 'sub8', label: 'Charged', animated: true },
+              { id: 'e19', source: 'opts1', target: 'sub9', label: 'Not received', animated: true },
+              { id: 'e20', source: 'opts1', target: 'sub10', label: 'Quality', animated: true },
+              { id: 'e21', source: 'opts1', target: 'sub11', label: 'Other', animated: true }
             ]
           },
           { 
@@ -365,7 +361,7 @@
           { 
             id: 'manage_subscription', 
             name: 'Manage My Subscription', 
-            icon: '🔄',
+            icon: React.createElement(Icons.Refresh, { width: 22, height: 22 }),
             color: '#10b981', 
             description: 'Customer wants to pause, cancel, or modify their subscription',
             subflows: ['pause_subscription', 'cancel_subscription', 'change_frequency'],
@@ -1440,6 +1436,58 @@
               { id: 'e16', source: 'case_full_refund', target: 'end_full_refund', animated: true },
               { id: 'e17', source: 'case_partial_refund', target: 'end_partial_refund', animated: true }
             ]
+          },
+
+          // EXISTING CASE CHECK - Deduplication Flow
+          existing_case_check: {
+            id: 'existing_case_check',
+            parentId: 'help_with_order',
+            name: 'Existing Case Check',
+            description: 'Check for existing open case to prevent duplicates',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Existing Case Check' } },
+              { id: 'api_check_case', type: 'api', position: { x: 350, y: 150 }, data: { service: 'Backend', endpoint: '/api/check-case', description: 'Check for existing open case (deduplication)', request: '{ orderNumber, email }', response: '{ existingCase: boolean, caseId?, caseUrl? }' } },
+              { id: 'cond_existing_case', type: 'condition', position: { x: 350, y: 330 }, data: { variable: 'existingCase.existingCase', operator: '===', value: 'true', yesLabel: 'Case exists', noLabel: 'No case' } },
+              { id: 'msg_existing_case', type: 'message', position: { x: 150, y: 510 }, data: { persona: 'amy', content: "I see you already have an open case for this order! You can view it in the Resolution Hub: <a href=\"{{caseUrl}}\" target=\"_blank\">View Case {{caseId}}</a><br><br>Is there something else I can help you with?" } },
+              { id: 'end_existing_case', type: 'end', position: { x: 150, y: 690 }, data: { title: 'Existing Case Found', showSurvey: false } },
+              { id: 'end_no_case', type: 'end', position: { x: 550, y: 510 }, data: { title: 'No Existing Case', showSurvey: false } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'api_check_case', animated: true },
+              { id: 'e2', source: 'api_check_case', target: 'cond_existing_case', animated: true },
+              { id: 'e3', source: 'cond_existing_case', target: 'msg_existing_case', sourceHandle: 'yes', label: 'Case exists', animated: true },
+              { id: 'e4', source: 'cond_existing_case', target: 'end_no_case', sourceHandle: 'no', label: 'No case', animated: true },
+              { id: 'e5', source: 'msg_existing_case', target: 'end_existing_case', animated: true }
+            ]
+          },
+
+          // UNFULFILLED ORDER HANDLING - 10-hour window flow
+          unfulfilled_order_handling: {
+            id: 'unfulfilled_order_handling',
+            parentId: 'help_with_order',
+            name: 'Unfulfilled Order Handling',
+            description: 'Handle unfulfilled orders within 10-hour window',
+            nodes: [
+              { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Unfulfilled Order Check' } },
+              { id: 'cond_can_modify', type: 'condition', position: { x: 350, y: 150 }, data: { variable: 'selectedOrder.canModify', operator: '===', value: 'true', yesLabel: 'Unfulfilled (<10h)', noLabel: 'Fulfilled or >10h' } },
+              { id: 'msg_unfulfilled', type: 'message', position: { x: 150, y: 330 }, data: { persona: 'amy', content: "Great news! Your order hasn't shipped yet, so I can still make changes. Would you like to change or cancel your order?" } },
+              { id: 'opts_unfulfilled', type: 'options', position: { x: 150, y: 510 }, data: { prompt: 'What would you like to do?', options: [{ label: "Change my order", icon: '🔄' }, { label: "Cancel my order", icon: '❌' }, { label: "Actually, keep it as is", icon: '✅' }] } },
+              { id: 'subflow_change_order', type: 'subflow', position: { x: -50, y: 690 }, data: { name: 'Change Order', slug: 'change_order', nodeCount: 8 } },
+              { id: 'msg_cancel_reason', type: 'message', position: { x: 250, y: 690 }, data: { persona: 'amy', content: "I'll help you cancel. Can you tell me why you'd like to cancel?" } },
+              { id: 'opts_cancel_intent', type: 'options', position: { x: 250, y: 870 }, data: { prompt: 'Why would you like to cancel?', options: [{ label: "My dog isn't using it", icon: '🐕' }, { label: 'I changed my mind', icon: '💭' }, { label: "It didn't meet expectations", icon: '😕' }, { label: 'Ordered by mistake', icon: '🔄' }, { label: 'Other reason', icon: '❓' }] } },
+              { id: 'end_keep_order', type: 'end', position: { x: 350, y: 690 }, data: { title: 'Order Kept', showSurvey: false } },
+              { id: 'end_fulfilled', type: 'end', position: { x: 550, y: 330 }, data: { title: 'Order Already Fulfilled', showSurvey: false } }
+            ],
+            edges: [
+              { id: 'e1', source: 'start', target: 'cond_can_modify', animated: true },
+              { id: 'e2', source: 'cond_can_modify', target: 'msg_unfulfilled', sourceHandle: 'yes', label: 'Unfulfilled (<10h)', animated: true },
+              { id: 'e3', source: 'cond_can_modify', target: 'end_fulfilled', sourceHandle: 'no', label: 'Fulfilled or >10h', animated: true },
+              { id: 'e4', source: 'msg_unfulfilled', target: 'opts_unfulfilled', animated: true },
+              { id: 'e5', source: 'opts_unfulfilled', target: 'subflow_change_order', sourceHandle: 'opt-0', label: 'Change order', animated: true },
+              { id: 'e6', source: 'opts_unfulfilled', target: 'msg_cancel_reason', sourceHandle: 'opt-1', label: 'Cancel order', animated: true },
+              { id: 'e7', source: 'opts_unfulfilled', target: 'end_keep_order', sourceHandle: 'opt-2', label: 'Keep it', animated: true },
+              { id: 'e8', source: 'msg_cancel_reason', target: 'opts_cancel_intent', animated: true }
+            ]
           }
         }
       };
@@ -1740,39 +1788,70 @@
 
         return React.createElement('div', { 
           style: { 
-            width: '300px', 
-            background: '#f8fafc', 
-            borderRight: '1px solid #e5e7eb', 
+            width: '320px', 
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderRight: '1px solid rgba(0, 0, 0, 0.06)', 
             display: 'flex', 
             flexDirection: 'column', 
             flexShrink: 0,
-            height: '100vh'
+            height: '100vh',
+            boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.5)'
           } 
         },
           // Header with Back to Hub
-          React.createElement('div', { style: { padding: '16px 20px', borderBottom: '1px solid #e5e7eb', background: 'white' } },
+          React.createElement('div', { style: { 
+            padding: '24px 28px', 
+            borderBottom: '1px solid rgba(0, 0, 0, 0.06)', 
+            background: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)'
+          } },
             React.createElement('a', { 
               href: '/hub', 
               style: { 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: '8px', 
-                color: '#6366f1', 
+                gap: '10px', 
+                color: '#1a365d', 
                 textDecoration: 'none', 
-                fontSize: '14px', 
+                fontSize: '15px', 
                 fontWeight: 500,
-                marginBottom: '16px'
-              } 
+                marginBottom: '20px',
+                fontFamily: 'var(--font-sans, "Inter", sans-serif)',
+                transition: 'all 0.2s ease',
+                padding: '6px 10px',
+                borderRadius: '8px',
+                marginLeft: '-10px'
+              },
+              onMouseEnter: (e) => { e.target.style.background = 'rgba(26, 54, 93, 0.08)'; },
+              onMouseLeave: (e) => { e.target.style.background = 'transparent'; }
             }, 
               React.createElement(Icons.ArrowLeft, null), 
               'Back to Hub'
             ),
-            React.createElement('h1', { style: { fontSize: '18px', fontWeight: 700, color: '#111827', margin: 0 } }, 'Flow Documentation'),
-            React.createElement('p', { style: { fontSize: '13px', color: '#6b7280', marginTop: '4px' } }, 'Select a flow to view')
+            React.createElement('h1', { style: { 
+              fontSize: '22px', 
+              fontWeight: 700, 
+              color: '#1a365d', 
+              margin: 0,
+              fontFamily: 'var(--font-display, "Space Grotesk", sans-serif)',
+              letterSpacing: '-0.02em',
+              lineHeight: '1.2'
+            } }, 'Flow Documentation'),
+            React.createElement('p', { style: { 
+              fontSize: '14px', 
+              color: '#64748b', 
+              marginTop: '8px',
+              fontWeight: 400,
+              fontFamily: 'var(--font-sans, "Inter", sans-serif)',
+              lineHeight: '1.5'
+            } }, 'Select a flow to view')
           ),
 
           // Flow list
-          React.createElement('div', { style: { flex: 1, overflowY: 'auto', padding: '16px' } },
+          React.createElement('div', { style: { flex: 1, overflowY: 'auto', padding: '24px 20px' } },
             parentFlows.map(parent => {
               const isExpanded = expandedParents[parent.id];
               const isSelected = selectedParentId === parent.id;
@@ -1797,10 +1876,35 @@
                     borderColor: isSelected ? parent.color : undefined
                   }
                 },
-                  React.createElement('div', { style: { fontSize: '24px' } }, parent.icon),
+                  React.createElement('div', { 
+                    style: { 
+                      width: '40px', 
+                      height: '40px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      borderRadius: '10px',
+                      background: isSelected ? `rgba(${parent.color === '#8b5cf6' ? '139, 92, 246' : parent.color === '#3b82f6' ? '59, 130, 246' : '16, 185, 129'}, 0.1)` : 'rgba(0, 0, 0, 0.04)',
+                      color: isSelected ? parent.color : '#64748b',
+                      flexShrink: 0
+                    } 
+                  }, parent.icon),
                   React.createElement('div', { style: { flex: 1, minWidth: 0 } },
-                    React.createElement('div', { style: { fontSize: '14px', fontWeight: 600, color: '#111827' } }, parent.name),
-                    React.createElement('div', { style: { fontSize: '12px', color: '#6b7280', marginTop: '2px' } }, `${parentSubflows.length + 1} flows`)
+                    React.createElement('div', { style: { 
+                      fontSize: '15px', 
+                      fontWeight: 600, 
+                      color: isSelected ? '#1a365d' : '#0f172a',
+                      fontFamily: 'var(--font-sans, "Inter", sans-serif)',
+                      letterSpacing: '-0.01em',
+                      lineHeight: '1.3'
+                    } }, parent.name),
+                    React.createElement('div', { style: { 
+                      fontSize: '13px', 
+                      color: '#64748b', 
+                      marginTop: '4px',
+                      fontWeight: 400,
+                      fontFamily: 'var(--font-sans, "Inter", sans-serif)'
+                    } }, `${parentSubflows.length + 1} flows`)
                   ),
                   React.createElement('div', { 
                     style: { 
@@ -1821,8 +1925,19 @@
                     React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
                       React.createElement('div', { style: { width: '8px', height: '8px', borderRadius: '50%', background: viewingEntry && isSelected ? parent.color : '#d1d5db' } }),
                       React.createElement('div', null,
-                        React.createElement('div', { style: { fontSize: '13px', fontWeight: 500, color: '#2D3748' } }, 'Entry Flow'),
-                        React.createElement('div', { style: { fontSize: '11px', color: '#718096' } }, `${parent.entryNodes?.length || 0} nodes`)
+                        React.createElement('div', { style: { 
+                          fontSize: '14px', 
+                          fontWeight: 500, 
+                          color: viewingEntry && isSelected ? '#1a365d' : '#334155',
+                          fontFamily: 'var(--font-sans, "Inter", sans-serif)',
+                          letterSpacing: '-0.01em'
+                        } }, 'Entry Flow'),
+                        React.createElement('div', { style: { 
+                          fontSize: '12px', 
+                          color: '#64748b',
+                          marginTop: '2px',
+                          fontWeight: 400
+                        } }, `${parent.entryNodes?.length || 0} nodes`)
                       )
                     )
                   ),
@@ -1837,8 +1952,22 @@
                       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
                         React.createElement('div', { style: { width: '8px', height: '8px', borderRadius: '50%', background: !viewingEntry && selectedSubflowId === subflow.id ? parent.color : '#d1d5db' } }),
                         React.createElement('div', { style: { flex: 1, minWidth: 0 } },
-                          React.createElement('div', { style: { fontSize: '13px', fontWeight: 500, color: '#2D3748', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, subflow.name),
-                          React.createElement('div', { style: { fontSize: '11px', color: '#718096' } }, `${subflow.nodes?.length || 0} nodes`)
+                          React.createElement('div', { style: { 
+                            fontSize: '14px', 
+                            fontWeight: 500, 
+                            color: !viewingEntry && selectedSubflowId === subflow.id ? '#1a365d' : '#334155',
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis', 
+                            whiteSpace: 'nowrap',
+                            fontFamily: 'var(--font-sans, "Inter", sans-serif)',
+                            letterSpacing: '-0.01em'
+                          } }, subflow.name),
+                          React.createElement('div', { style: { 
+                            fontSize: '12px', 
+                            color: '#64748b',
+                            marginTop: '2px',
+                            fontWeight: 400
+                          } }, `${subflow.nodes?.length || 0} nodes`)
                         )
                       )
                     )
@@ -1863,22 +1992,50 @@
         if (!selectedNode) {
           return React.createElement('div', { 
             style: { 
-              width: '360px', 
-              background: 'white',
-              borderLeft: '1px solid #e5e7eb',
+              width: '380px', 
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderLeft: '1px solid rgba(0, 0, 0, 0.06)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '40px',
-              color: '#718096'
+              padding: '64px 48px',
+              color: '#64748b',
+              boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.5)'
             } 
           },
-            React.createElement('div', { style: { width: '64px', height: '64px', margin: '0 auto 20px', background: '#f3f4f6', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
-              React.createElement(Icons.Eye, null)
+            React.createElement('div', { style: { 
+              width: '72px', 
+              height: '72px', 
+              margin: '0 auto 24px', 
+              background: 'linear-gradient(135deg, rgba(26, 54, 93, 0.08) 0%, rgba(26, 54, 93, 0.04) 100%)',
+              borderRadius: '20px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              color: '#1a365d',
+              border: '1px solid rgba(26, 54, 93, 0.1)'
+            } },
+              React.createElement(Icons.Eye, { width: 28, height: 28 })
             ),
-            React.createElement('p', { style: { fontWeight: 600, marginBottom: '6px', color: '#6b7280', fontSize: '15px' } }, 'Select a node'),
-            React.createElement('p', { style: { fontSize: '13px', textAlign: 'center', lineHeight: '1.5' } }, 'Click on any node in the canvas to view its properties and details')
+            React.createElement('p', { style: { 
+              fontWeight: 600, 
+              marginBottom: '8px', 
+              color: '#1a365d', 
+              fontSize: '17px',
+              fontFamily: 'var(--font-display, "Space Grotesk", sans-serif)',
+              letterSpacing: '-0.02em'
+            } }, 'Select a node'),
+            React.createElement('p', { style: { 
+              fontSize: '14px', 
+              textAlign: 'center', 
+              lineHeight: '1.6',
+              color: '#64748b',
+              fontFamily: 'var(--font-sans, "Inter", sans-serif)',
+              maxWidth: '280px'
+            } }, 'Click on any node in the canvas to view its properties and details')
           );
         }
 
@@ -1910,23 +2067,58 @@
 
         return React.createElement('div', { 
           style: { 
-            width: '360px', 
-            background: 'white',
-            borderLeft: '1px solid #e5e7eb',
+            width: '380px', 
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderLeft: '1px solid rgba(0, 0, 0, 0.06)',
             display: 'flex',
             flexDirection: 'column',
-            flexShrink: 0
+            flexShrink: 0,
+            boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.5)'
           } 
         },
           // Header
-          React.createElement('div', { style: { padding: '20px', borderBottom: '1px solid #f3f4f6' } },
-            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
+          React.createElement('div', { style: { 
+            padding: '28px', 
+            borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+            background: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)'
+          } },
+            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '14px' } },
               React.createElement('div', { 
-                style: { width: '40px', height: '40px', borderRadius: '10px', background: (nodeColors[selectedNode.type] || '#94a3b8') + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', color: nodeColors[selectedNode.type] || '#94a3b8' } 
+                style: { 
+                  width: '48px', 
+                  height: '48px', 
+                  borderRadius: '12px', 
+                  background: (nodeColors[selectedNode.type] || '#94a3b8') + '15', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  color: nodeColors[selectedNode.type] || '#94a3b8',
+                  border: `1px solid ${(nodeColors[selectedNode.type] || '#94a3b8')}25`
+                } 
               }, getIcon()),
               React.createElement('div', { style: { flex: 1 } },
-                React.createElement('h3', { style: { fontSize: '15px', fontWeight: 600, margin: 0, color: '#111827' } }, getNodeTitle()),
-                React.createElement('p', { style: { fontSize: '11px', color: '#718096', margin: 0, marginTop: '2px', fontFamily: 'monospace' } }, `ID: ${selectedNode.id}`)
+                React.createElement('h3', { style: { 
+                  fontSize: '17px', 
+                  fontWeight: 600, 
+                  margin: 0, 
+                  color: '#1a365d',
+                  fontFamily: 'var(--font-display, "Space Grotesk", sans-serif)',
+                  letterSpacing: '-0.02em',
+                  lineHeight: '1.3'
+                } }, getNodeTitle()),
+                React.createElement('p', { style: { 
+                  fontSize: '12px', 
+                  color: '#94a3af', 
+                  margin: 0, 
+                  marginTop: '4px', 
+                  fontFamily: 'monospace',
+                  letterSpacing: '0.5px',
+                  fontWeight: 500
+                } }, `ID: ${selectedNode.id}`)
               )
             ),
             // Simulate Button
@@ -1934,23 +2126,36 @@
             React.createElement('button', {
               onClick: () => onSimulate && onSimulate(selectedNode),
               style: { 
-                marginTop: '12px', 
+                marginTop: '20px', 
                 width: '100%', 
-                padding: '10px 16px', 
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', 
+                padding: '14px 20px', 
+                background: 'linear-gradient(135deg, #1a365d 0%, #2c5282 100%)', 
                 color: 'white', 
                 border: 'none', 
-                borderRadius: '8px', 
-                fontSize: '13px', 
+                borderRadius: '12px', 
+                fontSize: '14px', 
                 fontWeight: 600, 
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px'
+                gap: '10px',
+                fontFamily: 'var(--font-sans, "Inter", sans-serif)',
+                boxShadow: '0 2px 8px rgba(26, 54, 93, 0.2)',
+                transition: 'all 0.2s ease'
+              },
+              onMouseEnter: (e) => {
+                e.target.style.background = 'linear-gradient(135deg, #2c5282 0%, #1a365d 100%)';
+                e.target.style.boxShadow = '0 4px 12px rgba(26, 54, 93, 0.3)';
+                e.target.style.transform = 'translateY(-1px)';
+              },
+              onMouseLeave: (e) => {
+                e.target.style.background = 'linear-gradient(135deg, #1a365d 0%, #2c5282 100%)';
+                e.target.style.boxShadow = '0 2px 8px rgba(26, 54, 93, 0.2)';
+                e.target.style.transform = 'translateY(0)';
               }
             }, 
-              React.createElement(Icons.Eye, null),
+              React.createElement(Icons.Eye, { width: 18, height: 18 }),
               'View in Simulator'
             )
           ),
