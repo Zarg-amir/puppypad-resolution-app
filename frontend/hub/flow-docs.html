@@ -259,12 +259,12 @@
             subflows: ['dog_not_using', 'changed_mind', 'not_met_expectations', 'ordered_mistake', 'missing_item', 'wrong_item', 'damaged', 'charged_unexpectedly', 'not_received', 'quality_difference', 'other_reason'],
             entryNodes: [
               { id: 'start', type: 'start', position: { x: 500, y: 0 }, data: { label: 'Customer clicks Help With Order' } },
-              { id: 'msg1', type: 'message', position: { x: 450, y: 120 }, data: { persona: 'amy', content: "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below." } },
+              { id: 'msg1', type: 'message', position: { x: 450, y: 120 }, data: { persona: 'amy', content: "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below. 🙂" } },
               { id: 'form1', type: 'form', position: { x: 450, y: 320 }, data: { formType: 'Customer Lookup', label: 'Email or Order Number', fields: ['email', 'orderNumber'] } },
               { id: 'api1', type: 'api', position: { x: 450, y: 480 }, data: { service: 'Shopify', endpoint: '/api/lookup', description: 'Find customer orders by email or order number', request: '{ email, orderNumber }', response: '{ orders[], customer }' } },
               { id: 'cond1', type: 'condition', position: { x: 450, y: 640 }, data: { variable: 'orders.length', operator: '>', value: '0', yesLabel: 'Found', noLabel: 'Not Found' } },
               { id: 'itemSelect', type: 'form', position: { x: 250, y: 820 }, data: { formType: 'Item Selection', label: 'Which items need help?', description: 'Customer selects affected items from their order' } },
-              { id: 'deepSearch', type: 'form', position: { x: 650, y: 820 }, data: { formType: 'Deep Search', label: 'More details needed', fields: ['firstName', 'lastName', 'address'] } },
+              { id: 'deepSearch', type: 'form', position: { x: 650, y: 820 }, data: { formType: 'Deep Search', label: 'More details needed', fields: ['firstName', 'lastName', 'address1', 'country'] } },
               { id: 'opts1', type: 'options', position: { x: 250, y: 1000 }, data: { prompt: "Got it! What's going on with your order?", options: [
                 { label: "My dog isn't using it", icon: '🐕' },
                 { label: 'I changed my mind', icon: '💭' },
@@ -1590,7 +1590,7 @@
         const personas = {
           amy: { name: 'Amy', role: 'Customer Support', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face', color: '#3b82f6' },
           claudia: { name: 'Claudia', role: 'Dog Trainer', avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face', color: '#ec4899' },
-          sarah: { name: 'Sarah', role: 'Customer Experience', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face', color: '#8b5cf6' }
+          sarah: { name: 'Sarah', role: 'CX Lead', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face', color: '#8b5cf6' }
         };
         const persona = personas[node.data?.persona] || personas.amy;
 
@@ -1622,7 +1622,7 @@
                 React.createElement('span', { style: { color: '#718096' } }, persona.role)
               ),
               React.createElement('div', { style: { padding: '14px 18px', background: 'white', borderRadius: '16px', borderBottomLeftRadius: '6px', border: '1px solid rgba(0, 0, 0, 0.08)', fontSize: '15px', lineHeight: '1.5', color: '#2D3748' } }, 
-                node.data?.content || node.data?.prompt || node.data?.message || "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below."
+                node.data?.content || node.data?.prompt || node.data?.message || "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below. 🙂"
               )
             )
           );
@@ -1826,21 +1826,52 @@
             );
           }
           
-          // Deep Search form - address fields - matches deepSearchForm in app.js
+          // Deep Search form - address fields - matches deepSearchForm in app.js exactly
           if (formType === 'Deep Search') {
-            const fields = node.data?.fields || ['firstName', 'lastName', 'address'];
+            // Default fields match app.js renderDeepSearchForm: firstName, lastName, address1 (Street Address), country
+            const fields = node.data?.fields || ['firstName', 'lastName', 'address1', 'country'];
+            
+            // Map field names to display labels (matches app.js labels exactly)
+            const getFieldLabel = (field) => {
+              if (field === 'firstName') return 'First Name';
+              if (field === 'lastName') return 'Last Name';
+              if (field === 'address1') return 'Street Address';
+              if (field === 'country') return 'Country';
+              return field.replace(/([A-Z])/g, ' $1').trim();
+            };
+            
+            // Map field names to placeholders (matches app.js placeholders exactly)
+            const getFieldPlaceholder = (field) => {
+              if (field === 'firstName') return 'Your first name';
+              if (field === 'lastName') return 'Your last name';
+              if (field === 'address1') return '123 Main Street';
+              if (field === 'country') return 'Select country';
+              return `Enter ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}...`;
+            };
+            
             return React.createElement('div', { style: { background: 'white', borderRadius: '24px', padding: '24px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', border: '1px solid rgba(0, 0, 0, 0.08)', marginTop: '8px', marginBottom: '20px' } },
               React.createElement('p', { style: { color: '#718096', marginBottom: '16px', fontSize: '14px', margin: '0 0 16px 0' } }, 'Please provide your shipping address details to help me find your order:'),
-              fields.map((field, i) => 
-                React.createElement('div', { key: i, style: { marginBottom: '20px' } },
-                  React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px', textTransform: 'capitalize' } }, field.replace(/([A-Z])/g, ' $1').trim() + ' *'),
-                  React.createElement('input', { 
-                    type: 'text', 
-                    placeholder: field === 'firstName' ? 'Your first name' : field === 'lastName' ? 'Your last name' : field === 'address' ? '123 Main Street' : `Enter ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}...`,
-                    style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' }
-                  })
-                )
-              ),
+              fields.map((field, i) => {
+                const isCountry = field === 'country';
+                return React.createElement('div', { key: i, style: { marginBottom: '20px' } },
+                  React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, getFieldLabel(field) + ' *'),
+                  isCountry 
+                    ? React.createElement('select', { 
+                        style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease', cursor: 'pointer' },
+                        defaultValue: 'US'
+                      },
+                        React.createElement('option', { value: 'US' }, 'United States'),
+                        React.createElement('option', { value: 'CA' }, 'Canada'),
+                        React.createElement('option', { value: 'GB' }, 'United Kingdom'),
+                        React.createElement('option', { value: 'AU' }, 'Australia')
+                      )
+                    : React.createElement('input', { 
+                        type: 'text', 
+                        placeholder: getFieldPlaceholder(field),
+                        style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' }
+                      })
+                );
+              }),
               React.createElement('button', { style: { width: '100%', padding: '18px 20px', background: 'linear-gradient(135deg, #1a365d 0%, #2d3748 100%)', color: 'white', border: 'none', borderRadius: '16px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 14px rgba(26, 54, 93, 0.4)' } }, 'Search Again')
             );
           }
