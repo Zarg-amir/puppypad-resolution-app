@@ -1579,8 +1579,8 @@
       // Map form types to actual messages from chat app (matches MESSAGES.common and actual flow)
       const FORM_MESSAGES = {
         'Item Selection': "Which item(s) do you need help with? Tap to select:",
-        'Customer Lookup': '', // No message before initial form
-        'Deep Search': "I couldn't find an order with those details. Let's try a deeper search with more information.",
+        'Customer Lookup': '', // No message before initial form - form appears directly after welcome message
+        'Deep Search': "I couldn't find an order with those details. Let's try a deeper search with your shipping information.",
         'Photo Upload': "Got it. Could you upload a photo of what you received? This helps us investigate what happened.",
       };
       
@@ -1765,6 +1765,7 @@
           
           // Customer Lookup form - toggle form (email/phone) - matches renderIdentifyForm() in app.js
           // Note: For simulator, showing email mode by default (toggle would require state management)
+          // For help/subscription flows, includes First Name field (isTrackFlow = false in app.js)
           if (formType === 'Customer Lookup') {
             return React.createElement('div', { style: { background: 'white', borderRadius: '24px', padding: '24px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', border: '1px solid rgba(0, 0, 0, 0.08)', marginTop: '8px', marginBottom: '20px' } },
               React.createElement('div', { style: { display: 'flex', background: '#F3F4F6', borderRadius: '9999px', padding: '4px', marginBottom: '20px', position: 'relative' } },
@@ -1802,6 +1803,14 @@
                 React.createElement('input', { 
                   type: 'email', 
                   placeholder: 'you@example.com',
+                  style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' }
+                })
+              ),
+              React.createElement('div', { style: { marginBottom: '20px' } },
+                React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, 'First Name *'),
+                React.createElement('input', { 
+                  type: 'text', 
+                  placeholder: 'Your first name',
                   style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' }
                 })
               ),
@@ -1934,8 +1943,13 @@
               ),
               node.type === 'form' && React.createElement('div', null, 
                 // Render label/prompt as Amy's message bubble first (matches actual chat app - addBotMessage first, then addInteractiveContent)
+                // Customer Lookup: NO message bubble (form appears directly after welcome message)
                 (() => {
                   const formType = node.data?.formType || '';
+                  // Customer Lookup should NOT show a message bubble - form appears directly after welcome
+                  if (formType === 'Customer Lookup') {
+                    return null;
+                  }
                   const formMessage = FORM_MESSAGES[formType] || node.data?.label || '';
                   // For Item Selection, use the exact message from chat app; for others, use label if no specific message
                   const messageToShow = formType === 'Item Selection' ? FORM_MESSAGES['Item Selection'] : 
