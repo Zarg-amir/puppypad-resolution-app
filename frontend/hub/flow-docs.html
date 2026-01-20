@@ -264,7 +264,6 @@
             description: 'Customer needs assistance with an existing order - refunds, returns, issues',
             subflows: ['dog_not_using', 'changed_mind', 'not_met_expectations', 'ordered_mistake', 'missing_item', 'wrong_item', 'damaged', 'charged_unexpectedly', 'not_received', 'quality_difference', 'other_reason', 'change_order'],
             entryNodes: [
-            entryNodes: [
               { id: 'start', type: 'start', position: { x: 500, y: 0 }, data: { label: 'Customer clicks Help With Order' } },
               { id: 'msg1', type: 'message', position: { x: 450, y: 120 }, data: { persona: 'amy', content: "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below. 🙂" } },
               { id: 'form1', type: 'form', position: { x: 450, y: 320 }, data: { formType: 'Customer Lookup', label: 'Email or Order Number', fields: ['email', 'orderNumber'] } },
