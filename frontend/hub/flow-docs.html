@@ -1596,6 +1596,9 @@
 
         // Helper: Render message bubble (reusable for prompts/labels before forms/options)
         const renderMessageBubble = (messageText) => {
+          // Check if content contains HTML tags (like <br>)
+          const hasHTML = typeof messageText === 'string' && /<[a-z][\s\S]*>/i.test(messageText);
+          
           return React.createElement('div', { style: { marginBottom: '8px' } },
             React.createElement('div', { style: { display: 'flex', gap: '12px', maxWidth: '85%' } },
               React.createElement('img', { src: persona.avatar, alt: persona.name, style: { width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginTop: '4px' } }),
@@ -1604,8 +1607,11 @@
                   React.createElement('span', { style: { fontWeight: 600, color: '#2D3748' } }, persona.name),
                   React.createElement('span', { style: { color: '#718096', fontWeight: 400 } }, persona.role)
                 ),
-                React.createElement('div', { style: { padding: '14px 18px', background: 'white', borderRadius: '16px', borderBottomLeftRadius: '6px', border: '1px solid rgba(0, 0, 0, 0.08)', fontSize: '15px', lineHeight: '1.5', color: '#2D3748' } }, 
-                  messageText
+                React.createElement('div', { 
+                  style: { padding: '14px 18px', background: 'white', borderRadius: '16px', borderBottomLeftRadius: '6px', border: '1px solid rgba(0, 0, 0, 0.08)', fontSize: '15px', lineHeight: '1.5', color: '#2D3748' },
+                  ...(hasHTML ? { dangerouslySetInnerHTML: { __html: messageText } } : {})
+                }, 
+                  hasHTML ? null : messageText
                 )
               )
             )
@@ -1614,6 +1620,10 @@
 
         // Render message bubble
         const renderMessage = () => {
+          const messageContent = node.data?.content || node.data?.prompt || node.data?.message || "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below. 🙂";
+          // Check if content contains HTML tags (like <br>)
+          const hasHTML = typeof messageContent === 'string' && /<[a-z][\s\S]*>/i.test(messageContent);
+          
           return React.createElement('div', { style: { display: 'flex', gap: '12px', maxWidth: '85%' } },
             React.createElement('img', { src: persona.avatar, alt: persona.name, style: { width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginTop: '4px' } }),
             React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } },
@@ -1621,8 +1631,11 @@
                 React.createElement('span', { style: { fontWeight: 600, color: '#2D3748' } }, persona.name),
                 React.createElement('span', { style: { color: '#718096' } }, persona.role)
               ),
-              React.createElement('div', { style: { padding: '14px 18px', background: 'white', borderRadius: '16px', borderBottomLeftRadius: '6px', border: '1px solid rgba(0, 0, 0, 0.08)', fontSize: '15px', lineHeight: '1.5', color: '#2D3748' } }, 
-                node.data?.content || node.data?.prompt || node.data?.message || "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below. 🙂"
+              React.createElement('div', { 
+                style: { padding: '14px 18px', background: 'white', borderRadius: '16px', borderBottomLeftRadius: '6px', border: '1px solid rgba(0, 0, 0, 0.08)', fontSize: '15px', lineHeight: '1.5', color: '#2D3748' },
+                ...(hasHTML ? { dangerouslySetInnerHTML: { __html: messageContent } } : {})
+              }, 
+                hasHTML ? null : messageContent
               )
             )
           );
