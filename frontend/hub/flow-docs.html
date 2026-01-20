@@ -366,9 +366,9 @@
             description: 'Customer reports their dog is not using the PuppyPad - handled by trainer Claudia with personalized tips',
             nodes: [
               { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Dog Not Using Flow' } },
-              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I understand — the main reason you purchased this was to solve your problem, and we want to make sure it works for you! 🐕 Let me get some details about your pup so we can help." } },
+              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I understand — the main reason you purchased this was to solve your problem, and we want to make sure it works for you! 🐕<br><br>Let me get some details about your pup so we can help." } },
               { id: 'form1', type: 'form', position: { x: 350, y: 350 }, data: { formType: 'Dog Info Form', label: 'Tell us about your dog', fields: ['dogName', 'dogBreed', 'dogAge', 'methodsTried'] } },
-              { id: 'msg2', type: 'message', position: { x: 350, y: 530 }, data: { persona: 'amy', content: "Thanks! Let me connect you with our dog trainer, Claudia. She has some great tips specifically for your pup!" } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 530 }, data: { persona: 'amy', content: "Thanks for sharing! I'm connecting you with our dog trainer, Claudia. She's amazing at this! 🐾❤️" } },
               { id: 'ai1', type: 'ai', position: { x: 350, y: 730 }, data: { 
                 persona: 'claudia', 
                 model: 'gpt-4o',
@@ -1581,7 +1581,7 @@
         'Item Selection': "Which item(s) do you need help with? Tap to select:",
         'Customer Lookup': '', // No message before initial form - form appears directly after welcome message
         'Deep Search': "I couldn't find an order with those details. Let's try a deeper search with your shipping information.",
-        'Photo Upload': "Got it. Could you upload a photo of what you received? This helps us investigate what happened.",
+        'Photo Upload': "First, could you upload a photo of everything you actually received? Please include the packaging too... this helps our team investigate what happened.",
       };
       
       const ChatSimulator = ({ node, onClose }) => {
@@ -1873,6 +1873,33 @@
                 );
               }),
               React.createElement('button', { style: { width: '100%', padding: '18px 20px', background: 'linear-gradient(135deg, #1a365d 0%, #2d3748 100%)', color: 'white', border: 'none', borderRadius: '16px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 14px rgba(26, 54, 93, 0.4)' } }, 'Search Again')
+            );
+          }
+          
+          // Dog Info Form - matches renderDogInfoForm() in app.js
+          if (formType === 'Dog Info Form') {
+            return React.createElement('div', { style: { background: 'white', borderRadius: '24px', padding: '24px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', border: '1px solid rgba(0, 0, 0, 0.08)', marginTop: '8px', marginBottom: '20px' } },
+              React.createElement('div', { style: { borderBottom: '1px solid #E5E7EB', paddingBottom: '16px', marginBottom: '20px' } },
+                React.createElement('div', { style: { fontSize: '15px', fontWeight: 600, color: '#2D3748', marginBottom: '16px' } }, 'Dog 1'),
+                React.createElement('div', { style: { marginBottom: '16px' } },
+                  React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, "Dog's Name *"),
+                  React.createElement('input', { type: 'text', placeholder: 'e.g., Max', style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' } })
+                ),
+                React.createElement('div', { style: { marginBottom: '16px' } },
+                  React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, 'Breed *'),
+                  React.createElement('input', { type: 'text', placeholder: 'e.g., Golden Retriever', style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' } })
+                ),
+                React.createElement('div', { style: { marginBottom: '16px' } },
+                  React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, 'Age *'),
+                  React.createElement('input', { type: 'text', placeholder: 'e.g., 2 years', style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease' } })
+                )
+              ),
+              React.createElement('button', { style: { width: '100%', padding: '12px 20px', background: '#F9FAFB', color: '#2D3748', border: '1px solid #E5E7EB', borderRadius: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', marginBottom: '16px' } }, '+ Add Another Dog'),
+              React.createElement('div', { style: { marginBottom: '20px' } },
+                React.createElement('label', { style: { display: 'block', fontSize: '14px', fontWeight: 600, color: '#718096', marginBottom: '8px' } }, 'What have you tried so far?'),
+                React.createElement('textarea', { rows: 3, placeholder: "Tell us what methods you've already attempted...", style: { width: '100%', padding: '14px 18px', fontSize: '16px', fontFamily: 'inherit', color: '#2D3748', background: '#F9FAFB', border: '2px solid transparent', borderRadius: '12px', transition: 'all 0.15s ease', resize: 'vertical', minHeight: '80px' } })
+              ),
+              React.createElement('button', { style: { width: '100%', padding: '18px 20px', background: 'linear-gradient(135deg, #1a365d 0%, #2d3748 100%)', color: 'white', border: 'none', borderRadius: '16px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 14px rgba(26, 54, 93, 0.4)' } }, 'Get Personalized Tips')
             );
           }
           
