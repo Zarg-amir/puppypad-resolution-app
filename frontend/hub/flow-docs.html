@@ -1482,83 +1482,201 @@
             ]
           },
 
+          // SHIPPING REFUND LADDER - 350px vertical spacing, includes reship at each step
           shipping_refund_ladder: {
             id: 'shipping_refund_ladder',
             parentId: 'track_order',
             name: 'Shipping Refund Ladder',
-            description: 'Progressive refund offers for shipping issues (20% → 30% → 40% → 50% → full)',
+            description: 'Progressive refund offers for shipping issues: 20% + reship → 30% + reship → (manager delay) → 40% + reship → (manager delay) → 50% + reship → full refund',
             nodes: [
-              { id: 'start', type: 'start', position: { x: 500, y: 0 }, data: { label: 'Shipping Refund Ladder' } },
-              { id: 'offer1', type: 'offer', position: { x: 500, y: 150 }, data: { percent: 20, label: 'Keep product & reship', message: "I'd love to make this right for you. How about a <strong>20% refund PLUS we'll reship your order</strong> free of charge? That way you get some money back AND your products!", needsManagerApproval: false } },
-              { id: 'offer2', type: 'offer', position: { x: 500, y: 350 }, data: { percent: 30, label: 'Keep product & reship', message: "I really want to help you here. Let me offer you a <strong>30% refund AND a free reship</strong>. You'll get a good chunk of money back plus we'll send out a new shipment right away.", needsManagerApproval: false } },
-              { id: 'delay1', type: 'delay', position: { x: 500, y: 550 }, data: { duration: 8000, message: 'Checking with manager...' } },
-              { id: 'offer3', type: 'offer', position: { x: 500, y: 750 }, data: { percent: 40, label: 'Keep product & reship', message: "Great news! My manager has approved a <strong>40% refund PLUS a free reship</strong> for you. This is a significant discount and we really want to make sure you're happy.", needsManagerApproval: true } },
-              { id: 'delay2', type: 'delay', position: { x: 500, y: 950 }, data: { duration: 8000, message: 'Final manager check...' } },
-              { id: 'offer4', type: 'offer', position: { x: 500, y: 1150 }, data: { percent: 50, label: 'Maximum offer + reship', message: "Okay, I've just spoken with my manager again and they've approved our <strong>maximum offer: 50% refund PLUS a free reship</strong>. This is the very best we can do — you'll get half your money back and still receive your products.", needsManagerApproval: true, isFinal: true } },
-              { id: 'case_full_refund', type: 'case', position: { x: 500, y: 1350 }, data: { type: 'refund', subtype: 'full_refund', priority: 'normal' } },
-              { id: 'case_partial_refund', type: 'case', position: { x: 300, y: 1550 }, data: { type: 'refund', subtype: 'partial_refund_reship', priority: 'normal' } },
-              { id: 'subflow_reship', type: 'subflow', position: { x: 300, y: 1750 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
-              { id: 'end1', type: 'end', position: { x: 500, y: 1950 }, data: { title: 'Full Refund Processed', showSurvey: true } },
-              { id: 'end2', type: 'end', position: { x: 300, y: 1950 }, data: { title: 'Partial Refund + Reship', showSurvey: true } }
+              // Entry
+              { id: 'start', type: 'start', position: { x: 600, y: 0 }, data: { label: 'Shipping Refund Ladder' } },
+              
+              // STEP 1: 20% + reship offer
+              { id: 'offer1_20', type: 'offer', position: { x: 200, y: 350 }, data: { percent: 20, label: 'Keep product & reship', message: "I'd love to make this right for you. How about a <strong>20% refund ({{refundAmount20}}) PLUS we'll reship your order</strong> free of charge? That way you get some money back AND your products!", needsManagerApproval: false } },
+              { id: 'opts_20', type: 'options', position: { x: 200, y: 700 }, data: { prompt: 'How does that sound?', options: [{ label: 'Accept 20% + reship', icon: '✅' }, { label: 'I need more', icon: '💰' }] } },
+              { id: 'case_accept_20', type: 'case', position: { x: -150, y: 1050 }, data: { type: 'refund', subtype: 'partial_20_reship', priority: 'normal', note: '20% refund + reship' } },
+              { id: 'subflow_reship_20', type: 'subflow', position: { x: -150, y: 1400 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end_accept_20', type: 'end', position: { x: -150, y: 1750 }, data: { title: '20% Refund + Reship!', showSurvey: true } },
+              
+              // STEP 2: 30% + reship offer
+              { id: 'offer2_30', type: 'offer', position: { x: 200, y: 1050 }, data: { percent: 30, label: 'Keep product & reship', message: "I really want to help you here. Let me offer you a <strong>30% refund ({{refundAmount30}}) AND a free reship</strong>. You'll get a good chunk of money back plus we'll send out a new shipment right away.", needsManagerApproval: false } },
+              { id: 'opts_30', type: 'options', position: { x: 200, y: 1400 }, data: { prompt: 'What do you think?', options: [{ label: 'Accept 30% + reship', icon: '✅' }, { label: 'I still need more', icon: '💰' }] } },
+              { id: 'case_accept_30', type: 'case', position: { x: -150, y: 1750 }, data: { type: 'refund', subtype: 'partial_30_reship', priority: 'normal', note: '30% refund + reship' } },
+              { id: 'subflow_reship_30', type: 'subflow', position: { x: -150, y: 2100 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end_accept_30', type: 'end', position: { x: -150, y: 2450 }, data: { title: '30% Refund + Reship!', showSurvey: true } },
+              
+              // Manager delay 1 (before 40%)
+              { id: 'msg_manager_check1', type: 'message', position: { x: 200, y: 1750 }, data: { persona: 'amy', content: "Let me check with my manager to see if there's anything more I can do for you..." } },
+              { id: 'delay1', type: 'delay', position: { x: 200, y: 2100 }, data: { duration: 8000, message: 'Checking with manager...' } },
+              
+              // STEP 3: 40% + reship offer (requires manager)
+              { id: 'offer3_40', type: 'offer', position: { x: 200, y: 2450 }, data: { percent: 40, label: 'Manager approved + reship', message: "Great news! My manager has approved a <strong>40% refund ({{refundAmount40}}) PLUS a free reship</strong> for you. This is a significant discount and we really want to make sure you're happy.", needsManagerApproval: true } },
+              { id: 'opts_40', type: 'options', position: { x: 200, y: 2800 }, data: { prompt: 'How does that sound?', options: [{ label: 'Accept 40% + reship', icon: '✅' }, { label: 'I really need more', icon: '💰' }] } },
+              { id: 'case_accept_40', type: 'case', position: { x: -150, y: 3150 }, data: { type: 'refund', subtype: 'partial_40_reship', priority: 'normal', note: '40% refund + reship (manager approved)' } },
+              { id: 'subflow_reship_40', type: 'subflow', position: { x: -150, y: 3500 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end_accept_40', type: 'end', position: { x: -150, y: 3850 }, data: { title: '40% Refund + Reship!', showSurvey: true } },
+              
+              // Manager delay 2 (before 50%)
+              { id: 'msg_manager_check2', type: 'message', position: { x: 200, y: 3150 }, data: { persona: 'amy', content: "Let me speak with my manager one more time..." } },
+              { id: 'delay2', type: 'delay', position: { x: 200, y: 3500 }, data: { duration: 8000, message: 'Final manager check...' } },
+              
+              // STEP 4: 50% + reship offer (final offer)
+              { id: 'offer4_50', type: 'offer', position: { x: 200, y: 3850 }, data: { percent: 50, label: 'Maximum offer + reship', message: "Okay, I've just spoken with my manager again and they've approved our <strong>maximum offer: 50% refund ({{refundAmount50}}) PLUS a free reship</strong>. This is the very best we can do — you'll get half your money back and still receive your products.", needsManagerApproval: true, isFinal: true } },
+              { id: 'opts_50', type: 'options', position: { x: 200, y: 4200 }, data: { prompt: 'This is our best offer', options: [{ label: 'Accept 50% + reship', icon: '✅' }, { label: 'I want a full refund only', icon: '💰' }] } },
+              { id: 'case_accept_50', type: 'case', position: { x: -150, y: 4550 }, data: { type: 'refund', subtype: 'partial_50_reship', priority: 'normal', note: '50% refund + reship (max offer)' } },
+              { id: 'subflow_reship_50', type: 'subflow', position: { x: -150, y: 4900 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end_accept_50', type: 'end', position: { x: -150, y: 5250 }, data: { title: '50% Refund + Reship!', showSurvey: true } },
+              
+              // STEP 5: Full refund (if all declined)
+              { id: 'msg_full_refund', type: 'message', position: { x: 200, y: 4550 }, data: { persona: 'amy', content: "I understand. I'll process a full refund for you. The refund will appear in your account within 3-5 business days." } },
+              { id: 'case_full_refund', type: 'case', position: { x: 200, y: 4900 }, data: { type: 'refund', subtype: 'full_refund', priority: 'normal', note: 'Full refund processed after declining all partial + reship offers' } },
+              { id: 'end_full_refund', type: 'end', position: { x: 200, y: 5250 }, data: { title: 'Full Refund Processed!', showSurvey: true } }
             ],
             edges: [
-              { id: 'e1', source: 'start', target: 'offer1', animated: true },
-              { id: 'e2', source: 'offer1', target: 'offer2', sourceHandle: 'decline', label: 'Decline 20%', animated: true },
-              { id: 'e3', source: 'offer1', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 20%', animated: true },
-              { id: 'e4', source: 'offer2', target: 'delay1', sourceHandle: 'decline', label: 'Decline 30%', animated: true },
-              { id: 'e5', source: 'offer2', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 30%', animated: true },
-              { id: 'e6', source: 'delay1', target: 'offer3', animated: true },
-              { id: 'e7', source: 'offer3', target: 'delay2', sourceHandle: 'decline', label: 'Decline 40%', animated: true },
-              { id: 'e8', source: 'offer3', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 40%', animated: true },
-              { id: 'e9', source: 'delay2', target: 'offer4', animated: true },
-              { id: 'e10', source: 'offer4', target: 'case_full_refund', sourceHandle: 'decline', label: 'Decline 50%', animated: true },
-              { id: 'e11', source: 'offer4', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 50%', animated: true },
-              { id: 'e12', source: 'case_full_refund', target: 'end1', animated: true },
-              { id: 'e13', source: 'case_partial_refund', target: 'subflow_reship', animated: true },
-              { id: 'e14', source: 'subflow_reship', target: 'end2', animated: true }
+              // Entry
+              { id: 'e1', source: 'start', target: 'offer1_20', animated: true },
+              
+              // 20% offer
+              { id: 'e2', source: 'offer1_20', target: 'opts_20', animated: true },
+              { id: 'e3', source: 'opts_20', target: 'case_accept_20', sourceHandle: 'opt-0', label: 'Accept 20%', animated: true },
+              { id: 'e4', source: 'opts_20', target: 'offer2_30', sourceHandle: 'opt-1', label: 'Decline 20%', animated: true },
+              { id: 'e5', source: 'case_accept_20', target: 'subflow_reship_20', animated: true },
+              { id: 'e6', source: 'subflow_reship_20', target: 'end_accept_20', animated: true },
+              
+              // 30% offer
+              { id: 'e7', source: 'offer2_30', target: 'opts_30', animated: true },
+              { id: 'e8', source: 'opts_30', target: 'case_accept_30', sourceHandle: 'opt-0', label: 'Accept 30%', animated: true },
+              { id: 'e9', source: 'opts_30', target: 'msg_manager_check1', sourceHandle: 'opt-1', label: 'Decline 30%', animated: true },
+              { id: 'e10', source: 'case_accept_30', target: 'subflow_reship_30', animated: true },
+              { id: 'e11', source: 'subflow_reship_30', target: 'end_accept_30', animated: true },
+              
+              // Manager delay 1
+              { id: 'e12', source: 'msg_manager_check1', target: 'delay1', animated: true },
+              { id: 'e13', source: 'delay1', target: 'offer3_40', animated: true },
+              
+              // 40% offer
+              { id: 'e14', source: 'offer3_40', target: 'opts_40', animated: true },
+              { id: 'e15', source: 'opts_40', target: 'case_accept_40', sourceHandle: 'opt-0', label: 'Accept 40%', animated: true },
+              { id: 'e16', source: 'opts_40', target: 'msg_manager_check2', sourceHandle: 'opt-1', label: 'Decline 40%', animated: true },
+              { id: 'e17', source: 'case_accept_40', target: 'subflow_reship_40', animated: true },
+              { id: 'e18', source: 'subflow_reship_40', target: 'end_accept_40', animated: true },
+              
+              // Manager delay 2
+              { id: 'e19', source: 'msg_manager_check2', target: 'delay2', animated: true },
+              { id: 'e20', source: 'delay2', target: 'offer4_50', animated: true },
+              
+              // 50% offer
+              { id: 'e21', source: 'offer4_50', target: 'opts_50', animated: true },
+              { id: 'e22', source: 'opts_50', target: 'case_accept_50', sourceHandle: 'opt-0', label: 'Accept 50%', animated: true },
+              { id: 'e23', source: 'opts_50', target: 'msg_full_refund', sourceHandle: 'opt-1', label: 'Decline 50%', animated: true },
+              { id: 'e24', source: 'case_accept_50', target: 'subflow_reship_50', animated: true },
+              { id: 'e25', source: 'subflow_reship_50', target: 'end_accept_50', animated: true },
+              
+              // Full refund
+              { id: 'e26', source: 'msg_full_refund', target: 'case_full_refund', animated: true },
+              { id: 'e27', source: 'case_full_refund', target: 'end_full_refund', animated: true }
             ]
           },
 
+          // ORDER REFUND LADDER - 350px vertical spacing, fully expanded with individual offer nodes
           order_refund_ladder: {
             id: 'order_refund_ladder',
             parentId: 'help_with_order',
             name: 'Order Refund Ladder',
-            description: 'Progressive refund offers for order issues with 90-day guarantee check (20% → 30% → 40% → 50% → full)',
+            description: 'Progressive refund offers: 90-day guarantee check → 20% → 30% → (manager delay) → 40% → (manager delay) → 50% → full refund. Each step has accept/decline.',
             nodes: [
-              { id: 'start', type: 'start', position: { x: 500, y: 0 }, data: { label: 'Order Refund Ladder' } },
-              { id: 'cond_guarantee', type: 'condition', position: { x: 500, y: 120 }, data: { variable: 'guarantee.eligible', operator: '===', value: 'true', yesLabel: 'Within 90 days', noLabel: 'Expired' } },
-              { id: 'msg_guarantee_expired', type: 'message', position: { x: 700, y: 300 }, data: { persona: 'amy', content: "I really wish I could help with a refund, but I need to be upfront with you. 💔<br><br>The 90-day guarantee period has expired for this order. However, I still want to help. Let me create a case for our team to review." } },
-              { id: 'case_guarantee_expired', type: 'case', position: { x: 700, y: 480 }, data: { type: 'refund', subtype: 'guarantee_expired', priority: 'normal' } },
-              { id: 'end_guarantee_expired', type: 'end', position: { x: 700, y: 660 }, data: { title: 'Case Created for Review', showSurvey: true } },
-              { id: 'offer1', type: 'offer', position: { x: 300, y: 300 }, data: { percent: 20, label: 'Keep product & continue trying', message: "I understand. As a valued customer, I'd like to offer you a <strong>20% partial refund</strong> while you keep the product and continue trying.", needsManagerApproval: false } },
-              { id: 'offer2', type: 'offer', position: { x: 300, y: 480 }, data: { percent: 30, label: 'Keep product', message: "I really want to make this right. Let me offer you a <strong>30% refund</strong> — that's a significant amount back while you keep everything.", needsManagerApproval: false } },
-              { id: 'delay1', type: 'delay', position: { x: 300, y: 660 }, data: { duration: 8000, message: 'Checking with manager...' } },
-              { id: 'offer3', type: 'offer', position: { x: 300, y: 840 }, data: { percent: 40, label: 'Keep product', message: "Great news! My manager has approved a <strong>40% refund</strong> for you. That's nearly half your money back and you still get to keep the products.", needsManagerApproval: true } },
-              { id: 'delay2', type: 'delay', position: { x: 300, y: 1020 }, data: { duration: 8000, message: 'Final manager check...' } },
-              { id: 'offer4', type: 'offer', position: { x: 300, y: 1200 }, data: { percent: 50, label: 'Maximum offer', message: "Okay, I've just spoken with my manager again and they've approved our <strong>maximum offer: 50% refund</strong>. This is the very best we can do — half your money back, no return needed.", needsManagerApproval: true, isFinal: true } },
-              { id: 'case_full_refund', type: 'case', position: { x: 300, y: 1380 }, data: { type: 'refund', subtype: 'full_refund', priority: 'normal' } },
-              { id: 'case_partial_refund', type: 'case', position: { x: 100, y: 1560 }, data: { type: 'refund', subtype: 'partial_refund', priority: 'normal' } },
-              { id: 'end_full_refund', type: 'end', position: { x: 300, y: 1560 }, data: { title: 'Full Refund Processed', showSurvey: true } },
-              { id: 'end_partial_refund', type: 'end', position: { x: 100, y: 1740 }, data: { title: 'Partial Refund Processed', showSurvey: true } }
+              // Entry and guarantee check
+              { id: 'start', type: 'start', position: { x: 600, y: 0 }, data: { label: 'Order Refund Ladder' } },
+              { id: 'cond_guarantee', type: 'condition', position: { x: 600, y: 350 }, data: { variable: 'guarantee.eligible', operator: '===', value: 'true', yesLabel: 'Within 90 days', noLabel: 'Expired' } },
+              
+              // Guarantee expired branch - right side
+              { id: 'msg_guarantee_expired', type: 'message', position: { x: 1100, y: 700 }, data: { persona: 'amy', content: "I really wish I could help with a refund, but I need to be upfront with you. 💔<br><br>The 90-day guarantee period has expired for this order. However, I still want to help. Let me create a case for our team to review." } },
+              { id: 'case_guarantee_expired', type: 'case', position: { x: 1100, y: 1050 }, data: { type: 'refund', subtype: 'guarantee_expired', priority: 'normal', note: 'Guarantee expired - team review required' } },
+              { id: 'end_guarantee_expired', type: 'end', position: { x: 1100, y: 1400 }, data: { title: 'Case Created for Review', showSurvey: true } },
+              
+              // STEP 1: 20% offer - left side (main ladder)
+              { id: 'offer1_20', type: 'offer', position: { x: 200, y: 700 }, data: { percent: 20, label: 'Keep product & continue trying', message: "I understand. As a valued customer, I'd like to offer you a <strong>20% partial refund ({{refundAmount20}})</strong> while you keep the product and continue trying.", needsManagerApproval: false } },
+              { id: 'opts_20', type: 'options', position: { x: 200, y: 1050 }, data: { prompt: 'How does that sound?', options: [{ label: 'Accept 20% refund', icon: '✅' }, { label: 'I need more', icon: '💰' }] } },
+              { id: 'case_accept_20', type: 'case', position: { x: -150, y: 1400 }, data: { type: 'refund', subtype: 'partial_20', priority: 'normal', note: '20% partial refund accepted' } },
+              { id: 'end_accept_20', type: 'end', position: { x: -150, y: 1750 }, data: { title: '20% Refund Processed!', showSurvey: true } },
+              
+              // STEP 2: 30% offer
+              { id: 'offer2_30', type: 'offer', position: { x: 200, y: 1400 }, data: { percent: 30, label: 'Keep product', message: "I really want to make this right. Let me offer you a <strong>30% refund ({{refundAmount30}})</strong> — that's a significant amount back while you keep everything.", needsManagerApproval: false } },
+              { id: 'opts_30', type: 'options', position: { x: 200, y: 1750 }, data: { prompt: 'What do you think?', options: [{ label: 'Accept 30% refund', icon: '✅' }, { label: 'I still need more', icon: '💰' }] } },
+              { id: 'case_accept_30', type: 'case', position: { x: -150, y: 2100 }, data: { type: 'refund', subtype: 'partial_30', priority: 'normal', note: '30% partial refund accepted' } },
+              { id: 'end_accept_30', type: 'end', position: { x: -150, y: 2450 }, data: { title: '30% Refund Processed!', showSurvey: true } },
+              
+              // Manager delay 1 (before 40%)
+              { id: 'msg_manager_check1', type: 'message', position: { x: 200, y: 2100 }, data: { persona: 'amy', content: "Let me check with my manager to see if there's anything more I can do for you..." } },
+              { id: 'delay1', type: 'delay', position: { x: 200, y: 2450 }, data: { duration: 8000, message: 'Checking with manager...' } },
+              
+              // STEP 3: 40% offer (requires manager)
+              { id: 'offer3_40', type: 'offer', position: { x: 200, y: 2800 }, data: { percent: 40, label: 'Manager approved', message: "Great news! My manager has approved a <strong>40% refund ({{refundAmount40}})</strong> for you. That's nearly half your money back and you still get to keep the products.", needsManagerApproval: true } },
+              { id: 'opts_40', type: 'options', position: { x: 200, y: 3150 }, data: { prompt: 'How does that sound?', options: [{ label: 'Accept 40% refund', icon: '✅' }, { label: 'I really need more', icon: '💰' }] } },
+              { id: 'case_accept_40', type: 'case', position: { x: -150, y: 3500 }, data: { type: 'refund', subtype: 'partial_40', priority: 'normal', note: '40% partial refund accepted (manager approved)' } },
+              { id: 'end_accept_40', type: 'end', position: { x: -150, y: 3850 }, data: { title: '40% Refund Processed!', showSurvey: true } },
+              
+              // Manager delay 2 (before 50%)
+              { id: 'msg_manager_check2', type: 'message', position: { x: 200, y: 3500 }, data: { persona: 'amy', content: "Let me speak with my manager one more time..." } },
+              { id: 'delay2', type: 'delay', position: { x: 200, y: 3850 }, data: { duration: 8000, message: 'Final manager check...' } },
+              
+              // STEP 4: 50% offer (final offer)
+              { id: 'offer4_50', type: 'offer', position: { x: 200, y: 4200 }, data: { percent: 50, label: 'Maximum offer', message: "Okay, I've just spoken with my manager again and they've approved our <strong>maximum offer: 50% refund ({{refundAmount50}})</strong>. This is the very best we can do — half your money back, no return needed.", needsManagerApproval: true, isFinal: true } },
+              { id: 'opts_50', type: 'options', position: { x: 200, y: 4550 }, data: { prompt: 'This is our best offer', options: [{ label: 'Accept 50% refund', icon: '✅' }, { label: 'I want a full refund', icon: '💰' }] } },
+              { id: 'case_accept_50', type: 'case', position: { x: -150, y: 4900 }, data: { type: 'refund', subtype: 'partial_50', priority: 'normal', note: '50% partial refund accepted (max offer)' } },
+              { id: 'end_accept_50', type: 'end', position: { x: -150, y: 5250 }, data: { title: '50% Refund Processed!', showSurvey: true } },
+              
+              // STEP 5: Full refund (if all declined)
+              { id: 'msg_full_refund', type: 'message', position: { x: 200, y: 4900 }, data: { persona: 'amy', content: "I understand. I'll process a full refund for you. The refund will appear in your account within 3-5 business days." } },
+              { id: 'case_full_refund', type: 'case', position: { x: 200, y: 5250 }, data: { type: 'refund', subtype: 'full_refund', priority: 'normal', note: 'Full refund processed after declining all partial offers' } },
+              { id: 'end_full_refund', type: 'end', position: { x: 200, y: 5600 }, data: { title: 'Full Refund Processed!', showSurvey: true } }
             ],
             edges: [
+              // Entry
               { id: 'e1', source: 'start', target: 'cond_guarantee', animated: true },
-              { id: 'e2', source: 'cond_guarantee', target: 'offer1', sourceHandle: 'yes', label: 'Within 90 days', animated: true },
+              { id: 'e2', source: 'cond_guarantee', target: 'offer1_20', sourceHandle: 'yes', label: 'Within 90 days', animated: true },
               { id: 'e3', source: 'cond_guarantee', target: 'msg_guarantee_expired', sourceHandle: 'no', label: 'Expired', animated: true },
+              
+              // Expired branch
               { id: 'e4', source: 'msg_guarantee_expired', target: 'case_guarantee_expired', animated: true },
               { id: 'e5', source: 'case_guarantee_expired', target: 'end_guarantee_expired', animated: true },
-              { id: 'e6', source: 'offer1', target: 'offer2', sourceHandle: 'decline', label: 'Decline 20%', animated: true },
-              { id: 'e7', source: 'offer1', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 20%', animated: true },
-              { id: 'e8', source: 'offer2', target: 'delay1', sourceHandle: 'decline', label: 'Decline 30%', animated: true },
-              { id: 'e9', source: 'offer2', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 30%', animated: true },
-              { id: 'e10', source: 'delay1', target: 'offer3', animated: true },
-              { id: 'e11', source: 'offer3', target: 'delay2', sourceHandle: 'decline', label: 'Decline 40%', animated: true },
-              { id: 'e12', source: 'offer3', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 40%', animated: true },
-              { id: 'e13', source: 'delay2', target: 'offer4', animated: true },
-              { id: 'e14', source: 'offer4', target: 'case_full_refund', sourceHandle: 'decline', label: 'Decline 50%', animated: true },
-              { id: 'e15', source: 'offer4', target: 'case_partial_refund', sourceHandle: 'accept', label: 'Accept 50%', animated: true },
-              { id: 'e16', source: 'case_full_refund', target: 'end_full_refund', animated: true },
-              { id: 'e17', source: 'case_partial_refund', target: 'end_partial_refund', animated: true }
+              
+              // 20% offer
+              { id: 'e6', source: 'offer1_20', target: 'opts_20', animated: true },
+              { id: 'e7', source: 'opts_20', target: 'case_accept_20', sourceHandle: 'opt-0', label: 'Accept 20%', animated: true },
+              { id: 'e8', source: 'opts_20', target: 'offer2_30', sourceHandle: 'opt-1', label: 'Decline 20%', animated: true },
+              { id: 'e9', source: 'case_accept_20', target: 'end_accept_20', animated: true },
+              
+              // 30% offer
+              { id: 'e10', source: 'offer2_30', target: 'opts_30', animated: true },
+              { id: 'e11', source: 'opts_30', target: 'case_accept_30', sourceHandle: 'opt-0', label: 'Accept 30%', animated: true },
+              { id: 'e12', source: 'opts_30', target: 'msg_manager_check1', sourceHandle: 'opt-1', label: 'Decline 30%', animated: true },
+              { id: 'e13', source: 'case_accept_30', target: 'end_accept_30', animated: true },
+              
+              // Manager delay 1
+              { id: 'e14', source: 'msg_manager_check1', target: 'delay1', animated: true },
+              { id: 'e15', source: 'delay1', target: 'offer3_40', animated: true },
+              
+              // 40% offer
+              { id: 'e16', source: 'offer3_40', target: 'opts_40', animated: true },
+              { id: 'e17', source: 'opts_40', target: 'case_accept_40', sourceHandle: 'opt-0', label: 'Accept 40%', animated: true },
+              { id: 'e18', source: 'opts_40', target: 'msg_manager_check2', sourceHandle: 'opt-1', label: 'Decline 40%', animated: true },
+              { id: 'e19', source: 'case_accept_40', target: 'end_accept_40', animated: true },
+              
+              // Manager delay 2
+              { id: 'e20', source: 'msg_manager_check2', target: 'delay2', animated: true },
+              { id: 'e21', source: 'delay2', target: 'offer4_50', animated: true },
+              
+              // 50% offer
+              { id: 'e22', source: 'offer4_50', target: 'opts_50', animated: true },
+              { id: 'e23', source: 'opts_50', target: 'case_accept_50', sourceHandle: 'opt-0', label: 'Accept 50%', animated: true },
+              { id: 'e24', source: 'opts_50', target: 'msg_full_refund', sourceHandle: 'opt-1', label: 'Decline 50%', animated: true },
+              { id: 'e25', source: 'case_accept_50', target: 'end_accept_50', animated: true },
+              
+              // Full refund
+              { id: 'e26', source: 'msg_full_refund', target: 'case_full_refund', animated: true },
+              { id: 'e27', source: 'case_full_refund', target: 'end_full_refund', animated: true }
             ]
           },
 
