@@ -6,6 +6,11 @@
  * - All easy-to-modify settings are at the TOP of this file
  * - Search for "EASY CONFIG" to find customizable sections
  * - See CODING_GUIDELINES.md for modification rules
+ *
+ * ⚠️ SYNC REMINDER:
+ * - If you modify messages, forms, or flows in this file, you MUST also update
+ *   `frontend/hub/flow-docs.html` to keep the Flow Documentation in sync
+ * - See SYNC_CHECKLIST.md for detailed instructions
  */
 
 // ============================================
