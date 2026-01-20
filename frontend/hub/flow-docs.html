@@ -1503,11 +1503,38 @@
               { id: 'end_waiting_pickup', type: 'end', position: { x: 2200, y: 3850 }, data: { title: 'Enjoy your pickup!', showSurvey: true } },
               { id: 'subflow_pickup_not_there', type: 'subflow', position: { x: 2700, y: 3850 }, data: { name: 'Pickup Not There', slug: 'pickup_not_there', nodeCount: 10, description: 'Pickup attempt form → case creation' } },
               
-              // ========== EXCEPTION BRANCH ==========
+              // ========== EXCEPTION BRANCH with INLINE refund ladder ==========
               { id: 'msg_exception', type: 'message', position: { x: 2950, y: 2450 }, data: { persona: 'amy', content: "I see there's an issue with your package delivery. Let me help you figure out what's going on." } },
               { id: 'opts_exception', type: 'options', position: { x: 2950, y: 2800 }, data: { prompt: 'What would you like to do?', options: [{ label: "Investigate and reship", icon: '🔍' }, { label: "I'd prefer a refund", icon: '💰' }] } },
-              { id: 'subflow_exception_investigate', type: 'subflow', position: { x: 2700, y: 3150 }, data: { name: 'Exception Investigation', slug: 'exception_investigation', nodeCount: 6, description: 'Investigation → reship' } },
-              { id: 'subflow_shipping_refund_ladder', type: 'subflow', position: { x: 3200, y: 3150 }, data: { name: 'Shipping Refund Ladder', slug: 'shipping_refund_ladder', nodeCount: 15, description: '20% → 30% → 40% → 50% with reship offers' } },
+              { id: 'subflow_exception_investigate', type: 'subflow', position: { x: 2650, y: 3150 }, data: { name: 'Exception Investigation', slug: 'exception_investigation', nodeCount: 30, description: 'Investigation → reship (has inline refund ladder)' } },
+              // INLINE shipping refund ladder for exception
+              { id: 'offer_20_exc', type: 'offer', position: { x: 3250, y: 3150 }, data: { percent: 20, label: '20% + Reship', message: "<strong>20% refund + free reship</strong>" } },
+              { id: 'opts_20_exc', type: 'options', position: { x: 3250, y: 3500 }, data: { prompt: 'What do you think?', options: [{ label: 'Accept 20%', icon: '✅' }, { label: 'Need more', icon: '💰' }] } },
+              { id: 'case_20_exc', type: 'case', position: { x: 2950, y: 3850 }, data: { type: 'refund', subtype: 'partial_20_reship', priority: 'normal' } },
+              { id: 'subflow_reship_20_exc', type: 'subflow', position: { x: 2950, y: 4200 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end_20_exc', type: 'end', position: { x: 2950, y: 4550 }, data: { title: '20% + Reship!', showSurvey: true } },
+              { id: 'offer_30_exc', type: 'offer', position: { x: 3250, y: 3850 }, data: { percent: 30, label: '30% + Reship', message: "<strong>30% + reship</strong>" } },
+              { id: 'opts_30_exc', type: 'options', position: { x: 3250, y: 4200 }, data: { prompt: 'What do you think?', options: [{ label: 'Accept 30%', icon: '✅' }, { label: 'Need more', icon: '💰' }] } },
+              { id: 'case_30_exc', type: 'case', position: { x: 2950, y: 4550 }, data: { type: 'refund', subtype: 'partial_30_reship', priority: 'normal' } },
+              { id: 'subflow_reship_30_exc', type: 'subflow', position: { x: 2950, y: 4900 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end_30_exc', type: 'end', position: { x: 2950, y: 5250 }, data: { title: '30% + Reship!', showSurvey: true } },
+              { id: 'msg_mgr1_exc', type: 'message', position: { x: 3250, y: 4550 }, data: { persona: 'amy', content: "Checking with manager..." } },
+              { id: 'delay1_exc', type: 'delay', position: { x: 3250, y: 4900 }, data: { duration: 8000, message: 'Manager check...' } },
+              { id: 'offer_40_exc', type: 'offer', position: { x: 3250, y: 5250 }, data: { percent: 40, label: '40% + Reship', message: "<strong>40% + reship</strong>" } },
+              { id: 'opts_40_exc', type: 'options', position: { x: 3250, y: 5600 }, data: { prompt: 'How does that sound?', options: [{ label: 'Accept 40%', icon: '✅' }, { label: 'Need more', icon: '💰' }] } },
+              { id: 'case_40_exc', type: 'case', position: { x: 2950, y: 5950 }, data: { type: 'refund', subtype: 'partial_40_reship', priority: 'normal' } },
+              { id: 'subflow_reship_40_exc', type: 'subflow', position: { x: 2950, y: 6300 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end_40_exc', type: 'end', position: { x: 2950, y: 6650 }, data: { title: '40% + Reship!', showSurvey: true } },
+              { id: 'msg_mgr2_exc', type: 'message', position: { x: 3250, y: 5950 }, data: { persona: 'amy', content: "Final manager check..." } },
+              { id: 'delay2_exc', type: 'delay', position: { x: 3250, y: 6300 }, data: { duration: 8000, message: 'Final check...' } },
+              { id: 'offer_50_exc', type: 'offer', position: { x: 3250, y: 6650 }, data: { percent: 50, label: '50% Max + Reship', message: "<strong>Maximum 50% + reship</strong>" } },
+              { id: 'opts_50_exc', type: 'options', position: { x: 3250, y: 7000 }, data: { prompt: 'Best offer', options: [{ label: 'Accept 50%', icon: '✅' }, { label: 'Full refund', icon: '💰' }] } },
+              { id: 'case_50_exc', type: 'case', position: { x: 2950, y: 7350 }, data: { type: 'refund', subtype: 'partial_50_reship', priority: 'normal' } },
+              { id: 'subflow_reship_50_exc', type: 'subflow', position: { x: 2950, y: 7700 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end_50_exc', type: 'end', position: { x: 2950, y: 8050 }, data: { title: '50% + Reship!', showSurvey: true } },
+              { id: 'msg_full_exc', type: 'message', position: { x: 3250, y: 7350 }, data: { persona: 'amy', content: "Full refund processing..." } },
+              { id: 'case_full_exc', type: 'case', position: { x: 3250, y: 7700 }, data: { type: 'refund', subtype: 'full_refund', priority: 'normal' } },
+              { id: 'end_full_exc', type: 'end', position: { x: 3250, y: 8050 }, data: { title: 'Full Refund!', showSurvey: true } },
               
               // ========== NOT FOUND BRANCH ==========
               { id: 'msg_not_found', type: 'message', position: { x: 1100, y: 1400 }, data: { persona: 'amy', content: "I couldn't find an order with those details. Let's try searching with more information." } },
@@ -1595,10 +1622,43 @@
               { id: 'e61', source: 'opts_pickup', target: 'end_waiting_pickup', sourceHandle: 'opt-0', label: 'Pick it up', animated: true },
               { id: 'e62', source: 'opts_pickup', target: 'subflow_pickup_not_there', sourceHandle: 'opt-1', label: 'Not there', animated: true },
               
-              // Exception
+              // Exception with inline ladder
               { id: 'e63', source: 'msg_exception', target: 'opts_exception', animated: true },
               { id: 'e64', source: 'opts_exception', target: 'subflow_exception_investigate', sourceHandle: 'opt-0', label: 'Investigate', animated: true },
-              { id: 'e65', source: 'opts_exception', target: 'subflow_shipping_refund_ladder', sourceHandle: 'opt-1', label: 'Refund', animated: true }
+              { id: 'e65', source: 'opts_exception', target: 'offer_20_exc', sourceHandle: 'opt-1', label: 'Refund', animated: true },
+              // 20% + reship
+              { id: 'e66', source: 'offer_20_exc', target: 'opts_20_exc', animated: true },
+              { id: 'e67', source: 'opts_20_exc', target: 'case_20_exc', sourceHandle: 'opt-0', label: 'Accept 20%', animated: true },
+              { id: 'e68', source: 'opts_20_exc', target: 'offer_30_exc', sourceHandle: 'opt-1', label: 'Decline', animated: true },
+              { id: 'e69', source: 'case_20_exc', target: 'subflow_reship_20_exc', animated: true },
+              { id: 'e70', source: 'subflow_reship_20_exc', target: 'end_20_exc', animated: true },
+              // 30% + reship
+              { id: 'e71', source: 'offer_30_exc', target: 'opts_30_exc', animated: true },
+              { id: 'e72', source: 'opts_30_exc', target: 'case_30_exc', sourceHandle: 'opt-0', label: 'Accept 30%', animated: true },
+              { id: 'e73', source: 'opts_30_exc', target: 'msg_mgr1_exc', sourceHandle: 'opt-1', label: 'Decline', animated: true },
+              { id: 'e74', source: 'case_30_exc', target: 'subflow_reship_30_exc', animated: true },
+              { id: 'e75', source: 'subflow_reship_30_exc', target: 'end_30_exc', animated: true },
+              // Manager delay 1
+              { id: 'e76', source: 'msg_mgr1_exc', target: 'delay1_exc', animated: true },
+              { id: 'e77', source: 'delay1_exc', target: 'offer_40_exc', animated: true },
+              // 40% + reship
+              { id: 'e78', source: 'offer_40_exc', target: 'opts_40_exc', animated: true },
+              { id: 'e79', source: 'opts_40_exc', target: 'case_40_exc', sourceHandle: 'opt-0', label: 'Accept 40%', animated: true },
+              { id: 'e80', source: 'opts_40_exc', target: 'msg_mgr2_exc', sourceHandle: 'opt-1', label: 'Decline', animated: true },
+              { id: 'e81', source: 'case_40_exc', target: 'subflow_reship_40_exc', animated: true },
+              { id: 'e82', source: 'subflow_reship_40_exc', target: 'end_40_exc', animated: true },
+              // Manager delay 2
+              { id: 'e83', source: 'msg_mgr2_exc', target: 'delay2_exc', animated: true },
+              { id: 'e84', source: 'delay2_exc', target: 'offer_50_exc', animated: true },
+              // 50% + reship
+              { id: 'e85', source: 'offer_50_exc', target: 'opts_50_exc', animated: true },
+              { id: 'e86', source: 'opts_50_exc', target: 'case_50_exc', sourceHandle: 'opt-0', label: 'Accept 50%', animated: true },
+              { id: 'e87', source: 'opts_50_exc', target: 'msg_full_exc', sourceHandle: 'opt-1', label: 'Decline', animated: true },
+              { id: 'e88', source: 'case_50_exc', target: 'subflow_reship_50_exc', animated: true },
+              { id: 'e89', source: 'subflow_reship_50_exc', target: 'end_50_exc', animated: true },
+              // Full refund
+              { id: 'e90', source: 'msg_full_exc', target: 'case_full_exc', animated: true },
+              { id: 'e91', source: 'case_full_exc', target: 'end_full_exc', animated: true }
             ]
           },
 
@@ -2029,27 +2089,87 @@
             id: 'exception_investigation',
             parentId: 'track_order',
             name: 'Exception/Expired Tracking Investigation',
-            description: 'Tracking shows exception or expired status - investigate and resolve',
+            description: 'Tracking shows exception - investigate and resolve, or INLINE shipping refund ladder (20%+reship→50%+reship→full)',
             nodes: [
               { id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Exception Investigation' } },
-              { id: 'msg1', type: 'message', position: { x: 350, y: 150 }, data: { persona: 'amy', content: "I see there's an issue with your package delivery. Let me help you figure out what's going on." } },
-              { id: 'msg2', type: 'message', position: { x: 350, y: 330 }, data: { persona: 'amy', content: "I'll create a case for our team to investigate with the carrier. They'll check what happened and get back to you within 1-2 business days." } },
-              { id: 'opts1', type: 'options', position: { x: 350, y: 510 }, data: { prompt: 'What would you like to do?', options: [{ label: "Investigate and reship", icon: '🔍' }, { label: "I'd prefer a refund", icon: '💰' }] } },
-              { id: 'case1', type: 'case', position: { x: 150, y: 690 }, data: { type: 'shipping', subtype: 'exception_investigation', priority: 'normal' } },
-              { id: 'subflow_reship', type: 'subflow', position: { x: 150, y: 870 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
-              { id: 'subflow_refund_ladder', type: 'subflow', position: { x: 550, y: 690 }, data: { name: 'Shipping Refund Ladder', slug: 'shipping_refund_ladder', nodeCount: 10 } },
-              { id: 'end1', type: 'end', position: { x: 150, y: 1070 }, data: { title: 'Case Created & Reship', showSurvey: true } },
-              { id: 'end2', type: 'end', position: { x: 550, y: 870 }, data: { title: 'Refund Processed', showSurvey: true } }
+              { id: 'msg1', type: 'message', position: { x: 350, y: 350 }, data: { persona: 'amy', content: "I see there's an issue with your package delivery. Let me help you figure out what's going on." } },
+              { id: 'msg2', type: 'message', position: { x: 350, y: 700 }, data: { persona: 'amy', content: "I'll create a case for our team to investigate. They'll check what happened within 1-2 business days." } },
+              { id: 'opts1', type: 'options', position: { x: 350, y: 1050 }, data: { prompt: 'What would you like to do?', options: [{ label: "Investigate and reship", icon: '🔍' }, { label: "I'd prefer a refund", icon: '💰' }] } },
+              // Investigate + reship branch - left
+              { id: 'case1', type: 'case', position: { x: 50, y: 1400 }, data: { type: 'shipping', subtype: 'exception_investigation', priority: 'normal' } },
+              { id: 'subflow_reship', type: 'subflow', position: { x: 50, y: 1750 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end1', type: 'end', position: { x: 50, y: 2100 }, data: { title: 'Case Created & Reship', showSurvey: true } },
+              
+              // ========== INLINE SHIPPING REFUND LADDER (right branch) ==========
+              { id: 'offer_20', type: 'offer', position: { x: 650, y: 1400 }, data: { percent: 20, label: '20% + Reship', message: "<strong>20% refund PLUS free reship</strong>" } },
+              { id: 'opts_20', type: 'options', position: { x: 650, y: 1750 }, data: { prompt: 'What do you think?', options: [{ label: 'Accept 20% + reship', icon: '✅' }, { label: 'Need more', icon: '💰' }] } },
+              { id: 'case_20', type: 'case', position: { x: 350, y: 2100 }, data: { type: 'refund', subtype: 'partial_20_reship', priority: 'normal' } },
+              { id: 'subflow_reship_20', type: 'subflow', position: { x: 350, y: 2450 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end_20', type: 'end', position: { x: 350, y: 2800 }, data: { title: '20% + Reship!', showSurvey: true } },
+              { id: 'offer_30', type: 'offer', position: { x: 650, y: 2100 }, data: { percent: 30, label: '30% + Reship', message: "<strong>30% refund + free reship</strong>" } },
+              { id: 'opts_30', type: 'options', position: { x: 650, y: 2450 }, data: { prompt: 'What do you think?', options: [{ label: 'Accept 30%', icon: '✅' }, { label: 'Need more', icon: '💰' }] } },
+              { id: 'case_30', type: 'case', position: { x: 350, y: 2800 }, data: { type: 'refund', subtype: 'partial_30_reship', priority: 'normal' } },
+              { id: 'subflow_reship_30', type: 'subflow', position: { x: 350, y: 3150 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end_30', type: 'end', position: { x: 350, y: 3500 }, data: { title: '30% + Reship!', showSurvey: true } },
+              { id: 'msg_mgr1', type: 'message', position: { x: 650, y: 2800 }, data: { persona: 'amy', content: "Checking with manager..." } },
+              { id: 'delay1', type: 'delay', position: { x: 650, y: 3150 }, data: { duration: 8000, message: 'Manager check...' } },
+              { id: 'offer_40', type: 'offer', position: { x: 650, y: 3500 }, data: { percent: 40, label: '40% + Reship', message: "<strong>40% refund + free reship</strong>" } },
+              { id: 'opts_40', type: 'options', position: { x: 650, y: 3850 }, data: { prompt: 'How does that sound?', options: [{ label: 'Accept 40%', icon: '✅' }, { label: 'Need more', icon: '💰' }] } },
+              { id: 'case_40', type: 'case', position: { x: 350, y: 4200 }, data: { type: 'refund', subtype: 'partial_40_reship', priority: 'normal' } },
+              { id: 'subflow_reship_40', type: 'subflow', position: { x: 350, y: 4550 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end_40', type: 'end', position: { x: 350, y: 4900 }, data: { title: '40% + Reship!', showSurvey: true } },
+              { id: 'msg_mgr2', type: 'message', position: { x: 650, y: 4200 }, data: { persona: 'amy', content: "Final manager check..." } },
+              { id: 'delay2', type: 'delay', position: { x: 650, y: 4550 }, data: { duration: 8000, message: 'Final check...' } },
+              { id: 'offer_50', type: 'offer', position: { x: 650, y: 4900 }, data: { percent: 50, label: '50% Maximum + Reship', message: "<strong>Maximum 50% + free reship</strong>" } },
+              { id: 'opts_50', type: 'options', position: { x: 650, y: 5250 }, data: { prompt: 'Best offer', options: [{ label: 'Accept 50%', icon: '✅' }, { label: 'Full refund', icon: '💰' }] } },
+              { id: 'case_50', type: 'case', position: { x: 350, y: 5600 }, data: { type: 'refund', subtype: 'partial_50_reship', priority: 'normal' } },
+              { id: 'subflow_reship_50', type: 'subflow', position: { x: 350, y: 5950 }, data: { name: 'Reship Flow', slug: 'reship_flow', nodeCount: 8 } },
+              { id: 'end_50', type: 'end', position: { x: 350, y: 6300 }, data: { title: '50% + Reship!', showSurvey: true } },
+              { id: 'msg_full', type: 'message', position: { x: 650, y: 5600 }, data: { persona: 'amy', content: "Full refund processing..." } },
+              { id: 'case_full', type: 'case', position: { x: 650, y: 5950 }, data: { type: 'refund', subtype: 'full_refund', priority: 'normal' } },
+              { id: 'end_full', type: 'end', position: { x: 650, y: 6300 }, data: { title: 'Full Refund!', showSurvey: true } }
             ],
             edges: [
               { id: 'e1', source: 'start', target: 'msg1', animated: true },
               { id: 'e2', source: 'msg1', target: 'msg2', animated: true },
               { id: 'e3', source: 'msg2', target: 'opts1', animated: true },
               { id: 'e4', source: 'opts1', target: 'case1', sourceHandle: 'opt-0', label: 'Investigate & reship', animated: true },
-              { id: 'e5', source: 'opts1', target: 'subflow_refund_ladder', sourceHandle: 'opt-1', label: 'Refund', animated: true },
+              { id: 'e5', source: 'opts1', target: 'offer_20', sourceHandle: 'opt-1', label: 'Refund', animated: true },
               { id: 'e6', source: 'case1', target: 'subflow_reship', animated: true },
               { id: 'e7', source: 'subflow_reship', target: 'end1', animated: true },
-              { id: 'e8', source: 'subflow_refund_ladder', target: 'end2', animated: true }
+              // 20% + reship
+              { id: 'e8', source: 'offer_20', target: 'opts_20', animated: true },
+              { id: 'e9', source: 'opts_20', target: 'case_20', sourceHandle: 'opt-0', label: 'Accept 20%', animated: true },
+              { id: 'e10', source: 'opts_20', target: 'offer_30', sourceHandle: 'opt-1', label: 'Decline', animated: true },
+              { id: 'e11', source: 'case_20', target: 'subflow_reship_20', animated: true },
+              { id: 'e12', source: 'subflow_reship_20', target: 'end_20', animated: true },
+              // 30% + reship
+              { id: 'e13', source: 'offer_30', target: 'opts_30', animated: true },
+              { id: 'e14', source: 'opts_30', target: 'case_30', sourceHandle: 'opt-0', label: 'Accept 30%', animated: true },
+              { id: 'e15', source: 'opts_30', target: 'msg_mgr1', sourceHandle: 'opt-1', label: 'Decline', animated: true },
+              { id: 'e16', source: 'case_30', target: 'subflow_reship_30', animated: true },
+              { id: 'e17', source: 'subflow_reship_30', target: 'end_30', animated: true },
+              // Manager delay 1
+              { id: 'e18', source: 'msg_mgr1', target: 'delay1', animated: true },
+              { id: 'e19', source: 'delay1', target: 'offer_40', animated: true },
+              // 40% + reship
+              { id: 'e20', source: 'offer_40', target: 'opts_40', animated: true },
+              { id: 'e21', source: 'opts_40', target: 'case_40', sourceHandle: 'opt-0', label: 'Accept 40%', animated: true },
+              { id: 'e22', source: 'opts_40', target: 'msg_mgr2', sourceHandle: 'opt-1', label: 'Decline', animated: true },
+              { id: 'e23', source: 'case_40', target: 'subflow_reship_40', animated: true },
+              { id: 'e24', source: 'subflow_reship_40', target: 'end_40', animated: true },
+              // Manager delay 2
+              { id: 'e25', source: 'msg_mgr2', target: 'delay2', animated: true },
+              { id: 'e26', source: 'delay2', target: 'offer_50', animated: true },
+              // 50% + reship
+              { id: 'e27', source: 'offer_50', target: 'opts_50', animated: true },
+              { id: 'e28', source: 'opts_50', target: 'case_50', sourceHandle: 'opt-0', label: 'Accept 50%', animated: true },
+              { id: 'e29', source: 'opts_50', target: 'msg_full', sourceHandle: 'opt-1', label: 'Decline', animated: true },
+              { id: 'e30', source: 'case_50', target: 'subflow_reship_50', animated: true },
+              { id: 'e31', source: 'subflow_reship_50', target: 'end_50', animated: true },
+              // Full refund
+              { id: 'e32', source: 'msg_full', target: 'case_full', animated: true },
+              { id: 'e33', source: 'case_full', target: 'end_full', animated: true }
             ]
           },
 
