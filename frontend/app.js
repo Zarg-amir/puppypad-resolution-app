@@ -3227,10 +3227,9 @@ async function handleSatisfiedThankYou(originalIntent, originalConcern) {
 
   // Create self-resolved case - customer satisfied with information provided
   await createSelfResolvedCase();
-
-  addOptions([
-    { text: "Back to Home", action: showHomeMenu }
-  ]);
+  
+  // Show success message (green box) - this will also show end-of-session survey
+  await showSuccess("Thanks for chatting!", "We're here whenever you need us. Have a great day! 🐕");
 }
 
 async function handleOrderedMistake() {
@@ -4780,7 +4779,11 @@ async function handleStatusDelivered(tracking) {
       Analytics.logEvent('delivered_checking_locations');
       addOptions([{ text: "Back to Home", action: showHomeMenu }]);
     }},
-    { text: "I found it!", action: () => showSuccess("Great!", "So glad you found your package! 🎉") }
+    { text: "I found it!", action: async () => {
+      // Create self-resolved case - customer satisfied with information provided
+      await createSelfResolvedCase();
+      showSuccess("Great!", "So glad you found your package! 🎉");
+    }}
   ]);
 }
 
@@ -4825,7 +4828,11 @@ async function handleOnTheWay(tracking, statusType) {
     }
 
     addOptions([
-      { text: "Perfect, I'll wait", action: () => showSuccess("Almost there!", "Your package should arrive today!") },
+      { text: "Perfect, I'll wait", action: async () => {
+        // Create self-resolved case - customer satisfied with information provided
+        await createSelfResolvedCase();
+        showSuccess("Almost there!", "Your package should arrive today!");
+      }},
       { text: "It's been out for delivery for days", action: async () => {
         await addBotMessage("That's unusual. Let me create a case for our team to investigate with the carrier.");
         await createShippingCase('stuck_out_for_delivery');
@@ -4846,7 +4853,11 @@ async function handleOnTheWay(tracking, statusType) {
     await addBotMessage(message);
 
     addOptions([
-      { text: "Okay, I'll wait", action: () => showSuccess("Thanks for your patience!", "Your package is on its way! 📦") },
+      { text: "Okay, I'll wait", action: async () => {
+        // Create self-resolved case - customer satisfied with information provided
+        await createSelfResolvedCase();
+        showSuccess("Thanks for your patience!", "Your package is on its way! 📦");
+      }},
       { text: "I have a concern", action: () => handleExtendedTransit(tracking, isInternational) }
     ]);
   }
@@ -4865,7 +4876,11 @@ async function handleStatusPending(tracking) {
       { text: "Yes, please investigate", action: async () => {
         await createShippingCase('pending_too_long');
       }},
-      { text: "I'll wait a bit longer", action: () => showSuccess("Thanks!", "We'll ship it soon!") }
+      { text: "I'll wait a bit longer", action: async () => {
+        // Create self-resolved case - customer satisfied with information provided
+        await createSelfResolvedCase();
+        showSuccess("Thanks!", "We'll ship it soon!");
+      }},
     ]);
   } else {
     addOptions([
@@ -4885,7 +4900,11 @@ async function handleStatusFailedAttempt(tracking) {
   await addBotMessage(`The carrier attempted to deliver your package but was unsuccessful. This could be due to:<br><br>• No one available to sign<br>• Address access issues<br>• Weather conditions<br><br>They'll typically try again within 1-2 business days.`);
 
   addOptions([
-    { text: "I'll be home next time", action: () => showSuccess("Sounds good!", "The carrier will attempt delivery again soon.") },
+    { text: "I'll be home next time", action: async () => {
+      // Create self-resolved case - customer satisfied with information provided
+      await createSelfResolvedCase();
+      showSuccess("Sounds good!", "The carrier will attempt delivery again soon.");
+    }},
     { text: "I need to change my address", action: () => handleFailedAttemptAddressChange(tracking) },
     { text: "They've tried multiple times", action: () => handleMultipleFailedAttempts(tracking) }
   ]);
@@ -4926,7 +4945,11 @@ async function handleFailedAttemptAddressChange(tracking) {
   await addBotMessage(`When you call, they can help you:<br>• Update the delivery address<br>• Schedule a redelivery<br>• Arrange a pickup at a local facility`);
 
   addOptions([
-    { text: "Thanks, I'll contact them", action: () => showSuccess("Good luck!", "The carrier should be able to help you with the address change.") },
+    { text: "Thanks, I'll contact them", action: async () => {
+      // Create self-resolved case - customer satisfied with information provided
+      await createSelfResolvedCase();
+      showSuccess("Good luck!", "The carrier should be able to help you with the address change.");
+    }},
     { text: "I'd rather get a reship", action: async () => {
       await addBotMessage("No problem! If you'd prefer, I can create a new shipment to your address once this one is returned to us, or you can provide a different address.");
       await handleReship();
@@ -4968,7 +4991,11 @@ async function handleMultipleFailedAttempts(tracking) {
       await addBotMessage(optionsMessage);
 
       addOptions([
-        { text: "I'll contact the carrier", action: () => showSuccess("Sounds good!", "The carrier can help you schedule a specific delivery time.") },
+        { text: "I'll contact the carrier", action: async () => {
+          // Create self-resolved case - customer satisfied with information provided
+          await createSelfResolvedCase();
+          showSuccess("Sounds good!", "The carrier can help you schedule a specific delivery time.");
+        }},
         { text: "Reship to different address", action: () => handleReship() },
         { text: "I want a refund instead", action: async () => {
           state.ladderType = 'shipping';
@@ -5136,7 +5163,11 @@ async function handlePickupNotThere(tracking) {
         await addBotMessage(`No worries! Check your email from ${carrierInfo.name} for the exact pickup location, or visit their website with tracking number <strong>${displayTracking}</strong> to find it.`);
       }
       addOptions([
-        { text: "Thanks, I'll go there", action: () => showSuccess("Good luck!", "Hope you get your package!") },
+        { text: "Thanks, I'll go there", action: async () => {
+          // Create self-resolved case - customer satisfied with information provided
+          await createSelfResolvedCase();
+          showSuccess("Good luck!", "Hope you get your package!");
+        }},
         { text: "I still need help", action: () => handleConfirmedWrongLocation(tracking) }
       ]);
     }}
@@ -5336,7 +5367,11 @@ async function showSarahVoiceNote(tracking, isInternational = false) {
   await addBotMessage(followUpMessage);
 
   addOptions([
-    { text: "I'll wait a bit longer", action: () => showSuccess("Thanks for your patience!", "Your package is on its way! 📦") },
+    { text: "I'll wait a bit longer", action: async () => {
+      // Create self-resolved case - customer satisfied with information provided
+      await createSelfResolvedCase();
+      showSuccess("Thanks for your patience!", "Your package is on its way! 📦");
+    }},
     { text: "I'd like to explore my options", action: () => handleExtendedTransit(tracking, isInternational) }
   ]);
 }
@@ -6090,7 +6125,11 @@ async function showTrackingCard() {
       state.flowType = 'help';
       await showItemSelection();
     }},
-    { text: "All good, thanks!", action: () => showSuccess("You're welcome!", "Have a great day! 🐕") }
+    { text: "All good, thanks!", action: async () => {
+      // Create self-resolved case - customer satisfied with information provided
+      await createSelfResolvedCase();
+      showSuccess("You're welcome!", "Have a great day! 🐕");
+    }}
   ]);
 }
 
