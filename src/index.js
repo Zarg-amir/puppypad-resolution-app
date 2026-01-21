@@ -8635,13 +8635,16 @@ async function handleFormatCaseDetails(request, env, corsHeaders) {
    Keep it short and to the point. Only include essential information about the customer's problem.
 
 2. **resolution**: State EXACTLY WHAT NEEDS TO BE DONE with ALL DETAILS. Detail is key - include dates, amounts, addresses, order numbers, and any specific information needed to complete the action. Make it as easy as possible for the team to execute.
+   
+   **CRITICAL FOR SUBSCRIPTION FREQUENCY CHANGES**: You MUST calculate and include the next delivery date. Use the case creation date and add the new frequency in days to calculate when the next delivery will occur. Format: "Next delivery date: [Month Day, Year]"
+   
    Examples:
-   - "Update subscription frequency to every 45 days. Next delivery date: [calculate and include date]. Subscription ID: [include]. Product: [include product name]"
+   - "Update subscription frequency to every 45 days. Next delivery date: March 7, 2026 (calculated from case date + 45 days). Subscription ID: AE4ADA882C. Order: #171088P. Product: Laundry Detergent Sheets. Notify customer at wendygareth77@hotmail.com once completed."
    - "Process 20% partial refund ($X.XX) for order [order number]. Customer keeps product. Refund to original payment method."
    - "Reship order [order number] to: [full address]. Use same shipping method. Send tracking number to customer email: [email]"
    - "Pause subscription [subscription ID] for 30 days. Resume date: [calculate and include specific date]. Product: [include product name]"
    
-   Include ALL actionable details: dates, amounts, IDs, addresses, email addresses, tracking numbers, etc. Be specific and complete.
+   Include ALL actionable details: dates (CALCULATE them when needed), amounts, IDs, addresses, email addresses, tracking numbers, etc. Be specific and complete.
 
 CRITICAL RULES:
 - issueReason: Be CONCISE - no unnecessary words, just the customer's issue
