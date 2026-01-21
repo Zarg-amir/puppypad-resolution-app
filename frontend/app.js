@@ -3225,6 +3225,9 @@ async function handleSatisfiedThankYou(originalIntent, originalConcern) {
     await addBotMessage("That makes me so happy to hear! I really think you're going to love it. If you ever have any questions, I'm always here to help. 😊");
   }
 
+  // Create self-resolved case - customer satisfied with information provided
+  await createSelfResolvedCase();
+
   addOptions([
     { text: "Back to Home", action: showHomeMenu }
   ]);
@@ -3919,7 +3922,11 @@ async function handleQualityKeepOrder() {
   await addBotMessage("Amazing... thank you so much for understanding! 💙<br><br>Give your PuppyPad a go... I think you're going to love it. And if anything doesn't feel right after a week or two, just message us. We've got you covered.<br><br>Your pup's gonna do great with it 🐾");
 
   addOptions([
-    { text: "Thanks!", action: () => showSuccess("You're all set!", "Enjoy your PuppyPads! 🐕") }
+    { text: "Thanks!", action: async () => {
+      // Create self-resolved case - customer satisfied with information provided
+      await createSelfResolvedCase();
+      showSuccess("You're all set!", "Enjoy your PuppyPads! 🐕");
+    }}
   ]);
 }
 
@@ -6701,7 +6708,11 @@ async function handleUnfulfilledOrder() {
       await addBotMessage("I'll help you cancel. Can you tell me why you'd like to cancel?");
       await showIntentOptions();
     }},
-    { text: "Actually, keep it as is", action: () => showSuccess("Perfect!", "Your order will ship soon. 📦") }
+    { text: "Actually, keep it as is", action: async () => {
+      // Create self-resolved case - customer satisfied with information provided
+      await createSelfResolvedCase();
+      showSuccess("Perfect!", "Your order will ship soon. 📦");
+    }}
   ]);
 }
 
