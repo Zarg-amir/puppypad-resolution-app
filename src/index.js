@@ -1207,6 +1207,11 @@ export default {
         return await handleHubCaseActivity(caseId, env, corsHeaders);
       }
 
+      // Hub API - Format case details with OpenAI
+      if (pathname === '/hub/api/format-case-details' && request.method === 'POST') {
+        return await handleFormatCaseDetails(request, env, corsHeaders);
+      }
+
       // Hub API - Sessions list
       if (pathname === '/hub/api/sessions' && request.method === 'GET') {
         return await handleHubSessions(request, env, corsHeaders);
@@ -8578,6 +8583,235 @@ async function handleHubCaseActivity(caseId, env, corsHeaders) {
       return Response.json({ success: true, activities: [] }, { headers: corsHeaders });
     }
     return Response.json({ error: 'Failed to load activity' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// FORMAT CASE DETAILS WITH OPENAI
+// Generates detailed issueReason and resolution from case data
+// ============================================
+async function handleFormatCaseDetails(request, env, corsHeaders) {
+  try {
+    const caseData = await request.json();
+
+    if (!caseData || !caseData.case_id) {
+      return Response.json({ error: 'Case data required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Parse extra_data if it's a string
+    if (caseData.extra_data && typeof caseData.extra_data === 'string') {
+      try {
+        caseData.extra_data = JSON.parse(caseData.extra_data);
+      } catch (e) {
+        console.error('Failed to parse extra_data:', e);
+        caseData.extra_data = {};
+      }
+    }
+
+    // Build comprehensive prompt
+    const systemPrompt = `You are a case management assistant. Analyze case data and generate TWO DISTINCT fields:
+
+1. **issueReason**: A detailed, customer-perspective description of WHAT THE PROBLEM IS. Use the customer's own words from intentDetails when available. Include context like:
+   - Customer's stated issue (from intentDetails)
+   - Issue type and category
+   - Dog information (names, breeds, ages) if applicable
+   - Subscription details (pause duration, cancel reason, frequency changes) if applicable
+   - Shipping issues (tracking, carrier, delivery problems) if applicable
+   - Missing items descriptions if applicable
+   - Quality concerns if applicable
+   
+   Format: Use "|" to separate different pieces of information. Be descriptive and customer-focused.
+
+2. **resolution**: An action-oriented, detailed description of EXACTLY WHAT THE TEAM NEEDS TO DO. Include ALL specific actionable details:
+   - Refund amounts and percentages
+   - Whether customer keeps product or needs to return
+   - Subscription actions (pause duration, resume dates, frequency changes, address updates)
+   - Shipping actions (reship addresses, tracking numbers, carrier contacts)
+   - Dog information if relevant to the resolution (e.g., for dog_not_using cases)
+   - Missing item reship details
+   - Quality upgrade steps
+   - Any other specific instructions
+   
+   Format: Use "|" to separate different pieces of information. Be extremely specific and actionable.
+
+CRITICAL: These two fields must be DIFFERENT:
+- issueReason = WHAT the problem is (customer perspective)
+- resolution = WHAT to do (team action steps)
+- DO NOT duplicate the same information in both fields
+- If dog info is in issueReason, only include it in resolution if it's relevant to the action steps
+- Focus issueReason on the problem/context
+- Focus resolution on the specific actions needed
+
+Return ONLY valid JSON in this format:
+{
+  "issueReason": "...",
+  "resolution": "..."
+}`;
+
+    // Format case data for the prompt
+    const refundAmount = caseData.refund_amount ? `$${parseFloat(caseData.refund_amount).toFixed(2)}` : null;
+    const extraData = caseData.extra_data || {};
+    
+    // Build user prompt with all relevant data
+    let userPrompt = `Analyze this case data and generate detailed issueReason and resolution fields:\n\n`;
+    userPrompt += `CASE ID: ${caseData.case_id}\n`;
+    userPrompt += `CASE TYPE: ${caseData.case_type || 'N/A'}\n`;
+    userPrompt += `CATEGORY: ${caseData.category || 'N/A'}\n`;
+    userPrompt += `RESOLUTION CODE: ${caseData.resolution || 'N/A'}\n`;
+    userPrompt += `STATUS: ${caseData.status || 'N/A'}\n\n`;
+    
+    userPrompt += `CUSTOMER INFO:\n`;
+    userPrompt += `- Name: ${caseData.customer_name || 'N/A'}\n`;
+    userPrompt += `- Email: ${caseData.customer_email || 'N/A'}\n\n`;
+    
+    userPrompt += `ORDER INFO:\n`;
+    userPrompt += `- Order Number: ${caseData.order_number || 'N/A'}\n`;
+    if (refundAmount) userPrompt += `- Refund Amount: ${refundAmount}\n`;
+    if (caseData.refund_percent) userPrompt += `- Refund Percent: ${caseData.refund_percent}%\n`;
+    if (caseData.keepProduct !== undefined) userPrompt += `- Customer Keeps Product: ${caseData.keepProduct}\n`;
+    userPrompt += `\n`;
+    
+    // Shipping info
+    if (caseData.tracking_number || caseData.carrier_name) {
+      userPrompt += `SHIPPING INFO:\n`;
+      if (caseData.tracking_number) userPrompt += `- Tracking: ${caseData.tracking_number}\n`;
+      if (caseData.carrier_name) userPrompt += `- Carrier: ${caseData.carrier_name}\n`;
+      if (caseData.tracking_status) userPrompt += `- Status: ${caseData.tracking_status}\n`;
+      if (caseData.shipping_address) {
+        const addr = typeof caseData.shipping_address === 'string' 
+          ? JSON.parse(caseData.shipping_address) 
+          : caseData.shipping_address;
+        userPrompt += `- Address: ${addr.street || ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zip || ''}, ${addr.country || ''}\n`;
+      }
+      userPrompt += `\n`;
+    }
+    
+    // Missing items
+    if (caseData.missing_item_description || caseData.missing_item_order_list) {
+      userPrompt += `MISSING ITEMS:\n`;
+      if (caseData.missing_item_description) userPrompt += `- Description: ${caseData.missing_item_description}\n`;
+      if (caseData.missing_item_order_list) userPrompt += `- Order List: ${caseData.missing_item_order_list}\n`;
+      userPrompt += `\n`;
+    }
+    
+    // Extra data details
+    userPrompt += `ADDITIONAL DETAILS (extra_data):\n`;
+    if (extraData.intentDetails) userPrompt += `- Customer's Own Words: "${extraData.intentDetails}"\n`;
+    if (extraData.issueType) userPrompt += `- Issue Type: ${extraData.issueType}\n`;
+    if (extraData.notes) userPrompt += `- Notes: ${extraData.notes}\n`;
+    
+    // Subscription details
+    if (caseData.case_type === 'subscription' || extraData.actionType) {
+      userPrompt += `\nSUBSCRIPTION DETAILS:\n`;
+      if (extraData.actionType) userPrompt += `- Action Type: ${extraData.actionType}\n`;
+      if (extraData.subscriptionProductName) userPrompt += `- Product: ${extraData.subscriptionProductName}\n`;
+      if (extraData.clientOrderId) userPrompt += `- Order ID: ${extraData.clientOrderId}\n`;
+      if (extraData.pauseDuration) userPrompt += `- Pause Duration: ${extraData.pauseDuration} days\n`;
+      if (extraData.pauseResumeDate) {
+        const resumeDate = new Date(extraData.pauseResumeDate);
+        userPrompt += `- Resume Date: ${resumeDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}\n`;
+      }
+      if (extraData.cancelReason) userPrompt += `- Cancel Reason: ${extraData.cancelReason}\n`;
+      if (extraData.previousFrequency && extraData.newFrequency) {
+        userPrompt += `- Frequency Change: From every ${extraData.previousFrequency} days to every ${extraData.newFrequency} days\n`;
+      } else if (extraData.newFrequency) {
+        userPrompt += `- New Frequency: Every ${extraData.newFrequency} days\n`;
+      }
+      if (extraData.newAddress) {
+        const addr = extraData.newAddress;
+        userPrompt += `- New Address: ${addr.street || ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zip || ''}, ${addr.country || ''}\n`;
+      }
+      if (extraData.discountPercent) userPrompt += `- Discount: ${extraData.discountPercent}%\n`;
+    }
+    
+    // Dog information
+    if (extraData.dogs && Array.isArray(extraData.dogs) && extraData.dogs.length > 0) {
+      userPrompt += `\nDOG INFORMATION:\n`;
+      extraData.dogs.forEach((dog, idx) => {
+        userPrompt += `- Dog ${idx + 1}: ${dog.name || 'N/A'} (${dog.breed || 'N/A'}, Age ${dog.age || 'N/A'})\n`;
+      });
+      if (extraData.methodsTried) {
+        userPrompt += `- Methods Tried: ${extraData.methodsTried}\n`;
+      }
+    }
+    
+    // Quality details
+    if (extraData.qualityDetails) {
+      userPrompt += `\nQUALITY DETAILS:\n`;
+      const qd = extraData.qualityDetails;
+      if (qd.customerReportedCount) userPrompt += `- Pads Affected: ${qd.customerReportedCount}\n`;
+      if (qd.upgradeTotal) userPrompt += `- Upgrade Total: $${qd.upgradeTotal}\n`;
+      if (qd.customerNotes) userPrompt += `- Customer Notes: ${qd.customerNotes}\n`;
+    }
+    
+    // Corrected address
+    if (extraData.correctedAddress) {
+      userPrompt += `\nCORRECTED ADDRESS:\n`;
+      const addr = extraData.correctedAddress;
+      userPrompt += `${addr.street || ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zip || ''}, ${addr.country || ''}\n`;
+    }
+    
+    userPrompt += `\nGenerate issueReason (customer perspective - what the problem is) and resolution (action steps - what team needs to do). Make sure they are DIFFERENT and serve different purposes.`;
+
+    // Call OpenAI
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        max_tokens: 800,
+        temperature: 0.3, // Lower temperature for more consistent, factual output
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      return Response.json({ 
+        error: 'Failed to format case details',
+        fallback: true 
+      }, { status: 500, headers: corsHeaders });
+    }
+
+    const data = await response.json();
+    const message = data.choices[0]?.message?.content || '';
+
+    // Parse JSON response
+    try {
+      // Extract JSON from markdown code blocks if present
+      let jsonStr = message.trim();
+      if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      }
+      
+      const result = JSON.parse(jsonStr);
+      
+      return Response.json({
+        success: true,
+        issueReason: result.issueReason || 'Issue details not available',
+        resolution: result.resolution || 'Resolution details not available'
+      }, { headers: corsHeaders });
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response:', parseError, 'Response:', message);
+      return Response.json({ 
+        error: 'Failed to parse AI response',
+        fallback: true,
+        rawResponse: message
+      }, { status: 500, headers: corsHeaders });
+    }
+  } catch (error) {
+    console.error('Format case details error:', error);
+    return Response.json({ 
+      error: 'Failed to format case details',
+      fallback: true 
+    }, { status: 500, headers: corsHeaders });
   }
 }
 

@@ -2967,6 +2967,84 @@ const HubSavedViews = {
 };
 
 const HubCases = {
+  // Cache for formatted case details (to avoid repeated API calls)
+  _formattedDetailsCache: new Map(),
+
+  // Helper function to get formatted case details from OpenAI
+  async getFormattedDetails(caseData) {
+    if (!caseData || !caseData.case_id) {
+      return { issueReason: null, resolution: null };
+    }
+
+    // Check cache first
+    const cacheKey = caseData.case_id;
+    if (this._formattedDetailsCache.has(cacheKey)) {
+      return this._formattedDetailsCache.get(cacheKey);
+    }
+
+    try {
+      const response = await fetch('/hub/api/format-case-details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(caseData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to format case details');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        const formatted = {
+          issueReason: result.issueReason || null,
+          resolution: result.resolution || null
+        };
+        // Cache the result
+        this._formattedDetailsCache.set(cacheKey, formatted);
+        return formatted;
+      } else {
+        throw new Error('Formatting failed');
+      }
+    } catch (error) {
+      console.error('Error formatting case details:', error);
+      // Return fallback values
+      return { issueReason: null, resolution: null };
+    }
+  },
+
+  // Pre-fetch formatted details for multiple cases (in batches)
+  async preFetchFormattedDetails(cases) {
+    if (!cases || cases.length === 0) return;
+
+    // Process in batches of 5 to avoid overwhelming the API
+    const batchSize = 5;
+    for (let i = 0; i < cases.length; i += batchSize) {
+      const batch = cases.slice(i, i + batchSize);
+      const promises = batch.map(async (c) => {
+        try {
+          const formatted = await this.getFormattedDetails(c);
+          // Store on case object for synchronous access
+          c._formattedIssueReason = formatted.issueReason;
+          c._formattedResolution = formatted.resolution;
+        } catch (e) {
+          console.error(`Failed to format case ${c.case_id}:`, e);
+        }
+      });
+      await Promise.all(promises);
+      
+      // Re-render after each batch to show updated data
+      if (i + batchSize < cases.length) {
+        this.renderCasesList();
+      }
+    }
+    
+    // Final render after all batches
+    this.renderCasesList();
+  },
+
   async loadCases(page = 1) {
     HubUI.showLoading();
 
@@ -3008,6 +3086,9 @@ const HubCases = {
       if (result.assignees) {
         this.updateAssigneeFilter(result.assignees);
       }
+
+      // Pre-fetch formatted details for all cases (in background, don't block rendering)
+      this.preFetchFormattedDetails(HubState.cases);
 
       this.renderCasesList();
     } catch (e) {
@@ -3082,8 +3163,8 @@ const HubCases = {
       const hoursLeft = Math.max(0, Math.round((dueDate - now) / (1000 * 60 * 60)));
       const dueClass = isOverdue ? 'overdue' : hoursLeft < 8 ? 'warning' : 'ok';
       
-      // Format resolution text
-      const resolutionText = this.formatResolution(c.resolution) || 'Pending Review';
+      // Format resolution text - use pre-fetched formatted resolution if available
+      const resolutionText = c._formattedResolution || this.formatResolutionSync(c) || 'Pending Review';
       const statusClass = c.status ? c.status.replace('_', '-') : 'pending';
       
       return `
@@ -3263,10 +3344,11 @@ const HubCases = {
     return `${diffDays}d left`;
   },
 
-  formatResolution(resolution) {
-    if (!resolution) return null;
+  // Synchronous fallback formatting (used when OpenAI data not yet available)
+  formatResolutionSync(caseData) {
+    if (!caseData || !caseData.resolution) return null;
     
-    // Format common resolution codes to readable text
+    const resolution = caseData.resolution;
     const resolutionMap = {
       'full_refund': 'Process full refund',
       'partial_20': 'Process 20% partial refund',
@@ -3281,19 +3363,33 @@ const HubCases = {
       'manual_assistance': 'Manual assistance required'
     };
     
-    // Check for partial refund patterns
     const partialMatch = resolution.match(/^partial_(\d+)$/);
     if (partialMatch) {
       return `Process ${partialMatch[1]}% partial refund`;
     }
     
-    // Check for partial refund + reship
     const partialReshipMatch = resolution.match(/^partial_(\d+)_reship$/);
     if (partialReshipMatch) {
       return `Process ${partialReshipMatch[1]}% refund + reship`;
     }
     
     return resolutionMap[resolution] || resolution.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  },
+
+  // Async version for getting formatted resolution (used when needed immediately)
+  async formatResolution(caseData) {
+    if (!caseData || !caseData.resolution) return null;
+    
+    // Get formatted details from OpenAI (with caching)
+    const formatted = await this.getFormattedDetails(caseData);
+    
+    // Return OpenAI-generated resolution if available, otherwise fallback
+    if (formatted.resolution) {
+      return formatted.resolution;
+    }
+    
+    // Fallback to basic formatting if OpenAI fails
+    return this.formatResolutionSync(caseData);
   },
 
   escapeHtml(text) {
@@ -5770,6 +5866,9 @@ const HubCaseDetail = {
       // Store in HubState for keyboard shortcuts etc
       HubState.currentCase = this.caseData;
 
+      // Fetch formatted details from OpenAI (in background, don't block initial render)
+      this.loadFormattedDetails();
+
       this.render();
     } catch (e) {
       console.error('Failed to load case:', e);
@@ -5889,7 +5988,7 @@ const HubCaseDetail = {
               </div>
               <div class="case-info-row">
                 <div class="case-info-label">Resolution</div>
-                <div class="case-info-value">${this.formatResolution(c.resolution)}</div>
+                <div class="case-info-value">${this.formatResolution(c)}</div>
               </div>
               ${c.refund_amount ? `
               <div class="case-info-row">
@@ -6031,10 +6130,30 @@ const HubCaseDetail = {
     `;
   },
 
+  // Load formatted details from OpenAI for the current case
+  async loadFormattedDetails() {
+    if (!this.caseData) return;
+
+    try {
+      const formatted = await HubCases.getFormattedDetails(this.caseData);
+      // Store on caseData for synchronous access
+      this.caseData._formattedIssueReason = formatted.issueReason;
+      this.caseData._formattedResolution = formatted.resolution;
+      // Re-render to show updated details
+      this.render();
+    } catch (e) {
+      console.error('Failed to load formatted details:', e);
+    }
+  },
+
   formatIssueReason(c) {
-    // Map category/case_type to human-readable issue reasons
+    // Use OpenAI-generated issue reason if available
+    if (c._formattedIssueReason) {
+      return c._formattedIssueReason;
+    }
+
+    // Fallback to basic formatting
     const issueReasonMap = {
-      // Refund reasons
       'quality_issue': 'Product quality issue',
       'not_as_described': 'Product not as described',
       'dog_not_using': 'My dog is not using the product',
@@ -6042,20 +6161,17 @@ const HubCaseDetail = {
       'changed_mind': 'Changed my mind',
       'found_cheaper': 'Found cheaper alternative',
       'duplicate_order': 'Duplicate order',
-      // Shipping reasons
       'not_received': "Haven't received my order",
       'tracking_issue': 'Tracking not updating',
       'wrong_address': 'Shipped to wrong address',
       'damaged_shipping': 'Damaged during shipping',
       'missing_item': 'Missing item from order',
       'wrong_item': 'Received wrong item',
-      // Subscription reasons
       'pause_subscription': 'Want to pause my subscription',
       'cancel_subscription': 'Want to cancel subscription',
       'change_frequency': 'Change delivery frequency',
       'update_address': 'Update shipping address',
       'too_much_product': 'Receiving too much product',
-      // Return reasons
       'return_exchange': 'Want to return for exchange',
       'return_refund': 'Want to return for refund'
     };
@@ -6064,12 +6180,10 @@ const HubCaseDetail = {
     const caseType = c.case_type || '';
     const resolution = c.resolution || '';
     
-    // Try to find a matching reason
     if (issueReasonMap[category]) {
       return issueReasonMap[category];
     }
     
-    // Try to infer from resolution text
     if (resolution.toLowerCase().includes('quality')) return 'Product quality issue';
     if (resolution.toLowerCase().includes('not using')) return 'My dog is not using it';
     if (resolution.toLowerCase().includes('pause')) return 'Want to pause subscription';
@@ -6077,7 +6191,6 @@ const HubCaseDetail = {
     if (resolution.toLowerCase().includes('missing')) return 'Missing item from order';
     if (resolution.toLowerCase().includes('reship')) return "Haven't received my order";
     
-    // Default based on case type
     const defaultReasons = {
       'refund': 'Requesting a refund',
       'return': 'Want to return product',
@@ -6554,7 +6667,14 @@ The PuppyPad Team`
     return status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   },
 
-  formatResolution(resolution) {
+  formatResolution(c) {
+    // Use OpenAI-generated resolution if available
+    if (c._formattedResolution) {
+      return c._formattedResolution;
+    }
+
+    // Fallback to basic formatting
+    const resolution = c.resolution || c;
     if (!resolution) return 'Pending Review';
     
     const resolutionMap = {
@@ -6914,8 +7034,8 @@ const HubDashboard = {
       const hoursLeft = Math.max(0, Math.round((dueDate - now) / (1000 * 60 * 60)));
       const dueClass = isOverdue ? 'overdue' : hoursLeft < 8 ? 'warning' : 'ok';
       
-      // Format resolution to match All Cases
-      const resolutionText = HubCases.formatResolution ? HubCases.formatResolution(c.resolution) : (c.resolution || 'Pending Review');
+      // Format resolution to match All Cases - use pre-fetched formatted resolution if available
+      const resolutionText = c._formattedResolution || HubCases.formatResolutionSync ? HubCases.formatResolutionSync(c) : (c.resolution || 'Pending Review');
       
       return `
         <tr onclick="HubCases.openCase('${c.case_id}')" style="cursor: pointer;">
