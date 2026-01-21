@@ -2486,6 +2486,16 @@ async function getSubscriptionDetails(env, purchaseId, orderData) {
 async function handleCreateCase(request, env, corsHeaders) {
   const caseData = await request.json();
   
+  // Log self-resolved case creation for debugging
+  if (caseData.resolvedInApp) {
+    console.log('Creating self-resolved case:', {
+      orderNumber: caseData.orderNumber,
+      email: caseData.email,
+      issueType: caseData.issueType,
+      resolvedInApp: caseData.resolvedInApp
+    });
+  }
+  
   // Generate case ID
   const now = new Date();
   const prefix = getCasePrefix(caseData.caseType);
@@ -4462,38 +4472,44 @@ async function logCaseToAnalytics(env, caseData) {
       caseData.issueType || null,
       resolvedInApp
     ).run();
-    console.log('Case saved to database (full with extra_data and resolved_in_app):', caseData.caseId);
+    console.log('Case saved to database (full with extra_data and resolved_in_app):', caseData.caseId, 'resolvedInApp:', resolvedInApp);
     return;
   } catch (e) {
     console.log('Full insert failed, trying without extra_data:', e.message);
   }
 
-  // Try insert without extra_data column
+  // Try insert without extra_data column (but with resolved_in_app)
   try {
+    const resolvedInApp = caseData.resolvedInApp ? 1 : 0;
+    const status = caseData.resolvedInApp ? 'completed' : 'pending';
+    const caseType = caseData.resolvedInApp ? null : caseData.caseType;
+    const resolution = caseData.resolvedInApp ? null : caseData.resolution;
+    
     await env.ANALYTICS_DB.prepare(`
       INSERT INTO cases (
         case_id, case_type, resolution, customer_email, customer_name,
         order_number, refund_amount, status, session_id,
         clickup_task_id, clickup_task_url, session_replay_url,
-        order_url, order_date, richpanel_conversation_no, created_at
+        order_url, order_date, richpanel_conversation_no, resolved_in_app, created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `).bind(
       caseData.caseId,
-      caseData.caseType,
-      caseData.resolution,
+      caseType,
+      resolution,
       caseData.email,
       customerName || null,
       caseData.orderNumber,
       caseData.refundAmount || null,
-      'pending',
+      status,
       caseData.sessionId || null,
       caseData.clickupTaskId || null,
       caseData.clickupTaskUrl || null,
       caseData.sessionReplayUrl || null,
       caseData.orderUrl || null,
       caseData.orderDate || null,
-      caseData.richpanelConversationNo || null
+      caseData.richpanelConversationNo || null,
+      resolvedInApp
     ).run();
     console.log('Case saved to database (full):', caseData.caseId);
     return;
@@ -4501,27 +4517,33 @@ async function logCaseToAnalytics(env, caseData) {
     console.log('Full insert failed, trying basic insert:', e.message);
   }
 
-  // Fallback: basic insert with only core columns
+  // Fallback: basic insert with only core columns (but with resolved_in_app)
   try {
+    const resolvedInApp = caseData.resolvedInApp ? 1 : 0;
+    const status = caseData.resolvedInApp ? 'completed' : 'pending';
+    const caseType = caseData.resolvedInApp ? null : caseData.caseType;
+    const resolution = caseData.resolvedInApp ? null : caseData.resolution;
+    
     await env.ANALYTICS_DB.prepare(`
       INSERT INTO cases (
         case_id, case_type, resolution, customer_email, customer_name,
         order_number, refund_amount, status, session_id,
-        clickup_task_id, clickup_task_url, created_at
+        clickup_task_id, clickup_task_url, resolved_in_app, created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `).bind(
       caseData.caseId,
-      caseData.caseType,
-      caseData.resolution,
+      caseType,
+      resolution,
       caseData.email,
       customerName || null,
       caseData.orderNumber,
       caseData.refundAmount || null,
-      'pending',
+      status,
       caseData.sessionId || null,
       caseData.clickupTaskId || null,
-      caseData.clickupTaskUrl || null
+      caseData.clickupTaskUrl || null,
+      resolvedInApp
     ).run();
     console.log('Case saved to database (basic):', caseData.caseId);
     return;
@@ -4529,18 +4551,24 @@ async function logCaseToAnalytics(env, caseData) {
     console.log('Basic insert failed, trying minimal insert:', e2.message);
   }
 
-  // Final fallback: minimal columns only
+  // Final fallback: minimal columns only (but with resolved_in_app)
   try {
+    const resolvedInApp = caseData.resolvedInApp ? 1 : 0;
+    const status = caseData.resolvedInApp ? 'completed' : 'pending';
+    const caseType = caseData.resolvedInApp ? null : caseData.caseType;
+    const resolution = caseData.resolvedInApp ? null : caseData.resolution;
+    
     await env.ANALYTICS_DB.prepare(`
-      INSERT INTO cases (case_id, case_type, resolution, customer_email, order_number, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO cases (case_id, case_type, resolution, customer_email, order_number, status, resolved_in_app, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `).bind(
       caseData.caseId,
-      caseData.caseType,
-      caseData.resolution,
+      caseType,
+      resolution,
       caseData.email,
       caseData.orderNumber,
-      'pending'
+      status,
+      resolvedInApp
     ).run();
     console.log('Case saved to database (minimal):', caseData.caseId);
   } catch (e3) {
