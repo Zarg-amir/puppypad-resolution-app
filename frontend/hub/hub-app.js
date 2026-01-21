@@ -5886,7 +5886,10 @@ const HubCaseDetail = {
       HubState.currentCase = this.caseData;
 
       // Fetch formatted details from OpenAI (in background, don't block initial render)
-      this.loadFormattedDetails();
+      console.log('🔍 HubCaseDetail.load: About to call loadFormattedDetails for case:', this.caseData.case_id);
+      this.loadFormattedDetails().catch(err => {
+        console.error('❌ HubCaseDetail.load: Error calling loadFormattedDetails:', err);
+      });
 
       this.render();
     } catch (e) {
@@ -6151,22 +6154,40 @@ const HubCaseDetail = {
 
   // Load formatted details from OpenAI for the current case
   async loadFormattedDetails() {
+    console.log('🚀 loadFormattedDetails: Function called');
+    console.log('📋 loadFormattedDetails: this.caseData:', this.caseData);
+    
     if (!this.caseData) {
-      console.warn('loadFormattedDetails: No caseData available');
+      console.warn('⚠️ loadFormattedDetails: No caseData available');
       return;
     }
 
-    console.log('🔄 Loading formatted details for case:', this.caseData.case_id);
+    if (!this.caseData.case_id) {
+      console.warn('⚠️ loadFormattedDetails: caseData exists but no case_id:', this.caseData);
+      return;
+    }
+
+    console.log('🔄 loadFormattedDetails: Loading formatted details for case:', this.caseData.case_id);
+    console.log('📦 loadFormattedDetails: Case type:', this.caseData.case_type, 'Resolution:', this.caseData.resolution);
+    console.log('📦 loadFormattedDetails: extra_data:', this.caseData.extra_data);
+    
     try {
+      console.log('📞 loadFormattedDetails: Calling HubCases.getFormattedDetails...');
       const formatted = await HubCases.getFormattedDetails(this.caseData);
-      console.log('✅ Received formatted details:', formatted);
+      console.log('✅ loadFormattedDetails: Received formatted details:', formatted);
+      
       // Store on caseData for synchronous access
       this.caseData._formattedIssueReason = formatted.issueReason;
       this.caseData._formattedResolution = formatted.resolution;
+      console.log('💾 loadFormattedDetails: Stored formatted details on caseData');
+      
       // Re-render to show updated details
+      console.log('🔄 loadFormattedDetails: Re-rendering...');
       this.render();
+      console.log('✅ loadFormattedDetails: Re-render complete');
     } catch (e) {
-      console.error('❌ Failed to load formatted details:', e);
+      console.error('❌ loadFormattedDetails: Failed to load formatted details:', e);
+      console.error('❌ loadFormattedDetails: Error stack:', e.stack);
     }
   },
 
