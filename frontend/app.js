@@ -2561,7 +2561,11 @@ async function handleSatisfied(satisfied) {
     await addBotMessage("That's great to hear! 🎉 Give it a go and remember — consistency is key. You've got this!<br><br>Is there anything else I can help you with?");
     
     addOptions([
-      { text: "No, I'm all set!", action: () => showSuccess("Thanks for chatting!", "We're here whenever you need us. Have a great day! 🐕") },
+      { text: "No, I'm all set!", action: async () => {
+        // Create self-resolved case
+        await createSelfResolvedCase();
+        showSuccess("Thanks for chatting!", "We're here whenever you need us. Have a great day! 🐕");
+      }},
       { text: "Yes, something else", action: showHomeMenu }
     ]);
   } else {
@@ -2854,6 +2858,65 @@ async function confirmReturn() {
   addUserMessage("I understand the return process");
 
   await createRefundCase('full', false);
+}
+
+// ============================================
+// CREATE SELF-RESOLVED CASE
+// Called when customer is satisfied with information provided and doesn't need manual resolution
+// ============================================
+async function createSelfResolvedCase() {
+  const order = state.selectedOrder;
+  const subscription = state.selectedSubscription;
+  const orderNumber = order?.orderNumber || subscription?.clientOrderId || '';
+
+  // Determine case type based on the issue/flow
+  let caseType = 'manual';
+  let resolutionText = 'satisfied_with_info';
+  
+  // Map issue types to case types
+  if (state.issueType === 'dog_not_using') {
+    caseType = 'manual';
+    resolutionText = 'satisfied_with_training_tips';
+  } else if (state.intent === 'changed_mind' || state.issueType === 'changed_mind') {
+    caseType = 'refund';
+    resolutionText = 'satisfied_with_info';
+  } else if (state.intent === 'not_met_expectations' || state.issueType === 'not_met_expectations') {
+    caseType = 'refund';
+    resolutionText = 'satisfied_with_explanation';
+  }
+
+  const caseData = {
+    sessionId: state.sessionId,
+    sessionReplayUrl: getSessionReplayUrl(),
+    caseType: caseType,
+    resolution: resolutionText,
+    email: state.customerData?.email || order?.email || '',
+    phone: state.customerData?.phone || order?.phone || '',
+    customerName: `${state.customerData?.firstName || order?.customerFirstName || ''} ${state.customerData?.lastName || order?.customerLastName || ''}`.trim(),
+    customerFirstName: state.customerData?.firstName || order?.customerFirstName || '',
+    customerLastName: state.customerData?.lastName || order?.customerLastName || '',
+    orderNumber: orderNumber,
+    orderId: order?.id || '',
+    orderUrl: order?.orderUrl || '',
+    orderDate: order?.createdAt || new Date().toISOString(),
+    intentDetails: state.intentDetails || '',
+    issueType: state.issueType || state.intent || 'general_inquiry',
+    resolvedInApp: true, // Flag to indicate this was resolved within the app
+  };
+
+  try {
+    const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(caseData),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to create self-resolved case');
+    }
+  } catch (error) {
+    console.error('Error creating self-resolved case:', error);
+  }
 }
 
 // ============================================

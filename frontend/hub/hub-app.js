@@ -3457,6 +3457,7 @@ const HubNavigation = {
       'events': 'eventsView',
       'issues': 'issuesView',
       'duplicates': 'duplicatesView',
+      'self-resolved': 'selfResolvedView',
       'analytics': 'analyticsView',
       'audit': 'auditView',
       'users': 'usersView',
@@ -3469,6 +3470,11 @@ const HubNavigation = {
       const el = document.getElementById(viewId);
       if (el) el.style.display = pageName === page ? 'block' : 'none';
     });
+
+    // Load data when switching to self-resolved page
+    if (page === 'self-resolved' && typeof HubSelfResolved !== 'undefined' && HubSelfResolved.loadCases) {
+      HubSelfResolved.loadCases();
+    }
 
     // Hide header filters on pages that have their own filters or don't need them
     const headerFilters = document.getElementById('headerFilters');
@@ -3518,6 +3524,8 @@ const HubNavigation = {
       sessions: 'Sessions',
       events: 'Event Log',
       issues: 'Issue Reports',
+      duplicates: 'Duplicates',
+      'self-resolved': 'Self-Resolved',
       analytics: 'Performance',
       audit: 'Audit Log',
       users: 'User Management',
@@ -3558,6 +3566,8 @@ const HubNavigation = {
       path = '/hub/issues';
     } else if (page === 'duplicates') {
       path = '/hub/duplicates';
+    } else if (page === 'self-resolved') {
+      path = '/hub/self-resolved';
     } else if (page === 'analytics') {
       path = '/hub/analytics';
     } else if (page === 'audit') {
@@ -4551,6 +4561,168 @@ const HubAnalytics = {
       });
     } catch {
       return '-';
+    }
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+};
+
+// ============================================
+// SELF-RESOLVED PAGE
+// Cases where customers were satisfied with information provided
+// ============================================
+const HubSelfResolved = {
+  currentPage: 1,
+  totalPages: 1,
+  searchTerm: '',
+
+  async loadCases(page = 1) {
+    this.currentPage = page;
+    const tbody = document.getElementById('selfResolvedTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="5" class="loading-spinner"><div class="spinner"></div></td></tr>';
+
+    try {
+      const params = new URLSearchParams({
+        page: page,
+        limit: 50,
+      });
+      if (this.searchTerm) {
+        params.append('search', this.searchTerm);
+      }
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (HubState.token) {
+        headers['Authorization'] = `Bearer ${HubState.token}`;
+      }
+
+      const response = await fetch(`${HubConfig.API_BASE}/hub/api/self-resolved?${params}`, { headers });
+      if (!response.ok) throw new Error('Failed to load self-resolved cases');
+
+      const data = await response.json();
+      this.totalPages = data.totalPages || 1;
+      
+      this.renderCases(data.cases || []);
+      this.updateResultCount(data.total || 0);
+      this.renderPagination();
+
+      // Update badge count
+      const badge = document.getElementById('selfResolvedCount');
+      if (badge) badge.textContent = data.total || 0;
+    } catch (error) {
+      console.error('Error loading self-resolved cases:', error);
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray-500);">Failed to load self-resolved cases</td></tr>';
+      if (error.message?.includes('no such column')) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray-500);">Self-resolved feature not available. Run migration 007_self_resolved.sql</td></tr>';
+      }
+    }
+  },
+
+  renderCases(cases) {
+    const tbody = document.getElementById('selfResolvedTableBody');
+    if (!tbody) return;
+
+    if (cases.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray-500);">No self-resolved cases found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = cases.map(c => {
+      const customerInfo = c.customer_name || c.customer_email || 'Unknown';
+      const customerEmail = c.customer_email ? `<div style="font-size:12px;color:var(--gray-500);">${HubAPI.escapeHtml(c.customer_email)}</div>` : '';
+      const issueType = this.formatIssueType(c.issue_type || c.case_type || 'general');
+      const resolution = this.formatResolution(c.resolution || 'satisfied_with_info');
+      const resolvedDate = this.formatDate(c.created_at || c.resolved_at);
+      const recordingLink = c.session_replay_url 
+        ? `<a href="${HubAPI.escapeHtml(c.session_replay_url)}" target="_blank" style="color:var(--brand-navy);text-decoration:none;">View Recording</a>`
+        : '-';
+
+      return `
+        <tr style="cursor:pointer;" onclick="HubNavigation.goto('case-detail', '${HubAPI.escapeHtml(c.case_id)}')">
+          <td>
+            <div class="customer-info">
+              <div class="customer-name">${HubAPI.escapeHtml(customerInfo)}</div>
+              ${customerEmail}
+            </div>
+          </td>
+          <td><span class="type-badge ${c.case_type || 'manual'}">${HubAPI.escapeHtml(issueType)}</span></td>
+          <td>${HubAPI.escapeHtml(resolution)}</td>
+          <td><span class="time-ago">${resolvedDate}</span></td>
+          <td>${recordingLink}</td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  formatIssueType(issueType) {
+    if (!issueType) return 'General Inquiry';
+    return issueType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  },
+
+  formatResolution(resolution) {
+    const resolutions = {
+      'satisfied_with_training_tips': 'Satisfied with training tips',
+      'satisfied_with_info': 'Satisfied with information provided',
+      'satisfied_with_explanation': 'Satisfied with explanation',
+    };
+    return resolutions[resolution] || resolution.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  },
+
+  formatDate(timestamp) {
+    if (!timestamp) return '-';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  },
+
+  updateResultCount(total) {
+    const countEl = document.getElementById('selfResolvedResultCount');
+    if (countEl) {
+      countEl.textContent = `${total} ${total === 1 ? 'case' : 'cases'}`;
+    }
+  },
+
+  renderPagination() {
+    const paginationEl = document.getElementById('selfResolvedPagination');
+    if (!paginationEl) return;
+
+    if (this.totalPages <= 1) {
+      paginationEl.innerHTML = '';
+      return;
+    }
+
+    let html = '<div class="pagination-controls">';
+    if (this.currentPage > 1) {
+      html += `<button onclick="HubSelfResolved.loadCases(${this.currentPage - 1})" class="pagination-btn">Previous</button>`;
+    }
+    html += `<span class="pagination-info">Page ${this.currentPage} of ${this.totalPages}</span>`;
+    if (this.currentPage < this.totalPages) {
+      html += `<button onclick="HubSelfResolved.loadCases(${this.currentPage + 1})" class="pagination-btn">Next</button>`;
+    }
+    html += '</div>';
+    paginationEl.innerHTML = html;
+  },
+
+  search() {
+    const searchInput = document.getElementById('selfResolvedSearch');
+    if (searchInput) {
+      this.searchTerm = searchInput.value.trim();
+      this.loadCases(1);
     }
   },
 
@@ -8014,6 +8186,7 @@ window.HubSessions = HubSessions;
 window.HubEvents = HubEvents;
 window.HubIssues = HubIssues;
 window.HubDuplicates = HubDuplicates;
+window.HubSelfResolved = HubSelfResolved;
 window.HubAnalytics = HubAnalytics;
 window.HubFilters = HubFilters;
 window.HubSavedViews = HubSavedViews;

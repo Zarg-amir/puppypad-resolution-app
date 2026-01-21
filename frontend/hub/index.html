@@ -1038,6 +1038,11 @@
             Duplicates
             <span class="nav-badge" id="duplicatesCount">0</span>
           </a>
+          <a href="/hub/self-resolved" class="nav-item" data-page="self-resolved">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Self-Resolved
+            <span class="nav-badge" id="selfResolvedCount">0</span>
+          </a>
         </div>
 
         <div class="nav-section">
@@ -1398,6 +1403,39 @@
           </div>
         </div>
 
+        <!-- Self-Resolved View -->
+        <div id="selfResolvedView" style="display: none;">
+          <div class="cases-card">
+            <div class="cases-header">
+              <h2 class="cases-title">Self-Resolved Cases</h2>
+              <p style="margin-top: 8px; color: var(--gray-500); font-size: 14px;">Cases where customers were satisfied with information provided and resolved without manual intervention</p>
+            </div>
+            <div class="cases-filters-bar" style="padding: 16px 20px; margin-bottom: 0; border-bottom: 1px solid var(--gray-100);">
+              <div class="cases-filters-left">
+                <input type="text" id="selfResolvedSearch" placeholder="Search cases..." class="filter-select-inline" style="min-width: 250px;" oninput="HubSelfResolved.search()">
+              </div>
+              <div class="cases-filters-right">
+                <span id="selfResolvedResultCount" class="cases-result-count">Loading...</span>
+              </div>
+            </div>
+            <table class="cases-table cases-table-enhanced">
+              <thead>
+                <tr>
+                  <th class="th-customer">CUSTOMER</th>
+                  <th class="th-type">ISSUE TYPE</th>
+                  <th class="th-resolution">RESOLUTION PROVIDED</th>
+                  <th class="th-created">RESOLVED</th>
+                  <th class="th-status">RECORDING</th>
+                </tr>
+              </thead>
+              <tbody id="selfResolvedTableBody">
+                <tr><td colspan="5" class="loading-spinner"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+            <div id="selfResolvedPagination" class="pagination"></div>
+          </div>
+        </div>
+
         <!-- Analytics View -->
         <div id="analyticsView" style="display: none;">
           <!-- Row 1: Cases Metrics -->
@@ -1694,6 +1732,10 @@
       } else if (path === '/hub/duplicates' || path === '/hub/duplicates/') {
         if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
           HubNavigation.goto('duplicates');
+        }
+      } else if (path === '/hub/self-resolved' || path === '/hub/self-resolved/') {
+        if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+          HubNavigation.goto('self-resolved');
         }
       } else if (path === '/hub/analytics' || path === '/hub/analytics/') {
         if (typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
