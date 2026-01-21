@@ -6106,12 +6106,12 @@ const HubCaseDetail = {
 
       <!-- Case Header - Customer Name as Title -->
       <div class="case-detail-header">
-        <div class="case-detail-title">
-          <div class="case-detail-customer-name">
-            ${HubHelpers.formatName(c.customer_name)}
-            <span class="status-badge ${(c.status || 'pending').replace('_', '-')}">${this.formatStatus(c.status)}</span>
-            <span class="type-badge ${c.case_type}">${c.case_type}</span>
-          </div>
+          <div class="case-detail-title">
+            <div class="case-detail-customer-name">
+              ${HubHelpers.formatName(c.customer_name)}
+              <span class="status-badge ${(c.status || 'pending').replace('_', '-')}">${this.formatStatus(c.status)}</span>
+              ${c.resolved_in_app ? '' : `<span class="type-badge ${c.case_type || ''}">${c.case_type || 'N/A'}</span>`}
+            </div>
           <div class="case-detail-email-row">
             <a href="mailto:${c.customer_email}">${this.escapeHtml(c.customer_email || '-')}</a>
             <button class="copy-btn" onclick="HubCaseDetail.copyToClipboard('${this.escapeHtml(c.customer_email || '')}', this)" title="Copy email">
@@ -6176,10 +6176,12 @@ const HubCaseDetail = {
                 <div class="case-info-label">Issue Reason</div>
                 <div class="case-info-value">${this.formatIssueReason(c)}</div>
               </div>
+              ${c.resolved_in_app ? '' : `
               <div class="case-info-row">
                 <div class="case-info-label">Case Type</div>
-                <div class="case-info-value"><span class="type-badge ${c.case_type}">${c.case_type}</span></div>
+                <div class="case-info-value"><span class="type-badge ${c.case_type || ''}">${c.case_type || 'N/A'}</span></div>
               </div>
+              `}
               <div class="case-info-row">
                 <div class="case-info-label">Resolution</div>
                 <div class="case-info-value">${this.formatResolution(c)}</div>
@@ -6286,10 +6288,11 @@ const HubCaseDetail = {
                 </a>
                 ` : ''}
                 
+                ${c.resolved_in_app ? '' : `
                 <!-- SOP Link -->
-                <a href="${this.sopLink?.sop_url || '/hub/sop'}" target="_blank" class="quick-action-btn sop-link" onclick="HubCaseDetail.logActivity('clicked_sop', {sop_name: '${this.escapeHtml(this.sopLink?.scenario_name || c.case_type)}'})">
+                <a href="${this.sopLink?.sop_url || '/hub/sop'}" target="_blank" class="quick-action-btn sop-link" onclick="HubCaseDetail.logActivity('clicked_sop', {sop_name: '${this.escapeHtml(this.sopLink?.scenario_name || c.case_type || '')}'})">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                  ${this.sopLink ? `View SOP: ${this.escapeHtml(this.sopLink.scenario_name)}` : `View ${c.case_type} SOPs`}
+                  ${this.sopLink ? `View SOP: ${this.escapeHtml(this.sopLink.scenario_name)}` : `View ${c.case_type || 'SOPs'}`}
                 </a>
 
                 <!-- Copy Email Template -->
@@ -6297,6 +6300,7 @@ const HubCaseDetail = {
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                   Copy Email Template
                 </button>
+                `}
               </div>
             </div>
           </div>
