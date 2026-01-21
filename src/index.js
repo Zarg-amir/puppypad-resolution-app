@@ -8634,21 +8634,21 @@ async function handleFormatCaseDetails(request, env, corsHeaders) {
    
    Keep it short and to the point. Only include essential information about the customer's problem.
 
-2. **resolution**: Simply state WHAT NEEDS TO BE DONE. Be direct and action-oriented. No fluff, no explanations.
+2. **resolution**: State EXACTLY WHAT NEEDS TO BE DONE with ALL DETAILS. Detail is key - include dates, amounts, addresses, order numbers, and any specific information needed to complete the action. Make it as easy as possible for the team to execute.
    Examples:
-   - "Update subscription frequency to 45 days"
-   - "Process 20% partial refund, customer keeps product"
-   - "Reship order to customer address"
-   - "Pause subscription for 30 days, resume on [date]"
+   - "Update subscription frequency to every 45 days. Next delivery date: [calculate and include date]. Subscription ID: [include]. Product: [include product name]"
+   - "Process 20% partial refund ($X.XX) for order [order number]. Customer keeps product. Refund to original payment method."
+   - "Reship order [order number] to: [full address]. Use same shipping method. Send tracking number to customer email: [email]"
+   - "Pause subscription [subscription ID] for 30 days. Resume date: [calculate and include specific date]. Product: [include product name]"
    
-   Keep it short and actionable. Only include the specific action required.
+   Include ALL actionable details: dates, amounts, IDs, addresses, email addresses, tracking numbers, etc. Be specific and complete.
 
 CRITICAL RULES:
-- Be CONCISE - no unnecessary words or descriptions
-- Be DIRECT - get straight to the point
-- These two fields must be DIFFERENT - issueReason is the problem, resolution is the action
+- issueReason: Be CONCISE - no unnecessary words, just the customer's issue
+- resolution: DETAIL IS KEY - include ALL actionable information (dates, amounts, IDs, addresses, emails, etc.) to make it easy for the team
+- These two fields must be DIFFERENT - issueReason is the problem, resolution is the detailed action steps
 - DO NOT duplicate information between fields
-- DO NOT add fluff, context, or explanations unless absolutely necessary
+- resolution must include specific details like dates, order numbers, subscription IDs, addresses, amounts, etc.
 
 Return ONLY valid JSON in this format:
 {
@@ -8665,7 +8665,12 @@ Return ONLY valid JSON in this format:
     userPrompt += `CASE TYPE: ${caseData.case_type || 'N/A'}\n`;
     userPrompt += `CATEGORY: ${caseData.category || 'N/A'}\n`;
     userPrompt += `RESOLUTION CODE: ${caseData.resolution || 'N/A'}\n`;
-    userPrompt += `STATUS: ${caseData.status || 'N/A'}\n\n`;
+    userPrompt += `STATUS: ${caseData.status || 'N/A'}\n`;
+    if (caseData.created_at) {
+      const createdDate = new Date(caseData.created_at);
+      userPrompt += `CASE CREATED: ${createdDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} at ${createdDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}\n`;
+    }
+    userPrompt += `\n`;
     
     userPrompt += `CUSTOMER INFO:\n`;
     userPrompt += `- Name: ${caseData.customer_name || 'N/A'}\n`;
