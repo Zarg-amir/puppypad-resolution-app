@@ -8594,7 +8594,11 @@ async function handleFormatCaseDetails(request, env, corsHeaders) {
   try {
     const caseData = await request.json();
 
+    console.log('🔍 OpenAI API: Received case data for case_id:', caseData?.case_id);
+    console.log('📦 OpenAI API: Case type:', caseData?.case_type, 'Resolution:', caseData?.resolution);
+
     if (!caseData || !caseData.case_id) {
+      console.error('❌ OpenAI API: Missing case_id');
       return Response.json({ error: 'Case data required' }, { status: 400, headers: corsHeaders });
     }
 
@@ -8602,11 +8606,21 @@ async function handleFormatCaseDetails(request, env, corsHeaders) {
     if (caseData.extra_data && typeof caseData.extra_data === 'string') {
       try {
         caseData.extra_data = JSON.parse(caseData.extra_data);
+        console.log('✅ OpenAI API: Parsed extra_data from string');
       } catch (e) {
-        console.error('Failed to parse extra_data:', e);
+        console.error('❌ OpenAI API: Failed to parse extra_data:', e);
         caseData.extra_data = {};
       }
     }
+
+    const extraData = caseData.extra_data || {};
+    console.log('📋 OpenAI API: Subscription details in extra_data:', {
+      actionType: extraData.actionType,
+      newFrequency: extraData.newFrequency,
+      previousFrequency: extraData.previousFrequency,
+      notes: extraData.notes,
+      pauseDuration: extraData.pauseDuration,
+    });
 
     // Build comprehensive prompt
     const systemPrompt = `You are a case management assistant. Analyze case data and generate TWO DISTINCT fields:
@@ -8698,7 +8712,11 @@ Return ONLY valid JSON in this format:
     userPrompt += `ADDITIONAL DETAILS (extra_data):\n`;
     if (extraData.intentDetails) userPrompt += `- Customer's Own Words: "${extraData.intentDetails}"\n`;
     if (extraData.issueType) userPrompt += `- Issue Type: ${extraData.issueType}\n`;
-    if (extraData.notes) userPrompt += `- Notes: ${extraData.notes}\n`;
+    if (extraData.notes) {
+      userPrompt += `- Notes: ${extraData.notes}\n`;
+      // Notes often contain critical context like "Schedule changed from every X days to every Y days"
+      console.log('📝 OpenAI API: Notes field contains:', extraData.notes);
+    }
     
     // Subscription details
     if (caseData.case_type === 'subscription' || extraData.actionType) {
@@ -8712,10 +8730,13 @@ Return ONLY valid JSON in this format:
         userPrompt += `- Resume Date: ${resumeDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}\n`;
       }
       if (extraData.cancelReason) userPrompt += `- Cancel Reason: ${extraData.cancelReason}\n`;
+      // Schedule change details - CRITICAL for schedule_changed cases
       if (extraData.previousFrequency && extraData.newFrequency) {
-        userPrompt += `- Frequency Change: From every ${extraData.previousFrequency} days to every ${extraData.newFrequency} days\n`;
+        userPrompt += `- SCHEDULE CHANGE: Delivery frequency changed from every ${extraData.previousFrequency} days to every ${extraData.newFrequency} days\n`;
+        userPrompt += `- Previous Schedule: Every ${extraData.previousFrequency} days\n`;
+        userPrompt += `- New Schedule: Every ${extraData.newFrequency} days\n`;
       } else if (extraData.newFrequency) {
-        userPrompt += `- New Frequency: Every ${extraData.newFrequency} days\n`;
+        userPrompt += `- New Delivery Schedule: Every ${extraData.newFrequency} days\n`;
       }
       if (extraData.newAddress) {
         const addr = extraData.newAddress;
@@ -8753,7 +8774,19 @@ Return ONLY valid JSON in this format:
     
     userPrompt += `\nGenerate issueReason (customer perspective - what the problem is) and resolution (action steps - what team needs to do). Make sure they are DIFFERENT and serve different purposes.`;
 
+    console.log('📝 OpenAI API: Sending prompt to OpenAI (length:', userPrompt.length, 'chars)');
+    console.log('📋 OpenAI API: Prompt preview (first 500 chars):', userPrompt.substring(0, 500));
+
     // Call OpenAI
+    if (!env.OPENAI_API_KEY) {
+      console.error('❌ OpenAI API: OPENAI_API_KEY not set in environment');
+      return Response.json({ 
+        error: 'OpenAI API key not configured',
+        fallback: true 
+      }, { status: 500, headers: corsHeaders });
+    }
+
+    console.log('🚀 OpenAI API: Calling OpenAI API...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -8773,7 +8806,7 @@ Return ONLY valid JSON in this format:
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
+      console.error('❌ OpenAI API error:', response.status, errorText);
       return Response.json({ 
         error: 'Failed to format case details',
         fallback: true 
@@ -8782,6 +8815,8 @@ Return ONLY valid JSON in this format:
 
     const data = await response.json();
     const message = data.choices[0]?.message?.content || '';
+    console.log('✅ OpenAI API: Received response from OpenAI (length:', message.length, 'chars)');
+    console.log('📄 OpenAI API: Raw response:', message);
 
     // Parse JSON response
     try {
@@ -8792,6 +8827,7 @@ Return ONLY valid JSON in this format:
       }
       
       const result = JSON.parse(jsonStr);
+      console.log('✅ OpenAI API: Parsed JSON result:', result);
       
       return Response.json({
         success: true,
@@ -8799,7 +8835,8 @@ Return ONLY valid JSON in this format:
         resolution: result.resolution || 'Resolution details not available'
       }, { headers: corsHeaders });
     } catch (parseError) {
-      console.error('Failed to parse OpenAI response:', parseError, 'Response:', message);
+      console.error('❌ OpenAI API: Failed to parse OpenAI response:', parseError);
+      console.error('📄 OpenAI API: Response that failed to parse:', message);
       return Response.json({ 
         error: 'Failed to parse AI response',
         fallback: true,

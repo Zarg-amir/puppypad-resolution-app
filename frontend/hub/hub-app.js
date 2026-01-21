@@ -2973,14 +2973,28 @@ const HubCases = {
   // Helper function to get formatted case details from OpenAI
   async getFormattedDetails(caseData) {
     if (!caseData || !caseData.case_id) {
+      console.warn('getFormattedDetails: Missing caseData or case_id');
       return { issueReason: null, resolution: null };
     }
 
     // Check cache first
     const cacheKey = caseData.case_id;
     if (this._formattedDetailsCache.has(cacheKey)) {
+      console.log('getFormattedDetails: Using cached result for case', caseData.case_id);
       return this._formattedDetailsCache.get(cacheKey);
     }
+
+    console.log('🔍 OpenAI: Fetching formatted details for case', caseData.case_id);
+    console.log('📦 OpenAI: Case data being sent:', {
+      case_id: caseData.case_id,
+      case_type: caseData.case_type,
+      resolution: caseData.resolution,
+      extra_data: caseData.extra_data,
+      actionType: caseData.actionType || (caseData.extra_data?.actionType),
+      newFrequency: caseData.newFrequency || (caseData.extra_data?.newFrequency),
+      previousFrequency: caseData.previousFrequency || (caseData.extra_data?.previousFrequency),
+      notes: caseData.notes || (caseData.extra_data?.notes),
+    });
 
     try {
       const response = await fetch('/hub/api/format-case-details', {
@@ -2992,24 +3006,29 @@ const HubCases = {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to format case details');
+        const errorText = await response.text();
+        console.error('❌ OpenAI API response not OK:', response.status, errorText);
+        throw new Error(`Failed to format case details: ${response.status}`);
       }
 
       const result = await response.json();
+      console.log('✅ OpenAI: Received response:', result);
       
       if (result.success) {
         const formatted = {
           issueReason: result.issueReason || null,
           resolution: result.resolution || null
         };
+        console.log('✅ OpenAI: Formatted details:', formatted);
         // Cache the result
         this._formattedDetailsCache.set(cacheKey, formatted);
         return formatted;
       } else {
+        console.warn('⚠️ OpenAI: Formatting failed, result:', result);
         throw new Error('Formatting failed');
       }
     } catch (error) {
-      console.error('Error formatting case details:', error);
+      console.error('❌ Error formatting case details:', error);
       // Return fallback values
       return { issueReason: null, resolution: null };
     }
@@ -6132,17 +6151,22 @@ const HubCaseDetail = {
 
   // Load formatted details from OpenAI for the current case
   async loadFormattedDetails() {
-    if (!this.caseData) return;
+    if (!this.caseData) {
+      console.warn('loadFormattedDetails: No caseData available');
+      return;
+    }
 
+    console.log('🔄 Loading formatted details for case:', this.caseData.case_id);
     try {
       const formatted = await HubCases.getFormattedDetails(this.caseData);
+      console.log('✅ Received formatted details:', formatted);
       // Store on caseData for synchronous access
       this.caseData._formattedIssueReason = formatted.issueReason;
       this.caseData._formattedResolution = formatted.resolution;
       // Re-render to show updated details
       this.render();
     } catch (e) {
-      console.error('Failed to load formatted details:', e);
+      console.error('❌ Failed to load formatted details:', e);
     }
   },
 
