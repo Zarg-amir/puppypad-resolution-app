@@ -8623,38 +8623,32 @@ async function handleFormatCaseDetails(request, env, corsHeaders) {
     });
 
     // Build comprehensive prompt
-    const systemPrompt = `You are a case management assistant. Analyze case data and generate TWO DISTINCT fields:
+    const systemPrompt = `You are a case management assistant. Analyze case data and generate TWO CONCISE, DIRECT fields:
 
-1. **issueReason**: A detailed, customer-perspective description of WHAT THE PROBLEM IS. Use the customer's own words from intentDetails when available. Include context like:
-   - Customer's stated issue (from intentDetails)
-   - Issue type and category
-   - Dog information (names, breeds, ages) if applicable
-   - Subscription details (pause duration, cancel reason, frequency changes) if applicable
-   - Shipping issues (tracking, carrier, delivery problems) if applicable
-   - Missing items descriptions if applicable
-   - Quality concerns if applicable
+1. **issueReason**: Simply state WHAT THE CUSTOMER'S ISSUE IS. Be direct and factual. No fluff, no unnecessary context.
+   Examples:
+   - "Customer wants to change delivery frequency"
+   - "Customer requesting refund for damaged item"
+   - "Customer did not receive their order"
+   - "Customer wants to pause subscription"
    
-   Format: Use "|" to separate different pieces of information. Be descriptive and customer-focused.
+   Keep it short and to the point. Only include essential information about the customer's problem.
 
-2. **resolution**: An action-oriented, detailed description of EXACTLY WHAT THE TEAM NEEDS TO DO. Include ALL specific actionable details:
-   - Refund amounts and percentages
-   - Whether customer keeps product or needs to return
-   - Subscription actions (pause duration, resume dates, frequency changes, address updates)
-   - Shipping actions (reship addresses, tracking numbers, carrier contacts)
-   - Dog information if relevant to the resolution (e.g., for dog_not_using cases)
-   - Missing item reship details
-   - Quality upgrade steps
-   - Any other specific instructions
+2. **resolution**: Simply state WHAT NEEDS TO BE DONE. Be direct and action-oriented. No fluff, no explanations.
+   Examples:
+   - "Update subscription frequency to 45 days"
+   - "Process 20% partial refund, customer keeps product"
+   - "Reship order to customer address"
+   - "Pause subscription for 30 days, resume on [date]"
    
-   Format: Use "|" to separate different pieces of information. Be extremely specific and actionable.
+   Keep it short and actionable. Only include the specific action required.
 
-CRITICAL: These two fields must be DIFFERENT:
-- issueReason = WHAT the problem is (customer perspective)
-- resolution = WHAT to do (team action steps)
-- DO NOT duplicate the same information in both fields
-- If dog info is in issueReason, only include it in resolution if it's relevant to the action steps
-- Focus issueReason on the problem/context
-- Focus resolution on the specific actions needed
+CRITICAL RULES:
+- Be CONCISE - no unnecessary words or descriptions
+- Be DIRECT - get straight to the point
+- These two fields must be DIFFERENT - issueReason is the problem, resolution is the action
+- DO NOT duplicate information between fields
+- DO NOT add fluff, context, or explanations unless absolutely necessary
 
 Return ONLY valid JSON in this format:
 {
