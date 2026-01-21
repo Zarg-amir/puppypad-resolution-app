@@ -2869,27 +2869,13 @@ async function createSelfResolvedCase() {
   const subscription = state.selectedSubscription;
   const orderNumber = order?.orderNumber || subscription?.clientOrderId || '';
 
-  // Determine case type based on the issue/flow
-  let caseType = 'manual';
-  let resolutionText = 'satisfied_with_info';
-  
-  // Map issue types to case types
-  if (state.issueType === 'dog_not_using') {
-    caseType = 'manual';
-    resolutionText = 'satisfied_with_training_tips';
-  } else if (state.intent === 'changed_mind' || state.issueType === 'changed_mind') {
-    caseType = 'refund';
-    resolutionText = 'satisfied_with_info';
-  } else if (state.intent === 'not_met_expectations' || state.issueType === 'not_met_expectations') {
-    caseType = 'refund';
-    resolutionText = 'satisfied_with_explanation';
-  }
-
+  // Self-resolved are NOT cases - they're just records
+  // No case_type, no resolution needed (customer was satisfied with info provided)
   const caseData = {
     sessionId: state.sessionId,
     sessionReplayUrl: getSessionReplayUrl(),
-    caseType: caseType,
-    resolution: resolutionText,
+    caseType: null, // No case type - not a case
+    resolution: null, // No resolution needed - customer satisfied
     email: state.customerData?.email || order?.email || '',
     phone: state.customerData?.phone || order?.phone || '',
     customerName: `${state.customerData?.firstName || order?.customerFirstName || ''} ${state.customerData?.lastName || order?.customerLastName || ''}`.trim(),

@@ -4644,15 +4644,15 @@ const HubSelfResolved = {
         : '-';
 
       return `
-        <tr style="cursor:pointer;" onclick="HubNavigation.goto('case-detail', '${this.escapeHtml(c.case_id)}')">
+        <tr style="cursor:default;">
           <td>
             <div class="customer-info">
               <div class="customer-name">${this.escapeHtml(customerInfo)}</div>
               ${customerEmail}
             </div>
           </td>
-          <td><span class="type-badge ${c.case_type || 'manual'}">${this.escapeHtml(issueType)}</span></td>
-          <td>${this.escapeHtml(resolution)}</td>
+          <td><span class="type-badge">${this.escapeHtml(issueType)}</span></td>
+          <td>Customer satisfied - no resolution needed</td>
           <td><span class="time-ago">${resolvedDate}</span></td>
           <td>${recordingLink}</td>
         </tr>
@@ -4666,12 +4666,8 @@ const HubSelfResolved = {
   },
 
   formatResolution(resolution) {
-    const resolutions = {
-      'satisfied_with_training_tips': 'Satisfied with training tips',
-      'satisfied_with_info': 'Satisfied with information provided',
-      'satisfied_with_explanation': 'Satisfied with explanation',
-    };
-    return resolutions[resolution] || resolution.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    // Self-resolved cases don't have resolutions - they're just records
+    return 'Customer satisfied - no resolution needed';
   },
 
   formatDate(timestamp) {
