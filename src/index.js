@@ -9140,13 +9140,13 @@ async function handleHubAnalytics(request, env, corsHeaders) {
     try {
       slaCompliant = await env.ANALYTICS_DB.prepare(
         `SELECT COUNT(*) as count FROM cases
-         WHERE status = 'completed' AND resolved_at IS NOT NULL
+         WHERE (resolved_in_app != 1 OR resolved_in_app IS NULL) AND status = 'completed' AND resolved_at IS NOT NULL
          AND (julianday(resolved_at) - julianday(created_at)) <= 1`
       ).first() || { count: 0 };
 
       slaBreached = await env.ANALYTICS_DB.prepare(
         `SELECT COUNT(*) as count FROM cases
-         WHERE status = 'completed' AND resolved_at IS NOT NULL
+         WHERE (resolved_in_app != 1 OR resolved_in_app IS NULL) AND status = 'completed' AND resolved_at IS NOT NULL
          AND (julianday(resolved_at) - julianday(created_at)) > 1`
       ).first() || { count: 0 };
     } catch (e) { console.log('SLA calc skipped:', e.message); }
