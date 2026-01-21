@@ -4635,24 +4635,24 @@ const HubSelfResolved = {
 
     tbody.innerHTML = cases.map(c => {
       const customerInfo = c.customer_name || c.customer_email || 'Unknown';
-      const customerEmail = c.customer_email ? `<div style="font-size:12px;color:var(--gray-500);">${HubAPI.escapeHtml(c.customer_email)}</div>` : '';
+      const customerEmail = c.customer_email ? `<div style="font-size:12px;color:var(--gray-500);">${this.escapeHtml(c.customer_email)}</div>` : '';
       const issueType = this.formatIssueType(c.issue_type || c.case_type || 'general');
       const resolution = this.formatResolution(c.resolution || 'satisfied_with_info');
       const resolvedDate = this.formatDate(c.created_at || c.resolved_at);
       const recordingLink = c.session_replay_url 
-        ? `<a href="${HubAPI.escapeHtml(c.session_replay_url)}" target="_blank" style="color:var(--brand-navy);text-decoration:none;">View Recording</a>`
+        ? `<a href="${this.escapeHtml(c.session_replay_url)}" target="_blank" style="color:var(--brand-navy);text-decoration:none;">View Recording</a>`
         : '-';
 
       return `
-        <tr style="cursor:pointer;" onclick="HubNavigation.goto('case-detail', '${HubAPI.escapeHtml(c.case_id)}')">
+        <tr style="cursor:pointer;" onclick="HubNavigation.goto('case-detail', '${this.escapeHtml(c.case_id)}')">
           <td>
             <div class="customer-info">
-              <div class="customer-name">${HubAPI.escapeHtml(customerInfo)}</div>
+              <div class="customer-name">${this.escapeHtml(customerInfo)}</div>
               ${customerEmail}
             </div>
           </td>
-          <td><span class="type-badge ${c.case_type || 'manual'}">${HubAPI.escapeHtml(issueType)}</span></td>
-          <td>${HubAPI.escapeHtml(resolution)}</td>
+          <td><span class="type-badge ${c.case_type || 'manual'}">${this.escapeHtml(issueType)}</span></td>
+          <td>${this.escapeHtml(resolution)}</td>
           <td><span class="time-ago">${resolvedDate}</span></td>
           <td>${recordingLink}</td>
         </tr>
