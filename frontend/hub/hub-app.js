@@ -8001,6 +8001,7 @@ if (document.readyState === 'loading') {
 window.HubApp = HubApp;
 window.HubAuth = HubAuth;
 window.HubCases = HubCases;
+window.HubCaseDetail = HubCaseDetail;
 window.HubBulkActions = HubBulkActions;
 window.HubViews = HubViews;
 window.HubChecklist = HubChecklist;
