@@ -2891,6 +2891,13 @@ async function createSelfResolvedCase() {
   };
 
   try {
+    console.log('Creating self-resolved case with data:', {
+      orderNumber: caseData.orderNumber,
+      email: caseData.email,
+      issueType: caseData.issueType,
+      resolvedInApp: caseData.resolvedInApp
+    });
+    
     const response = await fetch(`${CONFIG.API_URL}/api/create-case`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2898,7 +2905,11 @@ async function createSelfResolvedCase() {
     });
 
     if (!response.ok) {
-      console.error('Failed to create self-resolved case');
+      const errorText = await response.text();
+      console.error('Failed to create self-resolved case:', response.status, errorText);
+    } else {
+      const result = await response.json();
+      console.log('Self-resolved case created successfully:', result.caseId || 'No case ID returned');
     }
   } catch (error) {
     console.error('Error creating self-resolved case:', error);
@@ -4884,7 +4895,11 @@ async function handleStatusPending(tracking) {
     ]);
   } else {
     addOptions([
-      { text: "Got it, I'll wait", action: () => showSuccess("Thanks!", "Your order will ship soon!") },
+      { text: "Got it, I'll wait", action: async () => {
+        // Create self-resolved case - customer satisfied with information provided
+        await createSelfResolvedCase();
+        showSuccess("Thanks!", "Your order will ship soon!");
+      }},
       { text: "I need to cancel instead", action: async () => {
         await addBotMessage("Since your order hasn't shipped yet, I can process a full cancellation and refund.");
         state.ladderType = 'order_refund';
