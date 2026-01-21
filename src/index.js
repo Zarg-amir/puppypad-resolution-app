@@ -8664,7 +8664,6 @@ Return ONLY valid JSON in this format:
 
     // Format case data for the prompt
     const refundAmount = caseData.refund_amount ? `$${parseFloat(caseData.refund_amount).toFixed(2)}` : null;
-    const extraData = caseData.extra_data || {};
     
     // Build user prompt with all relevant data
     let userPrompt = `Analyze this case data and generate detailed issueReason and resolution fields:\n\n`;
