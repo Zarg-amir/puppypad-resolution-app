@@ -2501,10 +2501,18 @@ async function handleCreateCase(request, env, corsHeaders) {
   const prefix = getCasePrefix(caseData.caseType);
   const caseId = `${prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 
-  // Create Richpanel email and private note (customer notification)
-  const richpanelResult = await createRichpanelEntry(env, caseData, caseId);
+  // Skip Richpanel for self-resolved cases (they're not actual cases, just records)
+  let richpanelResult = { success: false, conversationNo: null };
+  if (!caseData.resolvedInApp) {
+    // Create Richpanel email and private note (customer notification) only for actual cases
+    richpanelResult = await createRichpanelEntry(env, caseData, caseId);
+  } else {
+    console.log('Skipping Richpanel for self-resolved case:', caseId);
+  }
 
   // Log to D1 analytics database (Hub) - include ALL fields for extra_data
+  // This MUST succeed even if Richpanel fails
+  try {
     await logCaseToAnalytics(env, {
     caseId,
     sessionId: caseData.sessionId,
@@ -2545,7 +2553,14 @@ async function handleCreateCase(request, env, corsHeaders) {
     // Dog info (for dog_not_using cases)
     dogs: caseData.dogs,
     methodsTried: caseData.methodsTried,
-  });
+    });
+    
+    console.log('Case logged to analytics successfully:', caseId, 'resolvedInApp:', caseData.resolvedInApp);
+  } catch (dbError) {
+    console.error('CRITICAL: Failed to log case to analytics database:', dbError);
+    // Still return success to frontend, but log the error
+    // The case might have been created in Richpanel but not in our DB
+  }
 
   return Response.json({
     success: true,
