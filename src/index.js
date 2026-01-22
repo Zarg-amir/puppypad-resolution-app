@@ -4468,6 +4468,19 @@ async function logCaseToAnalytics(env, caseData) {
       orderNumber: caseData.orderNumber
     });
     
+    // First, ensure the resolved_in_app column exists (auto-migration)
+    try {
+      await env.ANALYTICS_DB.prepare(`
+        ALTER TABLE cases ADD COLUMN resolved_in_app BOOLEAN DEFAULT 0
+      `).run();
+      console.log('Auto-migration: Added resolved_in_app column');
+    } catch (migrationError) {
+      // Column already exists or other error - that's fine
+      if (!migrationError.message?.includes('duplicate column')) {
+        console.log('Migration check (column may already exist):', migrationError.message);
+      }
+    }
+    
     const result = await env.ANALYTICS_DB.prepare(`
       INSERT INTO cases (
         case_id, case_type, resolution, customer_email, customer_name,
