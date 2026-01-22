@@ -4459,7 +4459,16 @@ async function logCaseToAnalytics(env, caseData) {
     const caseType = caseData.resolvedInApp ? null : caseData.caseType;
     const resolution = caseData.resolvedInApp ? null : caseData.resolution;
     
-    await env.ANALYTICS_DB.prepare(`
+    console.log('Attempting to insert case to database:', {
+      caseId: caseData.caseId,
+      resolvedInApp: resolvedInApp,
+      caseType: caseType,
+      resolution: resolution,
+      email: caseData.email,
+      orderNumber: caseData.orderNumber
+    });
+    
+    const result = await env.ANALYTICS_DB.prepare(`
       INSERT INTO cases (
         case_id, case_type, resolution, customer_email, customer_name,
         order_number, refund_amount, status, session_id,
@@ -4487,7 +4496,22 @@ async function logCaseToAnalytics(env, caseData) {
       caseData.issueType || null,
       resolvedInApp
     ).run();
-    console.log('Case saved to database (full with extra_data and resolved_in_app):', caseData.caseId, 'resolvedInApp:', resolvedInApp);
+    
+    console.log('Case saved to database (full with extra_data and resolved_in_app):', {
+      caseId: caseData.caseId,
+      resolvedInApp: resolvedInApp,
+      success: result.success,
+      meta: result.meta
+    });
+    
+    // Verify the insert by querying it back
+    if (caseData.resolvedInApp) {
+      const verify = await env.ANALYTICS_DB.prepare(`
+        SELECT case_id, resolved_in_app, case_type, resolution FROM cases WHERE case_id = ?
+      `).bind(caseData.caseId).first();
+      console.log('Verification query result:', verify);
+    }
+    
     return;
   } catch (e) {
     console.log('Full insert failed, trying without extra_data:', e.message);
@@ -8307,8 +8331,14 @@ async function handleHubSelfResolved(request, env, corsHeaders) {
     }, { headers: corsHeaders });
   } catch (error) {
     console.error('Hub self-resolved error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     // If resolved_in_app column doesn't exist, return empty results
-    if (error.message?.includes('no such column')) {
+    if (error.message?.includes('no such column') || error.message?.includes('resolved_in_app')) {
+      console.error('CRITICAL: resolved_in_app column does not exist in database. Migration 007_self_resolved.sql needs to be run.');
       return Response.json({
         cases: [],
         total: 0,
