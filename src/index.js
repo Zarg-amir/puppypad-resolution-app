@@ -12073,11 +12073,12 @@ function getResolutionHubHTML() {
         
         // Only intercept navigation for links with data-page attribute
         // Links without data-page (like Flow Docs) should navigate normally
-        if (page && typeof HubNavigation !== 'undefined' && HubNavigation.goto) {
+        // Also allow links with target="_blank" to navigate normally
+        if (page && typeof HubNavigation !== 'undefined' && HubNavigation.goto && !item.hasAttribute('target')) {
           e.preventDefault(); // Prevent default link behavior only for SPA pages
           HubNavigation.goto(page, filter);
         }
-        // If no data-page, let the link navigate normally (e.g., to flow-docs.html)
+        // If no data-page or has target="_blank", let the link navigate normally (e.g., to flow-docs)
       });
     });
 
