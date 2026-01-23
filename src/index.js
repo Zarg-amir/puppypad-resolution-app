@@ -4798,6 +4798,7 @@ async function handleListUsers(request, env, corsHeaders) {
 
   try {
     // Get all users with creator name
+    // Use COALESCE to handle columns that might not exist yet (if migrations haven't run)
     const users = await env.ANALYTICS_DB.prepare(`
       SELECT 
         u.id, 
@@ -4805,8 +4806,8 @@ async function handleListUsers(request, env, corsHeaders) {
         u.name, 
         u.email,
         u.role, 
-        u.is_active, 
-        u.must_change_password, 
+        COALESCE(u.is_active, 1) as is_active, 
+        COALESCE(u.must_change_password, 0) as must_change_password, 
         u.created_at, 
         u.last_login, 
         u.last_activity_at, 
@@ -4820,7 +4821,36 @@ async function handleListUsers(request, env, corsHeaders) {
     return Response.json({ success: true, users: users.results || [] }, { headers: corsHeaders });
   } catch (e) {
     console.error('List users error:', e);
-    return Response.json({ error: 'Failed to list users: ' + e.message }, { status: 500, headers: corsHeaders });
+    // Try a simpler query if the full one fails (columns might not exist)
+    try {
+      const users = await env.ANALYTICS_DB.prepare(`
+        SELECT 
+          id, 
+          username, 
+          name, 
+          email,
+          role, 
+          created_at, 
+          last_login
+        FROM admin_users
+        ORDER BY created_at DESC
+      `).all();
+      
+      // Add default values for missing columns
+      const usersWithDefaults = (users.results || []).map(u => ({
+        ...u,
+        is_active: 1,
+        must_change_password: 0,
+        last_activity_at: null,
+        created_by: null,
+        created_by_name: null
+      }));
+      
+      return Response.json({ success: true, users: usersWithDefaults }, { headers: corsHeaders });
+    } catch (e2) {
+      console.error('Fallback list users error:', e2);
+      return Response.json({ error: 'Failed to list users: ' + e.message }, { status: 500, headers: corsHeaders });
+    }
   }
 }
 
