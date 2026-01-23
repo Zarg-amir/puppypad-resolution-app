@@ -1926,15 +1926,14 @@ async function handleLookupOrder(request, env, corsHeaders) {
             }
           }
           
-          // Prefer last-mile carrier (USPS, UPS, FedEx, etc.) over first-mile (YunExpress, etc.)
+          // Only show last-mile carrier (USPS, UPS, FedEx, etc.), not first-mile (YunExpress, etc.)
           const lastMileCarrier = shipment.last_mile?.carrier?.name || shipment.last_mile?.carrier?.code;
-          const firstMileCarrier = shipment.carrier?.name || shipment.carrier?.code;
           
           trackingInfo = {
             status: status,
             statusLabel: shipment.status_label || formatStatusLabel(status),
             trackingNumber: shipment.last_mile?.tracking_number || shipment.tracking_number,
-            carrier: lastMileCarrier || firstMileCarrier || 'Unknown',
+            carrier: lastMileCarrier || null, // Only show last-mile carrier, not first-mile
             deliveryDate: shipment.delivery_date,
             estimatedDelivery: shipment.estimated_delivery_date,
             lastUpdate: shipment.checkpoints?.[0]?.checkpoint_time || null,
