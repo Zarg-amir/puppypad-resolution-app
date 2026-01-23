@@ -539,7 +539,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Home Footer - Hidden by default, only shown when chat starts */
 .home-footer {
-  display: none;
+  display: none !important;
   flex-direction: column;
   align-items: center;
   justify-content: center;
