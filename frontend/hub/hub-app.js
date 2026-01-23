@@ -7010,7 +7010,7 @@ The PuppyPad Team`
       'subscription_paused': 'Subscription Paused',
       'subscription_cancelled': 'Subscription Cancelled',
       'manual_assistance': 'Manual Assistance Required',
-      'wrong_item_review': 'Wrong Item - Pending Review',
+      'wrong_item_review': 'ACTION: Email customer to confirm wrong item received → If confirmed, offer: (1) Reship correct item + 20% partial refund, OR (2) Full refund',
       'return_awaiting_tracking': 'Awaiting Return Tracking - Refund After Delivery'
     };
 
