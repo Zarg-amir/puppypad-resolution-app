@@ -3056,7 +3056,7 @@ function formatResolution(resolution, caseData) {
     'refund_damaged': `Give full refund (${refundAmount}) - package damaged`,
 
     // Investigation flows
-    'investigation_delivered_not_received': 'Investigate with carrier',
+    'investigation_delivered_not_received': 'ACTION: Investigate with carrier (GPS data, delivery photos, driver logs). Once investigation complete, reach out to customer and offer their choice of: (1) Free reship, OR (2) Full refund',
     'replacement_damaged': 'Ship replacement - damaged item',
     'reship_wrong_item': 'Ship correct item',
     'reship_missing_item': 'Ship missing item',
