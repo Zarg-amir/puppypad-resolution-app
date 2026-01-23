@@ -448,7 +448,7 @@ function generateSessionId() {
 
 function generateCaseId(type) {
   const now = new Date();
-  const prefixes = { refund: 'REF', return: 'RET', shipping: 'SHP', subscription: 'SUB', manual: 'MAN', manual_review: 'REV' };
+  const prefixes = { refund: 'REF', return: 'RET', shipping: 'SHP', subscription: 'SUB', manual: 'MAN' };
   const prefix = prefixes[type] || 'CAS';
   return `${prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 }
@@ -3722,12 +3722,12 @@ async function handleWrongItemEvidence() {
   
   showProgress("Creating your case...");
   
-  // Generate case ID for manual review
-  state.caseId = generateCaseId('manual_review');
+  // Generate case ID for manual review (uses MAN- prefix)
+  state.caseId = generateCaseId('manual');
   state.resolution = 'wrong_item_review';
   
-  // Submit case with evidence URLs
-  const result = await submitCase('manual_review', 'wrong_item_review', {
+  // Submit case with evidence URLs - type 'manual' so it shows in Manual category
+  const result = await submitCase('manual', 'wrong_item_review', {
     issueType: 'wrong_item',
     evidenceUrls: evidenceUrls,
     notes: `Customer reported receiving the wrong item. ${evidenceUrls.length} photo(s) uploaded for review.`,
