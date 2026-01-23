@@ -1926,11 +1926,15 @@ async function handleLookupOrder(request, env, corsHeaders) {
             }
           }
           
+          // Prefer last-mile carrier (USPS, UPS, FedEx, etc.) over first-mile (YunExpress, etc.)
+          const lastMileCarrier = shipment.last_mile?.carrier?.name || shipment.last_mile?.carrier?.code;
+          const firstMileCarrier = shipment.carrier?.name || shipment.carrier?.code;
+          
           trackingInfo = {
             status: status,
             statusLabel: shipment.status_label || formatStatusLabel(status),
-            trackingNumber: shipment.tracking_number,
-            carrier: shipment.carrier?.name || shipment.carrier?.code || 'Unknown',
+            trackingNumber: shipment.last_mile?.tracking_number || shipment.tracking_number,
+            carrier: lastMileCarrier || firstMileCarrier || 'Unknown',
             deliveryDate: shipment.delivery_date,
             estimatedDelivery: shipment.estimated_delivery_date,
             lastUpdate: shipment.checkpoints?.[0]?.checkpoint_time || null,
@@ -1942,16 +1946,17 @@ async function handleLookupOrder(request, env, corsHeaders) {
       console.error(`[Tracking] Error fetching tracking for order ${order.name}:`, trackingError);
     }
 
-    // Build items summary for display
-    const itemsSummary = lineItems.slice(0, 3).map(item => {
+    // Build items summary for display - filter out digital/free products
+    const physicalItems = lineItems.filter(item => !item.isDigital && parseFloat(item.price) > 0);
+    const itemsSummary = physicalItems.slice(0, 3).map(item => {
       const qty = item.quantity > 1 ? `${item.quantity}x ` : '';
       const title = item.variantTitle ? `${item.title} (${item.variantTitle})` : item.title;
       // Truncate long titles
       const shortTitle = title.length > 30 ? title.substring(0, 30) + '...' : title;
       return `${qty}${shortTitle}`;
     });
-    if (lineItems.length > 3) {
-      itemsSummary.push(`+${lineItems.length - 3} more`);
+    if (physicalItems.length > 3) {
+      itemsSummary.push(`+${physicalItems.length - 3} more`);
     }
 
     return {
@@ -1970,8 +1975,8 @@ async function handleLookupOrder(request, env, corsHeaders) {
       shippingAddress: order.shipping_address,
       billingAddress: order.billing_address,
       lineItems,
-      itemsSummary, // New: condensed items list for display
-      itemsCount: lineItems.length,
+      itemsSummary, // Condensed list of physical items only
+      itemsCount: physicalItems.length, // Count of physical items only
       clientOrderId,
       orderUrl: `https://${env.SHOPIFY_STORE}/admin/orders/${order.id}`,
       // Tracking info from ParcelPanel
