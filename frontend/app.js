@@ -1939,7 +1939,20 @@ async function showItemSelection() {
 function renderItemCards() {
   state.selectedItems = []; // Reset selection
   
-  const itemsHtml = state.selectedOrder.lineItems.map((item, index) => {
+  // Separate free digital items from regular items
+  const freeDigitalItems = [];
+  const regularItems = [];
+  
+  state.selectedOrder.lineItems.forEach((item, index) => {
+    if (item.isFree && item.isDigital) {
+      freeDigitalItems.push({ item, index });
+    } else {
+      regularItems.push({ item, index });
+    }
+  });
+  
+  // Render regular items (excluding free digital)
+  const itemsHtml = regularItems.map(({ item, index }) => {
     // Determine badges
     let badges = '';
     if (item.productType === 'OFFER') badges += '<span class="product-badge initial">Initial Order</span>';
@@ -1971,12 +1984,54 @@ function renderItemCards() {
     `;
   }).join('');
   
-  const selectableItems = state.selectedOrder.lineItems.filter(i => !i.isDigital);
+  // Render accordion for free digital items
+  let freeDigitalAccordionHtml = '';
+  if (freeDigitalItems.length > 0) {
+    const accordionId = `free-digital-accordion-${Date.now()}`;
+    const freeDigitalItemsHtml = freeDigitalItems.map(({ item, index }) => {
+      let badges = '';
+      if (item.productType === 'OFFER') badges += '<span class="product-badge initial">Initial Order</span>';
+      if (item.productType === 'UPSALE') badges += '<span class="product-badge upsell">Upsell</span>';
+      badges += '<span class="product-badge digital">Digital</span>';
+      
+      return `
+        <div class="product-card disabled" data-index="${index}">
+          <img src="${item.image || 'https://via.placeholder.com/60'}" alt="${item.title}" class="product-image">
+          <div class="product-info">
+            <div class="product-name">${item.title}</div>
+            <div class="product-variant">${item.variantTitle || ''} ${item.sku ? `• ${item.sku}` : ''}</div>
+            <div class="product-meta">
+              <span class="product-price">FREE</span>
+              ${badges}
+            </div>
+            <div class="product-disabled-note">Digital items are delivered instantly</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    freeDigitalAccordionHtml = `
+      <div class="free-digital-accordion">
+        <button class="accordion-header" onclick="toggleFreeDigitalAccordion('${accordionId}')" aria-expanded="false">
+          <span class="accordion-title">Free Digital Products (${freeDigitalItems.length})</span>
+          <svg class="accordion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </button>
+        <div class="accordion-content" id="${accordionId}" style="display: none;">
+          ${freeDigitalItemsHtml}
+        </div>
+      </div>
+    `;
+  }
+  
+  const selectableItems = state.selectedOrder.lineItems.filter(i => !i.isDigital && !(i.isFree && i.isDigital));
   
   const containerHtml = `
     <div class="items-selection" id="itemsSelection">
       ${selectableItems.length > 1 ? `<button class="select-all-btn" onclick="selectAllItems()">Select All</button>` : ''}
       ${itemsHtml}
+      ${freeDigitalAccordionHtml}
       <button class="option-btn primary" onclick="confirmItemSelection()" style="margin-top: 12px; width: 100%;">
         Continue
       </button>
@@ -1985,6 +2040,22 @@ function renderItemCards() {
   
   addInteractiveContent(containerHtml);
 }
+
+// Toggle accordion for free digital items
+function toggleFreeDigitalAccordion(accordionId) {
+  const accordionContent = document.getElementById(accordionId);
+  const accordionHeader = accordionContent?.previousElementSibling;
+  
+  if (!accordionContent || !accordionHeader) return;
+  
+  const isExpanded = accordionContent.style.display !== 'none';
+  accordionContent.style.display = isExpanded ? 'none' : 'block';
+  accordionHeader.setAttribute('aria-expanded', !isExpanded);
+  accordionHeader.classList.toggle('expanded');
+}
+
+// Make toggleFreeDigitalAccordion available globally for onclick handlers
+window.toggleFreeDigitalAccordion = toggleFreeDigitalAccordion;
 
 function toggleItemSelection(index) {
   const item = state.selectedOrder.lineItems[index];
@@ -2003,7 +2074,8 @@ function toggleItemSelection(index) {
 }
 
 function selectAllItems() {
-  state.selectedItems = state.selectedOrder.lineItems.filter(i => !i.isDigital);
+  // Only select items that are not digital and not free digital
+  state.selectedItems = state.selectedOrder.lineItems.filter(i => !i.isDigital && !(i.isFree && i.isDigital));
   document.querySelectorAll('.product-card:not(.disabled)').forEach(card => {
     card.classList.add('selected');
   });

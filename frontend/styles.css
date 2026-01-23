@@ -1888,6 +1888,74 @@ textarea.form-input {
   color: white;
 }
 
+/* Free Digital Products Accordion */
+.free-digital-accordion {
+  margin: 16px 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--gray-50);
+  overflow: hidden;
+}
+
+.accordion-header {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--gray-100);
+  border: none;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.accordion-header:hover {
+  background: var(--gray-200);
+}
+
+.accordion-header.expanded {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.accordion-title {
+  flex: 1;
+  text-align: left;
+}
+
+.accordion-icon {
+  width: 20px;
+  height: 20px;
+  transition: transform var(--transition-normal);
+  color: var(--gray-600);
+}
+
+.accordion-header.expanded .accordion-icon {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  padding: 12px;
+  background: white;
+  border-top: 1px solid var(--border-color);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+  }
+}
+
 /* ============================================
    SUBSCRIPTION CARDS
    ============================================ */
