@@ -3433,17 +3433,21 @@ async function handleOrderSwap(isUsed) {
   if (isUsed) {
     await addBotMessage("No problem! We'll send you the correct item. You can keep the one you have.");
   } else {
-    await addBotMessage("Great! Once you ship back the item using a carrier of your choice, we'll send out your new order. Just reply to your confirmation email with the tracking number so we can monitor the return.");
+    await addBotMessage("Great! Just ship back the item using a carrier of your choice and reply to your confirmation email with the tracking number. As soon as we receive the tracking number, we'll send out your new order right away!");
   }
 
   showProgress("Creating your order change request...");
 
   // Create case for order change - customer's mistake, no refund offered
+  // IMPORTANT: productUsed determines if return is needed
   const resolution = isUsed ? 'order_change_reship' : 'order_change_return_swap';
   const result = await submitCase('shipping', resolution, {
     issueType: 'order_change',
     changeOrderDetails: state.intentDetails,   // What they want instead
     productUsed: isUsed,
+    notes: isUsed 
+      ? `Order change request. Product is USED - no return needed. Customer keeps used item. Reship: ${state.intentDetails}`
+      : `Order change request. Product is UNUSED - wait for return tracking number, then reship immediately. Requested: ${state.intentDetails}`,
   });
 
   hideProgress();
