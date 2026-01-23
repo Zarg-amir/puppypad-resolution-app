@@ -6218,12 +6218,12 @@ async function startDeliveredRefundLadder() {
     },
     {
       percent: 40,
-      message: "Let me check with my manager... Great news! They've approved a <strong>40% refund plus free reship</strong>. That's nearly half your money back and you still get the products.",
+      message: "Great news! My manager has approved a <strong>40% refund plus free reship</strong> for you. That's nearly half your money back and you still get the products.",
       needsManagerCheck: true
     },
     {
       percent: 50,
-      message: "I've spoken with my manager again. They've approved our <strong>maximum offer: 50% refund plus free reship</strong>. That's half your money back and you still receive your order.",
+      message: "Okay, I've just spoken with my manager again and they've approved our <strong>maximum offer: 50% refund plus free reship</strong>. This is the very best we can do — half your money back and you still receive your order.",
       needsManagerCheck: true
     }
   ];
@@ -6237,8 +6237,11 @@ async function startDeliveredRefundLadder() {
   const step = ladderSteps[state.deliveredLadderStep];
   const refundAmount = (totalPrice * step.percent / 100).toFixed(2);
 
+  // For steps that need manager check, show loading first (consistent with other flows)
   if (step.needsManagerCheck) {
-    await delay(1500); // Simulate manager check
+    showProgress("Checking with manager...");
+    await delay(8000); // 8 second delay to simulate manager check
+    hideProgress();
   }
 
   await addBotMessage(step.message);
