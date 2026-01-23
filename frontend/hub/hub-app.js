@@ -3535,7 +3535,8 @@ const HubNavigation = {
       flows: 'Flow Documentation',
       sop: 'SOP Links',
       'email-templates': 'Email Templates',
-      'case-detail': 'Case Details'
+      'case-detail': 'Case Details',
+      'profile': 'Profile Settings'
     };
 
     // If cases page with filter, show filter name
