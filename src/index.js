@@ -9362,8 +9362,10 @@ async function handleFormatCaseDetails(request, env, corsHeaders) {
    - "Customer requesting refund for damaged item"
    - "Customer did not receive their order"
    - "Customer wants to pause subscription"
+   - "Customer requesting upgrade from Original PuppyPads to PuppyPad 2.0"
    
    Keep it short and to the point. Only include essential information about the customer's problem.
+   For quality difference cases, always say "upgrade to PuppyPad 2.0" (not just "upgrade").
 
 2. **resolution**: State EXACTLY WHAT NEEDS TO BE DONE with ALL DETAILS. Detail is key - include dates, amounts, addresses, order numbers, and any specific information needed to complete the action. Make it as easy as possible for the team to execute.
    
@@ -9379,6 +9381,12 @@ async function handleFormatCaseDetails(request, env, corsHeaders) {
    - If product is USED (productUsed: true): "Reship correct item: [what customer wants]. Customer keeps used item. NO RETURN NEEDED. Fulfill via fulfillment center. Order: [order number]. Email: [email]"
    - If product is UNUSED (productUsed: false): "Wait for customer to provide return tracking number → Reship correct item: [what customer wants] immediately once tracking received. Fulfill via fulfillment center. Order: [order number]. Email: [email]"
    IMPORTANT: Check the productUsed field in extra_data to determine which resolution to use. If productUsed is true, DO NOT mention return or tracking.
+   
+   **FOR QUALITY DIFFERENCE / UPGRADE CASES (issueType: quality_difference)**: Customer received Original PuppyPads and wants to upgrade to PuppyPad 2.0.
+   - If resolution is 'upgrade_keep_originals': "Send checkout link for PuppyPad 2.0 upgrade ($20/pad × [quantity] = $[total]). Customer keeps Original PuppyPads. Ship PuppyPad 2.0 after payment. Order: [order number]. Email: [email]"
+   - If resolution is 'return_upgrade_enhanced': "Wait for customer to return Original PuppyPads → Send checkout link for PuppyPad 2.0 ($20/pad × [quantity] = $[total]) → Ship PuppyPad 2.0 after payment. Order: [order number]. Email: [email]"
+   - If resolution is 'reship_quality_upgrade': "Ship FREE PuppyPad 2.0 ([quantity] pads). Customer keeps Original PuppyPads. We absorb cost. Order: [order number]. Email: [email]"
+   IMPORTANT: Always use "PuppyPad 2.0" as the product name (not "upgrade" or "enhanced").
    
    Include ALL actionable details: dates (CALCULATE them when needed), amounts, IDs, addresses, email addresses, tracking numbers, etc. Be specific and complete.
 
