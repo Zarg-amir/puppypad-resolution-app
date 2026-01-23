@@ -537,9 +537,9 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--gray-200);
 }
 
-/* Home Footer */
+/* Home Footer - Hidden by default, only shown when chat starts */
 .home-footer {
-  display: flex;
+  display: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -2956,6 +2956,11 @@ textarea.form-input {
   border-top: 1px solid var(--border-color);
   padding: 12px 20px;
   text-align: center;
+  display: none; /* Hidden by default, shown when chat container is active */
+}
+
+.chat-container.active .app-footer {
+  display: block; /* Show footer when chat is active */
 }
 
 .footer-content {
