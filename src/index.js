@@ -1482,154 +1482,182 @@ export default {
 async function handleLookupOrder(request, env, corsHeaders) {
   const { email, phone, firstName, lastName, orderNumber, address1, country, deepSearch } = await request.json();
 
-  // Build Shopify search query
-  let query = '';
+  let orders = [];
 
-  if (deepSearch && firstName && lastName && address1) {
-    // Deep search mode: Search by name (Shopify will return matches)
-    // We'll filter for exact name/country match and fuzzy address match after
-    query = `shipping_address.first_name:${firstName} shipping_address.last_name:${lastName}`;
-
-    // Add country filter if provided
-    if (country) {
-      const countryName = getCountryNameFromCode(country);
-      if (countryName) {
-        query += ` shipping_address.country:"${countryName}"`;
-      }
-    }
-  } else {
-    // Standard lookup: email or phone
-    if (email) {
-      query = `email:${email}`;
-    } else if (phone) {
-      // Clean phone number for search
-      const cleanPhone = phone.replace(/\D/g, '');
-      query = `phone:*${cleanPhone.slice(-10)}*`; // Last 10 digits
-      // Don't include firstName/lastName in Shopify query for phone searches
-      // We'll filter by name in code to avoid excluding valid orders
-    }
-
-    if (orderNumber) {
-      query += ` name:#${orderNumber.replace('#', '').replace('P', '').replace('p', '')}`;
-    }
-    // Only add name filters for email searches (not phone searches)
-    if (email && firstName) {
-      query += ` billing_address.first_name:${firstName}`;
-    }
-    if (email && lastName) {
-      query += ` billing_address.last_name:${lastName}`;
-    }
-  }
-
-  const shopifyUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=50&query=${encodeURIComponent(query)}`;
-
-  const response = await fetch(shopifyUrl, {
-    headers: {
-      'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    return Response.json({ error: 'Shopify lookup failed' }, { status: 500, headers: corsHeaders });
-  }
-
-  const data = await response.json();
-  let orders = data.orders || [];
-
-  // Debug logging for phone searches
+  // For phone number searches, use the two-step approach:
+  // 1. First search for customers by phone number (using query parameter)
+  // 2. Then query orders using the customer IDs
   if (phone && !email && !deepSearch) {
-    console.log(`[Phone Lookup] Search phone: ${phone}, Cleaned: ${cleanPhoneNumber(phone)}, Orders from Shopify: ${orders.length}`);
-    if (orders.length > 0) {
-      console.log(`[Phone Lookup] Sample order phones:`, orders.slice(0, 3).map(o => ({
-        orderPhone: o.phone,
-        shippingPhone: o.shipping_address?.phone,
-        customerPhone: o.customer?.phone
-      })));
-    }
-  }
-
-  // For phone number searches, apply strict filtering to match exact phone
-  if (phone && !email && !deepSearch && orders.length > 0) {
-    const searchPhone = cleanPhoneNumber(phone);
-    // Get last 10 digits (US phone number) to handle country code variations
-    const searchPhoneLast10 = searchPhone.slice(-10);
-    // Also try without leading 1 (in case country code was included)
+    const cleanPhone = cleanPhoneNumber(phone);
+    const searchPhoneLast10 = cleanPhone.slice(-10);
+    const searchPhone = cleanPhone;
     const searchPhoneWithout1 = searchPhone.startsWith('1') && searchPhone.length >= 11 
       ? searchPhone.slice(1) 
       : searchPhone;
-    // Get last 7 digits for even more flexible matching
-    const searchPhoneLast7 = searchPhone.slice(-7);
     
-    // If we got many results from Shopify (like 50), be more lenient with matching
-    // Otherwise, be strict to avoid false positives
-    const isManyResults = orders.length > 10;
+    // Step 1: Search for customers by phone number using query parameter
+    // Try multiple query formats to maximize chances of finding customers
+    const customerQueries = [
+      `phone:*${searchPhoneLast10}*`,  // Last 10 digits with wildcards
+      `phone:${searchPhoneLast10}`,     // Exact last 10 digits
+    ];
     
-    orders = orders.filter(order => {
-      // Check all possible phone fields: order.phone, shipping_address.phone, billing_address.phone, and customer.phone
-      const orderPhone = cleanPhoneNumber(order.phone || '');
-      const shippingPhone = cleanPhoneNumber(order.shipping_address?.phone || '');
-      const billingPhone = cleanPhoneNumber(order.billing_address?.phone || '');
-      const customerPhone = cleanPhoneNumber(order.customer?.phone || '');
-      
-      // Helper function to check if a phone matches
-      const checkPhoneMatch = (phoneToCheck) => {
-        if (!phoneToCheck || phoneToCheck.length < 7) return false;
+    // If phone has 11+ digits, also try without leading 1
+    if (searchPhone.length >= 11 && searchPhone.startsWith('1')) {
+      customerQueries.push(`phone:*${searchPhoneWithout1.slice(-10)}*`);
+      customerQueries.push(`phone:${searchPhoneWithout1.slice(-10)}`);
+    }
+    
+    let matchingCustomerIds = [];
+    
+    try {
+      // Try each query format and collect all matching customer IDs
+      for (const customerQuery of customerQueries) {
+        const customerSearchUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/customers.json?limit=250&query=${encodeURIComponent(customerQuery)}`;
         
-        // Try exact matches first
-        if (phoneToCheck === searchPhone || phoneToCheck === searchPhoneWithout1) return true;
-        
-        // Try last 10 digits match
-        if (phoneToCheck.slice(-10) === searchPhoneLast10) return true;
-        
-        // For many results, also try last 7 digits (more lenient)
-        if (isManyResults && phoneToCheck.slice(-7) === searchPhoneLast7) return true;
-        
-        // For few results, also try last 7 digits but only if we have at least 7 digits
-        if (!isManyResults && searchPhone.length >= 7 && phoneToCheck.slice(-7) === searchPhoneLast7) return true;
-        
-        return false;
-      };
-      
-      // Match if any phone field matches (flexible matching for country code variations)
-      const phoneMatches = 
-        checkPhoneMatch(orderPhone) ||
-        checkPhoneMatch(shippingPhone) ||
-        checkPhoneMatch(billingPhone) ||
-        checkPhoneMatch(customerPhone);
-      
-      if (!phoneMatches) return false;
-      
-      // If name is provided, use it as additional filter (but don't exclude if phone matches)
-      // Phone match is primary - name is just for additional accuracy
-      if (firstName || lastName) {
-        const addr = order.shipping_address || order.billing_address;
-        if (addr) {
-          if (firstName) {
-            const orderFirstName = (addr.first_name || order.customer?.first_name || '').toLowerCase().trim();
-            const searchFirstName = firstName.toLowerCase().trim();
-            // Allow partial match (e.g., "Daniel" matches "Daniel Bell") or exact match
-            // If name doesn't match at all, still include it since phone matched (phone is primary identifier)
-            if (orderFirstName && searchFirstName && 
-                orderFirstName !== searchFirstName && 
-                !orderFirstName.startsWith(searchFirstName) && 
-                !searchFirstName.startsWith(orderFirstName)) {
-              // Name doesn't match, but phone does - still include it
-              // Phone is the primary identifier, name is just for additional filtering
-            }
-          }
+        const customerResponse = await fetch(customerSearchUrl, {
+          headers: {
+            'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (customerResponse.ok) {
+          const customerData = await customerResponse.json();
+          const customers = customerData.customers || [];
           
-          if (lastName) {
-            const orderLastName = (addr.last_name || order.customer?.last_name || '').toLowerCase().trim();
-            const searchLastName = lastName.toLowerCase().trim();
-            // Similar logic for last name - don't exclude if phone matches
-            if (orderLastName && searchLastName && 
-                orderLastName !== searchLastName && 
-                !orderLastName.startsWith(searchLastName) && 
-                !searchLastName.startsWith(orderLastName)) {
-              // Last name doesn't match, but phone does - still include it
-            }
-          }
+          // Filter customers to ensure phone number matches exactly
+          const newCustomerIds = customers
+            .filter(customer => {
+              const customerPhone = cleanPhoneNumber(customer.phone || '');
+              return customerPhone === searchPhone ||
+                     customerPhone === searchPhoneWithout1 ||
+                     customerPhone.slice(-10) === searchPhoneLast10;
+            })
+            .map(customer => customer.id);
+          
+          matchingCustomerIds = [...new Set([...matchingCustomerIds, ...newCustomerIds])]; // Deduplicate
+        }
+      }
+      
+      console.log(`[Phone Lookup] Found ${matchingCustomerIds.length} matching customers for phone: ${phone}`);
+      
+      // Step 2: Query orders for these customer IDs
+      if (matchingCustomerIds.length > 0) {
+        // Build query with customer IDs
+        const customerIdQueries = matchingCustomerIds.map(id => `customer_id:${id}`).join(' OR ');
+        let query = `(${customerIdQueries})`;
+        
+        if (orderNumber) {
+          query += ` name:#${orderNumber.replace('#', '').replace('P', '').replace('p', '')}`;
+        }
+        
+        const ordersUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=250&query=${encodeURIComponent(query)}`;
+        
+        const ordersResponse = await fetch(ordersUrl, {
+          headers: {
+            'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (ordersResponse.ok) {
+          const ordersData = await ordersResponse.json();
+          orders = ordersData.orders || [];
+          console.log(`[Phone Lookup] Found ${orders.length} orders for ${matchingCustomerIds.length} customers`);
+        } else {
+          console.error(`[Phone Lookup] Failed to fetch orders: ${ordersResponse.status}`);
+        }
+      } else {
+        console.log(`[Phone Lookup] No matching customers found for phone: ${phone}`);
+      }
+    } catch (error) {
+      console.error('[Phone Lookup] Error in customer search:', error);
+      return Response.json({ error: 'Phone lookup failed' }, { status: 500, headers: corsHeaders });
+    }
+  } else {
+    // For email or deep search, use the original approach
+    // Build Shopify search query
+    let query = '';
+
+    if (deepSearch && firstName && lastName && address1) {
+      // Deep search mode: Search by name (Shopify will return matches)
+      // We'll filter for exact name/country match and fuzzy address match after
+      query = `shipping_address.first_name:${firstName} shipping_address.last_name:${lastName}`;
+
+      // Add country filter if provided
+      if (country) {
+        const countryName = getCountryNameFromCode(country);
+        if (countryName) {
+          query += ` shipping_address.country:"${countryName}"`;
+        }
+      }
+    } else {
+      // Standard lookup: email
+      if (email) {
+        query = `email:${email}`;
+      }
+
+      if (orderNumber) {
+        query += ` name:#${orderNumber.replace('#', '').replace('P', '').replace('p', '')}`;
+      }
+      // Only add name filters for email searches
+      if (email && firstName) {
+        query += ` billing_address.first_name:${firstName}`;
+      }
+      if (email && lastName) {
+        query += ` billing_address.last_name:${lastName}`;
+      }
+    }
+
+    const shopifyUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=50&query=${encodeURIComponent(query)}`;
+
+    const response = await fetch(shopifyUrl, {
+      headers: {
+        'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      return Response.json({ error: 'Shopify lookup failed' }, { status: 500, headers: corsHeaders });
+    }
+
+    const data = await response.json();
+    orders = data.orders || [];
+  }
+
+  // For phone number searches, apply name filtering if provided
+  // (Phone matching is already handled by customer search, so we just filter by name here)
+  if (phone && !email && !deepSearch && orders.length > 0 && (firstName || lastName)) {
+    orders = orders.filter(order => {
+      const addr = order.shipping_address || order.billing_address;
+      if (!addr) return true; // Include orders without address if phone matched
+      
+      // Filter by first name if provided
+      if (firstName) {
+        const orderFirstName = (addr.first_name || order.customer?.first_name || '').toLowerCase().trim();
+        const searchFirstName = firstName.toLowerCase().trim();
+        // Allow partial match (e.g., "Daniel" matches "Daniel Bell") or exact match
+        if (orderFirstName && searchFirstName && 
+            orderFirstName !== searchFirstName && 
+            !orderFirstName.startsWith(searchFirstName) && 
+            !searchFirstName.startsWith(orderFirstName)) {
+          // Name doesn't match - exclude this order
+          return false;
+        }
+      }
+      
+      // Filter by last name if provided
+      if (lastName) {
+        const orderLastName = (addr.last_name || order.customer?.last_name || '').toLowerCase().trim();
+        const searchLastName = lastName.toLowerCase().trim();
+        if (orderLastName && searchLastName && 
+            orderLastName !== searchLastName && 
+            !orderLastName.startsWith(searchLastName) && 
+            !searchLastName.startsWith(orderLastName)) {
+          // Last name doesn't match - exclude this order
+          return false;
         }
       }
       
