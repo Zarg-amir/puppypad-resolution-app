@@ -891,6 +891,71 @@ h1, h2, h3, h4, h5, h6 {
   border-bottom-right-radius: 6px;
 }
 
+/* ============================================
+   EDITABLE USER MESSAGES
+   ============================================ */
+.editable-message .message-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editable-bubble {
+  position: relative;
+}
+
+.editable-content {
+  line-height: 1.5;
+}
+
+.editable-summary {
+  font-size: 14px;
+}
+
+.editable-summary .summary-row {
+  margin-bottom: 4px;
+}
+
+.editable-summary .summary-label {
+  opacity: 0.8;
+  font-size: 12px;
+}
+
+.editable-summary .summary-items {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+}
+
+.edit-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.edit-btn:active {
+  transform: scale(0.95);
+}
+
+.edit-btn svg {
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
 /* Message Bubble - HTML Content Styling */
 .message-bubble p {
   margin: 0 0 14px 0 !important;

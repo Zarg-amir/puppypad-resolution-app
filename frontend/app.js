@@ -946,13 +946,18 @@ async function addUserMessage(text) {
 // ============================================
 // EDITABLE USER MESSAGE (Key Feature!)
 // ============================================
-function addEditableUserMessage(summaryHtml, editCallback, editLabel = 'Edit') {
+function addEditableUserMessage(contentOrHtml, editCallback, editLabel = 'Edit') {
   const containerDiv = document.createElement('div');
   containerDiv.className = 'message user editable-message';
+  
+  // Check if content is simple text or HTML (contains tags)
+  const isHtml = /<[^>]+>/.test(contentOrHtml);
+  const displayContent = isHtml ? contentOrHtml : escapeHtml(contentOrHtml);
+  
   containerDiv.innerHTML = `
     <div class="message-content">
       <div class="message-bubble editable-bubble">
-        <div class="editable-content">${summaryHtml}</div>
+        <div class="editable-content">${displayContent}</div>
         <button class="edit-btn" onclick="this.closest('.editable-message').editCallback()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -972,13 +977,20 @@ function addEditableUserMessage(summaryHtml, editCallback, editLabel = 'Edit') {
     for (let i = allMessages.length - 1; i >= index; i--) {
       allMessages[i].remove();
     }
-    // Call the edit callback to re-show the form
+    // Call the edit callback to re-show the form/options
     editCallback();
   };
   
   elements.chatArea.appendChild(containerDiv);
   scrollToBottom();
   return containerDiv;
+}
+
+// Helper to escape HTML for plain text content
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // ============================================
@@ -994,7 +1006,14 @@ const ANIMATION_CONFIG = {
   cardStaggerDelay: 200       // 200ms between each card appearing
 };
 
-async function addOptions(options) {
+// Store the current options render function for edit functionality
+let currentOptionsRenderer = null;
+
+async function addOptions(options, editCallback = null) {
+  // Store the render function for potential editing
+  const renderOptions = () => addOptions(options, editCallback);
+  currentOptionsRenderer = renderOptions;
+  
   // Wait for user to read Amy's message before showing options
   await delay(ANIMATION_CONFIG.delayBeforeOptions);
 
@@ -1013,7 +1032,9 @@ async function addOptions(options) {
     btn.onclick = () => {
       optionsDiv.remove();
       if (option.showAsMessage !== false) {
-        addUserMessage(option.text);
+        // Use editable message with callback to re-render options
+        const editCb = editCallback || renderOptions;
+        addEditableUserMessage(option.text, editCb, 'Edit');
       }
       option.action();
     };
@@ -1033,7 +1054,11 @@ async function addOptions(options) {
   }
 }
 
-async function addOptionsRow(options) {
+async function addOptionsRow(options, editCallback = null) {
+  // Store the render function for potential editing
+  const renderOptions = () => addOptionsRow(options, editCallback);
+  currentOptionsRenderer = renderOptions;
+  
   // Wait for user to read Amy's message
   await delay(ANIMATION_CONFIG.delayBeforeOptions);
 
@@ -1058,7 +1083,9 @@ async function addOptionsRow(options) {
       innerRow.querySelectorAll('button').forEach(b => b.disabled = true);
       rowDiv.remove();
       if (option.showAsMessage !== false) {
-        addUserMessage(option.text);
+        // Use editable message with callback to re-render options
+        const editCb = editCallback || renderOptions;
+        addEditableUserMessage(option.text, editCb, 'Edit');
       }
       option.action();
     };
@@ -1121,23 +1148,46 @@ async function addInteractiveContent(html, delayMs = ANIMATION_CONFIG.delayBefor
 // ============================================
 // INPUT HANDLING
 // ============================================
-function showTextInput(placeholder = 'Type your message...', onSubmit) {
+
+// Store info for making text input messages editable
+let currentTextInputConfig = null;
+
+function showTextInput(placeholder = 'Type your message...', onSubmit, editCallback = null) {
   elements.inputArea.classList.add('active');
   elements.textInput.placeholder = placeholder;
   elements.textInput.value = '';
   elements.textInput.focus();
   window.currentInputHandler = onSubmit;
+  
+  // Store config for edit functionality
+  currentTextInputConfig = {
+    placeholder,
+    onSubmit,
+    editCallback
+  };
 }
 
 function hideTextInput() {
   elements.inputArea.classList.remove('active');
   window.currentInputHandler = null;
+  currentTextInputConfig = null;
 }
 
 function sendMessage() {
   const text = elements.textInput.value.trim();
   if (!text) return;
-  addUserMessage(text);
+  
+  // Create editable message with callback to re-show the text input
+  const config = currentTextInputConfig;
+  if (config) {
+    const editCb = config.editCallback || (() => {
+      showTextInput(config.placeholder, config.onSubmit, config.editCallback);
+    });
+    addEditableUserMessage(text, editCb, 'Edit');
+  } else {
+    addUserMessage(text);
+  }
+  
   elements.textInput.value = '';
   if (window.currentInputHandler) window.currentInputHandler(text);
 }
@@ -2705,7 +2755,12 @@ function showSatisfactionButtons() {
 async function handleSatisfied(satisfied) {
   document.querySelector('.satisfaction-container')?.closest('.interactive-content').remove();
   
-  addUserMessage(satisfied ? "Yes, I'll try these!" : "No, I need more help");
+  // Use editable message with callback to re-show satisfaction buttons
+  addEditableUserMessage(
+    satisfied ? "Yes, I'll try these!" : "No, I need more help",
+    showSatisfactionButtons,
+    'Edit'
+  );
   
   if (satisfied) {
     await addBotMessage("That's great to hear! 🎉 Give it a go and remember — consistency is key. You've got this!<br><br>Is there anything else I can help you with?");
@@ -4640,7 +4695,7 @@ async function handleQualityRefundQuestion() {
 
   showTextInput("Type your question...", async (question) => {
     hideTextInput();
-    addUserMessage(question);
+    // Note: Message is added by sendMessage() with edit capability
 
     await addBotMessage("That's a great question. Let me make sure I address that properly...<br><br>Our team will review your specific situation when processing your refund. If you have any concerns about the refund amount or process, they'll be able to help clarify everything.<br><br>Is there anything else you'd like to know, or are you ready to proceed with the return?");
 
@@ -5910,7 +5965,13 @@ async function submitAddressForm() {
   state.newAddress = newAddress;
 
   document.getElementById('addressForm')?.closest('.interactive-content').remove();
-  addUserMessage(`Updated address: ${address1}, ${city}, ${province} ${zip}`);
+  
+  // Use editable message with callback to re-show address form
+  addEditableUserMessage(
+    `Updated address: ${address1}, ${city}, ${province} ${zip}`,
+    () => showAddressForm(newAddress),
+    'Edit Address'
+  );
 
   // Check if we're processing a shipping offer or regular reship
   if (state.afterAddressAction === 'shipping_offer') {
@@ -7030,6 +7091,11 @@ const additionalStyles = `
     margin-bottom: 8px;
   }
   
+  /* For simple text messages, remove margin if no summary rows */
+  .editable-content:not(:has(.editable-summary)):not(:has(.summary-row)) {
+    margin-bottom: 10px;
+  }
+  
   .editable-summary {
     font-size: 14px;
   }
@@ -7069,6 +7135,13 @@ const additionalStyles = `
   
   .edit-btn svg {
     opacity: 0.8;
+  }
+  
+  /* Compact edit button for simple messages */
+  .editable-message .message-bubble {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
   
   .option-btn.secondary {
