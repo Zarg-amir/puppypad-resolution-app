@@ -1555,9 +1555,11 @@ async function handleLookupOrder(request, env, corsHeaders) {
     // Get last 10 digits (US phone number) to handle country code variations
     const searchPhoneLast10 = searchPhone.slice(-10);
     // Also try without leading 1 (in case country code was included)
-    const searchPhoneWithout1 = searchPhone.startsWith('1') && searchPhone.length === 11 
+    const searchPhoneWithout1 = searchPhone.startsWith('1') && searchPhone.length >= 11 
       ? searchPhone.slice(1) 
       : searchPhone;
+    // Get last 7 digits for even more flexible matching
+    const searchPhoneLast7 = searchPhone.slice(-7);
     
     orders = orders.filter(order => {
       // Check all possible phone fields: order.phone, shipping_address.phone, billing_address.phone, and customer.phone
@@ -1566,21 +1568,23 @@ async function handleLookupOrder(request, env, corsHeaders) {
       const billingPhone = cleanPhoneNumber(order.billing_address?.phone || '');
       const customerPhone = cleanPhoneNumber(order.customer?.phone || '');
       
+      // Helper function to check if a phone matches
+      const checkPhoneMatch = (phoneToCheck) => {
+        if (!phoneToCheck || phoneToCheck.length < 7) return false;
+        return (
+          phoneToCheck === searchPhone || 
+          phoneToCheck === searchPhoneWithout1 ||
+          phoneToCheck.slice(-10) === searchPhoneLast10 ||
+          phoneToCheck.slice(-7) === searchPhoneLast7
+        );
+      };
+      
       // Match if any phone field matches (flexible matching for country code variations)
-      // Try exact match, last 10 digits match, or match without leading 1
       const phoneMatches = 
-        orderPhone === searchPhone || 
-        orderPhone === searchPhoneWithout1 ||
-        orderPhone.slice(-10) === searchPhoneLast10 ||
-        shippingPhone === searchPhone || 
-        shippingPhone === searchPhoneWithout1 ||
-        shippingPhone.slice(-10) === searchPhoneLast10 ||
-        billingPhone === searchPhone || 
-        billingPhone === searchPhoneWithout1 ||
-        billingPhone.slice(-10) === searchPhoneLast10 ||
-        customerPhone === searchPhone ||
-        customerPhone === searchPhoneWithout1 ||
-        customerPhone.slice(-10) === searchPhoneLast10;
+        checkPhoneMatch(orderPhone) ||
+        checkPhoneMatch(shippingPhone) ||
+        checkPhoneMatch(billingPhone) ||
+        checkPhoneMatch(customerPhone);
       
       if (!phoneMatches) return false;
       
