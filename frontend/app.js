@@ -1857,7 +1857,7 @@ function renderOrderCards(flowType) {
                        order.fulfillmentStatus === 'partial' ? 'Partially Shipped' : 'Processing';
     
     const itemThumbs = order.lineItems.slice(0, 4).map(item => 
-      `<img src="${item.image || 'https://via.placeholder.com/48'}" alt="${item.title}" class="order-item-thumb">`
+      `<img src="${item.image || ''}" alt="${item.title}" class="order-item-thumb" onerror="this.style.display='none';" style="${item.image ? '' : 'display:none;'}">`
     ).join('');
     
     return `
@@ -1965,7 +1965,8 @@ function renderItemCards() {
     
     return `
       <div class="product-card ${disabled}" data-index="${index}" onclick="${item.isDigital ? '' : `toggleItemSelection(${index})`}">
-        <img src="${item.image || 'https://via.placeholder.com/60'}" alt="${item.title}" class="product-image">
+        <img src="${item.image || ''}" alt="${item.title}" class="product-image" onerror="this.style.display='none'; this.nextElementSibling?.style.display='flex';" style="${item.image ? '' : 'display:none;'}">
+        <div class="product-image-placeholder" style="${item.image ? 'display:none;' : 'display:flex; align-items:center; justify-content:center; width:60px; height:60px; background:var(--gray-100); border-radius:var(--radius-md); color:var(--gray-400); font-size:24px;'}">📦</div>
         <div class="product-info">
           <div class="product-name">${item.title}</div>
           <div class="product-variant">${item.variantTitle || ''} ${item.sku ? `• ${item.sku}` : ''}</div>
@@ -1996,7 +1997,8 @@ function renderItemCards() {
       
       return `
         <div class="product-card disabled" data-index="${index}">
-          <img src="${item.image || 'https://via.placeholder.com/60'}" alt="${item.title}" class="product-image">
+          <img src="${item.image || ''}" alt="${item.title}" class="product-image" onerror="this.style.display='none'; this.nextElementSibling?.style.display='flex';" style="${item.image ? '' : 'display:none;'}">
+        <div class="product-image-placeholder" style="${item.image ? 'display:none;' : 'display:flex; align-items:center; justify-content:center; width:60px; height:60px; background:var(--gray-100); border-radius:var(--radius-md); color:var(--gray-400); font-size:24px;'}">📦</div>
           <div class="product-info">
             <div class="product-name">${item.title}</div>
             <div class="product-variant">${item.variantTitle || ''} ${item.sku ? `• ${item.sku}` : ''}</div>

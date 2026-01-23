@@ -136,10 +136,68 @@ export function filterOrdersDeepSearch(orders, searchParams) {
 }
 
 /**
- * Process line items with images and product type detection
+ * Fetch variant image from Shopify API
  */
-export function processLineItems(lineItems) {
-  return lineItems.map(item => {
+async function fetchVariantImage(variantId, env) {
+  if (!variantId || !env) return null;
+  
+  try {
+    const variantUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/variants/${variantId}.json`;
+    const response = await fetch(variantUrl, {
+      headers: {
+        'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const variant = data.variant;
+    
+    // Return variant image if available
+    if (variant?.image_id) {
+      // Fetch the image from the product
+      const productUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/products/${variant.product_id}.json`;
+      const productResponse = await fetch(productUrl, {
+        headers: {
+          'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (productResponse.ok) {
+        const productData = await productResponse.json();
+        const product = productData.product;
+        
+        // Find the image matching the variant's image_id
+        if (product?.images) {
+          const variantImage = product.images.find(img => img.id === variant.image_id);
+          if (variantImage?.src) {
+            return variantImage.src;
+          }
+        }
+        
+        // Fallback to first product image if variant image not found
+        if (product?.images?.[0]?.src) {
+          return product.images[0].src;
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching variant image:', error);
+    return null;
+  }
+}
+
+/**
+ * Process line items with images and product type detection
+ * Now fetches variant images when missing from order line items
+ */
+export async function processLineItems(lineItems, env = null) {
+  const processedItems = await Promise.all(lineItems.map(async (item) => {
     const productTypeProperty = (item.properties || []).find(p =>
       p.name === 'productType' || p.name === 'product_type'
     );
@@ -150,6 +208,14 @@ export function processLineItems(lineItems) {
       item.title?.toLowerCase().includes('e-book') ||
       item.title?.toLowerCase().includes('digital');
 
+    // Get image from line item first, fallback to fetching variant image
+    let image = item.image?.src || null;
+    
+    // If no image and we have variant_id and env, fetch variant image
+    if (!image && item.variant_id && env) {
+      image = await fetchVariantImage(item.variant_id, env);
+    }
+
     return {
       id: item.id,
       productId: item.product_id,
@@ -159,7 +225,7 @@ export function processLineItems(lineItems) {
       sku: item.sku,
       quantity: item.quantity,
       price: item.price,
-      image: item.image?.src || null,
+      image: image,
       fulfillmentStatus: item.fulfillment_status,
       productType,
       isFree,
@@ -168,7 +234,9 @@ export function processLineItems(lineItems) {
                   item.title?.toLowerCase().includes('puppy pad') ||
                   item.title?.toLowerCase().includes('pee pad'),
     };
-  });
+  }));
+  
+  return processedItems;
 }
 
 /**
