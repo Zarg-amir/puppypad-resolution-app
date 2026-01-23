@@ -3464,8 +3464,19 @@ async function handleOrderSwap(isUsed) {
 async function handleMissingItem() {
   const order = state.selectedOrder;
 
-  // Build list of all items they should have received
-  const allItems = order?.lineItems?.map(item => {
+  // Build list of PHYSICAL items only (filter out digital downloads and free items)
+  const physicalItems = order?.lineItems?.filter(item => {
+    const lowerTitle = item.title.toLowerCase();
+    const isDigital = item.isDigital || 
+      lowerTitle.includes('instant download') || 
+      lowerTitle.includes('digital') ||
+      lowerTitle.includes('ebook') ||
+      lowerTitle.includes('e-book');
+    const isFree = parseFloat(item.price) <= 0;
+    return !isDigital && !isFree;
+  }) || [];
+
+  const allItems = physicalItems.map(item => {
     let itemText = `• ${item.title}`;
     if (item.quantity > 1) {
       itemText += ` × ${item.quantity}`;
@@ -3490,7 +3501,7 @@ async function handleMissingItem() {
   showUploadArea('missing_item');
 }
 
-// After photos uploaded for missing item, ask for description
+// After photos uploaded for missing item, ask for description then submit to manual review
 async function handleMissingItemEvidence() {
   await addBotMessage("Thanks for those photos!<br><br>Now, please describe exactly what was missing from your order. Include as much detail as possible... for example, how many items were missing, which specific products, any damage to the packaging, etc.");
 
@@ -3498,12 +3509,60 @@ async function handleMissingItemEvidence() {
     hideTextInput();
     state.missingItemDescription = description; // Store for case creation
 
-    await addBotMessage(`Thank you for letting us know. I've noted everything down and our team will look into this.<br><br>To make things right, we'd love to reship the missing items to you... and as an apology for the trouble, we'll include an extra item on us!<br><br>Our team will review your case within 1-2 days and get your missing items shipped out.<br><br>Would you like us to go ahead with this?`);
+    // Upload evidence photos first
+    showProgress("Uploading your photos...");
+    let evidenceUrls = [];
+    
+    if (state.uploadedFiles && state.uploadedFiles.length > 0) {
+      for (const file of state.uploadedFiles) {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('orderNumber', state.selectedOrder?.orderNumber || 'unknown');
+          formData.append('caseType', 'missing_item');
+          
+          const response = await fetch(`${CONFIG.API_URL}/api/upload-evidence`, {
+            method: 'POST',
+            body: formData,
+          });
+          
+          const result = await response.json();
+          if (result.url) {
+            const fullUrl = `${CONFIG.API_URL}${result.url}`;
+            evidenceUrls.push(fullUrl);
+          }
+        } catch (error) {
+          console.error('Error uploading evidence:', error);
+        }
+      }
+    }
+    
+    hideProgress();
 
-    addOptions([
-      { text: "Yes, send my missing items", action: handleMissingItemReship },
-      { text: "No, I'd like a different solution", action: handleMissingItemAlternative }
-    ]);
+    // Show apologetic message and inform them the case is being submitted for review
+    await addBotMessage(`Thank you for letting us know about the missing items. I sincerely apologize for this inconvenience — this is definitely not the experience we want for you.<br><br>I've forwarded your case to our team for review. They'll personally investigate what happened and determine the best way to make this right for you.<br><br>You can expect to hear back within 24-48 hours via email.`);
+
+    showProgress("Creating your case...");
+
+    // Generate case ID for manual review (MAN- prefix)
+    state.caseId = generateCaseId('manual');
+    state.resolution = 'missing_item_review';
+
+    // Submit case as manual type for team review
+    const result = await submitCase('manual', 'missing_item_review', {
+      issueType: 'something_missing',
+      missingItemOrderList: state.missingItemOrderList,
+      missingItemDescription: description,
+      evidenceUrls: evidenceUrls,
+      notes: `Customer reported missing items. ${evidenceUrls.length} photo(s) uploaded for review. Description: ${description}`,
+    });
+
+    hideProgress();
+
+    await showSuccess(
+      "Case Created for Review",
+      `Our team will review your photos and description, then reach out within 24-48 hours to make this right.<br><br>${getCaseIdHtml(state.caseId)}<br><br>We truly appreciate your patience and understanding.`
+    );
   });
 }
 
