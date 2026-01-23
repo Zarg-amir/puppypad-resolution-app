@@ -1505,15 +1505,18 @@ async function handleLookupOrder(request, env, corsHeaders) {
       // Clean phone number for search
       const cleanPhone = phone.replace(/\D/g, '');
       query = `phone:*${cleanPhone.slice(-10)}*`; // Last 10 digits
+      // Don't include firstName/lastName in Shopify query for phone searches
+      // We'll filter by name in code to avoid excluding valid orders
     }
 
     if (orderNumber) {
       query += ` name:#${orderNumber.replace('#', '').replace('P', '').replace('p', '')}`;
     }
-    if (firstName) {
+    // Only add name filters for email searches (not phone searches)
+    if (email && firstName) {
       query += ` billing_address.first_name:${firstName}`;
     }
-    if (lastName) {
+    if (email && lastName) {
       query += ` billing_address.last_name:${lastName}`;
     }
   }
@@ -1537,6 +1540,12 @@ async function handleLookupOrder(request, env, corsHeaders) {
   // For phone number searches, apply strict filtering to match exact phone
   if (phone && !email && !deepSearch && orders.length > 0) {
     const searchPhone = cleanPhoneNumber(phone);
+    // Get last 10 digits (US phone number) to handle country code variations
+    const searchPhoneLast10 = searchPhone.slice(-10);
+    // Also try without leading 1 (in case country code was included)
+    const searchPhoneWithout1 = searchPhone.startsWith('1') && searchPhone.length === 11 
+      ? searchPhone.slice(1) 
+      : searchPhone;
     
     orders = orders.filter(order => {
       // Check both order.phone and shipping_address.phone
@@ -1544,28 +1553,51 @@ async function handleLookupOrder(request, env, corsHeaders) {
       const shippingPhone = cleanPhoneNumber(order.shipping_address?.phone || '');
       const billingPhone = cleanPhoneNumber(order.billing_address?.phone || '');
       
-      // Match if any phone field matches (exact match on cleaned numbers)
-      const phoneMatches = orderPhone === searchPhone || 
-                          shippingPhone === searchPhone || 
-                          billingPhone === searchPhone;
+      // Match if any phone field matches (flexible matching for country code variations)
+      // Try exact match, last 10 digits match, or match without leading 1
+      const phoneMatches = 
+        orderPhone === searchPhone || 
+        orderPhone === searchPhoneWithout1 ||
+        orderPhone.slice(-10) === searchPhoneLast10 ||
+        shippingPhone === searchPhone || 
+        shippingPhone === searchPhoneWithout1 ||
+        shippingPhone.slice(-10) === searchPhoneLast10 ||
+        billingPhone === searchPhone || 
+        billingPhone === searchPhoneWithout1 ||
+        billingPhone.slice(-10) === searchPhoneLast10;
       
       if (!phoneMatches) return false;
       
-      // If name is provided, also filter by name for better accuracy
+      // If name is provided, use it as additional filter (but don't exclude if phone matches)
+      // Phone match is primary - name is just for additional accuracy
       if (firstName || lastName) {
         const addr = order.shipping_address || order.billing_address;
-        if (!addr) return false;
-        
-        if (firstName) {
-          const orderFirstName = (addr.first_name || order.customer?.first_name || '').toLowerCase().trim();
-          const searchFirstName = firstName.toLowerCase().trim();
-          if (orderFirstName !== searchFirstName) return false;
-        }
-        
-        if (lastName) {
-          const orderLastName = (addr.last_name || order.customer?.last_name || '').toLowerCase().trim();
-          const searchLastName = lastName.toLowerCase().trim();
-          if (orderLastName !== searchLastName) return false;
+        if (addr) {
+          if (firstName) {
+            const orderFirstName = (addr.first_name || order.customer?.first_name || '').toLowerCase().trim();
+            const searchFirstName = firstName.toLowerCase().trim();
+            // Allow partial match (e.g., "Daniel" matches "Daniel Bell") or exact match
+            // If name doesn't match at all, still include it since phone matched (phone is primary identifier)
+            if (orderFirstName && searchFirstName && 
+                orderFirstName !== searchFirstName && 
+                !orderFirstName.startsWith(searchFirstName) && 
+                !searchFirstName.startsWith(orderFirstName)) {
+              // Name doesn't match, but phone does - still include it
+              // Phone is the primary identifier, name is just for additional filtering
+            }
+          }
+          
+          if (lastName) {
+            const orderLastName = (addr.last_name || order.customer?.last_name || '').toLowerCase().trim();
+            const searchLastName = lastName.toLowerCase().trim();
+            // Similar logic for last name - don't exclude if phone matches
+            if (orderLastName && searchLastName && 
+                orderLastName !== searchLastName && 
+                !orderLastName.startsWith(searchLastName) && 
+                !searchLastName.startsWith(orderLastName)) {
+              // Last name doesn't match, but phone does - still include it
+            }
+          }
         }
       }
       
