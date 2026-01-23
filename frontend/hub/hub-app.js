@@ -6395,7 +6395,7 @@ const HubCaseDetail = {
                 <!-- SOP Link -->
                 <a href="${this.sopLink?.sop_url || '/hub/sop'}" target="_blank" class="quick-action-btn sop-link" onclick="HubCaseDetail.logActivity('clicked_sop', {sop_name: '${this.escapeHtml(this.sopLink?.scenario_name || c.case_type || '')}'})">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                  ${this.sopLink ? `View SOP: ${this.escapeHtml(this.sopLink.scenario_name)}` : `View ${c.case_type || 'SOPs'}`}
+                  ${this.sopLink ? `View SOP: ${this.escapeHtml(this.sopLink.scenario_name)}` : 'View SOP'}
                 </a>
 
                 <!-- Copy Email Template -->
