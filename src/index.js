@@ -1534,6 +1534,45 @@ async function handleLookupOrder(request, env, corsHeaders) {
   const data = await response.json();
   let orders = data.orders || [];
 
+  // For phone number searches, apply strict filtering to match exact phone
+  if (phone && !email && !deepSearch && orders.length > 0) {
+    const searchPhone = cleanPhoneNumber(phone);
+    
+    orders = orders.filter(order => {
+      // Check both order.phone and shipping_address.phone
+      const orderPhone = cleanPhoneNumber(order.phone || '');
+      const shippingPhone = cleanPhoneNumber(order.shipping_address?.phone || '');
+      const billingPhone = cleanPhoneNumber(order.billing_address?.phone || '');
+      
+      // Match if any phone field matches (exact match on cleaned numbers)
+      const phoneMatches = orderPhone === searchPhone || 
+                          shippingPhone === searchPhone || 
+                          billingPhone === searchPhone;
+      
+      if (!phoneMatches) return false;
+      
+      // If name is provided, also filter by name for better accuracy
+      if (firstName || lastName) {
+        const addr = order.shipping_address || order.billing_address;
+        if (!addr) return false;
+        
+        if (firstName) {
+          const orderFirstName = (addr.first_name || order.customer?.first_name || '').toLowerCase().trim();
+          const searchFirstName = firstName.toLowerCase().trim();
+          if (orderFirstName !== searchFirstName) return false;
+        }
+        
+        if (lastName) {
+          const orderLastName = (addr.last_name || order.customer?.last_name || '').toLowerCase().trim();
+          const searchLastName = lastName.toLowerCase().trim();
+          if (orderLastName !== searchLastName) return false;
+        }
+      }
+      
+      return true;
+    });
+  }
+
   // For deep search, apply strict filtering
   if (deepSearch && orders.length > 0) {
     const searchFirstName = firstName?.toLowerCase().trim();
