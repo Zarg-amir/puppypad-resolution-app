@@ -1569,7 +1569,59 @@ async function handleLookupOrder(request, env, corsHeaders) {
           console.error(`[Phone Lookup] Failed to fetch orders: ${ordersResponse.status}`);
         }
       } else {
-        console.log(`[Phone Lookup] No matching customers found for phone: ${phone}`);
+        console.log(`[Phone Lookup] No matching customers found for phone: ${phone}, falling back to direct order search`);
+        
+        // Fallback: Try searching orders directly by phone (unreliable but may work in some cases)
+        const cleanPhone = cleanPhoneNumber(phone);
+        const fallbackQuery = `phone:*${cleanPhone.slice(-10)}*`;
+        const fallbackUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=250&query=${encodeURIComponent(fallbackQuery)}`;
+        
+        try {
+          const fallbackResponse = await fetch(fallbackUrl, {
+            headers: {
+              'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            let fallbackOrders = fallbackData.orders || [];
+            console.log(`[Phone Lookup] Fallback search returned ${fallbackOrders.length} orders`);
+            
+            // Apply strict phone filtering to the fallback results
+            const searchPhone = cleanPhoneNumber(phone);
+            const searchPhoneLast10 = searchPhone.slice(-10);
+            const searchPhoneWithout1 = searchPhone.startsWith('1') && searchPhone.length >= 11 
+              ? searchPhone.slice(1) 
+              : searchPhone;
+            
+            fallbackOrders = fallbackOrders.filter(order => {
+              const orderPhone = cleanPhoneNumber(order.phone || '');
+              const shippingPhone = cleanPhoneNumber(order.shipping_address?.phone || '');
+              const billingPhone = cleanPhoneNumber(order.billing_address?.phone || '');
+              const customerPhone = cleanPhoneNumber(order.customer?.phone || '');
+              
+              return orderPhone === searchPhone ||
+                     orderPhone === searchPhoneWithout1 ||
+                     orderPhone.slice(-10) === searchPhoneLast10 ||
+                     shippingPhone === searchPhone ||
+                     shippingPhone === searchPhoneWithout1 ||
+                     shippingPhone.slice(-10) === searchPhoneLast10 ||
+                     billingPhone === searchPhone ||
+                     billingPhone === searchPhoneWithout1 ||
+                     billingPhone.slice(-10) === searchPhoneLast10 ||
+                     customerPhone === searchPhone ||
+                     customerPhone === searchPhoneWithout1 ||
+                     customerPhone.slice(-10) === searchPhoneLast10;
+            });
+            
+            orders = fallbackOrders;
+            console.log(`[Phone Lookup] After filtering, ${orders.length} orders remain`);
+          }
+        } catch (fallbackError) {
+          console.error('[Phone Lookup] Fallback search also failed:', fallbackError);
+        }
       }
     } catch (error) {
       console.error('[Phone Lookup] Error in customer search:', error);
