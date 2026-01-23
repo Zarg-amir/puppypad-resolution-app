@@ -1561,6 +1561,10 @@ async function handleLookupOrder(request, env, corsHeaders) {
     // Get last 7 digits for even more flexible matching
     const searchPhoneLast7 = searchPhone.slice(-7);
     
+    // If we got many results from Shopify (like 50), be more lenient with matching
+    // Otherwise, be strict to avoid false positives
+    const isManyResults = orders.length > 10;
+    
     orders = orders.filter(order => {
       // Check all possible phone fields: order.phone, shipping_address.phone, billing_address.phone, and customer.phone
       const orderPhone = cleanPhoneNumber(order.phone || '');
@@ -1571,12 +1575,20 @@ async function handleLookupOrder(request, env, corsHeaders) {
       // Helper function to check if a phone matches
       const checkPhoneMatch = (phoneToCheck) => {
         if (!phoneToCheck || phoneToCheck.length < 7) return false;
-        return (
-          phoneToCheck === searchPhone || 
-          phoneToCheck === searchPhoneWithout1 ||
-          phoneToCheck.slice(-10) === searchPhoneLast10 ||
-          phoneToCheck.slice(-7) === searchPhoneLast7
-        );
+        
+        // Try exact matches first
+        if (phoneToCheck === searchPhone || phoneToCheck === searchPhoneWithout1) return true;
+        
+        // Try last 10 digits match
+        if (phoneToCheck.slice(-10) === searchPhoneLast10) return true;
+        
+        // For many results, also try last 7 digits (more lenient)
+        if (isManyResults && phoneToCheck.slice(-7) === searchPhoneLast7) return true;
+        
+        // For few results, also try last 7 digits but only if we have at least 7 digits
+        if (!isManyResults && searchPhone.length >= 7 && phoneToCheck.slice(-7) === searchPhoneLast7) return true;
+        
+        return false;
       };
       
       // Match if any phone field matches (flexible matching for country code variations)
