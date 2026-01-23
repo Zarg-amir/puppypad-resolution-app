@@ -1106,6 +1106,15 @@ export default {
         return await handleExportAuditLog(request, env, corsHeaders);
       }
 
+      // Test Mode Settings (Super Admin only)
+      if (pathname === '/hub/api/admin/test-mode' && request.method === 'GET') {
+        return await handleGetTestMode(request, env, corsHeaders);
+      }
+
+      if (pathname === '/hub/api/admin/test-mode' && request.method === 'PUT') {
+        return await handleSetTestMode(request, env, corsHeaders);
+      }
+
       // Resolution Validation Rules
       if (pathname === '/hub/api/validate-resolution' && request.method === 'POST') {
         return await handleValidateResolution(request, env, corsHeaders);
@@ -3230,8 +3239,20 @@ async function createRichpanelEntry(env, caseData, caseId) {
 }
 
 async function createRichpanelTicket(env, caseData, caseId) {
-  // Use test email in test mode (determined by env variables)
-  const testMode = isTestMode(env);
+  // Check test mode from database first, fall back to env
+  let testMode = isTestMode(env);
+  try {
+    const dbSetting = await env.ANALYTICS_DB.prepare(`
+      SELECT value FROM app_settings WHERE key = 'test_mode'
+    `).first();
+    if (dbSetting) {
+      testMode = dbSetting.value === 'true';
+    }
+  } catch (e) {
+    // Table doesn't exist or error - use env setting
+    console.log('Test mode: using env setting (db check failed)');
+  }
+  
   const fromEmail = testMode
     ? RICHPANEL_CONFIG.testEmail
     : (caseData.email || RICHPANEL_CONFIG.testEmail);
@@ -6897,6 +6918,94 @@ async function handleExportAuditLog(request, env, corsHeaders) {
   } catch (e) {
     console.error('Export audit log error:', e);
     return Response.json({ error: 'Failed to export audit log' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================
+// TEST MODE SETTINGS (Super Admin only)
+// ============================================
+
+// Get test mode status
+async function handleGetTestMode(request, env, corsHeaders) {
+  const auth = await verifySuperAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    // Try to get test mode from app_settings table
+    let testMode = true; // Default to true for safety
+    let testEmail = RICHPANEL_CONFIG.testEmail;
+    
+    try {
+      const result = await env.ANALYTICS_DB.prepare(`
+        SELECT value FROM app_settings WHERE key = 'test_mode'
+      `).first();
+      
+      if (result) {
+        testMode = result.value === 'true';
+      }
+    } catch (e) {
+      // Table might not exist yet, use default
+      console.log('app_settings table may not exist, using default test mode');
+    }
+
+    return Response.json({
+      success: true,
+      testMode,
+      testEmail
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Get test mode error:', e);
+    return Response.json({ error: 'Failed to get test mode' }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Set test mode status (Super Admin only)
+async function handleSetTestMode(request, env, corsHeaders) {
+  const auth = await verifySuperAdmin(request, env);
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status, headers: corsHeaders });
+  }
+
+  try {
+    const { testMode } = await request.json();
+    
+    // Ensure app_settings table exists
+    await env.ANALYTICS_DB.exec(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_by TEXT
+      )
+    `);
+    
+    // Upsert test mode setting
+    await env.ANALYTICS_DB.prepare(`
+      INSERT INTO app_settings (key, value, updated_at, updated_by)
+      VALUES ('test_mode', ?, datetime('now'), ?)
+      ON CONFLICT(key) DO UPDATE SET
+        value = excluded.value,
+        updated_at = excluded.updated_at,
+        updated_by = excluded.updated_by
+    `).bind(testMode ? 'true' : 'false', auth.user.username).run();
+
+    // Log the change
+    await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 
+      testMode ? 'test_mode_enabled' : 'test_mode_disabled', 
+      'settings', 'app_settings', 'test_mode',
+      { testMode, testEmail: RICHPANEL_CONFIG.testEmail }, null, null, request);
+
+    return Response.json({
+      success: true,
+      testMode,
+      testEmail: RICHPANEL_CONFIG.testEmail,
+      message: testMode ? 'Test mode enabled - all cases will be sent to test email' : 'Test mode disabled - cases will be sent to actual customer emails'
+    }, { headers: corsHeaders });
+  } catch (e) {
+    console.error('Set test mode error:', e);
+    return Response.json({ error: 'Failed to set test mode' }, { status: 500, headers: corsHeaders });
   }
 }
 

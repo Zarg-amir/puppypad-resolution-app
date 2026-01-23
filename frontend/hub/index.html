@@ -523,6 +523,25 @@
       border-color: rgba(255,255,255,0.25);
     }
 
+    /* Toggle Switch */
+    .toggle-switch input:checked + .toggle-slider {
+      background-color: #10b981;
+    }
+    .toggle-switch .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: .3s;
+    }
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(18px);
+    }
+
     /* Stats Grid */
     .stats-grid {
       display: grid;
@@ -1115,6 +1134,19 @@
           <div class="user-details">
             <div class="user-name">Admin</div>
             <div class="user-role">Administrator</div>
+          </div>
+        </div>
+        <!-- Test Mode Toggle (Super Admin Only) -->
+        <div id="testModeContainer" style="display: none; margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.08); border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="flex: 1;">
+              <div style="font-size: 12px; font-weight: 600; color: white; margin-bottom: 2px;">Test Mode</div>
+              <div id="testModeEmail" style="font-size: 10px; color: #94a3b8; word-break: break-all;"></div>
+            </div>
+            <label class="toggle-switch" style="position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0;">
+              <input type="checkbox" id="testModeToggle" onchange="HubTestMode.toggle(this.checked)" style="opacity: 0; width: 0; height: 0;">
+              <span class="toggle-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; border-radius: 22px; transition: .3s;"></span>
+            </label>
           </div>
         </div>
         <button class="logout-btn" onclick="handleLogout()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; background: none; color: #94a3b8; font-size: 13px; cursor: pointer; transition: all 0.2s;">

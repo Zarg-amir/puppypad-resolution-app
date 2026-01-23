@@ -257,6 +257,11 @@ const HubAuth = {
     adminSections.forEach(section => {
       section.style.display = isAdmin ? 'block' : 'none';
     });
+    
+    // Initialize test mode toggle for super admins
+    if (this.isSuperAdmin()) {
+      HubTestMode.init();
+    }
   },
 
   showChangePasswordModal(required = false) {
@@ -6384,6 +6389,13 @@ const HubCaseDetail = {
                 </a>
                 ` : ''}
                 
+                ${c.richpanel_conversation_id ? `
+                <a href="https://app.richpanel.com/conversations?viewId=search&conversationNo=${c.richpanel_conversation_id}" target="_blank" class="quick-action-btn" onclick="HubCaseDetail.logActivity('viewed_conversation')">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                  View Conversation
+                </a>
+                ` : ''}
+                
                 ${c.checkout_champ_url ? `
                 <a href="${c.checkout_champ_url}" target="_blank" class="quick-action-btn" onclick="HubCaseDetail.logActivity('viewed_subscription')">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
@@ -8569,6 +8581,80 @@ window.handleLogin = async (event) => {
   }
 };
 window.logout = () => HubAuth.logout();
+
+// ============================================
+// TEST MODE SETTINGS (Super Admin Only)
+// ============================================
+const HubTestMode = {
+  testMode: true,
+  testEmail: '',
+
+  async init() {
+    // Only show for super admins
+    if (!HubAuth.isSuperAdmin()) {
+      return;
+    }
+
+    try {
+      const result = await HubAPI.get('/hub/api/admin/test-mode');
+      if (result.success) {
+        this.testMode = result.testMode;
+        this.testEmail = result.testEmail;
+        this.render();
+      }
+    } catch (e) {
+      console.log('Failed to load test mode settings:', e);
+    }
+  },
+
+  render() {
+    const container = document.getElementById('testModeContainer');
+    const toggle = document.getElementById('testModeToggle');
+    const emailEl = document.getElementById('testModeEmail');
+    
+    if (container && HubAuth.isSuperAdmin()) {
+      container.style.display = 'block';
+      if (toggle) toggle.checked = this.testMode;
+      if (emailEl) emailEl.textContent = this.testMode ? this.testEmail : 'Production mode';
+    }
+  },
+
+  async toggle(enabled) {
+    if (!HubAuth.isSuperAdmin()) {
+      HubUI.showToast('Super admin access required', 'error');
+      return;
+    }
+
+    try {
+      const result = await HubAPI.request('/hub/api/admin/test-mode', {
+        method: 'PUT',
+        body: JSON.stringify({ testMode: enabled })
+      }).then(r => r.json());
+
+      if (result.success) {
+        this.testMode = result.testMode;
+        this.testEmail = result.testEmail;
+        this.render();
+        HubUI.showToast(
+          enabled 
+            ? `Test mode ON - Cases sent to ${result.testEmail}` 
+            : 'Test mode OFF - Cases sent to real customers',
+          enabled ? 'warning' : 'success'
+        );
+      } else {
+        HubUI.showToast(result.error || 'Failed to update test mode', 'error');
+        // Revert toggle
+        document.getElementById('testModeToggle').checked = !enabled;
+      }
+    } catch (e) {
+      console.error('Failed to toggle test mode:', e);
+      HubUI.showToast('Failed to update test mode', 'error');
+      // Revert toggle
+      document.getElementById('testModeToggle').checked = !enabled;
+    }
+  }
+};
+window.HubTestMode = HubTestMode;
 
 // ============================================
 // PROFILE SETTINGS
