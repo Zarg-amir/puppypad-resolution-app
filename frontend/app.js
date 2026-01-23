@@ -3431,15 +3431,15 @@ async function handleChangeOrder() {
 
 async function handleOrderSwap(isUsed) {
   if (isUsed) {
-    await addBotMessage("Since it's been used, we'll send you the new item and give you a <strong>20% refund</strong> as well. You can keep the used one!");
+    await addBotMessage("No problem! We'll send you the correct item. You can keep the one you have.");
   } else {
-    await addBotMessage("Great! Once you ship back the item using a carrier of your choice, we'll send out your new order. Just reply to your confirmation email with the tracking number so we can monitor the return. Free of charge!");
+    await addBotMessage("Great! Once you ship back the item using a carrier of your choice, we'll send out your new order. Just reply to your confirmation email with the tracking number so we can monitor the return.");
   }
 
   showProgress("Creating your order change request...");
 
-  // Create case in ClickUp + Richpanel with change order details
-  const resolution = isUsed ? 'order_change_used_20_percent' : 'order_change_return_swap';
+  // Create case for order change - customer's mistake, no refund offered
+  const resolution = isUsed ? 'order_change_reship' : 'order_change_return_swap';
   const result = await submitCase('shipping', resolution, {
     issueType: 'order_change',
     changeOrderDetails: state.intentDetails,   // What they want instead

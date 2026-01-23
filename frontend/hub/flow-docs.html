@@ -1732,11 +1732,11 @@
               { id: 'msg2', type: 'message', position: { x: 450, y: 1050 }, data: { persona: 'amy', content: "Got it! I'll create a case for our team to swap your order. Has your current product been used?" } },
               { id: 'opts1', type: 'options', position: { x: 450, y: 1400 }, data: { prompt: 'Has your product been used?', options: [{ label: "Yes, used", icon: '✅' }, { label: "No, unused", icon: '❌' }] } },
               // Used branch - 300px offset left
-              { id: 'msg3_used', type: 'message', position: { x: 100, y: 1750 }, data: { persona: 'amy', content: "Since it's been used, we'll send you the new item and give you a <strong>20% refund</strong> as well. You can keep the used one!" } },
-              { id: 'case1', type: 'case', position: { x: 100, y: 2100 }, data: { type: 'shipping', subtype: 'order_change_used_20_percent', priority: 'normal', note: 'Order change - product used, 20% refund + new item' } },
-              { id: 'end1', type: 'end', position: { x: 100, y: 2450 }, data: { title: 'Order Change + 20% Refund!', showSurvey: true } },
+              { id: 'msg3_used', type: 'message', position: { x: 100, y: 1750 }, data: { persona: 'amy', content: "No problem! We'll send you the correct item. You can keep the one you have." } },
+              { id: 'case1', type: 'case', position: { x: 100, y: 2100 }, data: { type: 'shipping', subtype: 'order_change_reship', priority: 'normal', note: 'Order change - product used, reship correct item' } },
+              { id: 'end1', type: 'end', position: { x: 100, y: 2450 }, data: { title: 'Order Change Requested!', showSurvey: true } },
               // Unused branch - 300px offset right
-              { id: 'msg3_unused', type: 'message', position: { x: 800, y: 1750 }, data: { persona: 'amy', content: "Great! Once you ship back the item using a carrier of your choice, we'll send out your new order. Just reply to your confirmation email with the tracking number so we can monitor the return. Free of charge!" } },
+              { id: 'msg3_unused', type: 'message', position: { x: 800, y: 1750 }, data: { persona: 'amy', content: "Great! Once you ship back the item using a carrier of your choice, we'll send out your new order. Just reply to your confirmation email with the tracking number so we can monitor the return." } },
               { id: 'case2', type: 'case', position: { x: 800, y: 2100 }, data: { type: 'shipping', subtype: 'order_change_return_swap', priority: 'normal', note: 'Order change - product unused, return swap' } },
               { id: 'end2', type: 'end', position: { x: 800, y: 2450 }, data: { title: 'Return Swap Initiated!', showSurvey: true } }
             ],

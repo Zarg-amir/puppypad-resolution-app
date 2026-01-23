@@ -7013,8 +7013,8 @@ The PuppyPad Team`
       'wrong_item_review': 'ACTION: Email customer to confirm wrong item received → If confirmed, offer: (1) Reship correct item + 20% partial refund, OR (2) Full refund',
       'missing_item_review': 'ACTION: Review photos and description → Investigate missing items → Offer reship or refund based on findings',
       'return_awaiting_tracking': 'Awaiting Return Tracking - Refund After Delivery',
-      'order_change_used_20_percent': 'ACTION: Ship new item (see customer request) + Process 20% partial refund — Customer keeps used item',
-      'order_change_return_swap': 'ACTION: Wait for customer to ship return with tracking → Ship new item (see customer request) once return tracking received'
+      'order_change_reship': 'ACTION: Reship correct item to customer (see requested item details). Customer keeps used item. Fulfill via fulfillment center.',
+      'order_change_return_swap': 'ACTION: Wait for customer to ship return with tracking → Reship correct item once return received. Fulfill via fulfillment center.'
     };
 
     return resolutionMap[resolution] || resolution.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
