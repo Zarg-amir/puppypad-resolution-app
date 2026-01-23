@@ -1851,14 +1851,85 @@ async function showOrderSelection(flowType) {
 
 function renderOrderCards(flowType) {
   const ordersHtml = state.orders.map((order, index) => {
-    const statusClass = order.fulfillmentStatus === 'fulfilled' ? 'delivered' : 
-                       order.fulfillmentStatus === 'partial' ? 'in-transit' : 'pending';
-    const statusLabel = order.fulfillmentStatus === 'fulfilled' ? 'Shipped' : 
-                       order.fulfillmentStatus === 'partial' ? 'Partially Shipped' : 'Processing';
+    // Determine status from tracking (ParcelPanel) if available, otherwise use Shopify fulfillment
+    let statusClass, statusLabel;
     
-    const itemThumbs = order.lineItems.slice(0, 4).map(item => 
+    if (order.tracking && order.tracking.status) {
+      // Use real tracking status from ParcelPanel
+      const trackingStatus = order.tracking.status;
+      switch (trackingStatus) {
+        case 'delivered':
+          statusClass = 'delivered';
+          statusLabel = 'Delivered';
+          break;
+        case 'out_for_delivery':
+          statusClass = 'out-for-delivery';
+          statusLabel = 'Out for Delivery';
+          break;
+        case 'in_transit':
+          statusClass = 'in-transit';
+          statusLabel = 'In Transit';
+          break;
+        case 'pickup':
+          statusClass = 'pickup';
+          statusLabel = 'Ready for Pickup';
+          break;
+        case 'failed_attempt':
+          statusClass = 'failed';
+          statusLabel = 'Delivery Failed';
+          break;
+        case 'exception':
+          statusClass = 'exception';
+          statusLabel = 'Exception';
+          break;
+        case 'info_received':
+          statusClass = 'info-received';
+          statusLabel = 'Shipped';
+          break;
+        case 'pending':
+          statusClass = 'pending';
+          statusLabel = 'Processing';
+          break;
+        default:
+          statusClass = 'pending';
+          statusLabel = order.tracking.statusLabel || 'Processing';
+      }
+    } else {
+      // Fallback to Shopify fulfillment status
+      statusClass = order.fulfillmentStatus === 'fulfilled' ? 'delivered' : 
+                   order.fulfillmentStatus === 'partial' ? 'in-transit' : 'pending';
+      statusLabel = order.fulfillmentStatus === 'fulfilled' ? 'Shipped' : 
+                   order.fulfillmentStatus === 'partial' ? 'Partially Shipped' : 'Processing';
+    }
+    
+    // Product thumbnails (show up to 3)
+    const itemThumbs = order.lineItems.slice(0, 3).map(item => 
       `<img src="${item.image || ''}" alt="${item.title}" class="order-item-thumb" onerror="this.style.display='none';" style="${item.image ? '' : 'display:none;'}">`
     ).join('');
+    
+    // Items summary (e.g., "2x PuppyPad Large, 1x...")
+    const itemsSummary = order.itemsSummary ? order.itemsSummary.join(', ') : 
+      order.lineItems.slice(0, 2).map(item => {
+        const qty = item.quantity > 1 ? `${item.quantity}x ` : '';
+        const title = item.title.length > 25 ? item.title.substring(0, 25) + '...' : item.title;
+        return `${qty}${title}`;
+      }).join(', ') + (order.lineItems.length > 2 ? ` +${order.lineItems.length - 2} more` : '');
+    
+    // Shipping location (city, state)
+    const shippingLocation = order.shippingAddress ? 
+      `${order.shippingAddress.city || ''}${order.shippingAddress.city && order.shippingAddress.province_code ? ', ' : ''}${order.shippingAddress.province_code || ''}`.trim() : '';
+    
+    // Tracking info line
+    let trackingLine = '';
+    if (order.tracking) {
+      if (order.tracking.status === 'delivered' && order.tracking.deliveryDate) {
+        trackingLine = `<div class="order-tracking-info">Delivered ${formatDate(order.tracking.deliveryDate)}</div>`;
+      } else if (order.tracking.estimatedDelivery) {
+        trackingLine = `<div class="order-tracking-info">Est. delivery: ${formatDate(order.tracking.estimatedDelivery)}</div>`;
+      } else if (order.tracking.carrier) {
+        trackingLine = `<div class="order-tracking-info">Via ${order.tracking.carrier}</div>`;
+      }
+    }
     
     return `
       <div class="order-card" onclick="selectOrder(${index}, '${flowType}')">
@@ -1868,6 +1939,11 @@ function renderOrderCards(flowType) {
             <div class="order-date">${formatDate(order.createdAt)}</div>
           </div>
           <span class="order-status ${statusClass}">${statusLabel}</span>
+        </div>
+        <div class="order-details">
+          <div class="order-items-summary">${itemsSummary}</div>
+          ${shippingLocation ? `<div class="order-shipping-location">📍 ${shippingLocation}</div>` : ''}
+          ${trackingLine}
         </div>
         <div class="order-items">${itemThumbs}</div>
         <div class="order-total">Total: ${formatCurrency(order.totalPrice, order.currency)}</div>

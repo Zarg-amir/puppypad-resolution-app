@@ -1879,6 +1879,81 @@ async function handleLookupOrder(request, env, corsHeaders) {
       ? Math.max(0, POLICY_CONFIG.fulfillmentCutoffHours - hoursSinceOrder)
       : 0;
 
+    // Fetch tracking status from ParcelPanel
+    let trackingInfo = null;
+    try {
+      const trackingUrl = `https://open.parcelpanel.com/api/v2/tracking/order?order_number=${encodeURIComponent(order.name)}`;
+      const trackingResponse = await fetch(trackingUrl, {
+        method: 'GET',
+        headers: {
+          'x-parcelpanel-api-key': env.PARCELPANEL_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (trackingResponse.ok) {
+        const trackingData = await trackingResponse.json();
+        const shipments = trackingData?.order?.shipments || [];
+        
+        if (shipments.length > 0) {
+          const shipment = shipments[0]; // Primary shipment
+          const statusMap = {
+            1: 'pending',
+            2: 'info_received',
+            3: 'in_transit',
+            4: 'in_transit',
+            5: 'out_for_delivery',
+            6: 'delivered',
+            7: 'failed_attempt',
+            8: 'exception',
+            9: 'expired',
+            10: 'pickup'
+          };
+          
+          let status = statusMap[shipment.status];
+          if (!status) {
+            const labelNormalized = (shipment.status_label || '').toLowerCase().replace(/\s+/g, '_');
+            if (labelNormalized.includes('pickup') || labelNormalized.includes('ready_for')) {
+              status = 'pickup';
+            } else if (labelNormalized.includes('delivered')) {
+              status = 'delivered';
+            } else if (labelNormalized.includes('transit') || labelNormalized.includes('shipped')) {
+              status = 'in_transit';
+            } else if (labelNormalized.includes('out_for_delivery')) {
+              status = 'out_for_delivery';
+            } else {
+              status = labelNormalized || 'unknown';
+            }
+          }
+          
+          trackingInfo = {
+            status: status,
+            statusLabel: shipment.status_label || formatStatusLabel(status),
+            trackingNumber: shipment.tracking_number,
+            carrier: shipment.carrier?.name || shipment.carrier?.code || 'Unknown',
+            deliveryDate: shipment.delivery_date,
+            estimatedDelivery: shipment.estimated_delivery_date,
+            lastUpdate: shipment.checkpoints?.[0]?.checkpoint_time || null,
+            location: shipment.checkpoints?.[0]?.location || null
+          };
+        }
+      }
+    } catch (trackingError) {
+      console.error(`[Tracking] Error fetching tracking for order ${order.name}:`, trackingError);
+    }
+
+    // Build items summary for display
+    const itemsSummary = lineItems.slice(0, 3).map(item => {
+      const qty = item.quantity > 1 ? `${item.quantity}x ` : '';
+      const title = item.variantTitle ? `${item.title} (${item.variantTitle})` : item.title;
+      // Truncate long titles
+      const shortTitle = title.length > 30 ? title.substring(0, 30) + '...' : title;
+      return `${qty}${shortTitle}`;
+    });
+    if (lineItems.length > 3) {
+      itemsSummary.push(`+${lineItems.length - 3} more`);
+    }
+
     return {
       id: order.id,
       orderNumber: order.name,
@@ -1895,8 +1970,12 @@ async function handleLookupOrder(request, env, corsHeaders) {
       shippingAddress: order.shipping_address,
       billingAddress: order.billing_address,
       lineItems,
+      itemsSummary, // New: condensed items list for display
+      itemsCount: lineItems.length,
       clientOrderId,
       orderUrl: `https://${env.SHOPIFY_STORE}/admin/orders/${order.id}`,
+      // Tracking info from ParcelPanel
+      tracking: trackingInfo,
       // Fulfillment window fields (backend-enforced)
       canModify,                    // true if order can be changed/cancelled
       hoursUntilFulfillment,        // hours remaining in window
@@ -1905,6 +1984,23 @@ async function handleLookupOrder(request, env, corsHeaders) {
   }));
 
   return Response.json({ orders: processedOrders }, { headers: corsHeaders });
+}
+
+// Helper function to format tracking status label
+function formatStatusLabel(status) {
+  const labels = {
+    'pending': 'Pending',
+    'info_received': 'Info Received',
+    'in_transit': 'In Transit',
+    'out_for_delivery': 'Out for Delivery',
+    'delivered': 'Delivered',
+    'failed_attempt': 'Delivery Failed',
+    'exception': 'Exception',
+    'expired': 'Expired',
+    'pickup': 'Ready for Pickup',
+    'unknown': 'Unknown'
+  };
+  return labels[status] || status;
 }
 
 // Note: processLineItems, extractClientOrderId, fetchClientOrderIdFromMetafields
