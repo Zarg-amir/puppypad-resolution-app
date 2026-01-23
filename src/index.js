@@ -1495,25 +1495,26 @@ async function handleLookupOrder(request, env, corsHeaders) {
       ? searchPhone.slice(1) 
       : searchPhone;
     
-    // Step 1: Search for customers by phone number using query parameter
+    console.log(`[Phone Lookup] Searching for phone: ${phone}, cleaned: ${cleanPhone}, last10: ${searchPhoneLast10}`);
+    
+    // Step 1: Search for customers by phone number
+    // Use the customers/search.json endpoint which supports phone search
     // Try multiple query formats to maximize chances of finding customers
     const customerQueries = [
-      `phone:*${searchPhoneLast10}*`,  // Last 10 digits with wildcards
-      `phone:${searchPhoneLast10}`,     // Exact last 10 digits
+      searchPhoneLast10,                    // Just the digits (201522-0159 -> 2015220159)
+      `+1${searchPhoneLast10}`,             // With +1 prefix
+      phone,                                 // Original phone as provided
     ];
-    
-    // If phone has 11+ digits, also try without leading 1
-    if (searchPhone.length >= 11 && searchPhone.startsWith('1')) {
-      customerQueries.push(`phone:*${searchPhoneWithout1.slice(-10)}*`);
-      customerQueries.push(`phone:${searchPhoneWithout1.slice(-10)}`);
-    }
     
     let matchingCustomerIds = [];
     
     try {
-      // Try each query format and collect all matching customer IDs
+      // Try each query format using the search endpoint
       for (const customerQuery of customerQueries) {
-        const customerSearchUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/customers.json?limit=250&query=${encodeURIComponent(customerQuery)}`;
+        // Use /customers/search.json endpoint
+        const customerSearchUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(customerQuery)}&limit=250`;
+        
+        console.log(`[Phone Lookup] Trying customer search with query: "${customerQuery}"`);
         
         const customerResponse = await fetch(customerSearchUrl, {
           headers: {
@@ -1525,18 +1526,25 @@ async function handleLookupOrder(request, env, corsHeaders) {
         if (customerResponse.ok) {
           const customerData = await customerResponse.json();
           const customers = customerData.customers || [];
+          console.log(`[Phone Lookup] Query "${customerQuery}" returned ${customers.length} customers`);
           
-          // Filter customers to ensure phone number matches exactly
+          // Filter customers to ensure phone number matches
           const newCustomerIds = customers
             .filter(customer => {
               const customerPhone = cleanPhoneNumber(customer.phone || '');
-              return customerPhone === searchPhone ||
+              const matches = customerPhone === searchPhone ||
                      customerPhone === searchPhoneWithout1 ||
                      customerPhone.slice(-10) === searchPhoneLast10;
+              if (matches) {
+                console.log(`[Phone Lookup] Customer ${customer.id} matches - phone: ${customer.phone}`);
+              }
+              return matches;
             })
             .map(customer => customer.id);
           
           matchingCustomerIds = [...new Set([...matchingCustomerIds, ...newCustomerIds])]; // Deduplicate
+        } else {
+          console.log(`[Phone Lookup] Query "${customerQuery}" failed with status: ${customerResponse.status}`);
         }
       }
       
@@ -1569,12 +1577,11 @@ async function handleLookupOrder(request, env, corsHeaders) {
           console.error(`[Phone Lookup] Failed to fetch orders: ${ordersResponse.status}`);
         }
       } else {
-        console.log(`[Phone Lookup] No matching customers found for phone: ${phone}, falling back to direct order search`);
+        console.log(`[Phone Lookup] No matching customers found for phone: ${phone}, falling back to recent orders search`);
         
-        // Fallback: Try searching orders directly by phone (unreliable but may work in some cases)
-        const cleanPhone = cleanPhoneNumber(phone);
-        const fallbackQuery = `phone:*${cleanPhone.slice(-10)}*`;
-        const fallbackUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=250&query=${encodeURIComponent(fallbackQuery)}`;
+        // Fallback: Fetch recent orders and filter by phone number locally
+        // This is more reliable than trying to use Shopify's unreliable phone query
+        const fallbackUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=250`;
         
         try {
           const fallbackResponse = await fetch(fallbackUrl, {
@@ -1587,9 +1594,9 @@ async function handleLookupOrder(request, env, corsHeaders) {
           if (fallbackResponse.ok) {
             const fallbackData = await fallbackResponse.json();
             let fallbackOrders = fallbackData.orders || [];
-            console.log(`[Phone Lookup] Fallback search returned ${fallbackOrders.length} orders`);
+            console.log(`[Phone Lookup] Fetched ${fallbackOrders.length} recent orders for local filtering`);
             
-            // Apply strict phone filtering to the fallback results
+            // Apply strict phone filtering to find matching orders
             const searchPhone = cleanPhoneNumber(phone);
             const searchPhoneLast10 = searchPhone.slice(-10);
             const searchPhoneWithout1 = searchPhone.startsWith('1') && searchPhone.length >= 11 
@@ -1602,7 +1609,7 @@ async function handleLookupOrder(request, env, corsHeaders) {
               const billingPhone = cleanPhoneNumber(order.billing_address?.phone || '');
               const customerPhone = cleanPhoneNumber(order.customer?.phone || '');
               
-              return orderPhone === searchPhone ||
+              const matches = orderPhone === searchPhone ||
                      orderPhone === searchPhoneWithout1 ||
                      orderPhone.slice(-10) === searchPhoneLast10 ||
                      shippingPhone === searchPhone ||
@@ -1614,10 +1621,16 @@ async function handleLookupOrder(request, env, corsHeaders) {
                      customerPhone === searchPhone ||
                      customerPhone === searchPhoneWithout1 ||
                      customerPhone.slice(-10) === searchPhoneLast10;
+              
+              if (matches) {
+                console.log(`[Phone Lookup] Order ${order.name} matches - phone fields: order=${order.phone}, shipping=${order.shipping_address?.phone}, customer=${order.customer?.phone}`);
+              }
+              
+              return matches;
             });
             
             orders = fallbackOrders;
-            console.log(`[Phone Lookup] After filtering, ${orders.length} orders remain`);
+            console.log(`[Phone Lookup] After filtering, ${orders.length} orders match the phone number`);
           }
         } catch (fallbackError) {
           console.error('[Phone Lookup] Fallback search also failed:', fallbackError);
@@ -1627,40 +1640,114 @@ async function handleLookupOrder(request, env, corsHeaders) {
       console.error('[Phone Lookup] Error in customer search:', error);
       return Response.json({ error: 'Phone lookup failed' }, { status: 500, headers: corsHeaders });
     }
-  } else {
-    // For email or deep search, use the original approach
-    // Build Shopify search query
-    let query = '';
-
-    if (deepSearch && firstName && lastName && address1) {
-      // Deep search mode: Search by name (Shopify will return matches)
-      // We'll filter for exact name/country match and fuzzy address match after
-      query = `shipping_address.first_name:${firstName} shipping_address.last_name:${lastName}`;
-
-      // Add country filter if provided
-      if (country) {
-        const countryName = getCountryNameFromCode(country);
-        if (countryName) {
-          query += ` shipping_address.country:"${countryName}"`;
+  } else if (deepSearch && firstName && lastName && address1) {
+    // Deep search mode: Search customers by name, then get their orders
+    // Shopify REST API doesn't support complex field queries on orders
+    console.log(`[Deep Search] Searching for customer: ${firstName} ${lastName}, address: ${address1}`);
+    
+    try {
+      // Search customers by name using the query parameter
+      const customerQuery = `${firstName} ${lastName}`;
+      const customerSearchUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/customers/search.json?query=${encodeURIComponent(customerQuery)}&limit=250`;
+      
+      const customerResponse = await fetch(customerSearchUrl, {
+        headers: {
+          'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (customerResponse.ok) {
+        const customerData = await customerResponse.json();
+        const customers = customerData.customers || [];
+        console.log(`[Deep Search] Found ${customers.length} customers matching "${customerQuery}"`);
+        
+        // Filter customers by name match
+        const searchFirstName = firstName.toLowerCase().trim();
+        const searchLastName = lastName.toLowerCase().trim();
+        
+        const matchingCustomerIds = customers
+          .filter(customer => {
+            const custFirstName = (customer.first_name || '').toLowerCase().trim();
+            const custLastName = (customer.last_name || '').toLowerCase().trim();
+            return custFirstName === searchFirstName && custLastName === searchLastName;
+          })
+          .map(customer => customer.id);
+        
+        console.log(`[Deep Search] ${matchingCustomerIds.length} customers have exact name match`);
+        
+        // Get orders for matching customers
+        if (matchingCustomerIds.length > 0) {
+          const customerIdQueries = matchingCustomerIds.map(id => `customer_id:${id}`).join(' OR ');
+          const ordersQuery = `(${customerIdQueries})`;
+          const ordersUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=250&query=${encodeURIComponent(ordersQuery)}`;
+          
+          const ordersResponse = await fetch(ordersUrl, {
+            headers: {
+              'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (ordersResponse.ok) {
+            const ordersData = await ordersResponse.json();
+            orders = ordersData.orders || [];
+            console.log(`[Deep Search] Found ${orders.length} orders for matching customers`);
+          }
+        }
+        
+        // If no customers found via search, try alternate approach: search all recent orders
+        if (orders.length === 0) {
+          console.log(`[Deep Search] No orders via customer search, trying direct order search...`);
+          // Get recent orders and filter locally (fallback approach)
+          const fallbackUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=250`;
+          
+          const fallbackResponse = await fetch(fallbackUrl, {
+            headers: {
+              'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            orders = fallbackData.orders || [];
+            console.log(`[Deep Search] Fallback fetched ${orders.length} recent orders to filter locally`);
+          }
+        }
+      } else {
+        console.error(`[Deep Search] Customer search failed with status: ${customerResponse.status}`);
+        // Fallback to getting recent orders
+        const fallbackUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=250`;
+        const fallbackResponse = await fetch(fallbackUrl, {
+          headers: {
+            'X-Shopify-Access-Token': env.SHOPIFY_API_KEY,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          orders = fallbackData.orders || [];
+          console.log(`[Deep Search] Fallback fetched ${orders.length} recent orders`);
         }
       }
-    } else {
-      // Standard lookup: email
-      if (email) {
-        query = `email:${email}`;
-      }
-
-      if (orderNumber) {
-        query += ` name:#${orderNumber.replace('#', '').replace('P', '').replace('p', '')}`;
-      }
-      // Only add name filters for email searches
-      if (email && firstName) {
-        query += ` billing_address.first_name:${firstName}`;
-      }
-      if (email && lastName) {
-        query += ` billing_address.last_name:${lastName}`;
-      }
+    } catch (error) {
+      console.error('[Deep Search] Error:', error);
     }
+  } else {
+    // Standard lookup: email only
+    let query = '';
+    
+    if (email) {
+      query = `email:${email}`;
+    }
+
+    if (orderNumber) {
+      query += ` name:#${orderNumber.replace('#', '').replace('P', '').replace('p', '')}`;
+    }
+    
+    console.log(`[Email Lookup] Query: ${query}`);
 
     const shopifyUrl = `https://${env.SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=any&limit=50&query=${encodeURIComponent(query)}`;
 
@@ -1677,6 +1764,7 @@ async function handleLookupOrder(request, env, corsHeaders) {
 
     const data = await response.json();
     orders = data.orders || [];
+    console.log(`[Email Lookup] Found ${orders.length} orders`);
   }
 
   // For phone number searches, apply name filtering if provided
