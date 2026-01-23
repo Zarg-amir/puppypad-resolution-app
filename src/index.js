@@ -3055,7 +3055,13 @@ function formatResolution(resolution, caseData) {
     'refund_lost': `Give full refund (${refundAmount}) - package lost`,
     'refund_damaged': `Give full refund (${refundAmount}) - package damaged`,
 
-    // Investigation flows
+    // Investigation flows (delivered-not-received)
+    'investigation_reship': 'ACTION: (1) Reship order immediately, (2) Investigate with carrier (GPS data, delivery photos, driver logs)',
+    'investigation_partial_20_reship': `ACTION: (1) Process 20% refund (${refundAmount}), (2) Reship order, (3) Investigate with carrier`,
+    'investigation_partial_30_reship': `ACTION: (1) Process 30% refund (${refundAmount}), (2) Reship order, (3) Investigate with carrier`,
+    'investigation_partial_40_reship': `ACTION: (1) Process 40% refund (${refundAmount}), (2) Reship order, (3) Investigate with carrier`,
+    'investigation_partial_50_reship': `ACTION: (1) Process 50% refund (${refundAmount}), (2) Reship order, (3) Investigate with carrier`,
+    'investigation_full_refund': `ACTION: (1) Process full refund (${refundAmount}), (2) Investigate with carrier (GPS data, delivery photos, driver logs)`,
     'investigation_delivered_not_received': 'ACTION: Investigate with carrier (GPS data, delivery photos, driver logs). Once investigation complete, reach out to customer and offer their choice of: (1) Free reship, OR (2) Full refund',
     'replacement_damaged': 'Ship replacement - damaged item',
     'reship_wrong_item': 'Ship correct item',
@@ -3092,6 +3098,13 @@ function formatResolution(resolution, caseData) {
     'order_change_reship': 'ACTION: Reship correct item (see requested details). NO RETURN NEEDED - customer keeps used item. Fulfill via fulfillment center.',
     'order_change_return_swap': 'ACTION: Wait for customer to provide return tracking number → Reship correct item (see requested details) immediately once tracking number received. Fulfill via fulfillment center.',
   };
+
+  // Check for dynamic investigation_partial_XX_reship patterns (delivered-not-received)
+  const investigationPartialMatch = resolution.match(/^investigation_partial_(\d+)_reship$/);
+  if (investigationPartialMatch) {
+    const percent = investigationPartialMatch[1];
+    return `ACTION: (1) Process ${percent}% refund (${refundAmount}), (2) Reship order, (3) Investigate with carrier`;
+  }
 
   // Check for dynamic partial_XX_reship patterns
   const partialReshipMatch = resolution.match(/^partial_(\d+)_reship$/);

@@ -6146,7 +6146,8 @@ async function handleDeliveredNotReceived() {
 
   addOptions([
     { text: "Yes, please investigate", action: async () => {
-      await handleDeliveredInvestigation(tracking);
+      // Ask what resolution they prefer
+      await askDeliveredResolutionPreference(tracking, carrierInfo);
     }},
     { text: "Actually, let me check again first", action: async () => {
       await addBotMessage("No worries! Sometimes packages turn up in unexpected spots. Take your time and come back if you still can't find it.");
@@ -6156,37 +6157,200 @@ async function handleDeliveredNotReceived() {
   ]);
 }
 
-// Proceed with delivered not received investigation
-async function handleDeliveredInvestigation(tracking) {
-  showProgress("Creating investigation case...");
+// Ask customer if they want reship or refund for delivered-not-received
+async function askDeliveredResolutionPreference(tracking, carrierInfo) {
+  await addBotMessage("Thank you. While we investigate, would you like us to reship your order or would you prefer a refund?");
   
-  // Use effective carrier (last mile) for display
-  const effectiveCarrier = getEffectiveCarrierAndTracking(tracking);
-  const carrierInfo = getCarrierContactInfo(effectiveCarrier.carrier);
+  addOptions([
+    { text: "Reship my order", action: async () => {
+      await handleDeliveredReship(tracking, carrierInfo);
+    }},
+    { text: "I'd prefer a refund", action: async () => {
+      // Start delivered refund ladder
+      state.deliveredLadderStep = 0;
+      state.deliveredTracking = tracking;
+      state.deliveredCarrierInfo = carrierInfo;
+      await startDeliveredRefundLadder();
+    }}
+  ]);
+}
 
-  const result = await submitCase('shipping', 'investigation_delivered_not_received', {
+// Handle reship for delivered-not-received (with investigation)
+async function handleDeliveredReship(tracking, carrierInfo) {
+  showProgress("Creating your case...");
+  
+  const effectiveCarrier = getEffectiveCarrierAndTracking(tracking);
+
+  const result = await submitCase('shipping', 'investigation_reship', {
     issueType: 'delivered_not_received',
     carrierName: effectiveCarrier.carrier || 'Unknown',
     trackingNumber: effectiveCarrier.trackingNumber || tracking.trackingNumber || '',
     deliveryDate: tracking.deliveryDate || '',
-    notes: 'Customer confirmed they checked all locations and package is not found.',
+    notes: 'Customer confirmed they checked all locations and package is not found. Customer chose reship.',
   });
 
   hideProgress();
 
-  if (result.success) {
-    await showSuccess(
-      "Investigation Started",
-      `We've opened a case and will investigate with ${carrierInfo.name}. We'll get back to you within 48 hours.<br><br>
-If we can't locate your package, we'll either reship or refund your order — whichever you prefer.<br><br>
+  await showSuccess(
+    "Reship & Investigation Started",
+    `We'll reship your order and investigate with ${carrierInfo.name}.<br><br>
+Your new order will ship within 1-3 business days.<br><br>
 <strong>Optional:</strong> If you'd like to file a police report, your local department can request CCTV footage from nearby cameras.<br><br>${getCaseIdHtml(result.caseId)}`
-    );
-  } else {
-    await showSuccess(
-      "Investigation Started",
-      `Our team will investigate and contact the carrier. We'll reach out within 48 hours. If we can't locate it, we'll reship or refund your order.`
-    );
+  );
+}
+
+// Delivered-not-received refund ladder (with investigation)
+async function startDeliveredRefundLadder() {
+  const tracking = state.deliveredTracking || {};
+  const carrierInfo = state.deliveredCarrierInfo || {};
+  const totalPrice = parseFloat(state.selectedOrder?.totalPrice || 0);
+  
+  const ladderSteps = [
+    {
+      percent: 20,
+      message: "I understand. Here's what I can do — I can <strong>reship your order AND give you a 20% refund</strong> for the inconvenience. That way you get your products plus some money back.",
+      needsManagerCheck: false
+    },
+    {
+      percent: 30,
+      message: "I want to make this right. Let me offer you a <strong>30% refund plus a free reship</strong>. That's a significant amount back and you still get your order.",
+      needsManagerCheck: false
+    },
+    {
+      percent: 40,
+      message: "Let me check with my manager... Great news! They've approved a <strong>40% refund plus free reship</strong>. That's nearly half your money back and you still get the products.",
+      needsManagerCheck: true
+    },
+    {
+      percent: 50,
+      message: "I've spoken with my manager again. They've approved our <strong>maximum offer: 50% refund plus free reship</strong>. That's half your money back and you still receive your order.",
+      needsManagerCheck: true
+    }
+  ];
+
+  if (state.deliveredLadderStep >= ladderSteps.length) {
+    // Final step - full refund
+    await handleDeliveredFullRefund(tracking, carrierInfo);
+    return;
   }
+
+  const step = ladderSteps[state.deliveredLadderStep];
+  const refundAmount = (totalPrice * step.percent / 100).toFixed(2);
+
+  if (step.needsManagerCheck) {
+    await delay(1500); // Simulate manager check
+  }
+
+  await addBotMessage(step.message);
+  
+  await showDeliveredRefundOfferCard(step.percent, refundAmount, tracking, carrierInfo);
+}
+
+// Show offer card for delivered refund ladder
+async function showDeliveredRefundOfferCard(percent, amount, tracking, carrierInfo) {
+  const cardId = `delivered-offer-${Date.now()}`;
+  
+  const html = `
+    <div class="offer-card" id="${cardId}">
+      <div class="offer-icon">💰</div>
+      <div class="offer-amount">${percent}%</div>
+      <div class="offer-value">${formatCurrency(amount)} refund + free reship</div>
+      <div class="offer-label">Keep your money AND get your order</div>
+      <div class="offer-buttons">
+        <button class="offer-btn accept" id="${cardId}-accept">Accept Offer</button>
+        <button class="offer-btn decline" id="${cardId}-decline">No thanks</button>
+      </div>
+      <div class="offer-note">Investigation included • Reviewed within 1-2 days</div>
+    </div>
+  `;
+
+  await addInteractiveContent(html);
+
+  document.getElementById(`${cardId}-accept`).onclick = async () => {
+    document.getElementById(cardId)?.closest('.interactive-content').remove();
+    addEditableUserMessage(`I'll accept the ${percent}% refund + reship`, () => showDeliveredRefundOfferCard(percent, amount, tracking, carrierInfo), 'Edit');
+    await acceptDeliveredOffer(percent, amount, tracking, carrierInfo);
+  };
+
+  document.getElementById(`${cardId}-decline`).onclick = async () => {
+    document.getElementById(cardId)?.closest('.interactive-content').remove();
+    addEditableUserMessage("No thanks, I need more", () => showDeliveredRefundOfferCard(percent, amount, tracking, carrierInfo), 'Edit');
+    await declineDeliveredOffer();
+  };
+}
+
+// Accept delivered refund offer (partial refund + reship + investigation)
+async function acceptDeliveredOffer(percent, amount, tracking, carrierInfo) {
+  showProgress("Processing your refund and reship...");
+  
+  const effectiveCarrier = getEffectiveCarrierAndTracking(tracking);
+
+  const result = await submitCase('shipping', `investigation_partial_${percent}_reship`, {
+    issueType: 'delivered_not_received',
+    refundPercent: percent,
+    refundAmount: amount,
+    carrierName: effectiveCarrier.carrier || 'Unknown',
+    trackingNumber: effectiveCarrier.trackingNumber || tracking.trackingNumber || '',
+    deliveryDate: tracking.deliveryDate || '',
+    notes: `Customer confirmed package not received. Accepted ${percent}% refund + reship offer.`,
+  });
+
+  hideProgress();
+
+  await showSuccess(
+    "All Set!",
+    `Your ${percent}% refund of ${formatCurrency(amount)} has been submitted and we'll reship your order.<br><br>
+Refund: 3-5 business days to your account<br>
+Reship: Ships within 1-3 business days<br><br>
+We'll also investigate with ${carrierInfo.name}.<br><br>${getCaseIdHtml(result.caseId)}`
+  );
+}
+
+// Decline delivered refund offer - move to next step
+async function declineDeliveredOffer() {
+  const declineMessages = [
+    "I understand that might not feel like enough. Let me see what else I can do for you.",
+    "I hear you. Please give me just a moment while I check with my manager...",
+    "Let me make one more check to see what the absolute best we can do is...",
+    null
+  ];
+
+  const declineMessage = declineMessages[state.deliveredLadderStep];
+  if (declineMessage) {
+    await addBotMessage(declineMessage);
+  }
+
+  state.deliveredLadderStep++;
+  await startDeliveredRefundLadder();
+}
+
+// Handle full refund for delivered-not-received (with investigation)
+async function handleDeliveredFullRefund(tracking, carrierInfo) {
+  await addBotMessage("I completely understand. We'll process a <strong>full refund</strong> for you and investigate this with the carrier.");
+  
+  showProgress("Processing your full refund...");
+  
+  const effectiveCarrier = getEffectiveCarrierAndTracking(tracking);
+  const totalPrice = state.selectedOrder?.totalPrice || 0;
+
+  const result = await submitCase('shipping', 'investigation_full_refund', {
+    issueType: 'delivered_not_received',
+    refundPercent: 100,
+    refundAmount: totalPrice,
+    carrierName: effectiveCarrier.carrier || 'Unknown',
+    trackingNumber: effectiveCarrier.trackingNumber || tracking.trackingNumber || '',
+    deliveryDate: tracking.deliveryDate || '',
+    notes: 'Customer confirmed package not received. Declined all partial offers. Full refund approved.',
+  });
+
+  hideProgress();
+
+  await showSuccess(
+    "Full Refund Approved",
+    `Your full refund of ${formatCurrency(totalPrice)} has been submitted.<br><br>
+The refund will appear in your account within 3-5 business days.<br><br>
+We'll also investigate with ${carrierInfo.name}.<br><br>${getCaseIdHtml(result.caseId)}`
+  );
 }
 
 async function createShippingCase(type, options = {}) {
