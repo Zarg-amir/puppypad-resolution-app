@@ -1068,6 +1068,14 @@
             Email Templates
           </a>
         </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Account</div>
+          <a href="/hub/profile" class="nav-item" data-page="profile">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+            Profile Settings
+          </a>
+        </div>
       </nav>
 
       <!-- Progress Section -->
@@ -1679,6 +1687,18 @@
             <div class="loading-spinner"><div class="spinner"></div></div>
           </div>
         </div>
+
+        <!-- Profile Settings View -->
+        <div id="profileView" style="display: none;">
+          <div class="cases-card">
+            <div class="cases-header">
+              <h2 class="cases-title">Profile Settings</h2>
+            </div>
+            <div id="profileContent" style="padding: 24px;">
+              <div class="loading-spinner"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -1782,8 +1802,14 @@
     }
 
     function handleLogout() {
-      // Will implement logout
-      console.log('Logout clicked');
+      if (typeof HubAuth !== 'undefined' && HubAuth.logout) {
+        HubAuth.logout();
+      } else {
+        // Fallback if HubAuth not loaded yet
+        localStorage.removeItem('hub_token');
+        localStorage.removeItem('hub_user');
+        window.location.href = '/hub';
+      }
     }
   </script>
   <script src="/hub/hub-app.js"></script>
