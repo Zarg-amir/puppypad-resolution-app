@@ -448,7 +448,7 @@ function generateSessionId() {
 
 function generateCaseId(type) {
   const now = new Date();
-  const prefixes = { refund: 'REF', return: 'RET', shipping: 'SHP', subscription: 'SUB', manual: 'MAN' };
+  const prefixes = { refund: 'REF', return: 'RET', shipping: 'SHP', subscription: 'SUB', manual: 'MAN', manual_review: 'REV' };
   const prefix = prefixes[type] || 'CAS';
   return `${prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 }
@@ -3152,6 +3152,9 @@ async function submitCase(caseType, resolution, options = {}) {
     dogs: options.dogs || state.dogs || null,
     methodsTried: options.methodsTried || state.methodsTried || '',
 
+    // Evidence images (for manual review cases)
+    evidenceUrls: options.evidenceUrls || null,
+
     // Timestamps
     createdAt: new Date().toISOString(),
   };
@@ -3678,32 +3681,60 @@ async function handleDamagedEvidence() {
   ]);
 }
 
-// Wrong item evidence flow
+// Wrong item evidence flow - creates manual review case for team investigation
 async function handleWrongItemEvidence() {
-  await addBotMessage("Thank you for the photos. I've confirmed you received the wrong item and I sincerely apologize for this error.<br><br>I'll ship the correct item right away. You can keep or donate the wrong item - no need to return it.");
-
-  addOptionsRow([
-    { text: "Ship correct item", primary: true, action: async () => {
-      showProgress("Creating correction order...");
-      await delay(1500);
-      hideProgress();
-
-      state.caseId = generateCaseId('shipping');
-      state.resolution = 'reship_wrong_item';
-
-      await submitCase();
-
-      await showSuccess(
-        "Correct Item Shipping!",
-        `The correct item will ship within 1-2 business days. We'll email you the tracking info. Thanks for your patience!<br><br>${getCaseIdHtml(state.caseId)}`
-      );
-    }},
-    { text: "I'd prefer a refund", action: async () => {
-      state.resolution = 'full_refund';
-      state.keepProduct = true;
-      await createRefundCase('full', true);
-    }}
-  ]);
+  showProgress("Uploading your photos...", "Please wait");
+  
+  // Upload images to R2 storage
+  const evidenceUrls = [];
+  const tempCaseId = `REVIEW-${Date.now()}`; // Temporary ID for organizing uploads
+  
+  for (const file of state.uploadedFiles) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('caseId', tempCaseId);
+      
+      const response = await fetch(`${CONFIG.API_URL}/api/upload-evidence`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        // Build full URL for the evidence
+        const fullUrl = `${CONFIG.API_URL}${result.url}`;
+        evidenceUrls.push(fullUrl);
+      }
+    } catch (error) {
+      console.error('Error uploading evidence:', error);
+    }
+  }
+  
+  hideProgress();
+  
+  // Show apologetic message - no options, just create case
+  await addBotMessage("Thank you for sharing these photos. I sincerely apologize that you received the wrong item — this is definitely not the experience we want for you.<br><br>I've forwarded your case to our team for review. They'll personally look at the images you've shared and determine the best way to make this right for you.<br><br>You can expect to hear back within 24-48 hours via email.");
+  
+  showProgress("Creating your case...");
+  
+  // Generate case ID for manual review
+  state.caseId = generateCaseId('manual_review');
+  state.resolution = 'wrong_item_review';
+  
+  // Submit case with evidence URLs
+  const result = await submitCase('manual_review', 'wrong_item_review', {
+    issueType: 'wrong_item',
+    evidenceUrls: evidenceUrls,
+    notes: `Customer reported receiving the wrong item. ${evidenceUrls.length} photo(s) uploaded for review.`,
+  });
+  
+  hideProgress();
+  
+  await showSuccess(
+    "Case Created for Review",
+    `Our team will review your photos and reach out within 24-48 hours to make this right.<br><br>${getCaseIdHtml(state.caseId)}<br><br>We truly appreciate your patience and understanding.`
+  );
 }
 
 // Generic evidence flow (fallback)

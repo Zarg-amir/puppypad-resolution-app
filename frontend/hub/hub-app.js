@@ -6308,6 +6308,9 @@ const HubCaseDetail = {
             </div>
           </div>
 
+          <!-- Evidence Images (for manual review cases) -->
+          ${this.renderEvidenceImages(c)}
+
           <!-- Activity & Comments -->
           <div class="case-detail-section activity-section">
             <div class="case-detail-section-header">
@@ -7006,10 +7009,72 @@ The PuppyPad Team`
       'reship_missing_item': 'Reship Missing Item',
       'subscription_paused': 'Subscription Paused',
       'subscription_cancelled': 'Subscription Cancelled',
-      'manual_assistance': 'Manual Assistance Required'
+      'manual_assistance': 'Manual Assistance Required',
+      'wrong_item_review': 'Wrong Item - Pending Review'
     };
 
     return resolutionMap[resolution] || resolution.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  },
+
+  // Render evidence images for manual review cases
+  renderEvidenceImages(c) {
+    // Check if case has evidence URLs in extra_data
+    let evidenceUrls = [];
+    
+    if (c.extra_data) {
+      const extraData = typeof c.extra_data === 'string' ? JSON.parse(c.extra_data) : c.extra_data;
+      if (extraData.evidenceUrls && Array.isArray(extraData.evidenceUrls) && extraData.evidenceUrls.length > 0) {
+        evidenceUrls = extraData.evidenceUrls;
+      }
+    }
+    
+    if (evidenceUrls.length === 0) {
+      return ''; // No evidence images
+    }
+    
+    return `
+      <div class="case-detail-section evidence-section">
+        <div class="case-detail-section-header">
+          <span>📸 Customer Evidence Photos</span>
+          <span class="evidence-count">${evidenceUrls.length} image${evidenceUrls.length > 1 ? 's' : ''}</span>
+        </div>
+        <div class="case-detail-section-content">
+          <div class="evidence-gallery">
+            ${evidenceUrls.map((url, index) => `
+              <div class="evidence-item" onclick="HubCaseDetail.openImageModal('${url}')">
+                <img src="${url}" alt="Evidence photo ${index + 1}" loading="lazy" onerror="this.parentElement.style.display='none'">
+                <div class="evidence-overlay">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="24" height="24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
+                  </svg>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  // Open image in a modal for full-size viewing
+  openImageModal(imageUrl) {
+    // Create modal backdrop
+    const modal = document.createElement('div');
+    modal.className = 'image-modal-backdrop';
+    modal.innerHTML = `
+      <div class="image-modal-content">
+        <button class="image-modal-close" onclick="this.closest('.image-modal-backdrop').remove()">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="24" height="24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+        <img src="${imageUrl}" alt="Evidence photo full size">
+      </div>
+    `;
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+    document.body.appendChild(modal);
   },
 
   formatDate(timestamp) {

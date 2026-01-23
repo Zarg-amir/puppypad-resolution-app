@@ -95,7 +95,8 @@ export function getCasePrefix(caseType) {
     'shipping': 'SHP',
     'subscription': 'SUB',
     'manual': 'HLP',
-    'help': 'HLP'
+    'help': 'HLP',
+    'manual_review': 'REV'
   };
   return prefixMap[caseType] || 'HLP';
 }
