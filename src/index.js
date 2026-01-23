@@ -1537,6 +1537,18 @@ async function handleLookupOrder(request, env, corsHeaders) {
   const data = await response.json();
   let orders = data.orders || [];
 
+  // Debug logging for phone searches
+  if (phone && !email && !deepSearch) {
+    console.log(`[Phone Lookup] Search phone: ${phone}, Cleaned: ${cleanPhoneNumber(phone)}, Orders from Shopify: ${orders.length}`);
+    if (orders.length > 0) {
+      console.log(`[Phone Lookup] Sample order phones:`, orders.slice(0, 3).map(o => ({
+        orderPhone: o.phone,
+        shippingPhone: o.shipping_address?.phone,
+        customerPhone: o.customer?.phone
+      })));
+    }
+  }
+
   // For phone number searches, apply strict filtering to match exact phone
   if (phone && !email && !deepSearch && orders.length > 0) {
     const searchPhone = cleanPhoneNumber(phone);
@@ -1548,10 +1560,11 @@ async function handleLookupOrder(request, env, corsHeaders) {
       : searchPhone;
     
     orders = orders.filter(order => {
-      // Check both order.phone and shipping_address.phone
+      // Check all possible phone fields: order.phone, shipping_address.phone, billing_address.phone, and customer.phone
       const orderPhone = cleanPhoneNumber(order.phone || '');
       const shippingPhone = cleanPhoneNumber(order.shipping_address?.phone || '');
       const billingPhone = cleanPhoneNumber(order.billing_address?.phone || '');
+      const customerPhone = cleanPhoneNumber(order.customer?.phone || '');
       
       // Match if any phone field matches (flexible matching for country code variations)
       // Try exact match, last 10 digits match, or match without leading 1
@@ -1564,7 +1577,10 @@ async function handleLookupOrder(request, env, corsHeaders) {
         shippingPhone.slice(-10) === searchPhoneLast10 ||
         billingPhone === searchPhone || 
         billingPhone === searchPhoneWithout1 ||
-        billingPhone.slice(-10) === searchPhoneLast10;
+        billingPhone.slice(-10) === searchPhoneLast10 ||
+        customerPhone === searchPhone ||
+        customerPhone === searchPhoneWithout1 ||
+        customerPhone.slice(-10) === searchPhoneLast10;
       
       if (!phoneMatches) return false;
       
