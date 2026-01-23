@@ -3201,12 +3201,16 @@ async function createRefundCase(type, keepProduct) {
   const totalAmount = state.selectedItems?.reduce((sum, item) => sum + parseFloat(item.price || 0), 0) || 0;
 
   // Submit to backend (ClickUp + Richpanel)
+  // For returns (keepProduct = false), use 'return_awaiting_tracking' resolution
   const caseType = keepProduct ? 'refund' : 'return';
-  const result = await submitCase(caseType, 'full_refund', {
+  const resolution = keepProduct ? 'full_refund' : 'return_awaiting_tracking';
+  
+  const result = await submitCase(caseType, resolution, {
     refundAmount: totalAmount,
     refundPercent: 100,
     keepProduct: keepProduct,
     issueType: state.issueType || 'not_met_expectations',
+    notes: keepProduct ? '' : 'Customer shipping return. Refund to be processed once tracking shows delivered.',
   });
 
   hideProgress();

@@ -7010,7 +7010,8 @@ The PuppyPad Team`
       'subscription_paused': 'Subscription Paused',
       'subscription_cancelled': 'Subscription Cancelled',
       'manual_assistance': 'Manual Assistance Required',
-      'wrong_item_review': 'Wrong Item - Pending Review'
+      'wrong_item_review': 'Wrong Item - Pending Review',
+      'return_awaiting_tracking': 'Awaiting Return Tracking - Refund After Delivery'
     };
 
     return resolutionMap[resolution] || resolution.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
