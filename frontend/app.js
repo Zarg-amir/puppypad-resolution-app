@@ -60,13 +60,6 @@ const MESSAGES = {
     subscription: "Hi! I'm Amy. I'll help you manage your subscription — just enter your details below to get started. 🔄",
     help: "Hi! I'm Amy from PuppyPad. I can sort this out with you right here so you don't have to go back and forth over email. Just enter your details below. 🙂",
   },
-  // Survey messages
-  survey: {
-    prompt: "Before you go — how was your experience today?",
-    thankYouHigh: "Thank you so much! We're thrilled we could help. 💜",
-    thankYouMedium: "Thanks for your feedback! We're always working to improve. 🙏",
-    thankYouLow: "We're sorry we didn't meet your expectations. Your feedback helps us do better. 💙",
-  },
   // Common messages
   common: {
     lookingUp: "Looking up your order... 🔍",
@@ -219,22 +212,6 @@ const Analytics = {
     }
   },
 
-  // Log survey response
-  async logSurvey(rating) {
-    try {
-      await fetch(`${CONFIG.API_URL}/api/a/survey`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: state.sessionId,
-          caseId: state.caseId,
-          rating
-        })
-      });
-    } catch (e) {
-      console.warn('Analytics survey log failed:', e);
-    }
-  },
 
   // Log policy block
   async logPolicyBlock(blockType, data = {}) {
@@ -1234,86 +1211,11 @@ async function showSuccess(title, message) {
 
   await delay(1000);
 
-  // Show end-of-session survey
-  await showEndOfSessionSurvey();
-}
-
-async function showEndOfSessionSurvey() {
-  await addBotMessage(MESSAGES.survey.prompt);
-
-  const surveyHtml = `
-    <div class="survey-container">
-      <div class="survey-ratings">
-        <button class="survey-rating" data-rating="1" onclick="submitSurveyRating(1, this)">
-          <span class="survey-emoji">😞</span>
-          <span class="survey-label">Poor</span>
-        </button>
-        <button class="survey-rating" data-rating="2" onclick="submitSurveyRating(2, this)">
-          <span class="survey-emoji">😐</span>
-          <span class="survey-label">Okay</span>
-        </button>
-        <button class="survey-rating" data-rating="3" onclick="submitSurveyRating(3, this)">
-          <span class="survey-emoji">🙂</span>
-          <span class="survey-label">Good</span>
-        </button>
-        <button class="survey-rating" data-rating="4" onclick="submitSurveyRating(4, this)">
-          <span class="survey-emoji">😊</span>
-          <span class="survey-label">Great</span>
-        </button>
-        <button class="survey-rating" data-rating="5" onclick="submitSurveyRating(5, this)">
-          <span class="survey-emoji">🤩</span>
-          <span class="survey-label">Amazing</span>
-        </button>
-      </div>
-      <button class="survey-skip" onclick="skipSurvey()">Skip</button>
-    </div>
-  `;
-
-  await addInteractiveContent(surveyHtml, 400);
-}
-
-async function submitSurveyRating(rating, buttonElement) {
-  // Highlight selected rating
-  document.querySelectorAll('.survey-rating').forEach(btn => {
-    btn.classList.remove('selected');
-  });
-  buttonElement.classList.add('selected');
-
-  // Remove survey container after short delay
-  await delay(300);
-  document.querySelector('.survey-container')?.closest('.interactive-content').remove();
-
-  // Log the rating to analytics
-  Analytics.logSurvey(rating);
-  Analytics.logEvent('survey', 'rating_submitted', { rating, caseId: state.caseId });
-
-  // Thank the user - uses MESSAGES.survey from config
-  if (rating >= 4) {
-    await addBotMessage(MESSAGES.survey.thankYouHigh);
-  } else if (rating >= 3) {
-    await addBotMessage(MESSAGES.survey.thankYouMedium);
-  } else {
-    await addBotMessage(MESSAGES.survey.thankYouLow);
-  }
-
-  await delay(800);
-
+  // Show back to home option (survey removed)
   addOptions([
     { text: 'Back to Home', primary: true, action: () => restartChat() }
   ]);
 }
-
-async function skipSurvey() {
-  document.querySelector('.survey-container')?.closest('.interactive-content').remove();
-
-  addOptions([
-    { text: 'Back to Home', primary: true, action: () => restartChat() }
-  ]);
-}
-
-// Make survey functions available globally
-window.submitSurveyRating = submitSurveyRating;
-window.skipSurvey = skipSurvey;
 
 async function showError(title, message) {
   const errorHtml = `
