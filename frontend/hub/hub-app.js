@@ -175,6 +175,9 @@ const HubAuth = {
         this.showChangePasswordModal(true);
       }
 
+      // Show/hide admin-only sections
+      this.updateAdminVisibility();
+
       return true;
     }
     return false;
@@ -209,12 +212,18 @@ const HubAuth = {
       if (data.success) {
         HubState.token = data.token;
         HubState.currentUser = data.user;
+        
+        // Show/hide admin-only sections
+        HubAuth.updateAdminVisibility();
         localStorage.setItem('hub_token', data.token);
         localStorage.setItem('hub_user', JSON.stringify(data.user));
 
         if (data.user.mustChangePassword) {
           this.showChangePasswordModal(true);
         }
+
+        // Show/hide admin-only sections
+        this.updateAdminVisibility();
 
         return { success: true };
       }
@@ -235,7 +244,19 @@ const HubAuth = {
   },
 
   isAdmin() {
-    return HubState.currentUser?.role === 'admin';
+    return HubState.currentUser?.role === 'admin' || HubState.currentUser?.role === 'super_admin';
+  },
+
+  isSuperAdmin() {
+    return HubState.currentUser?.role === 'super_admin';
+  },
+
+  updateAdminVisibility() {
+    const isAdmin = this.isAdmin();
+    const adminSections = document.querySelectorAll('.admin-only-section');
+    adminSections.forEach(section => {
+      section.style.display = isAdmin ? 'block' : 'none';
+    });
   },
 
   showChangePasswordModal(required = false) {
@@ -1502,39 +1523,72 @@ const HubUsers = {
       return;
     }
 
-    view.innerHTML = '<div class="spinner" style="margin: 40px auto;"></div>';
+    const content = document.getElementById('usersContent');
+    if (content) {
+      content.innerHTML = '<div class="spinner" style="margin: 40px auto;"></div>';
+    } else {
+      view.innerHTML = '<div class="spinner" style="margin: 40px auto;"></div>';
+    }
+    
     await this.load();
 
-    view.innerHTML = `
-      <div class="cases-card" style="margin-bottom: 24px;">
-        <div class="cases-header">
-          <h2 class="cases-title">Team Members</h2>
-          <button class="btn btn-primary" onclick="HubUsers.showCreateForm()">Add User</button>
-        </div>
-        <div style="padding: 24px;">
-          <div class="users-list">
-            ${this.users.length ? this.users.map(u => `
-              <div class="user-row">
-                <div class="user-row-info">
-                  <div class="user-row-name">${this.escapeHtml(u.name)}</div>
-                  <div class="user-row-meta">${u.username} &bull; ${u.role}</div>
-                </div>
-                <div class="user-row-status ${u.is_active ? 'active' : 'inactive'}">
-                  ${u.is_active ? 'Active' : 'Inactive'}
-                </div>
-                <div class="user-row-actions">
-                  <button class="btn-icon" onclick="HubUsers.edit(${u.id})" title="Edit">Edit</button>
-                  <button class="btn-icon" onclick="HubUsers.showResetPasswordModal(${u.id}, '${this.escapeHtml(u.name)}')" title="Reset Password">Reset Pwd</button>
-                  ${HubState.currentUser && u.id !== HubState.currentUser.id ? `
-                    <button class="btn-icon danger" onclick="HubUsers.confirmDelete(${u.id}, '${this.escapeHtml(u.name)}')" title="Delete">Delete</button>
-                  ` : ''}
-                </div>
-              </div>
-            `).join('') : '<p class="empty-state">No users found.</p>'}
-          </div>
-        </div>
-      </div>
+    const html = `
+      <table class="cases-table cases-table-enhanced">
+        <thead>
+          <tr>
+            <th>USER</th>
+            <th>ROLE</th>
+            <th>STATUS</th>
+            <th>LAST LOGIN</th>
+            <th>CREATED</th>
+            <th style="text-align: right;">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${this.users.length ? this.users.map(u => {
+            const roleLabel = u.role === 'super_admin' ? 'Super Admin' : u.role === 'admin' ? 'Admin' : 'User';
+            const roleBadge = u.role === 'super_admin' ? 'super-admin' : u.role === 'admin' ? 'admin' : 'user';
+            const lastLogin = u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never';
+            const created = u.created_at ? new Date(u.created_at).toLocaleDateString() : '-';
+            return `
+              <tr>
+                <td>
+                  <div class="customer-info">
+                    <div class="customer-name">${this.escapeHtml(u.name)}</div>
+                    <div class="customer-email">${this.escapeHtml(u.email || u.username)}</div>
+                  </div>
+                </td>
+                <td><span class="type-badge ${roleBadge}">${roleLabel}</span></td>
+                <td><span class="status-badge ${u.is_active ? 'completed' : 'cancelled'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
+                <td class="time-ago">${lastLogin}</td>
+                <td class="time-ago">${created}</td>
+                <td style="text-align: right;">
+                  <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="HubUserManagement.viewActivity(${u.id})">
+                      Activity Log
+                    </button>
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="HubUsers.showResetPasswordModal(${u.id}, '${this.escapeHtml(u.name)}')">
+                      Reset Password
+                    </button>
+                    ${HubState.currentUser && u.id !== HubState.currentUser.id ? `
+                      <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="HubUsers.confirmDelete(${u.id}, '${this.escapeHtml(u.name)}')">
+                        Delete
+                      </button>
+                    ` : ''}
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('') : '<tr><td colspan="6" class="empty-state">No users found.</td></tr>'}
+        </tbody>
+      </table>
     `;
+
+    if (content) {
+      content.innerHTML = html;
+    } else {
+      view.innerHTML = html;
+    }
   },
 
   showManagement() {
@@ -1586,6 +1640,11 @@ const HubUsers = {
   },
 
   showCreateForm() {
+    const isSuperAdmin = HubAuth.isSuperAdmin();
+    const roleOptions = isSuperAdmin 
+      ? '<option value="user">User</option><option value="admin">Admin</option>'
+      : '<option value="user">User</option>';
+    
     const html = `
       <div class="modal-overlay active" id="createUserModal" style="z-index: 210;">
         <div class="modal" style="max-width: 400px;">
@@ -1597,23 +1656,29 @@ const HubUsers = {
           </div>
           <div class="modal-body" style="padding: 24px;">
             <div class="form-group">
-              <label>Username (email)</label>
-              <input type="text" id="newUsername" class="form-input" placeholder="user@example.com">
+              <label>Email Address</label>
+              <input type="email" id="newUserEmail" class="form-input" placeholder="user@example.com" required>
+            </div>
+            <div class="form-group">
+              <label>Username (for login)</label>
+              <input type="text" id="newUserUsername" class="form-input" placeholder="username" required>
+              <p style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">This is what the user will use to log in.</p>
             </div>
             <div class="form-group">
               <label>Display Name</label>
-              <input type="text" id="newUserName" class="form-input" placeholder="John Doe">
+              <input type="text" id="newUserName" class="form-input" placeholder="John Doe" required>
             </div>
             <div class="form-group">
               <label>Role</label>
               <select id="newUserRole" class="form-input">
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
+                ${roleOptions}
               </select>
+              ${!isSuperAdmin ? '<p style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">Only super admins can create admin accounts.</p>' : ''}
             </div>
             <div class="form-group">
-              <label>Initial Password</label>
-              <input type="password" id="newUserPassword" class="form-input" placeholder="Minimum 6 characters">
+              <label>Password</label>
+              <input type="password" id="newUserPassword" class="form-input" placeholder="Minimum 6 characters" required>
+              <p style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">User can change this after logging in.</p>
             </div>
             <div id="createUserError" class="error-message" style="display: none;"></div>
             <button class="btn btn-primary" style="width: 100%; margin-top: 16px;" onclick="HubUsers.create()">
@@ -1627,27 +1692,62 @@ const HubUsers = {
   },
 
   async create() {
-    const username = document.getElementById('newUsername').value;
+    const email = document.getElementById('newUserEmail').value;
+    const username = document.getElementById('newUserUsername').value;
     const name = document.getElementById('newUserName').value;
     const role = document.getElementById('newUserRole').value;
     const password = document.getElementById('newUserPassword').value;
     const errorEl = document.getElementById('createUserError');
 
-    if (!username || !name || !password) {
+    if (!email || !username || !name || !password) {
       errorEl.textContent = 'All fields are required';
       errorEl.style.display = 'block';
       return;
     }
 
+    if (password.length < 6) {
+      errorEl.textContent = 'Password must be at least 6 characters';
+      errorEl.style.display = 'block';
+      return;
+    }
+
     try {
-      const result = await HubAPI.post('/hub/api/users', { username, name, role, password });
+      const result = await HubAPI.post('/hub/api/users', { username, email, name, role, password });
 
       if (result.success) {
         document.getElementById('createUserModal').remove();
-        HubUI.showToast(result.message, 'success');
+        
+        // Show credentials in a more visible way
+        const credentialsHtml = `
+          <div class="modal-overlay active" id="userCredentialsModal" style="z-index: 220;">
+            <div class="modal" style="max-width: 500px;">
+              <div class="modal-header" style="padding: 20px 24px;">
+                <div class="modal-header-content">
+                  <div class="modal-title" style="font-size: 18px;">User Created Successfully</div>
+                </div>
+                <button class="modal-close" onclick="document.getElementById('userCredentialsModal').remove()">&times;</button>
+              </div>
+              <div class="modal-body" style="padding: 24px;">
+                <p style="margin-bottom: 16px;">Share these credentials with the user:</p>
+                <div style="background: var(--gray-50); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                  <div style="margin-bottom: 8px;"><strong>Email:</strong> ${email}</div>
+                  <div style="margin-bottom: 8px;"><strong>Username:</strong> ${username}</div>
+                  <div><strong>Password:</strong> ${password}</div>
+                </div>
+                <p style="font-size: 12px; color: var(--gray-500); margin-bottom: 16px;">The user can log in and change their password after first login.</p>
+                <button class="btn btn-primary" style="width: 100%;" onclick="document.getElementById('userCredentialsModal').remove(); HubUsers.show();">
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', credentialsHtml);
+        
         // Refresh user list
-        document.getElementById('userManagementModal').remove();
-        this.showManagement();
+        const modal = document.getElementById('userManagementModal');
+        if (modal) modal.remove();
+        this.show();
       } else {
         errorEl.textContent = result.error;
         errorEl.style.display = 'block';
@@ -8182,6 +8282,120 @@ window.HubBulkActions = HubBulkActions;
 window.HubViews = HubViews;
 window.HubChecklist = HubChecklist;
 window.HubUsers = HubUsers;
+
+// User Management with Activity Logs
+const HubUserManagement = {
+  currentUserId: null,
+
+  async viewActivity(userId) {
+    this.currentUserId = userId;
+    
+    // Hide users view, show activity view
+    document.getElementById('usersView').style.display = 'none';
+    document.getElementById('userActivityView').style.display = 'block';
+    
+    // Update navigation
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    
+    // Load user info and activity
+    await this.loadActivity(userId);
+  },
+
+  async loadActivity(userId, page = 1) {
+    const content = document.getElementById('userActivityContent');
+    if (!content) return;
+
+    content.innerHTML = '<div class="spinner" style="margin: 40px auto;"></div>';
+
+    try {
+      const result = await HubAPI.get(`/hub/api/users/${userId}/activity?page=${page}&limit=50`);
+      
+      if (result.success) {
+        const user = result.user;
+        document.getElementById('userActivityTitle').textContent = `Activity Log: ${user.name}`;
+        document.getElementById('userActivitySubtitle').textContent = `${user.username} • ${result.pagination.total} total activities`;
+
+        const logs = result.logs || [];
+        
+        if (logs.length === 0) {
+          content.innerHTML = '<div class="empty-state"><p>No activity found for this user.</p></div>';
+          return;
+        }
+
+        const formatDate = (dateStr) => {
+          const date = new Date(dateStr);
+          return date.toLocaleString();
+        };
+
+        const formatAction = (log) => {
+          const actionType = log.action_type || '';
+          const actionCategory = log.action_category || '';
+          const details = log.details ? (typeof log.details === 'string' ? JSON.parse(log.details) : log.details) : {};
+          
+          let actionText = actionType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          
+          if (log.resource_type && log.resource_id) {
+            actionText += ` ${log.resource_type} ${log.resource_id}`;
+          }
+          
+          return actionText;
+        };
+
+        content.innerHTML = `
+          <table class="cases-table cases-table-enhanced">
+            <thead>
+              <tr>
+                <th>TIME</th>
+                <th>ACTION</th>
+                <th>CATEGORY</th>
+                <th>DETAILS</th>
+                <th>IP ADDRESS</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${logs.map(log => `
+                <tr>
+                  <td class="time-ago">${formatDate(log.created_at)}</td>
+                  <td>${formatAction(log)}</td>
+                  <td><span class="type-badge">${log.action_category || 'N/A'}</span></td>
+                  <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    ${log.details ? JSON.stringify(typeof log.details === 'string' ? JSON.parse(log.details) : log.details).substring(0, 100) : '-'}
+                  </td>
+                  <td class="time-ago">${log.ip_address || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          ${result.pagination.totalPages > 1 ? `
+            <div class="pagination" style="margin-top: 24px;">
+              ${result.pagination.page > 1 ? `<button class="btn btn-secondary" onclick="HubUserManagement.loadActivity(${userId}, ${result.pagination.page - 1})">Previous</button>` : ''}
+              <span style="margin: 0 16px;">Page ${result.pagination.page} of ${result.pagination.totalPages}</span>
+              ${result.pagination.page < result.pagination.totalPages ? `<button class="btn btn-secondary" onclick="HubUserManagement.loadActivity(${userId}, ${result.pagination.page + 1})">Next</button>` : ''}
+            </div>
+          ` : ''}
+        `;
+      } else {
+        content.innerHTML = `<div class="empty-state"><p>${result.error || 'Failed to load activity log'}</p></div>`;
+      }
+    } catch (e) {
+      console.error('Failed to load activity:', e);
+      content.innerHTML = '<div class="empty-state"><p>Failed to load activity log</p></div>';
+    }
+  },
+
+  backToUsers() {
+    document.getElementById('userActivityView').style.display = 'none';
+    document.getElementById('usersView').style.display = 'block';
+    this.currentUserId = null;
+    HubUsers.show();
+  },
+
+  showCreateModal() {
+    HubUsers.showCreateForm();
+  }
+};
+
+window.HubUserManagement = HubUserManagement;
 window.HubAssignment = HubAssignment;
 window.HubUI = HubUI;
 window.HubNavigation = HubNavigation;

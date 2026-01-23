@@ -1431,6 +1431,26 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid rgba(255, 218, 185, 0.4);
 }
 
+/* Role Badges */
+.type-badge.super-admin {
+  background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
+  color: white;
+  font-weight: 700;
+  border: none;
+}
+
+.type-badge.admin {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  color: white;
+  border: none;
+}
+
+.type-badge.user {
+  background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%);
+  color: white;
+  border: none;
+}
+
 /* ============================================
    Actor Badges (Event Log)
    ============================================ */

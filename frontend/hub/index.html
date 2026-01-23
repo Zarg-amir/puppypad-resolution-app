@@ -1053,7 +1053,7 @@
           </a>
         </div>
 
-        <div class="nav-section">
+        <div class="nav-section admin-only-section" style="display: none;">
           <div class="nav-section-title">Resources</div>
           <a href="/hub/flow-docs" class="nav-item" target="_blank">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path></svg>
@@ -1066,6 +1066,14 @@
           <a href="/hub/email-templates" class="nav-item" data-page="email-templates">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
             Email Templates
+          </a>
+        </div>
+
+        <div class="nav-section admin-only-section" style="display: none;">
+          <div class="nav-section-title">Administration</div>
+          <a href="/hub/users" class="nav-item" data-page="users">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            User Management
           </a>
         </div>
 
@@ -1695,6 +1703,41 @@
               <h2 class="cases-title">Profile Settings</h2>
             </div>
             <div id="profileContent" style="padding: 24px;">
+              <div class="loading-spinner"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Management View (Admin Only) -->
+        <div id="usersView" style="display: none;">
+          <div class="cases-card">
+            <div class="cases-header" style="display: flex; justify-content: space-between; align-items: center;">
+              <h2 class="cases-title">User Management</h2>
+              <button class="btn btn-primary" onclick="HubUsers.showCreateForm()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Create User
+              </button>
+            </div>
+            <div id="usersContent" style="padding: 24px;">
+              <div class="loading-spinner"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Activity Log View -->
+        <div id="userActivityView" style="display: none;">
+          <div class="cases-card">
+            <div class="cases-header" style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h2 class="cases-title" id="userActivityTitle">User Activity Log</h2>
+                <p style="margin-top: 8px; color: var(--gray-500); font-size: 14px;" id="userActivitySubtitle"></p>
+              </div>
+              <button class="btn btn-secondary" onclick="HubUserManagement.backToUsers()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Back to Users
+              </button>
+            </div>
+            <div id="userActivityContent" style="padding: 24px;">
               <div class="loading-spinner"><div class="spinner"></div></div>
             </div>
           </div>
