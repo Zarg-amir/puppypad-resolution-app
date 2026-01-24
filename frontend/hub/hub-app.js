@@ -1542,8 +1542,6 @@ const HubUsers = {
     
     await this.load();
 
-    const permissionsTable = this.renderPermissionsTable();
-
     const html = `
       <table class="cases-table cases-table-enhanced">
         <thead>
@@ -1570,7 +1568,7 @@ const HubUsers = {
                     <div class="customer-email">${this.escapeHtml(u.email || u.username)}</div>
                   </div>
                 </td>
-                <td><span class="type-badge ${roleBadge}">${roleLabel}</span></td>
+                <td><span class="type-badge ${roleBadge}" style="cursor: pointer;" onclick="event.stopPropagation(); HubUsers.showPermissionsModal('${u.role}')">${roleLabel}</span></td>
                 <td><span class="status-badge ${u.is_active ? 'completed' : 'cancelled'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
                 <td class="time-ago">${lastLogin}</td>
                 <td class="time-ago">${created}</td>
@@ -1594,8 +1592,6 @@ const HubUsers = {
           }).join('') : '<tr><td colspan="6" class="empty-state">No users found.</td></tr>'}
         </tbody>
       </table>
-      
-      ${permissionsTable}
     `;
 
     if (content) {
@@ -1605,7 +1601,7 @@ const HubUsers = {
     }
   },
 
-  renderPermissionsTable() {
+  showPermissionsModal(highlightRole = null) {
     const permissions = [
       { feature: 'View Dashboard', super_admin: true, admin: true, user: true },
       { feature: 'View Cases', super_admin: true, admin: true, user: true },
@@ -1617,61 +1613,68 @@ const HubUsers = {
       { feature: 'Delete Issue Reports', super_admin: true, admin: true, user: false },
       { feature: 'Delete Duplicates', super_admin: true, admin: true, user: false },
       { feature: 'Delete Self-Resolved', super_admin: true, admin: true, user: false },
-      { feature: 'Assign Cases to Users', super_admin: true, admin: true, user: false },
+      { feature: 'Assign Cases', super_admin: true, admin: true, user: false },
       { feature: 'Bulk Actions', super_admin: true, admin: true, user: false },
-      { feature: 'Manage SOP Links', super_admin: true, admin: true, user: false },
-      { feature: 'Manage Email Templates', super_admin: true, admin: true, user: false },
+      { feature: 'Manage SOPs', super_admin: true, admin: true, user: false },
+      { feature: 'Manage Templates', super_admin: true, admin: true, user: false },
       { feature: 'User Management', super_admin: true, admin: true, user: false },
       { feature: 'Create Users', super_admin: true, admin: true, user: false },
       { feature: 'Delete Users', super_admin: true, admin: true, user: false },
       { feature: 'Create Admin Users', super_admin: true, admin: false, user: false },
-      { feature: 'Test Mode Toggle', super_admin: true, admin: false, user: false },
-      { feature: 'View Audit Log', super_admin: true, admin: false, user: false },
+      { feature: 'Test Mode', super_admin: true, admin: false, user: false },
+      { feature: 'Audit Log', super_admin: true, admin: false, user: false },
     ];
 
-    const checkIcon = '<svg fill="none" stroke="#22c55e" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>';
-    const xIcon = '<svg fill="none" stroke="#ef4444" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>';
+    const check = '<svg fill="none" stroke="#22c55e" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>';
+    const x = '<svg fill="none" stroke="#ef4444" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>';
 
-    return `
-      <div style="margin-top: 32px; background: white; border-radius: 12px; border: 1px solid var(--gray-200); overflow: hidden;">
-        <div style="padding: 20px 24px; border-bottom: 1px solid var(--gray-200); background: var(--gray-50);">
-          <h3 style="font-size: 16px; font-weight: 600; color: var(--gray-900); margin: 0;">Role Permissions</h3>
-          <p style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">Overview of features available to each role</p>
+    const roleColors = {
+      super_admin: { bg: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)', label: 'Super Admin' },
+      admin: { bg: '#3b82f6', label: 'Admin' },
+      user: { bg: '#6b7280', label: 'User' }
+    };
+
+    const html = `
+      <div class="modal-overlay active" id="permissionsModal" onclick="if(event.target === this) this.remove()">
+        <div class="modal" style="max-width: 480px; max-height: 80vh; overflow: hidden;">
+          <div class="modal-header" style="padding: 16px 20px; background: var(--gray-50);">
+            <h3 class="modal-title" style="font-size: 15px;">Role Permissions</h3>
+            <button class="modal-close" onclick="document.getElementById('permissionsModal').remove()">&times;</button>
+          </div>
+          <div style="overflow-y: auto; max-height: calc(80vh - 60px);">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="background: var(--gray-50); position: sticky; top: 0;">
+                  <th style="text-align: left; padding: 8px 12px; font-size: 10px; font-weight: 600; color: var(--gray-500); text-transform: uppercase;">Feature</th>
+                  <th style="text-align: center; padding: 8px 6px; width: 60px; ${highlightRole === 'super_admin' ? 'background: rgba(139, 92, 246, 0.1);' : ''}">
+                    <span style="background: ${roleColors.super_admin.bg}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; white-space: nowrap;">Super</span>
+                  </th>
+                  <th style="text-align: center; padding: 8px 6px; width: 60px; ${highlightRole === 'admin' ? 'background: rgba(59, 130, 246, 0.1);' : ''}">
+                    <span style="background: ${roleColors.admin.bg}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px;">Admin</span>
+                  </th>
+                  <th style="text-align: center; padding: 8px 6px; width: 60px; ${highlightRole === 'user' ? 'background: rgba(107, 114, 128, 0.1);' : ''}">
+                    <span style="background: ${roleColors.user.bg}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px;">User</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                ${permissions.map((p, i) => `
+                  <tr style="border-top: 1px solid var(--gray-100);">
+                    <td style="padding: 6px 12px; color: var(--gray-700);">${p.feature}</td>
+                    <td style="text-align: center; padding: 6px; ${highlightRole === 'super_admin' ? 'background: rgba(139, 92, 246, 0.05);' : ''}">${p.super_admin ? check : x}</td>
+                    <td style="text-align: center; padding: 6px; ${highlightRole === 'admin' ? 'background: rgba(59, 130, 246, 0.05);' : ''}">${p.admin ? check : x}</td>
+                    <td style="text-align: center; padding: 6px; ${highlightRole === 'user' ? 'background: rgba(107, 114, 128, 0.05);' : ''}">${p.user ? check : x}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="background: var(--gray-50);">
-              <th style="text-align: left; padding: 12px 20px; font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Feature</th>
-              <th style="text-align: center; padding: 12px 20px; font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">
-                <span style="display: inline-flex; align-items: center; gap: 6px;">
-                  <span style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">Super Admin</span>
-                </span>
-              </th>
-              <th style="text-align: center; padding: 12px 20px; font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">
-                <span style="display: inline-flex; align-items: center; gap: 6px;">
-                  <span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">Admin</span>
-                </span>
-              </th>
-              <th style="text-align: center; padding: 12px 20px; font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">
-                <span style="display: inline-flex; align-items: center; gap: 6px;">
-                  <span style="background: #6b7280; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">User</span>
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            ${permissions.map((p, i) => `
-              <tr style="border-top: 1px solid var(--gray-100); ${i % 2 === 0 ? '' : 'background: var(--gray-50);'}">
-                <td style="padding: 12px 20px; font-size: 14px; color: var(--gray-700);">${p.feature}</td>
-                <td style="text-align: center; padding: 12px 20px;">${p.super_admin ? checkIcon : xIcon}</td>
-                <td style="text-align: center; padding: 12px 20px;">${p.admin ? checkIcon : xIcon}</td>
-                <td style="text-align: center; padding: 12px 20px;">${p.user ? checkIcon : xIcon}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
       </div>
     `;
+    
+    document.getElementById('permissionsModal')?.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
   },
 
   showManagement() {
