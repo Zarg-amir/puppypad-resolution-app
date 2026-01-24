@@ -8607,14 +8607,20 @@ const HubTestMode = {
   },
 
   render() {
-    const container = document.getElementById('testModeContainer');
-    const toggle = document.getElementById('testModeToggle');
-    const emailEl = document.getElementById('testModeEmail');
+    // Update profile modal toggle if it exists
+    const profileToggle = document.getElementById('profileTestModeToggle');
+    const profileEmailEl = document.getElementById('profileTestModeEmail');
     
-    if (container && HubAuth.isSuperAdmin()) {
-      container.style.display = 'block';
-      if (toggle) toggle.checked = this.testMode;
-      if (emailEl) emailEl.textContent = this.testMode ? this.testEmail : 'Production mode';
+    if (profileToggle) {
+      profileToggle.checked = this.testMode;
+      // Update toggle visual styling
+      const slider = profileToggle.nextElementSibling;
+      const knob = slider ? slider.nextElementSibling : null;
+      if (slider) slider.style.backgroundColor = this.testMode ? '#22c55e' : '#cbd5e1';
+      if (knob) knob.style.left = this.testMode ? '24px' : '3px';
+    }
+    if (profileEmailEl) {
+      profileEmailEl.textContent = this.testMode ? this.testEmail : 'Production mode';
     }
   },
 
@@ -8643,13 +8649,17 @@ const HubTestMode = {
       } else {
         HubUI.showToast(result.error || 'Failed to update test mode', 'error');
         // Revert toggle
-        document.getElementById('testModeToggle').checked = !enabled;
+        const profileToggle = document.getElementById('profileTestModeToggle');
+        if (profileToggle) profileToggle.checked = !enabled;
+        this.render();
       }
     } catch (e) {
       console.error('Failed to toggle test mode:', e);
       HubUI.showToast('Failed to update test mode', 'error');
       // Revert toggle
-      document.getElementById('testModeToggle').checked = !enabled;
+      const profileToggle = document.getElementById('profileTestModeToggle');
+      if (profileToggle) profileToggle.checked = !enabled;
+      this.render();
     }
   }
 };
@@ -8700,6 +8710,27 @@ const HubProfile = {
   renderModal(user) {
     const roleLabels = { 'super_admin': 'Super Admin', 'admin': 'Admin', 'user': 'User' };
     const initials = (user.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    const isSuperAdmin = user.role === 'super_admin';
+
+    // Build Test Mode section for super admins
+    const testModeSection = isSuperAdmin ? `
+      <div style="border-top: 1px solid var(--gray-200); padding-top: 20px; margin-top: 20px;">
+        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--gray-900);">Test Mode</h4>
+        <p style="font-size: 12px; color: var(--gray-500); margin-bottom: 16px;">When enabled, tickets are sent to test email instead of Richpanel</p>
+        
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--gray-50); border-radius: 8px; border: 1px solid var(--gray-200);">
+          <div>
+            <div style="font-size: 14px; font-weight: 500; color: var(--gray-900);">Test Mode</div>
+            <div id="profileTestModeEmail" style="font-size: 12px; color: var(--gray-500); margin-top: 2px;">${HubTestMode.testMode ? HubTestMode.testEmail : 'Production mode'}</div>
+          </div>
+          <label style="position: relative; display: inline-block; width: 48px; height: 26px; flex-shrink: 0;">
+            <input type="checkbox" id="profileTestModeToggle" ${HubTestMode.testMode ? 'checked' : ''} onchange="HubTestMode.toggle(this.checked)" style="opacity: 0; width: 0; height: 0;">
+            <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${HubTestMode.testMode ? '#22c55e' : '#cbd5e1'}; border-radius: 26px; transition: .3s;"></span>
+            <span style="position: absolute; content: ''; height: 20px; width: 20px; left: ${HubTestMode.testMode ? '24px' : '3px'}; bottom: 3px; background-color: white; border-radius: 50%; transition: .3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></span>
+          </label>
+        </div>
+      </div>
+    ` : '';
 
     const html = `
       <div class="modal-overlay active" id="profileModal" onclick="if(event.target === this) this.remove()">
@@ -8752,6 +8783,8 @@ const HubProfile = {
                   <input type="password" id="profileConfirmPassword" class="form-input" minlength="6" placeholder="Confirm new password">
                 </div>
               </div>
+
+              ${testModeSection}
 
               <div style="display: flex; gap: 12px; margin-top: 24px;">
                 <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="document.getElementById('profileModal').remove()">Cancel</button>
