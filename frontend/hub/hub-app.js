@@ -93,6 +93,8 @@ const HubState = {
   // UI
   currentPage: 'dashboard',
   isLoading: false,
+  hideCompleted: localStorage.getItem('hub_hideCompleted') === 'true',
+  collapsedStatusGroups: new Set(),
   keySequence: '', // For combo shortcuts like 'g' then 'd'
   keySequenceTimeout: null
 };
@@ -1540,6 +1542,8 @@ const HubUsers = {
     
     await this.load();
 
+    const permissionsTable = this.renderPermissionsTable();
+
     const html = `
       <table class="cases-table cases-table-enhanced">
         <thead>
@@ -1590,6 +1594,8 @@ const HubUsers = {
           }).join('') : '<tr><td colspan="6" class="empty-state">No users found.</td></tr>'}
         </tbody>
       </table>
+      
+      ${permissionsTable}
     `;
 
     if (content) {
@@ -1597,6 +1603,75 @@ const HubUsers = {
     } else {
       view.innerHTML = html;
     }
+  },
+
+  renderPermissionsTable() {
+    const permissions = [
+      { feature: 'View Dashboard', super_admin: true, admin: true, user: true },
+      { feature: 'View Cases', super_admin: true, admin: true, user: true },
+      { feature: 'Update Case Status', super_admin: true, admin: true, user: true },
+      { feature: 'Add Comments', super_admin: true, admin: true, user: true },
+      { feature: 'View Sessions & Events', super_admin: true, admin: true, user: true },
+      { feature: 'View Analytics', super_admin: true, admin: true, user: true },
+      { feature: 'Delete Cases', super_admin: true, admin: true, user: false },
+      { feature: 'Delete Issue Reports', super_admin: true, admin: true, user: false },
+      { feature: 'Delete Duplicates', super_admin: true, admin: true, user: false },
+      { feature: 'Delete Self-Resolved', super_admin: true, admin: true, user: false },
+      { feature: 'Assign Cases to Users', super_admin: true, admin: true, user: false },
+      { feature: 'Bulk Actions', super_admin: true, admin: true, user: false },
+      { feature: 'Manage SOP Links', super_admin: true, admin: true, user: false },
+      { feature: 'Manage Email Templates', super_admin: true, admin: true, user: false },
+      { feature: 'User Management', super_admin: true, admin: true, user: false },
+      { feature: 'Create Users', super_admin: true, admin: true, user: false },
+      { feature: 'Delete Users', super_admin: true, admin: true, user: false },
+      { feature: 'Create Admin Users', super_admin: true, admin: false, user: false },
+      { feature: 'Test Mode Toggle', super_admin: true, admin: false, user: false },
+      { feature: 'View Audit Log', super_admin: true, admin: false, user: false },
+    ];
+
+    const checkIcon = '<svg fill="none" stroke="#22c55e" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>';
+    const xIcon = '<svg fill="none" stroke="#ef4444" viewBox="0 0 24 24" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>';
+
+    return `
+      <div style="margin-top: 32px; background: white; border-radius: 12px; border: 1px solid var(--gray-200); overflow: hidden;">
+        <div style="padding: 20px 24px; border-bottom: 1px solid var(--gray-200); background: var(--gray-50);">
+          <h3 style="font-size: 16px; font-weight: 600; color: var(--gray-900); margin: 0;">Role Permissions</h3>
+          <p style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">Overview of features available to each role</p>
+        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: var(--gray-50);">
+              <th style="text-align: left; padding: 12px 20px; font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Feature</th>
+              <th style="text-align: center; padding: 12px 20px; font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">
+                <span style="display: inline-flex; align-items: center; gap: 6px;">
+                  <span style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">Super Admin</span>
+                </span>
+              </th>
+              <th style="text-align: center; padding: 12px 20px; font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">
+                <span style="display: inline-flex; align-items: center; gap: 6px;">
+                  <span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">Admin</span>
+                </span>
+              </th>
+              <th style="text-align: center; padding: 12px 20px; font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">
+                <span style="display: inline-flex; align-items: center; gap: 6px;">
+                  <span style="background: #6b7280; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">User</span>
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            ${permissions.map((p, i) => `
+              <tr style="border-top: 1px solid var(--gray-100); ${i % 2 === 0 ? '' : 'background: var(--gray-50);'}">
+                <td style="padding: 12px 20px; font-size: 14px; color: var(--gray-700);">${p.feature}</td>
+                <td style="text-align: center; padding: 12px 20px;">${p.super_admin ? checkIcon : xIcon}</td>
+                <td style="text-align: center; padding: 12px 20px;">${p.admin ? checkIcon : xIcon}</td>
+                <td style="text-align: center; padding: 12px 20px;">${p.user ? checkIcon : xIcon}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
   },
 
   showManagement() {
@@ -3174,6 +3249,9 @@ const HubCases = {
 
   async loadCases(page = 1) {
     HubUI.showLoading();
+    
+    // Initialize hide completed toggle state
+    this.updateHideCompletedUI();
 
     try {
       let url = `/hub/api/cases?page=${page}&limit=${HubConfig.ITEMS_PER_PAGE}`;
@@ -3266,14 +3344,20 @@ const HubCases = {
       resultCount.textContent = `${total} case${total !== 1 ? 's' : ''} found`;
     }
 
-    if (HubState.cases.length === 0) {
+    // Filter out completed cases if hideCompleted is enabled
+    let casesToShow = HubState.cases;
+    if (HubState.hideCompleted) {
+      casesToShow = HubState.cases.filter(c => c.status !== 'completed');
+    }
+
+    if (casesToShow.length === 0) {
       container.innerHTML = `
         <tr>
           <td colspan="8" class="empty-state">
             <div style="padding: 40px; text-align: center;">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="48" height="48" style="color: var(--gray-300); margin-bottom: 16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
               <h3 style="color: var(--gray-700); margin-bottom: 8px;">No cases found</h3>
-              <p style="color: var(--gray-500); font-size: 14px;">Try adjusting your filters or search query</p>
+              <p style="color: var(--gray-500); font-size: 14px;">${HubState.hideCompleted ? 'All cases are completed. Click "Show Completed" to view them.' : 'Try adjusting your filters or search query'}</p>
             </div>
           </td>
         </tr>
@@ -3281,20 +3365,65 @@ const HubCases = {
       return;
     }
 
-    container.innerHTML = HubState.cases.map((c, idx) => {
-      // Calculate due date (24 hours from creation)
-      const createdDate = new Date(c.created_at);
-      const dueDate = new Date(createdDate.getTime() + (24 * 60 * 60 * 1000));
-      const now = new Date();
-      const isOverdue = now > dueDate && c.status !== 'completed';
-      const hoursLeft = Math.max(0, Math.round((dueDate - now) / (1000 * 60 * 60)));
-      const dueClass = isOverdue ? 'overdue' : hoursLeft < 8 ? 'warning' : 'ok';
+    // Group cases by status: Pending/In Progress first, then Completed
+    const statusOrder = ['pending', 'in_progress', 'completed'];
+    const grouped = {
+      pending: casesToShow.filter(c => c.status === 'pending' || !c.status),
+      in_progress: casesToShow.filter(c => c.status === 'in_progress'),
+      completed: casesToShow.filter(c => c.status === 'completed')
+    };
+
+    const statusLabels = {
+      pending: { label: 'Pending', color: '#f59e0b', bgColor: 'rgba(245, 158, 11, 0.1)' },
+      in_progress: { label: 'In Progress', color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.1)' },
+      completed: { label: 'Completed', color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.1)' }
+    };
+
+    let html = '';
+    statusOrder.forEach(status => {
+      const cases = grouped[status];
+      if (cases.length === 0) return;
       
-      // Format resolution text - use pre-fetched formatted resolution if available
-      const resolutionText = c._formattedResolution || this.formatResolutionSync(c) || 'Pending Review';
-      const statusClass = c.status ? c.status.replace('_', '-') : 'pending';
+      const isCollapsed = HubState.collapsedStatusGroups.has(status);
+      const { label, color, bgColor } = statusLabels[status];
       
-      return `
+      html += `
+        <tr class="status-group-header" onclick="HubCases.toggleStatusGroup('${status}')" style="cursor: pointer;">
+          <td colspan="8" style="background: ${bgColor}; border-left: 3px solid ${color}; padding: 10px 16px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16" style="color: var(--gray-500); transform: ${isCollapsed ? 'rotate(-90deg)' : 'rotate(0)'}; transition: transform 0.2s;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+              <span style="font-weight: 600; color: ${color};">${label}</span>
+              <span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">${cases.length}</span>
+            </div>
+          </td>
+        </tr>
+      `;
+      
+      if (!isCollapsed) {
+        html += cases.map(c => this.renderCaseRow(c)).join('');
+      }
+    });
+
+    container.innerHTML = html;
+    this.renderPagination();
+  },
+
+  renderCaseRow(c) {
+    // Calculate due date (24 hours from creation)
+    const createdDate = new Date(c.created_at);
+    const dueDate = new Date(createdDate.getTime() + (24 * 60 * 60 * 1000));
+    const now = new Date();
+    const isOverdue = now > dueDate && c.status !== 'completed';
+    const hoursLeft = Math.max(0, Math.round((dueDate - now) / (1000 * 60 * 60)));
+    const dueClass = isOverdue ? 'overdue' : hoursLeft < 8 ? 'warning' : 'ok';
+    
+    // Format resolution text - use pre-fetched formatted resolution if available
+    const resolutionText = c._formattedResolution || this.formatResolutionSync(c) || 'Pending Review';
+    const statusClass = c.status ? c.status.replace('_', '-') : 'pending';
+    
+    return `
       <tr onclick="HubCases.openCase('${c.case_id}')" data-case-id="${c.case_id}">
         <td>
           <input type="checkbox" class="case-checkbox" data-case-id="${c.case_id}"
@@ -3308,16 +3437,36 @@ const HubCases = {
         <td><span class="type-badge ${c.case_type}">${c.case_type}</span></td>
         <td><span class="status-badge ${statusClass}">${this.formatStatus(c.status)}</span></td>
         <td class="td-due ${dueClass}">
-          ${isOverdue ? 'Overdue' : hoursLeft + 'h left'}
+          ${c.status === 'completed' ? '-' : (isOverdue ? 'Overdue' : hoursLeft + 'h left')}
         </td>
         <td class="td-resolution">${this.escapeHtml(resolutionText)}</td>
         <td class="td-assignee">${HubUsers.renderAssigneeCell(c.case_id, c.assigned_to)}</td>
         <td class="td-created">${this.timeAgo(c.created_at)}</td>
       </tr>
     `;
-    }).join('');
+  },
 
-    this.renderPagination();
+  toggleStatusGroup(status) {
+    if (HubState.collapsedStatusGroups.has(status)) {
+      HubState.collapsedStatusGroups.delete(status);
+    } else {
+      HubState.collapsedStatusGroups.add(status);
+    }
+    this.renderCasesList();
+  },
+
+  toggleHideCompleted() {
+    HubState.hideCompleted = !HubState.hideCompleted;
+    localStorage.setItem('hub_hideCompleted', HubState.hideCompleted);
+    this.updateHideCompletedUI();
+    this.renderCasesList();
+  },
+
+  updateHideCompletedUI() {
+    const toggle = document.getElementById('hideCompletedToggle');
+    const label = document.getElementById('hideCompletedLabel');
+    if (toggle) toggle.checked = !HubState.hideCompleted;
+    if (label) label.textContent = HubState.hideCompleted ? 'Show Completed' : 'Hide Completed';
   },
 
   updateNavigationCounts(counts) {
@@ -3966,10 +4115,23 @@ const HubIssues = {
     const container = document.getElementById('issuesTableBody');
     if (!container) return;
 
+    const isAdmin = HubAuth.isAdmin();
+
+    // Update table headers to include/exclude delete column
+    const thead = container.closest('table')?.querySelector('thead tr');
+    if (thead) {
+      const existingDeleteHeader = thead.querySelector('.delete-header');
+      if (isAdmin && !existingDeleteHeader) {
+        thead.insertAdjacentHTML('beforeend', '<th class="delete-header" style="width: 60px; text-align: center;">Actions</th>');
+      } else if (!isAdmin && existingDeleteHeader) {
+        existingDeleteHeader.remove();
+      }
+    }
+
     if (issues.length === 0) {
       container.innerHTML = `
         <tr>
-          <td colspan="6" class="empty-state">No issues found</td>
+          <td colspan="${isAdmin ? '7' : '6'}" class="empty-state">No issues found</td>
         </tr>
       `;
       return;
@@ -3990,6 +4152,14 @@ const HubIssues = {
             No Recording
            </span>`;
       
+      const deleteBtn = isAdmin ? `
+        <td style="text-align: center;">
+          <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="event.stopPropagation(); HubIssues.confirmDelete('${issue.report_id}');">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          </button>
+        </td>
+      ` : '';
+
       return `
         <tr onclick="HubIssues.openIssue('${issue.report_id}')" style="cursor: pointer;">
           <td>${this.escapeHtml(issue.report_id || '-')}</td>
@@ -3998,9 +4168,55 @@ const HubIssues = {
           <td><span class="status-badge ${statusClass}">${this.formatStatus(issue.status || 'pending')}</span></td>
           <td>${this.timeAgo(issue.created_at)}</td>
           <td>${recordingBtn}</td>
+          ${deleteBtn}
         </tr>
       `;
     }).join('');
+  },
+
+  confirmDelete(reportId) {
+    if (!HubAuth.isAdmin()) {
+      HubUI.showToast('Admin access required', 'error');
+      return;
+    }
+
+    const html = `
+      <div class="modal-overlay active" id="confirmDeleteIssueModal" onclick="if(event.target === this) this.remove()">
+        <div class="modal" style="max-width: 400px;">
+          <div class="modal-header" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);">
+            <h3 class="modal-title" style="color: #991b1b;">Delete Issue Report</h3>
+            <button class="modal-close" onclick="document.getElementById('confirmDeleteIssueModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px; text-align: center;">
+            <p style="color: var(--gray-600); font-size: 14px; margin-bottom: 20px;">Are you sure you want to delete this issue report?<br>This action cannot be undone.</p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+              <button class="btn btn-secondary" onclick="document.getElementById('confirmDeleteIssueModal').remove()">Cancel</button>
+              <button class="btn" style="background: #ef4444; color: white;" onclick="HubIssues.executeDelete('${reportId}')">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  async executeDelete(reportId) {
+    try {
+      HubUI.showLoading();
+      const result = await HubAPI.delete(`/hub/api/issues/${reportId}`);
+      
+      if (result.success) {
+        document.getElementById('confirmDeleteIssueModal')?.remove();
+        HubUI.showToast('Issue report deleted', 'success');
+        this.load(HubState.issuesPage || 1);
+      } else {
+        HubUI.showToast(result.error || 'Failed to delete', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to delete issue report', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
   },
 
   renderPagination(total, currentCount, currentPage, limit) {
@@ -4736,8 +4952,22 @@ const HubSelfResolved = {
     const tbody = document.getElementById('selfResolvedTableBody');
     if (!tbody) return;
 
+    const isAdmin = HubAuth.isAdmin();
+    const colSpan = isAdmin ? 6 : 5;
+
+    // Update table headers to include/exclude delete column
+    const thead = tbody.closest('table')?.querySelector('thead tr');
+    if (thead) {
+      const existingDeleteHeader = thead.querySelector('.delete-header');
+      if (isAdmin && !existingDeleteHeader) {
+        thead.insertAdjacentHTML('beforeend', '<th class="delete-header" style="width: 60px; text-align: center;">Actions</th>');
+      } else if (!isAdmin && existingDeleteHeader) {
+        existingDeleteHeader.remove();
+      }
+    }
+
     if (cases.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray-500);">No self-resolved cases found</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center;padding:40px;color:var(--gray-500);">No self-resolved cases found</td></tr>`;
       return;
     }
 
@@ -4751,6 +4981,14 @@ const HubSelfResolved = {
         ? `<a href="${this.escapeHtml(c.session_replay_url)}" target="_blank" style="color:var(--brand-navy);text-decoration:none;">View Recording</a>`
         : '-';
 
+      const deleteBtn = isAdmin ? `
+        <td style="text-align: center;">
+          <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="HubSelfResolved.confirmDelete('${c.case_id}')">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          </button>
+        </td>
+      ` : '';
+
       return `
         <tr style="cursor:default;">
           <td>
@@ -4763,9 +5001,55 @@ const HubSelfResolved = {
           <td>Customer satisfied - no resolution needed</td>
           <td><span class="time-ago">${resolvedDate}</span></td>
           <td>${recordingLink}</td>
+          ${deleteBtn}
         </tr>
       `;
     }).join('');
+  },
+
+  confirmDelete(caseId) {
+    if (!HubAuth.isAdmin()) {
+      HubUI.showToast('Admin access required', 'error');
+      return;
+    }
+
+    const html = `
+      <div class="modal-overlay active" id="confirmDeleteSelfResolvedModal" onclick="if(event.target === this) this.remove()">
+        <div class="modal" style="max-width: 400px;">
+          <div class="modal-header" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);">
+            <h3 class="modal-title" style="color: #991b1b;">Delete Self-Resolved Case</h3>
+            <button class="modal-close" onclick="document.getElementById('confirmDeleteSelfResolvedModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px; text-align: center;">
+            <p style="color: var(--gray-600); font-size: 14px; margin-bottom: 20px;">Are you sure you want to delete this self-resolved case?<br>This action cannot be undone.</p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+              <button class="btn btn-secondary" onclick="document.getElementById('confirmDeleteSelfResolvedModal').remove()">Cancel</button>
+              <button class="btn" style="background: #ef4444; color: white;" onclick="HubSelfResolved.executeDelete('${caseId}')">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  async executeDelete(caseId) {
+    try {
+      HubUI.showLoading();
+      const result = await HubAPI.delete(`/hub/api/self-resolved/${caseId}`);
+      
+      if (result.success) {
+        document.getElementById('confirmDeleteSelfResolvedModal')?.remove();
+        HubUI.showToast('Self-resolved case deleted', 'success');
+        this.loadCases(this.currentPage);
+      } else {
+        HubUI.showToast(result.error || 'Failed to delete', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to delete self-resolved case', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
   },
 
   formatIssueType(issueType) {
@@ -4928,6 +5212,12 @@ const HubDuplicates = {
               <span class="duplicate-count">${group.duplicate_count}</span>
               <span class="duplicate-count-label">duplicates</span>
             </div>
+            ${HubAuth.isAdmin() ? `
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 11px; color: #ef4444; margin-right: 8px;" onclick="event.stopPropagation(); HubDuplicates.confirmDelete('${encodeURIComponent(group.customer_email)}|${encodeURIComponent(group.order_number)}', ${index});">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              Resolve
+            </button>
+            ` : ''}
             <div class="duplicate-toggle-icon">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
@@ -4938,6 +5228,51 @@ const HubDuplicates = {
         </div>
       `;
     }).join('');
+  },
+
+  confirmDelete(duplicateKey, index) {
+    if (!HubAuth.isAdmin()) {
+      HubUI.showToast('Admin access required', 'error');
+      return;
+    }
+
+    const html = `
+      <div class="modal-overlay active" id="confirmDeleteDuplicateModal" onclick="if(event.target === this) this.remove()">
+        <div class="modal" style="max-width: 400px;">
+          <div class="modal-header" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);">
+            <h3 class="modal-title" style="color: #991b1b;">Resolve Duplicate Group</h3>
+            <button class="modal-close" onclick="document.getElementById('confirmDeleteDuplicateModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px; text-align: center;">
+            <p style="color: var(--gray-600); font-size: 14px; margin-bottom: 20px;">Mark this duplicate group as resolved?<br>This won't delete the cases, but will mark them as handled.</p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+              <button class="btn btn-secondary" onclick="document.getElementById('confirmDeleteDuplicateModal').remove()">Cancel</button>
+              <button class="btn" style="background: #22c55e; color: white;" onclick="HubDuplicates.executeDelete('${duplicateKey}')">Mark Resolved</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  async executeDelete(duplicateKey) {
+    try {
+      HubUI.showLoading();
+      const result = await HubAPI.delete(`/hub/api/duplicates/${duplicateKey}`);
+      
+      if (result.success) {
+        document.getElementById('confirmDeleteDuplicateModal')?.remove();
+        HubUI.showToast('Duplicate group resolved', 'success');
+        this.load();
+      } else {
+        HubUI.showToast(result.error || 'Failed to resolve', 'error');
+      }
+    } catch (e) {
+      HubUI.showToast('Failed to resolve duplicate group', 'error');
+    } finally {
+      HubUI.hideLoading();
+    }
   },
 
   renderCasesTable(cases) {
@@ -6415,6 +6750,14 @@ const HubCaseDetail = {
                   Copy Email Template
                 </button>
                 `}
+                
+                ${HubAuth.isAdmin() ? `
+                <!-- Delete Case (Admin Only) -->
+                <button class="quick-action-btn delete-btn" onclick="HubCaseDetail.confirmDelete('${c.case_id}')" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                  Delete Case
+                </button>
+                ` : ''}
               </div>
             </div>
           </div>
@@ -6975,6 +7318,61 @@ The PuppyPad Team`
       });
     } catch (e) {
       // Silent fail for activity logging
+    }
+  },
+
+  confirmDelete(caseId) {
+    if (!HubAuth.isAdmin()) {
+      HubUI.showToast('Admin access required', 'error');
+      return;
+    }
+
+    const html = `
+      <div class="modal-overlay active" id="confirmDeleteCaseModal" onclick="if(event.target === this) this.remove()">
+        <div class="modal" style="max-width: 400px;">
+          <div class="modal-header" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);">
+            <h3 class="modal-title" style="color: #991b1b;">Delete Case</h3>
+            <button class="modal-close" onclick="document.getElementById('confirmDeleteCaseModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px; text-align: center;">
+            <div style="width: 56px; height: 56px; margin: 0 auto 16px; background: #fef2f2; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+              <svg fill="none" stroke="#ef4444" viewBox="0 0 24 24" width="28" height="28"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </div>
+            <h4 style="color: var(--gray-900); margin-bottom: 8px;">Are you sure?</h4>
+            <p style="color: var(--gray-600); font-size: 14px; margin-bottom: 20px;">This will permanently delete case <strong>${caseId}</strong> and all associated data. This action cannot be undone.</p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+              <button class="btn btn-secondary" onclick="document.getElementById('confirmDeleteCaseModal').remove()">Cancel</button>
+              <button class="btn" style="background: #ef4444; color: white;" onclick="HubCaseDetail.executeDelete('${caseId}')">Delete Case</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  async executeDelete(caseId) {
+    if (!HubAuth.isAdmin()) {
+      HubUI.showToast('Admin access required', 'error');
+      return;
+    }
+
+    try {
+      HubUI.showLoading();
+      const result = await HubAPI.delete(`/hub/api/case/${caseId}`);
+      
+      if (result.success) {
+        document.getElementById('confirmDeleteCaseModal')?.remove();
+        HubUI.showToast('Case deleted successfully', 'success');
+        HubNavigation.goto('cases');
+      } else {
+        HubUI.showToast(result.error || 'Failed to delete case', 'error');
+      }
+    } catch (e) {
+      console.error('Delete case error:', e);
+      HubUI.showToast('Failed to delete case', 'error');
+    } finally {
+      HubUI.hideLoading();
     }
   },
 
