@@ -258,6 +258,9 @@ const HubAuth = {
       section.style.display = isAdmin ? 'block' : 'none';
     });
     
+    // Update sidebar user info
+    HubProfile.updateSidebar();
+    
     // Initialize test mode toggle for super admins
     if (this.isSuperAdmin()) {
       HubTestMode.init();
@@ -3568,8 +3571,7 @@ const HubNavigation = {
       'users': 'usersView',
       'sop': 'sopView',
       'email-templates': 'emailTemplatesView',
-      'case-detail': 'caseDetailView',
-      'profile': 'profileView'
+      'case-detail': 'caseDetailView'
     };
     
     Object.entries(viewMap).forEach(([pageName, viewId]) => {
@@ -3619,8 +3621,6 @@ const HubNavigation = {
     } else if (page === 'case-detail') {
       // filter here is actually the caseId
       HubCaseDetail.load(filter);
-    } else if (page === 'profile') {
-      HubProfile.load();
     }
   },
 
@@ -3640,8 +3640,7 @@ const HubNavigation = {
       flows: 'Flow Documentation',
       sop: 'SOP Links',
       'email-templates': 'Email Templates',
-      'case-detail': 'Case Details',
-      'profile': 'Profile Settings'
+      'case-detail': 'Case Details'
     };
 
     // If cases page with filter, show filter name
@@ -8660,144 +8659,111 @@ window.HubTestMode = HubTestMode;
 // PROFILE SETTINGS
 // ============================================
 const HubProfile = {
-  async load() {
-    try {
-      const result = await HubAPI.get('/hub/api/profile');
-      if (result.success && result.user) {
-        this.render(result.user);
-      } else {
-        HubUI.showToast('Failed to load profile', 'error');
-        document.getElementById('profileContent').innerHTML = '<div style="padding: 24px; text-align: center; color: var(--gray-500);">Failed to load profile</div>';
-      }
-    } catch (e) {
-      console.error('Profile load error:', e);
-      HubUI.showToast('Failed to load profile', 'error');
-      document.getElementById('profileContent').innerHTML = '<div style="padding: 24px; text-align: center; color: var(--gray-500);">Failed to load profile</div>';
+  currentUser: null,
+
+  // Update sidebar user info
+  updateSidebar() {
+    const user = HubState.currentUser;
+    if (!user) return;
+
+    const avatarEl = document.getElementById('sidebarUserAvatar');
+    const nameEl = document.getElementById('sidebarUserName');
+    const roleEl = document.getElementById('sidebarUserRole');
+
+    if (avatarEl) {
+      const initials = (user.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+      avatarEl.textContent = initials;
+    }
+    if (nameEl) nameEl.textContent = user.name || 'User';
+    if (roleEl) {
+      const roleLabels = { 'super_admin': 'Super Admin', 'admin': 'Admin', 'user': 'User' };
+      roleEl.textContent = roleLabels[user.role] || 'User';
     }
   },
 
-  render(user) {
+  // Show profile modal
+  async showModal() {
+    try {
+      const result = await HubAPI.get('/hub/api/profile');
+      if (!result.success || !result.user) {
+        HubUI.showToast('Failed to load profile', 'error');
+        return;
+      }
+      this.currentUser = result.user;
+      this.renderModal(result.user);
+    } catch (e) {
+      console.error('Profile load error:', e);
+      HubUI.showToast('Failed to load profile', 'error');
+    }
+  },
+
+  renderModal(user) {
+    const roleLabels = { 'super_admin': 'Super Admin', 'admin': 'Admin', 'user': 'User' };
+    const initials = (user.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
     const html = `
-      <div style="max-width: 600px;">
-        <div style="margin-bottom: 32px;">
-          <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Account Information</h3>
-          <p style="font-size: 14px; color: var(--gray-500);">Update your account details and password</p>
+      <div class="modal-overlay active" id="profileModal" onclick="if(event.target === this) this.remove()">
+        <div class="modal" style="max-width: 480px; max-height: 90vh; overflow-y: auto;">
+          <div class="modal-header">
+            <h3 class="modal-title">Profile Settings</h3>
+            <button class="modal-close" onclick="document.getElementById('profileModal').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 24px;">
+            <!-- Profile Header -->
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--gray-200);">
+              <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--brand-navy); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: white;">${initials}</div>
+              <div>
+                <div style="font-size: 18px; font-weight: 600; color: var(--gray-900);">${this.escapeHtml(user.name || 'User')}</div>
+                <div style="font-size: 13px; color: var(--gray-500);">${this.escapeHtml(user.username)}</div>
+                <span class="type-badge ${user.role === 'super_admin' ? 'super-admin' : user.role}" style="margin-top: 4px; display: inline-block;">${roleLabels[user.role] || 'User'}</span>
+              </div>
+            </div>
+
+            <form id="profileForm" onsubmit="HubProfile.handleSubmit(event)">
+              <!-- Name Field -->
+              <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="profileName" class="form-input" value="${this.escapeHtml(user.name || '')}" required placeholder="Your full name">
+              </div>
+
+              <!-- Email/Username Field -->
+              <div class="form-group">
+                <label>Email / Username *</label>
+                <input type="email" id="profileEmail" class="form-input" value="${this.escapeHtml(user.username || '')}" required placeholder="your.email@example.com">
+                <p style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">This is used for login</p>
+              </div>
+
+              <div style="border-top: 1px solid var(--gray-200); padding-top: 20px; margin-top: 20px;">
+                <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--gray-900);">Change Password</h4>
+                <p style="font-size: 12px; color: var(--gray-500); margin-bottom: 16px;">Leave blank to keep current password</p>
+
+                <div class="form-group">
+                  <label>Current Password</label>
+                  <input type="password" id="profileCurrentPassword" class="form-input" placeholder="Enter current password">
+                </div>
+
+                <div class="form-group">
+                  <label>New Password</label>
+                  <input type="password" id="profileNewPassword" class="form-input" minlength="6" placeholder="Min 6 characters">
+                </div>
+
+                <div class="form-group">
+                  <label>Confirm New Password</label>
+                  <input type="password" id="profileConfirmPassword" class="form-input" minlength="6" placeholder="Confirm new password">
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="document.getElementById('profileModal').remove()">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+              </div>
+            </form>
+          </div>
         </div>
-
-        <form id="profileForm" onsubmit="HubProfile.handleSubmit(event)" style="display: flex; flex-direction: column; gap: 24px;">
-          <!-- Name Field -->
-          <div>
-            <label style="display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 8px;">
-              Full Name *
-            </label>
-            <input 
-              type="text" 
-              id="profileName" 
-              value="${this.escapeHtml(user.name || '')}" 
-              required
-              style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; background: white;"
-              placeholder="Your full name"
-            >
-          </div>
-
-          <!-- Email/Username Field -->
-          <div>
-            <label style="display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 8px;">
-              Email / Username *
-            </label>
-            <input 
-              type="email" 
-              id="profileEmail" 
-              value="${this.escapeHtml(user.username || '')}" 
-              required
-              style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; background: white;"
-              placeholder="your.email@example.com"
-            >
-            <p style="font-size: 12px; color: var(--gray-500); margin-top: 6px;">This is used for login</p>
-          </div>
-
-          <!-- Role Display (Read-only) -->
-          <div>
-            <label style="display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 8px;">
-              Role
-            </label>
-            <input 
-              type="text" 
-              value="${this.escapeHtml(user.role || 'user')}" 
-              disabled
-              style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; background: var(--gray-50); color: var(--gray-600); cursor: not-allowed;"
-            >
-          </div>
-
-          <div style="border-top: 1px solid var(--border-color); padding-top: 24px; margin-top: 8px;">
-            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">Change Password</h3>
-            <p style="font-size: 14px; color: var(--gray-500); margin-bottom: 24px;">Leave blank if you don't want to change your password</p>
-
-            <!-- Current Password -->
-            <div style="margin-bottom: 16px;">
-              <label style="display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 8px;">
-                Current Password
-              </label>
-              <input 
-                type="password" 
-                id="profileCurrentPassword" 
-                style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; background: white;"
-                placeholder="Enter current password to change"
-              >
-            </div>
-
-            <!-- New Password -->
-            <div style="margin-bottom: 16px;">
-              <label style="display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 8px;">
-                New Password
-              </label>
-              <input 
-                type="password" 
-                id="profileNewPassword" 
-                minlength="6"
-                style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; background: white;"
-                placeholder="Enter new password (min 6 characters)"
-              >
-            </div>
-
-            <!-- Confirm New Password -->
-            <div>
-              <label style="display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 8px;">
-                Confirm New Password
-              </label>
-              <input 
-                type="password" 
-                id="profileConfirmPassword" 
-                minlength="6"
-                style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; background: white;"
-                placeholder="Confirm new password"
-              >
-            </div>
-          </div>
-
-          <!-- Submit Button -->
-          <div style="display: flex; gap: 12px; margin-top: 8px;">
-            <button 
-              type="submit" 
-              class="btn btn-primary"
-              style="flex: 1;"
-            >
-              Save Changes
-            </button>
-            <button 
-              type="button" 
-              class="btn btn-secondary"
-              onclick="HubProfile.resetForm()"
-            >
-              Reset
-            </button>
-          </div>
-        </form>
       </div>
     `;
 
-    document.getElementById('profileContent').innerHTML = html;
-    this.currentUser = user;
+    document.body.insertAdjacentHTML('beforeend', html);
   },
 
   async handleSubmit(event) {
@@ -8850,13 +8816,11 @@ const HubProfile = {
           localStorage.setItem('hub_user', JSON.stringify(HubState.currentUser));
         }
 
-        // Clear password fields
-        document.getElementById('profileCurrentPassword').value = '';
-        document.getElementById('profileNewPassword').value = '';
-        document.getElementById('profileConfirmPassword').value = '';
+        // Update sidebar
+        this.updateSidebar();
 
-        // Reload profile to get updated data
-        this.load();
+        // Close modal
+        document.getElementById('profileModal')?.remove();
       } else {
         HubUI.showToast(result.error || 'Failed to update profile', 'error');
       }
@@ -8866,14 +8830,17 @@ const HubProfile = {
     }
   },
 
+  // Legacy methods for backward compatibility
+  async load() {
+    this.updateSidebar();
+  },
+
+  render(user) {
+    // Now handled by modal
+  },
+
   resetForm() {
-    if (this.currentUser) {
-      document.getElementById('profileName').value = this.currentUser.name || '';
-      document.getElementById('profileEmail').value = this.currentUser.username || '';
-      document.getElementById('profileCurrentPassword').value = '';
-      document.getElementById('profileNewPassword').value = '';
-      document.getElementById('profileConfirmPassword').value = '';
-    }
+    // Not needed for modal
   },
 
   escapeHtml(text) {
