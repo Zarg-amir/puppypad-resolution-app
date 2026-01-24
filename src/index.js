@@ -5259,7 +5259,7 @@ async function handleListUsers(request, env, corsHeaders) {
         u.id, 
         u.username, 
         u.name, 
-        u.email,
+        u.username as email,
         u.role, 
         COALESCE(u.is_active, 1) as is_active, 
         COALESCE(u.must_change_password, 0) as must_change_password, 
@@ -5283,7 +5283,7 @@ async function handleListUsers(request, env, corsHeaders) {
           id, 
           username, 
           name, 
-          email,
+          username as email,
           role, 
           created_at, 
           last_login
@@ -5349,11 +5349,11 @@ async function handleCreateUser(request, env, corsHeaders) {
 
     const passwordHash = await hashPassword(password);
 
-    // Create user with full column set
+    // Create user with full column set (note: email is stored in username column)
     await env.ANALYTICS_DB.prepare(`
-      INSERT INTO admin_users (username, password_hash, name, email, role, is_active, must_change_password, created_by)
-      VALUES (?, ?, ?, ?, ?, 1, 0, ?)
-    `).bind(username, passwordHash, name, email, role, auth.user.id).run();
+      INSERT INTO admin_users (username, password_hash, name, role, is_active, must_change_password, created_by)
+      VALUES (?, ?, ?, ?, 1, 0, ?)
+    `).bind(username, passwordHash, name, role, auth.user.id).run();
 
     // Log audit
     await logAudit(env, auth.user.id, auth.user.username, auth.user.name, 'user_created', 'users', 'user', username, { name, role, email }, null, username, request);
@@ -5656,7 +5656,7 @@ async function handleGetProfile(request, env, corsHeaders) {
 
   try {
     const user = await env.ANALYTICS_DB.prepare(`
-      SELECT id, username, name, email, role, is_active, must_change_password, created_at, last_login
+      SELECT id, username, name, username as email, role, is_active, must_change_password, created_at, last_login
       FROM admin_users WHERE id = ?
     `).bind(auth.user.id).first();
 
